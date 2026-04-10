@@ -27,6 +27,7 @@ mv 3d-ice-1ce8c0ad00b96acae52fc83508c61e3b4ad612df/ 3d-ice/
 # Go into the copy of 3d-ice and apply the feature patch
 pushd 3d-ice
 patch -p1 < ../HotGauge.3D-ICE.ThermalInit.patch
+patch -p1 < ../RHEL9_patches/3dice_rhel9_delta.patch
 popd
 
 # Cleanup

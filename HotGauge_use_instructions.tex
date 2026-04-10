@@ -1,0 +1,299 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue
+}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    columns=fullflexible,
+    frame=single,
+    keepspaces=true
+}
+
+\title{How to Run HotGauge}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+HotGauge is a toolchain comprised of three parts. The first is SniperSim, which is the
+performance model, the second is McPAT, the power model, and the third is 3d-ice, the thermal
+model. HotGauge simulations progress through these models sequentially in that order.
+Unfortunately, the outputs of McPAT do not perfectly match the inputs to 3d-ice, so there is an
+intermediate processing step built into the toolchain. With four distinct steps (five if one counts
+analysis), each with unique inputs and outputs, it is easy to get confused, so it is worth
+explaining how the toolchain is linked together.
+
+\section*{1. SniperSim Inputs/Outputs}
+
+The first step in the toolchain is SniperSim. SniperSim takes in many input arguments, outlined in
+the SniperSim \href{https://snipersim.org/documents/sniper-manual.pdf}{manual}, but a typical run looks like this:
+
+\begin{lstlisting}
+./run-sniper \
+-c <path to configuration file>
+-n <number of cores to simulate>
+-d <path to output directory>
+-s energystats:40000
+-s stop-by-icount:20000000
+--sde-arch=tgl
+-- <path to workload executable>
+\end{lstlisting}
+
+The arguments mean:
+
+\begin{itemize}[leftmargin=2em]
+    \item \texttt{-c}: This is the path to your configuration file, which describes the core your workload will run on.
+    \item \texttt{-n}: This is an integer representing how many cores you are simulating.
+    \item \texttt{-d}: This is the path to your output directory.
+    \item \texttt{-s energystats:40000}: This enables the energystats hook and passes it an integer as its interval/argument. This samples/logs energy/power every time interval you define. One interval used in previous studies is 40000.
+    \item \texttt{-s stop-by-icount:20000000}: This tells SniperSim how many instructions to simulate. 20{,}000{,}000 instructions is usually the minimum required to see hotspots.
+    \item \verb|--|:{--sde-arch=tgl}: This tells SniperSim to emulate a Tiger Lake ISA/micro-ops profile.
+    \item \verb|--|: This is followed by the path to the program you would like SniperSim to run on the simulated cores.
+\end{itemize}
+
+SniperSim output is a collection of timestamped energy statistics files that use the name \texttt{energystats-temp} along with some additional information about the simulation.
+
+These \texttt{energystats-temp} files are fed into McPAT, which turns these timestamped
+performance metrics files into timestamped power metrics files. The scripts that do this live in
+\texttt{\textasciitilde/HotGauge/scripts}.
+
+After McPAT, the Sniper output directory contains both the original energy-statistics files and the generated power-related outputs.
+
+\section*{2. 3d-ice Inputs/Outputs}
+
+The next step is 3d-ice, the thermal model. More information about 3d-ice can be found in the 3d-ice \href{https://eslweb.epfl.ch/3Dice/3D-ICE-User_Guide.pdf}{user guide}. In HotGauge, 3d-ice takes in these inputs:
+
+\begin{enumerate}[leftmargin=2em]
+    \item A warmup \texttt{.tstack} file. This warmup file is filled with the temperature values that represent the temperature in different parts of the chip at the beginning of the simulation.
+    
+    \item A stack (\texttt{.stk}) description file that describes the thermal problem that 3d-ice will solve. It contains information such as:
+    \begin{enumerate}[label=\alph*)]
+        \item Information about the structure of the die
+        \item Information about its material properties
+        \item Information about heat sinks in the system
+        \item Discretization parameters
+        \begin{enumerate}[label=\roman*)]
+            \item How the die is broken into ``thermal cubes'' assumed to have uniform temperature
+        \end{enumerate}
+        \item Analysis parameters
+        \begin{enumerate}[label=\roman*)]
+            \item How simulation is run over time
+        \end{enumerate}
+        \item Desired outputs
+    \end{enumerate}
+    
+    \item A floorplan (\texttt{.flp}) file that describes the architecture of the chip and cooling system as seen by the thermal model. It knows where each major logic block is and how big it is.
+    
+    \item A power trace file. This file is created from the \texttt{block\_powers} files that are the output of McPAT. The values inside it represent how much power different parts of the chip are using over time. These values are streamed into 3d-ice, which uses them to calculate temperature values.
+    
+    \item A metadata file. This file contains information about the HotGauge run, including the name of the run, the frequency at which the Sniper simulation ran, and the instruction count.
+\end{enumerate}
+
+\section*{3. Example of a Full HotGauge Run}
+
+This section walks through one example of a full HotGauge run.
+
+\subsection*{3.1 SniperSim}
+
+Navigate to \texttt{\textasciitilde/HotGauge/examples} and open the
+\texttt{skylake\_14nm.cfg} file. The top of the file should be edited so that the frequency is set to \texttt{4.7}.
+
+Next, compile the modified Linpack benchmark we will use for this run:
+\begin{lstlisting}
+gcc -O -o mod_linpack modified_linpack.c -lm
+\end{lstlisting}
+
+Navigate back to \texttt{\textasciitilde/HotGauge/snipersim} and start sniper:
+
+\begin{lstlisting}
+./run-sniper -c ~/HotGauge/examples/skylake_14nm.cfg -n 7 -d \
+~/HotGauge/snipersim/output/mod_linpack/14nm/4.7Ghz -s energystats:40000 -s \
+stop-by-icount:20000000 --sde-arch=tgl -- \
+~/HotGauge/examples/mod_linpack
+\end{lstlisting}
+
+When the simulation ends, double check that in
+\verb|~/HotGauge/snipersim/output/mod_linpack/14nm/4.7Ghz|
+you see a bunch of time-stamped \verb|energystats-temp| files. The output should look like this, though with more files:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{Screenshot 2026-03-30 at 12.23.19 PM.png}
+    \caption{Snipersim Output Example}
+    \label{fig:placeholder}
+\end{figure}
+
+\subsection*{3.2 McPAT}
+
+Navigate to \texttt{\textasciitilde/HotGauge/scripts}.
+
+Then run:
+
+\begin{lstlisting}
+./14_perf_sims_to_7_10_14_power_sims.sh \
+~/HotGauge/snipersim/output/mod_linpack 7
+\end{lstlisting}
+
+Inside of \verb|~/HotGauge/snipersim/output/mod_linpack/7nm/4.7GHz|
+you should see a bunch of time-stamped \verb|energystats-temp|,
+\verb|mcpat_output|, and \verb|block_powers| files. It should look like this:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{Screenshot 2026-03-30 at 12.33.35 PM.png}
+    \caption{Example McPAT output}
+    \label{fig:placeholder}
+\end{figure}
+
+\subsection*{3.3 3d-ice}
+
+Navigate to \texttt{\textasciitilde/HotGauge/examples} and create a new directory for your run. Copy the contents of the template directory into it.
+
+For Example:
+
+\begin{lstlisting}
+mkdir mod_linpack_dir
+cp -r template/* mod_linpack_dir/
+\end{lstlisting}
+
+Enter \verb|/HotGauge/examples/mod_linpack_dir|.
+
+The first step is to create the power trace and metadata files. The script that does this is
+\texttt{make\_pow\_trace.py}. The script calls the power trace file \texttt{power\_trace.json} and the metadata file
+\texttt{metadata.json}. You can use the \verb|--prefix-for-files| in the command line to add a prefix to those two file names.
+
+Run:
+
+\begin{lstlisting}
+python make_pow_trace.py --sniper-output-dir \
+~/HotGauge/snipersim/output/mod_linpack/7nm/4.7Ghz --prefix-for-files prefix \
+--instruction-count 20000000 --interval-ns 40000 --suite linpack
+\end{lstlisting}
+
+There should now be two new directories, one called \texttt{Metadata} and one called \texttt{Traces}.
+The \texttt{Metadata} directory will have your metadata file, which will be called
+\texttt{prefix\_metadata.json}, and the \texttt{Traces} directory will have your power trace file,
+which will be called \texttt{prefix\_pow\_trace.json}.
+
+The next step is to generate a warmup. The script that does this is called
+\texttt{generate\_warmup.py}. If you would like to change the heatsink model, you will need to edit the script.
+
+The script can be run like this:
+
+\begin{lstlisting}
+python generate_warmup.py --warmup-dir . --flp-template \
+skylake7nm_7core_3_3D-ICE_template.flp
+\end{lstlisting}
+
+This script can take days to run, so for convenience, HotGauge ships with an
+\texttt{example\_warmup} directory that can be used to finish this run.
+
+The last step in 3d-ice is to run \texttt{sim\_from\_warmup.py}. Before we run this however, you will want to make sure:
+
+\begin{itemize}[leftmargin=2em]
+    \item the \texttt{sys.path.insert} lines are correct,
+    \item and the heatsink information matches that of your warmup.
+\end{itemize}
+
+The other important thing to note before running the simulation script is what you would like your core mapping to be.
+Core mapping is sent in from the command line, and different commands correspond to different mappings:
+
+\begin{itemize}[leftmargin=2em]
+    \item Passing \texttt{0,1,3} causes cores 0, 1, and 3 to be present in the simulation. Each of these cores receives its power statistics from the corresponding core in Sniper.
+    
+    \item Passing \texttt{0->2,6} causes cores 0, 2, and 6 to be present in the simulation, but each of those cores receives its power statistics from core 0 of the Sniper simulation.
+\end{itemize}
+
+Once that has been confirmed, you can run:
+
+\begin{lstlisting}
+python sim_from_warmup.py --tstack-path \
+~/HotGauge/examples/mod_linpack_dir/example_warmup/skylake7nm_7core_3_3D-ICE_template.flp/final.tstack \
+--flp-template skylake7nm_7core_3_3D-ICE_template.flp \
+--trace-file ~/HotGauge/examples/mod_linpack_dir/Traces/prefix_pow_trace.json \
+--metadata-file ~/HotGauge/examples/mod_linpack_dir/Metadata/prefix_metadata.json \
+--core-mapping '0->2,6'
+\end{lstlisting}
+
+If you would like to run multiple simulations, you can pass
+\texttt{--workload-manifest \{path to workload.json\}} instead of a single metadata file and trace file.
+
+That \texttt{workload.json} file can be created by running:
+\begin{lstlisting}
+python make_workload_json.py
+\end{lstlisting}
+The output \verb|workload.json| file should be structured like this:
+
+\begin{lstlisting}
+[
+  { "trace": "../Traces/A_pow_trace.json",
+    "meta": "../Metadata/A_metadata.json" },
+  { "trace": "../Traces/B_pow_trace.json",
+    "meta": "../Metadata/B_metadata.json" }
+]
+\end{lstlisting}
+
+\section*{4. Analysis}
+
+Inside your \verb|/HotGauge/examples/mod_linpack_dir| directory, there is a subdirectory called \\
+\verb|analysis_scripts|. Inside are three scripts that can each be run like this:
+
+\begin{lstlisting}
+python {analysis_script}.py \
+--metadata-file-name <name of the metadata file of the 3d-ice run to analyze> \
+--core-name <name of the core you are analyzing, usually core_0>
+\end{lstlisting}
+
+The order in which you run the scripts is important.
+
+The \texttt{compute\_local\_maxima\_stats.py} script sorts through your 3d-ice output to find hotspot candidates,
+and it outputs a \texttt{die\_grid.temps.1dmaxima} and a \texttt{die\_grid.temps.2dmaxima}.
+These are taken as input for the other two scripts,
+\texttt{plot\_vs\_time.py} and \texttt{diagram\_visualize.py}.
+
+\begin{itemize}[leftmargin=2em]
+    \item \texttt{plot\_vs\_time.py} creates two plots:
+    \begin{itemize}
+        \item one showing temperature statistics over time,
+        \item and one showing a temperature distribution histogram over time.
+    \end{itemize}
+    
+    \item \texttt{diagram\_visualize.py} outputs a series of images that are linked together to form a video showing hotspot formation over time. 
+\end{itemize}
+
+It is important to note that \verb|diagram_visualize.py| takes in additional inputs called \verb|grid-args|. These arguments control the size of the heatmap, legend, and font. Getting a clean image may require some experimentation. For this run, this command will produce a good image: 
+
+\begin{lstlisting}
+python diagram_visualize.py --metadata-file-name prefix_metadata.json -- \
+core-name cores_2_6 --grid-args "--heatmap_width 80.0" --grid-args "-- \
+scale_width 8.0" --grid-args "--min_t 40" --grid-args "--max_t 115" 
+\end{lstlisting}
+
+Decreasing the \verb|--heatmap_width| lowers the portion of the image produced occupied by the heatmap, which may be necessary to see the temperature labels. It is also a good idea to set \verb|--min_t| and \verb|--max_t| based on the temperatures for which you are looking.
+
+\section*{5. End to End}
+
+To avoid progressing through this long, annoying process, HotGauge ships with a directory called \verb|end_to_end| that contains a \verb|run_HotGauge.py| script and a configuration file template called \verb|config_template.yaml|. This script runs the entire toolchain but not the analysis scripts. The configuration file contains a \verb|USER EDIT SECTION| where you can fill out the input fields required for the entire HotGauge toolchain. You may also edit the fields below the \verb|USER EDIT SECTION|, but the important things that vary from experiment to experiment are editable from the \verb|USER EDIT SECTION|. You can run the script like this: 
+\begin{lstlisting}
+python run_HotGauge.py --config {your_config.yaml} 
+\end{lstlisting}
+ 
+\end{document}

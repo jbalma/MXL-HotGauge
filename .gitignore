@@ -112,3 +112,9 @@ ENV/
 
 # Saved python objects
 *.pkl
+
+# Example output files
+examples/*/outputs
+
+# Included simulation tools
+3d-ice/

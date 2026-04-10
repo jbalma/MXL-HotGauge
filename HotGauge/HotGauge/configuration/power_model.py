@@ -5,7 +5,7 @@ from collections import namedtuple
 
 ################################# Power Model Configuration ####################################
 # Units with no power consumption
-NO_POWER_UNITS = {'N', 'E', 'W', 'S'}
+NO_POWER_UNITS = {'N', 'E', 'W', 'S','N_0','E_0','W_0','S_0'}
 
 # HACK: Units that have missing power info @ most verbose MCPAT level
 MISSING_POWER_INFO = {'Execution Unit', 'Memory Management Unit'}
@@ -48,7 +48,7 @@ def get_IO_SoC_powers(node):
     return {k:v*tech_node_factor for k,v in IO_SoC_POWER_14nm.items()}
 
 
-BLOCK_POWERS_REGEX = re.compile(r'block_powers_(\d+).json')
+BLOCK_POWERS_REGEX = re.compile(r'block_powers_(\d+)\.json')
 def load_block_powers(simulation_dir):
     def get_tick(fp):
         f = os.path.basename(fp)

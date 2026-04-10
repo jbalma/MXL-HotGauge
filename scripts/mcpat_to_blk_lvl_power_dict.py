@@ -9,9 +9,9 @@ import csv
 from collections import defaultdict
 import json
 import pprint
+from functools import partial
 
-
-def single_mcpat_to_blk_lvl_power_dict(mcpat_json_file, write=True):
+def single_mcpat_to_blk_lvl_power_dict(mcpat_json_file, num_cores, write=True):
     # Alex Hankin
 
     # Objective: Parse power model output (json format) and create input format for thermal simulator (python dictionary)
@@ -23,9 +23,6 @@ def single_mcpat_to_blk_lvl_power_dict(mcpat_json_file, write=True):
     with open(mcpat_json_file, 'r') as f:
         mcpat_output_dict = json.load(f)
     #pp.pprint(mcpat_output_dict)
-
-    # Initialize number of cores
-    num_cores = 8
 
     # Create list of FUs/Memories to parse for ... PER CORE
     # Note: Execution Unit (just parent unit) has been taken out due to it missing gate leakage data... need to
@@ -141,34 +138,34 @@ def single_mcpat_to_blk_lvl_power_dict(mcpat_json_file, write=True):
 
 
     # Compute AVX512 Accelerator Power
-    outputfile_dirname = os.path.dirname(mcpat_json_file)
-    outputfile_basename = os.path.basename(mcpat_json_file).split('.')[0]
-    timestep_ID = outputfile_basename.split('_')[-1]
-    inputfile_name = os.path.join(outputfile_dirname, "energystats-temp-" + timestep_ID + ".xml")
+    #outputfile_dirname = os.path.dirname(mcpat_json_file)
+    #outputfile_basename = os.path.basename(mcpat_json_file).split('.')[0]
+    #timestep_ID = outputfile_basename.split('_')[-1]
+    #inputfile_name = os.path.join(outputfile_dirname, "energystats-temp-" + timestep_ID + ".xml")
 
     # Open .xml input file associated with current timestep and grab num memory accesses
     # Line from example .xml:
     # <stat name="fp_instructions" value="513696"/>
     # <stat name="AVX512_instructions" value="8396"/>
-    mcpat_input_file = open(inputfile_name, 'r') 
-    Lines = mcpat_input_file.readlines() 
-    line_count = 0
+    #mcpat_input_file = open(inputfile_name, 'r') 
+    #Lines = mcpat_input_file.readlines() 
+    #line_count = 0
     num_fp_instructions = []
-    num_avx512_instructions = []
+    #num_avx512_instructions = []
     
     # Grab number of fp instructions and avx512 instructions per core
     for line in Lines: 
         if '<stat name="fp_instructions"' in line:
             num_fp_instructions.append(line.strip().split('"')[-2])
-        if '<stat name="AVX512_instructions"' in line:
-            num_avx512_instructions.append(line.strip().split('"')[-2])
+       # if '<stat name="AVX512_instructions"' in line:
+         #   num_avx512_instructions.append(line.strip().split('"')[-2])
         line_count = line_count + 1
 
-    avx512_to_fp_ratios = [] 
+   # avx512_to_fp_ratios = [] 
 
     # Compute ratio (power scale factor)
-    for num_fp, num_avx512 in zip(num_fp_instructions, num_avx512_instructions):
-        avx512_to_fp_ratios.append(float(num_avx512)/float(num_fp))
+    #for num_fp, num_avx512 in zip(num_fp_instructions, num_avx512_instructions):
+     #   avx512_to_fp_ratios.append(float(num_avx512)/float(num_fp))
 
     # Scale int ALU power vals per core by scale factor
     for core_num in range(num_cores):
@@ -207,13 +204,19 @@ def single_mcpat_to_blk_lvl_power_dict(mcpat_json_file, write=True):
 
 @click.command()
 @click.argument('mcpat_run_dir')
-def mcpat_to_blk_lvl_power_dict(mcpat_run_dir):
+@click.option('--num-cores', default=1, type=int, show_default=True,
+        help='Number of cores in the simulation')
+def mcpat_to_blk_lvl_power_dict(mcpat_run_dir, num_cores):
     NUM_PROCESSES = int(0.75*multiprocessing.cpu_count())
     pool = multiprocessing.Pool(NUM_PROCESSES)
 
     input_files = glob.glob(os.path.join(mcpat_run_dir, 'mcpat_output_*.json'))
-    for _ in tqdm.tqdm(pool.imap_unordered(single_mcpat_to_blk_lvl_power_dict, input_files), total=len(input_files)):
+    worker = partial(single_mcpat_to_blk_lvl_power_dict, num_cores=num_cores)
+    for _ in tqdm.tqdm(
+        pool.imap_unordered(worker, input_files),
+        total=len(input_files)):
         pass
+
 
 if __name__ == '__main__':
     mcpat_to_blk_lvl_power_dict()

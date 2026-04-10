@@ -1,0 +1,149 @@
+--- a/heatsink_plugin/Makefile	2021-02-03 09:05:15.000000000 -0500
++++ b/heatsink_plugin/Makefile	2025-11-24 18:43:46.701432003 -0500
+@@ -46,9 +46,9 @@
+ all:
+ 	@echo "\e[31mBuilding plugins\e[0m"
+ 	cd loaders/FMI			; make ;
+-	cd loaders/python		; make ;
+-	cd templates/NonlinearExample	; make ;
+-	cd templates/Modelica		; make ;
++	#cd loaders/python		; make ;
++	#cd templates/NonlinearExample	; make ;
++	#cd templates/Modelica		; make ;
+ 	cd templates/C++		; make ;
+ 	cd heatsinks/HS483		; make ;
+ 	cd heatsinks/cuplex_kryos_21606	; make ;
+@@ -56,9 +56,9 @@
+ clean:
+ 	@echo "\e[31mCleaning plugins\e[0m"
+ 	cd loaders/FMI			; make clean ;
+-	cd loaders/python		; make clean ;
+-	cd templates/NonlinearExample	; make clean ;
+-	cd templates/Modelica		; make clean ;
++	#cd loaders/python		; make clean ;
++	#cd templates/NonlinearExample	; make clean ;
++	#cd templates/Modelica		; make clean ;
+ 	cd templates/C++		; make clean ;
+ 	cd heatsinks/HS483		; make clean ;
+ 	cd heatsinks/cuplex_kryos_21606	; make clean ;
+--- a/heatsink_plugin/common/HeatsinkBlocks.mo	2021-02-03 09:05:15.000000000 -0500
++++ b/heatsink_plugin/common/HeatsinkBlocks.mo	2025-07-31 14:05:08.927418072 -0400
+@@ -170,9 +170,8 @@
+         Placement(visible = true, transformation(origin = {30, 2}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+         
+       // These parameters are assignd by 3D-ICE before the simulation starts.
+-      parameter String args "Plugin args (value coming from 3D-ICE DO NOT SET VALUES, THEY WILL BE OVERWRITTEN)";
+-      parameter Modelica.SIunits.Temperature initialTemperature "Initial simulation temperature [K] (value coming from 3D-ICE DO NOT SET VALUES, THEY WILL BE OVERWRITTEN)";
+-        
++      parameter String args = "" annotation(Evaluate=false, Dialog(enable=false));
++      parameter Modelica.SIunits.Temperature initialTemperature(fixed=false) "Initial simulation temperature [K] (value coming from 3D-ICE DO NOT SET VALUES, THEY WILL BE OVERWRITTEN)";  
+       // These parameters are read by 3D-ICE before the simulation starts.
+       // Note that the plugin interface assumes that the thermal conductance between the center and bottom of the sink cells connected to the spreader is uniform for each cell and constant throughout the simulation.
+       parameter Integer sinkRows = sink.bottomRows "Number of rows of cells in which the sink width is divided (read by 3D-ICE)";
+--- a/heatsink_plugin/heatsinks/HS483/buildfmi.mos	2021-02-03 09:05:15.000000000 -0500
++++ b/heatsink_plugin/heatsinks/HS483/buildfmi.mos	2025-07-31 14:06:15.850621781 -0400
+@@ -11,7 +11,7 @@
+ 
+ 
+ // https://build.openmodelica.org/Documentation/OpenModelica.Scripting.translateModelFMU.html
+-translateModelFMU(HS483.HS483_P14752_ConstantFanSpeed_Interface3DICE, version="2.0", fmuType="cs");
++buildModelFMU(HS483.HS483_P14752_ConstantFanSpeed_Interface3DICE, version="2.0", fmuType="cs");
+ getErrorString();
+-translateModelFMU(HS483.HS483_P14752_VariableFanSpeed_Interface3DICE, version="2.0", fmuType="cs");
++buildModelFMU(HS483.HS483_P14752_VariableFanSpeed_Interface3DICE, version="2.0", fmuType="cs");
+ getErrorString();
+--- a/heatsink_plugin/heatsinks/HS483/Makefile	2021-02-03 09:05:15.000000000 -0500
++++ b/heatsink_plugin/heatsinks/HS483/Makefile	2025-07-31 14:07:01.991761618 -0400
+@@ -1,7 +1,7 @@
+ 
+ SRC = ../../common/libraries/ThermalBlocks.mo ../../common/HeatsinkBlocks.mo HS483.mo
+-OBJ = HS483.HS483_P14752_ConstantFanSpeed_Interface3DICE \
+-      HS483.HS483_P14752_VariableFanSpeed_Interface3DICE
++OBJ = HS483_P14752_ConstantFanSpeed_Interface3DICE \
++      HS483_P14752_VariableFanSpeed_Interface3DICE
+ DUMMY = .dummy
+ 
+ # OpenModelica produces temporary files with a name where . is replaced with _
+--- a/heatsink_plugin/heatsinks/cuplex_kryos_21606/buildfmi.mos	2021-02-03 09:05:15.000000000 -0500
++++ b/heatsink_plugin/heatsinks/cuplex_kryos_21606/buildfmi.mos	2025-07-31 14:08:19.594997028 -0400
+@@ -11,7 +11,7 @@
+ 
+ 
+ // https://build.openmodelica.org/Documentation/OpenModelica.Scripting.translateModelFMU.html
+-translateModelFMU(Cuplex.Cuplex21606_ConstantFlowRate_Interface3DICE, version="2.0", fmuType="cs");
++buildModelFMU(Cuplex.Cuplex21606_ConstantFlowRate_Interface3DICE, version="2.0", fmuType="cs");
+ getErrorString();
+-translateModelFMU(Cuplex.Cuplex21606_VariableFlowRate_Interface3DICE, version="2.0", fmuType="cs");
++buildModelFMU(Cuplex.Cuplex21606_VariableFlowRate_Interface3DICE, version="2.0", fmuType="cs");
+ getErrorString();
+--- a/heatsink_plugin/heatsinks/cuplex_kryos_21606/Makefile	2021-02-03 09:05:15.000000000 -0500
++++ b/heatsink_plugin/heatsinks/cuplex_kryos_21606/Makefile	2025-07-31 14:07:46.882897676 -0400
+@@ -1,7 +1,7 @@
+ 
+ SRC = ../../common/libraries/ThermalBlocks.mo ../../common/HeatsinkBlocks.mo Cuplex.mo
+-OBJ = Cuplex.Cuplex21606_ConstantFlowRate_Interface3DICE \
+-      Cuplex.Cuplex21606_VariableFlowRate_Interface3DICE
++OBJ = Cuplex21606_ConstantFlowRate_Interface3DICE \
++      Cuplex21606_VariableFlowRate_Interface3DICE
+ DUMMY = .dummy
+ 
+ # OpenModelica produces temporary files with a name where . is replaced with _
+--- a/test/plugin/buildfmi.mos	2021-02-03 09:05:15.000000000 -0500
++++ b/test/plugin/buildfmi.mos	2025-11-03 12:38:23.368764752 -0500
+@@ -10,5 +10,5 @@
+ getErrorString();
+ 
+ // https://build.openmodelica.org/Documentation/OpenModelica.Scripting.translateModelFMU.html
+-translateModelFMU(Test.TestHeatsink_Interface3DICE, version="2.0", fmuType="cs");
++buildModelFMU(Test.TestHeatsink_Interface3DICE, version="2.0", fmuType="cs");
+ getErrorString();
+--- a/test/plugin/Makefile	2021-02-03 09:05:15.000000000 -0500
++++ b/test/plugin/Makefile	2025-11-03 12:38:34.150810612 -0500
+@@ -1,6 +1,6 @@
+ 
+ SRC = ../../heatsink_plugin/common/libraries/ThermalBlocks.mo ../../heatsink_plugin/common/HeatsinkBlocks.mo Test.mo
+-OBJ = Test.TestHeatsink_Interface3DICE
++OBJ = TestHeatsink_Interface3DICE
+ 
+ # OpenModelica produces temporary files with a name where . is replaced with _
+ DOT = .
+--- a/makefile.def	2021-02-03 09:05:15.000000000 -0500
++++ b/makefile.def	2026-01-06 09:59:47.531681010 -0500
+@@ -127,7 +127,8 @@
+ SLU_INCLUDE = $(SLU_MAIN)/SRC
+ SLU_LIB     = $(SLU_MAIN)/lib
+ #SLU_LIBS   = -L$(SLU_LIB) -lsuperlu_$(SLU_VERSION) -lblas
+-SLU_LIBS    = -L$(SLU_LIB) -lsuperlu_$(SLU_VERSION) -L/usr/lib/x86_64-linux-gnu -lblas
++SLU_LIBS    = -L$(SLU_LIB) -lsuperlu_$(SLU_VERSION) /lib64/libopenblaso.so.0 -lm -Wl,-rpath,/lib64
++#SLU_LIBS    = -L$(SLU_LIB) -lsuperlu_$(SLU_VERSION) -L/usr/lib/x86_64-linux-gnu -lblas
+ 
+  #
+  # SystemC variables
+@@ -155,8 +156,9 @@
+ 
+ CC        = gcc
+ # CC        = g++
+-CFLAGS    = -MD -O3
+-# CFLAGS    = -MD -g -O0 -fsanitize=address
++#CFLAGS    = -MD -O3
++CFLAGS    = -MD -g -O3 -march=native -DNDEBUG
++#CFLAGS     = -MD -g -O0 -fno-omit-frame-pointer -fsanitize=address
+ CINCLUDES = -I$(3DICE_INCLUDE)
+ 
+ YACC      = bison
+@@ -172,10 +174,12 @@
+ DOXYFILE  = Doxyfile
+ 
+ CXX       = g++
+-CXXFLAGS  = -std=c++11 -O2 -Wall -Wextra -Werror
+-# CXXFLAGS  = -std=c++11 -g -O0 -fsanitize=address -Wall -Wextra -Werror
++CXXFLAGS  = -std=c++11 -O3 -Wall -Wextra -Werror
++#CXXFLAGS  = -std=c++11 -g -O0 -fsanitize=address -Wall -Wextra -Werror
++#CXXFLAGS  = -std=c++11 -g -O0 -fno-omit-frame-pointer -fsanitize=address,undefined -Wall -Wextra
+ INC_DIRS  = $(CINCLUDES) -I$(SYSTEMC_INCLUDE)
+-
++#LDFLAGS  += -rdynamic -fsanitize=address
++export CFLAGS CXXFLAGS
+  #
+  # Pattern rules
+  ##############################################################################

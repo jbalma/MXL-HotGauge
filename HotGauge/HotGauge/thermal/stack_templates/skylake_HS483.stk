@@ -40,7 +40,7 @@ top pluggable heat sink :
 	// Heatsink side is 0.06 metres, spreader side 0.03 metres, so the offset
 	// needed to center the chip underneath the heatsink is
 	// (0.06 - 0.03) / 2 = 0.015
-	plugin "{ICE_DIR}/heatsink_plugin/loaders/FMI/fmi_loader.so", "HS483.HS483_P14752_ConstantFanSpeed_Interface3DICE 0.015 0.015 303.15 {plugin_args}" ;
+	plugin "{ICE_DIR}/heatsink_plugin/loaders/FMI/fmi_loader.so", "HS483_P14752_ConstantFanSpeed_Interface3DICE 0.015 0.015 303.15 {plugin_args}" ;
 
 /*********************** Liquid‐cooled cavity ***********************/
 // N/A

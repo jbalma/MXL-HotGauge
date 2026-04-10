@@ -2,8 +2,13 @@
 # Sniper sims are all 14nm; 10nm and 7nm stats are copies of the 14nm stats files
 # MCPAT is run for each node
 
-# Make sure one agrument is passed: root directory where the 14nm sims directory can be found
-[ $# -ne 1 ] && { echo "Usage $0 sim_dir" ; exit 1 ;}
+# Usage: ./14_perf_sims_to_7_10_14_power_sims.sh sim_dir [num_cores]
+[ $# -lt 1 -o $# -gt 2 ] && { echo "Usage: $0 sim_dir [num_cores]"; exit 1; }
+
+SIM_ROOT="$1"
+NUM_CORES="${2:-1}"   # default to 1 if not provided
+
+[ ! -d "$SIM_ROOT" ] && { echo "$SIM_ROOT doesn't exist"; exit 1; }
 
 # Make sure the directory exists
 [ ! -d $1 ] && { echo "$1 doesn\'t exist" ; exit 1 ;}
@@ -39,7 +44,7 @@ for node in 7 10 14; do
     echo "MCPAT txt to json done"
 
     for sim_dir in $SIM_DIRS; do
-        python mcpat_to_blk_lvl_power_dict.py ${sim_dir} # Don't parallelize this one... it's already paralelized
+        python mcpat_to_blk_lvl_power_dict.py "${sim_dir}" --num-cores "${NUM_CORES}"
     done
     echo "MCPAT json blk_lvl_power_dict done"
 done

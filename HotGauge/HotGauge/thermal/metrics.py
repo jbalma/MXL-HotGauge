@@ -40,6 +40,38 @@ def severity_metric(MLTD, T):
     output = product + B1
     return np.clip(output, 0, 1)
 
+def create_severity_plot(severity_fn=severity_metric, **kwargs):
+    TMIN = kwargs.pop('TMIN', 25)
+    TMAX = kwargs.pop('TMAX', 125)
+    MLTD_MAX = kwargs.pop('MLTD_MAX', 40)
+    color_scheme = kwargs.pop('color_scheme', 0)
+
+    if isinstance(color_scheme, str):
+        color_scheme = COLOR_SCHEMES.index(color_scheme)
+
+    T_GRID, MLTD_GRID = np.meshgrid(range(TMIN, TMAX), range(0, MLTD_MAX))
+    METRIC_GRID = severity_fn(MLTD_GRID, T_GRID)
+
+    f = plt.figure()
+    ax = plt.axes(projection='3d')
+    if 'aspect' in kwargs:
+        # e.g. a short figure: (2,2,0.8)
+        ax.set_box_aspect(aspect = kwargs.pop('aspect'))
+    if color_scheme == 0:
+        ax.plot_surface(T_GRID, MLTD_GRID, METRIC_GRID, cmap='gist_earth')
+    elif color_scheme == 1:
+        ax.contour3D(T_GRID, MLTD_GRID, METRIC_GRID, 55, cmap='jet')
+    else:
+        ax.plot_surface(T_GRID, MLTD_GRID, METRIC_GRID, cmap=color_scheme)
+    ax.set_xlabel('\nTemperature ($^{\circ}C$)', linespacing=1.5)
+    ax.set_ylabel('\nMLTD$_{1mm}$ ($\Delta^{\circ}C$)', linespacing=1.5)
+    ax.set_zlabel('\nHotspot Severity', linespacing=1.5)
+
+    return f, ax
+
+
+#TODO these commands should be moved to HotGauge.visualization
+
 def _whitespace_bbox(fname):
     im = Image.open(fname)
     bg = Image.new(im.mode, im.size, im.getpixel((0,0)))
@@ -56,44 +88,21 @@ def _cropped_img_from_file(image_name, crop_box):
     img = img.crop(crop_box)
     return img
 
-def create_severity_plot(severity_fn=severity_metric, **kwargs):
-    TMIN = kwargs.pop('TMIN', 25)
-    TMAX = kwargs.pop('TMAX', 125)
-    MLTD_MAX = kwargs.pop('MLTD_MAX', 40)
-    color_scheme = kwargs.pop('color_scheme', 0)
-
-    if isinstance(color_scheme, str):
-        color_scheme = COLOR_SCHEMES.index(color_scheme)
-
-    T_GRID, MLTD_GRID = np.meshgrid(range(TMIN, TMAX), range(0, MLTD_MAX))
-    METRIC_GRID = severity_fn(MLTD_GRID, T_GRID)
-
-    f = plt.figure()
-    ax = plt.axes(projection='3d')
-    if color_scheme == 0:
-        ax.plot_surface(T_GRID, MLTD_GRID, METRIC_GRID, cmap='gist_earth')
-    elif color_scheme == 1:
-        ax.contour3D(T_GRID, MLTD_GRID, METRIC_GRID, 55, cmap='jet')
-    ax.set_xlabel('\nTemperature ($^{\circ}C$)', linespacing=1.5)
-    ax.set_ylabel('\nMLTD$_{1mm}$ ($\Delta^{\circ}C$)', linespacing=1.5)
-    ax.set_zlabel('\nHotspot Severity', linespacing=1.5)
-
-    return f, ax
-
 @click.group()
 def cli():
     pass
 
 COLOR_SCHEMES = ['gist_earth', 'jet']
+
 @cli.command()
 @click.option('-t', '--temp_range', nargs=2, type=click.INT, default=(25, 125),
               help='Range of temperature axis ( e.g. -t 25 125 )')
 @click.option('-m', '--mltd_max', type=click.INT, default=45,
               help='Max value on MLTD axis (minimum is 0)')
-@click.option('-o', '--output-format', type=str, default='severity_metric_{index:03}.png',
+@click.option('-o', '--output-format', type=str, default='severity_metric.png',
               help='Output file name format (see help for detailed options)')
 @click.option('-a', '--angle', type=click.FLOAT, default=0,
-              help='Angle by which to rotate 3D-plot in degrees [-44:44]')
+              help='Angle by which to rotate 3D-plot in degrees (recommended range :[-44:44])')
 @click.option('-f', '--font-size', type=click.FLOAT, default=16,
               help='Font size to use for plot')
 @click.option('-d', '--dpi', type=click.FLOAT, default=300,
@@ -157,7 +166,7 @@ def graph_metric(temp_range, mltd_max, output_format, angle, font_size, dpi, col
               help='Range of temperature axis ( e.g. -t 25 125 )')
 @click.option('-m', '--mltd_max', type=click.INT, default=45,
               help='Max value on MLTD axis (minimum is 0)')
-@click.option('-o', '--output-format', type=str, default='metric_',
+@click.option('-o', '--output-format', type=str, default='severity_metric_{index:03}.png',
               help='Output file name format (see help for detailed options)')
 @click.option('-a', '--angle_range', nargs=2, type=click.FLOAT, default=(-44,44),
               help='Angles by which to rotate 3D-plot in degrees [-44:44], e.g -a -44 44')
@@ -202,15 +211,17 @@ def graph_metric_range(temp_range, mltd_max, output_format, angle_range, font_si
     else:
         angles = np.append(np.linspace(min_angle, max_angle, int(total_frames/2)),
                            np.linspace(max_angle, min_angle, int((total_frames+0.5)/2)))
+
     for index, angle in tqdm(enumerate(angles), total=total_frames, desc='Generating images'):
         output_file = output_format.format(angle=angle, font_size=font_size, index=index,
                                            total_frames=total_frames, dpi=dpi,
                                            color_scheme=color_scheme, crop=crop,
                                            crop_str='_cropped' if crop else '')
 
-        _, ext = os.path.splitext(output_file)
         ax.view_init(30, angle + 225)
         plt.draw()
+
+        _, ext = os.path.splitext(output_file)
         tmpf = tempfile.NamedTemporaryFile(suffix=ext, delete=False)
         plt.savefig(tmpf.name, dpi=dpi)
         try:

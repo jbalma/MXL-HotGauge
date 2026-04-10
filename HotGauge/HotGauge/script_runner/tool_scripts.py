@@ -56,8 +56,8 @@ def touch_file(some_file):
 def write_or_update_file(file_name, contents, warn=True, info=False):
     if os.path.isfile(file_name):
         with open(file_name, 'r') as f:
-            new_contents = f.read()
-            if new_contents == contents: # the file is already up to date
+            current_contents = f.read()
+            if current_contents == contents: # the file is already up to date
                 return True
             elif warn:
                 logger.warn('{} has outdated contents and is being overwritten.'.format(file_name))

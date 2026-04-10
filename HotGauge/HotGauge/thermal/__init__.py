@@ -1,4 +1,4 @@
 from .ICE import ICESim, ICETransientSim, ICESteadySim, ICE_DIR, ICE_STK_DIR, \
-                 get_stk_template, ICESteadySimRAW, ICETransientSimRAW
+                 get_stack_template, ICESimConfig
 
 from .metrics import severity_metric

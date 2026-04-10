@@ -21,6 +21,8 @@ class ExecutableJob(object):
     #   parallel_options["--eta"] = None
     nice = True
     template_file = "executable_job_template.sh"
+    PREP_CORES_PERCENT = 0.75
+    CHECK_CORES_PERCENT = 0.75
     def __init__(self, run_path):
         self.run_path = run_path
         mkdir_p(run_path)
@@ -114,7 +116,7 @@ class ExecutableJob(object):
         num_jobs = len(jobs)
         logger.info("Prepping {} {} jobs".format(num_jobs, cls.__name__))
         try:
-            pool = multiprocessing.Pool(int(0.75*multiprocessing.cpu_count()))
+            pool = multiprocessing.Pool(int(cls.PREP_CORES_PERCENT*multiprocessing.cpu_count()))
             tqdm.tqdm(pool.imap_unordered(prep_for_run, jobs), total=len(jobs))
         finally:
             pool.close()
@@ -126,7 +128,9 @@ class ExecutableJob(object):
         num_jobs = len(jobs)
         t_start = time.time()
         try:
-            pool = multiprocessing.Pool(int(0.75*multiprocessing.cpu_count()))
+            percent_available  = 1 - cls.CHECK_CORES_PERCENT
+            process_count = max(int(percent_available*multiprocessing.cpu_count()),1)
+            pool = multiprocessing.Pool(process_count)
 
             if num_jobs > 0:
                 logger.info("Checking status of {} {} jobs".format(num_jobs, cls.__name__))
@@ -159,7 +163,9 @@ class ExecutableJob(object):
                 random.shuffle(job_args)
             run_fn(cmd_array, job_args)
         try:
-            pool = multiprocessing.Pool(int(0.75*multiprocessing.cpu_count()))
+            percent_available  = 1 - cls.CHECK_CORES_PERCENT
+            process_count = max(int(percent_available*multiprocessing.cpu_count()),1)
+            pool = multiprocessing.Pool(process_count)
 
             successful_jobs = num_jobs_not_run
             if num_jobs_to_run > 0:

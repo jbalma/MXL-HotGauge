@@ -115,8 +115,10 @@ def plot_temps(ttrace, axes=None, tmin=None, tmax=None):
     for i, (t_i, ax) in tqdm(enumerate(zip(ttrace, axes)), total=len(axes),
                              desc='ttrace timestep thermal image'):
         im = ax.imshow(t_i, interpolation=None, vmin=tmin, vmax=tmax, cmap='plasma')
+        ax.set_xticks([])
+        ax.set_yticks([])
         cbar = ax.figure.colorbar(im, ax=ax)
-        cbar.ax.set_ylabel('Temperature (K)', rotation=-90, va="bottom")
+        cbar.ax.set_ylabel('Temperature (C)', rotation=-90, va="bottom")
     return axes
 
 def plot_power_density(pd_trace, axes=None, pd_min=None, pd_max=None):
@@ -130,14 +132,17 @@ def plot_power_density(pd_trace, axes=None, pd_min=None, pd_max=None):
     for i, (t_i, ax) in tqdm(enumerate(zip(pd_trace, axes)), total=len(axes),
                              desc='pd_trace timestep power image'):
         im = ax.imshow(t_i, interpolation=None, vmin=pd_min, vmax=pd_max, cmap='plasma')
+        ax.set_xticks([])
+        ax.set_yticks([])
         cbar = ax.figure.colorbar(im, ax=ax)
         cbar.ax.set_ylabel('Power Density (W/cm^2)', rotation=-90, va="bottom")
     return axes
 
 def label_hotspot(ax, xc, yc, circle_radius):
     ax.text(yc,xc, '+', ha="center", va="center")
-    c = plt.Circle((yc ,xc), circle_radius, color='r', fill=False)
-    ax.add_artist(c)
+    if circle_radius is not None:
+        c = plt.Circle((yc ,xc), circle_radius, color='r', fill=False)
+        ax.add_artist(c)
         
 @click.group()
 def cli():
@@ -194,7 +199,7 @@ def grid_transient(input_file, output=None, plot_type='dist', data_type='power',
     else:
         raise ValueError('Invalid plot_type: {}'.format(plot_type))
     if output is None:
-        plt.show()
+        lt.show()
     else:
         plt.savefig(output)
 
@@ -211,7 +216,6 @@ def _get_px_size_mm_from_flp_ttrace(flp, ttrace):
 @cli.command()
 @click.argument('ice_grid_file', type=click.Path(exists=True, dir_okay=False))
 @click.argument('floorplan_file', type=click.Path(exists=True))
-@click.argument('mltd_radius', type=float)
 @click.option('-o', '--output-format', type=str, default='thermal_trace_{step:04}.png',
               help='Output file name format (see help for detailed options)')
 @click.option('-l', '--local_max_stats', type=click.Path(exists=True, dir_okay=False),
@@ -221,8 +225,9 @@ def _get_px_size_mm_from_flp_ttrace(flp, ttrace):
 @click.option('--celsius/--kelvin', default=True)
 @click.option('--tmin', type=float, default=None)
 @click.option('--tmax', type=float, default=None)
-def hotspot_locations(ice_grid_file, floorplan_file, mltd_radius, output_format, local_max_stats,
-                      severity_threshold, celsius, tmin, tmax):
+@click.option('-m', '--mltd_radius', default=None, type=float)
+def hotspot_locations(ice_grid_file, floorplan_file, output_format, local_max_stats,
+                      severity_threshold, celsius, tmin, tmax, mltd_radius):
     """Plot the thermal trace with hotspot locations
 
     \b
@@ -234,7 +239,10 @@ def hotspot_locations(ice_grid_file, floorplan_file, mltd_radius, output_format,
     
     flp = Floorplan.from_file(floorplan_file)
     px_height_mm = _get_px_size_mm_from_flp_ttrace(flp, ttrace)
-    mltd_px = mltd_radius / px_height_mm
+    if mltd_radius is not None:
+        mltd_px = mltd_radius / px_height_mm
+    else:
+        mltd_px = None
     
     axes = plot_temps(ttrace, tmin=tmin, tmax=tmax)
     if local_max_stats is not None:

@@ -1,0 +1,71 @@
+--- a/TESTING/MATGEN/lsamen.c	2011-10-27 15:49:47.000000000 -0400
++++ b/TESTING/MATGEN/lsamen.c	2025-08-09 09:21:00.852097642 -0400
+@@ -1,6 +1,6 @@
+ #include <string.h>
+ #include "f2c.h"
+-
++#include <stdio.h>
+ logical lsamen_(integer *n, char *ca, char *cb)
+ {
+ /*  -- LAPACK auxiliary routine (version 2.0) --   
+@@ -39,12 +39,11 @@
+     /* Local variables */
+     static integer i;
+     extern logical lsame_(char *, char *);
+-
+-
++    
+     ret_val = FALSE_;
+-    if (strlen(ca) < *n || strlen(cb) < *n) {
+-	goto L20;
+-    }
++   // if (strlen(ca) < *n || strlen(cb) < *n) {
++//	goto L20;
++  //  }
+ 
+ /*     Do for each character in the two strings. */
+ 
+--- a/make.inc	2026-01-06 10:30:56.885099563 -0500
++++ b/make.inc	2026-01-06 10:03:32.737831981 -0500
+@@ -26,13 +26,18 @@
+ 
+ #BLASLIB   	= $(SuperLUroot)/lib/libblas.a
+ 
+-## ATLAS BLAS causes single-precision to fail
+-#BLASDEF = -DUSE_VENDOR_BLAS
+-#BLASLIB   	= -L/usr/lib/atlas -lblas
+-
+-## This BLAS causes single-precision to fail the test in SuperLU
+-BLASDEF 	= -DUSE_VENDOR_BLAS
+-BLASLIB 	= -L/usr/lib/x86_64-linux-gnu -lblas
++## OPEN BLAS
++BLASDEF	        = -DUSE_VENDOR_BLAS
++BLASLIB   	= /lib64/libopenblaso.so.0
++
++## This is the CBLAS built inside of SuperLU
++#BLASDEF 	= -DNO_VENDOR_BLAS 
++#BLASLIB         = ../CBLAS/libblas.a
++
++
++## ATLAS BLAS causes single-precision to fail 
++#BLASDEF = -DUSE_VENDOR_BLAS 
++#BLASLIB = -L/usr/lib/atlas -lblas
+ 
+ TMGLIB       	= libtmglib.a
+ LIBS		= $(SUPERLULIB) $(BLASLIB)
+@@ -46,12 +51,13 @@
+ RANLIB       = ranlib
+ 
+ CC           = gcc
+-CFLAGS       = -O3
++CFLAGS      = -O3
++#CFLAGS       = -g -O0 -fno-omit-frame-pointer -fsanitize=address
+ NOOPTS       = 
+ FORTRAN	     = g77
+ FFLAGS       = -O2
+ LOADER       = $(CC)
+-LOADOPTS     =
++LOADOPTS     =  
+ 
+ #
+ #  C preprocessor defs for compilation for the Fortran interface

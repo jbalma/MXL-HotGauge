@@ -1,0 +1,377 @@
+--- a/common/scripting/hooks_py.cc	2026-01-06 16:08:56.926889870 -0500
++++ b/common/scripting/hooks_py.cc	2025-09-01 11:53:42.082845456 -0400
+@@ -156,11 +156,15 @@
+ 
+ PyObject * HooksPy::callPythonFunction(PyObject *pFunc, PyObject *pArgs)
+ {
++   PyGILState_STATE gstate = PyGILState_Ensure(); 
++
+    PyObject *pResult = PyObject_CallObject(pFunc, pArgs);
+    Py_XDECREF(pArgs);
+    if (pResult == NULL) {
+       PyErr_Print();
+    }
++
++   PyGILState_Release(gstate);
+    return pResult;
+ }
+ 
+--- a/common/scripting/py_stats.cc	2026-01-06 16:08:56.927889861 -0500
++++ b/common/scripting/py_stats.cc	2025-10-04 10:14:16.320292979 -0400
+@@ -106,6 +106,7 @@
+ 
+ static UInt64 statsCallback(String objectName, UInt32 index, String metricName, UInt64 _pFunc)
+ {
++   PyGILState_STATE gstate = PyGILState_Ensure();
+    PyObject *pFunc = (PyObject*)_pFunc;
+    PyObject *pResult = HooksPy::callPythonFunction(pFunc, Py_BuildValue("(sls)", objectName.c_str(), index, metricName.c_str()));
+ 
+@@ -118,7 +119,8 @@
+ 
+    UInt64 val = PyLong_AsLongLong(pResult);
+    Py_XDECREF(pResult);
+-
++   
++   PyGILState_Release(gstate);
+    return val;
+ }
+ 
+--- a/scripts/sim/__init__.py	2026-01-06 16:08:56.939889762 -0500
++++ b/scripts/sim/__init__.py	2025-09-01 11:53:43.109849232 -0400
+@@ -8,5 +8,11 @@
+ import sim_thread as thread
+ import sim.util
+ 
+-import os, sqlite3
+-stats.db = sqlite3.connect(os.path.join(config.output_dir, 'sim.stats.sqlite3'))
++import os, sqlite3, threading
++stats.db = sqlite3.connect(
++    os.path.join(config.output_dir, 'sim.stats.sqlite3'),
++    check_same_thread=False,
++    timeout=30.0,
++)
++
++stats.db_lock = threading.Lock()
+--- a/scripts/energystats.py	2026-01-06 16:08:56.938889770 -0500
++++ b/scripts/energystats.py	2025-12-01 11:07:03.778473665 -0500
+@@ -8,13 +8,15 @@
+ - Finally the actual snapshot is written, including updated values for all energy counters
+ """
+ 
+-import sys, os, sim
++import sys, os, sim, subprocess
+ 
+ 
+ def build_dvfs_table(tech):
+   # Build a table of (frequency, voltage) pairs.
+   # Frequencies should be from high to low, and end with zero (or the lowest possible frequency)
+-  if tech == 22:
++  if tech == 14:
++    return [ (5000, 1.4), (4500, 1.3), (3700, 1.1), (2400, 0.9), (0, 0.8) ]
++  elif tech == 22:
+     return [ (2000, 1.0), (1800, 0.9), (1500, 0.8), (1000, 0.7), (0, 0.6) ]
+   elif tech == 45:
+     return [ (2000, 1.2), (1800, 1.1), (1500, 1.0), (1000, 0.9), (0, 0.8) ]
+@@ -35,16 +37,20 @@
+ class EnergyStats:
+   def setup(self, args):
+     args = dict(enumerate((args or '').split(':')))
+-    interval_ns = int(args.get(0, None) or 1000000) # Default power update every 1 ms
++    interval_ns = int(args.get(0, None) or 200000)  # Default power update every 0.2 ms
++    self.interval = interval_ns * sim.util.Time.NS
+     sim.util.Every(interval_ns * sim.util.Time.NS, self.periodic, roi_only = True)
+     self.dvfs_table = build_dvfs_table(int(sim.config.get('power/technology_node')))
+-    #
++    
++    self.avx_core_counts = { core: 0 for core in range(sim.config.ncores) }
++
+     self.name_last = None
+     self.time_last_power = 0
+     self.time_last_energy = 0
+     self.in_stats_write = False
+     self.power = {}
+     self.energy = {}
++    
+     for metric in ('energy-static', 'energy-dynamic'):
+       for core in range(sim.config.ncores):
+         sim.stats.register('core', core, metric, self.get_stat)
+@@ -58,6 +64,9 @@
+       sim.stats.register('processor', 0, metric, self.get_stat)
+       sim.stats.register('dram', 0, metric, self.get_stat)
+ 
++    for core in range(sim.config.ncores):
++      sim.stats.register('core', core, 'AVX512_instructions', self.get_avx512_for_core)
++  
+   def periodic(self, time, time_delta):
+     self.update()
+ 
+@@ -69,11 +78,35 @@
+     if self.name_last:
+       sim.util.db_delete(self.name_last, True)
+ 
++  
++  def _refresh_avx_counts_from_files(self):
++    outdir = getattr(sim.config, 'output_dir', os.getcwd())
++    updated = False
++    for core in range(sim.config.ncores):
++      p = os.path.join(outdir, f'avx_counts_core{core}.txt')
++      if os.path.exists(p):
++        try:
++          self.avx_core_counts[core] = int(open(p).read().strip())
++          updated = True
++        except Exception:
++          pass
++
++    # Optional single-file fallback (total → core0), if you prefer:
++    if not updated:
++      total_path = os.path.join(outdir, 'avx_count.txt')
++      if os.path.exists(total_path):
++        try:
++          total = int(open(total_path).read().strip())
++          self.avx_core_counts = {0: total}
++        except Exception:
++          pass
++
++
+   def update(self):
+     if sim.stats.time() == self.time_last_power:
+       # Time did not advance: don't recompute
+       return
+-    if not self.power or (sim.stats.time() - self.time_last_power >= 10 * sim.util.Time.US):
++    if not self.power or (sim.stats.time() - self.time_last_power >= self.interval):
+       # Time advanced significantly, or no power result yet: compute power
+       #   Save snapshot
+       current = 'energystats-temp%s' % ('B' if self.name_last and self.name_last[-1] == 'A' else 'A')
+@@ -90,6 +123,9 @@
+       #   Update new last
+       self.name_last = current
+       self.time_last_power = sim.stats.time()
++
++    self._refresh_avx_counts_from_files()
++   
+     # Increment energy
+     self.update_energy()
+ 
+@@ -98,6 +134,10 @@
+       self.update()
+     return self.energy.get((objectName, index, metricName), 0)
+ 
++  def get_avx512_for_core(self, objectName, index, metricName):
++    # objectName == 'core', index == core id, metricName == 'AVX512_instructions'
++    return int(self.avx_core_counts.get(index, 0))
++
+   def update_power(self, power):
+     def get_power(component, prefix = ''):
+       return Power(component[prefix + 'Subthreshold Leakage'] + component[prefix + 'Gate Leakage'], component[prefix + 'Runtime Dynamic'])
+@@ -139,20 +179,47 @@
+     return configfile
+ 
+   def run_power(self, name0, name1):
+-    outputbase = os.path.join(sim.config.output_dir, 'energystats-temp')
+-
++    print("[ENERGYSTATS] In Run_Power");
++    outputbase = os.path.join(sim.config.output_dir, f'energystats-temp-{sim.stats.time()}')
+     configfile = self.gen_config(outputbase)
+-
+-    os.system('unset PYTHONHOME; %s -d %s -o %s -c %s --partial=%s:%s --no-graph --no-text' % (
+-      os.path.join(os.getenv('SNIPER_ROOT'), 'tools/mcpat.py'),
+-      sim.config.output_dir,
+-      outputbase,
+-      configfile,
+-      name0, name1
+-    ))
++    
++    hotg_root = os.getenv('HOTGAUGE_ROOT') or os.path.abspath(
++        os.path.join(os.getenv('SNIPER_ROOT'), '..')
++    )
++
++    patched_mcpat = os.path.join(hotg_root, 'McPAT', 'mcpat')
++
++    wrapper = os.path.join(os.getenv('SNIPER_ROOT'), 'tools', 'mcpat.py')
++
++    env = os.environ.copy()
++    env.pop('PYTHONHOME', None)
++
++    if os.path.exists(patched_mcpat) and os.access(patched_mcpat, os.X_OK):
++        # tools/mcpat.py should read MCPAT_BIN and run that binary
++        env['MCPAT_BIN'] = patched_mcpat
++    else:
++        print(f"[ENERGYSTATS] Patched McPAT not found at {patched_mcpat}; falling back to default.")
++        pass
++    
++    subprocess.run(
++        [
++            wrapper,
++            '-d', sim.config.output_dir,
++            '-o', outputbase,
++            '-c', configfile,
++            f'--partial={name0}:{name1}',
++            '--no-graph',
++            '--no-text',
++        ],
++        env=env,
++        check=True
++    )
+ 
+     result = {}
+-    exec(compile(open(outputbase + '.py', "rb").read(), outputbase + '.py', 'exec'), {}, result)
++    path = outputbase + '.py'
++    with open(path, 'rb') as f:
++        code = compile(f.read(), path, 'exec')
++        exec(code, {}, result)
+     return result['power']
+ 
+ # All scripts execute in global scope, so other scripts will be able to call energystats.update()
+--- a/tools/makebuildscripts.py	2026-01-06 16:08:56.947889695 -0500
++++ b/tools/makebuildscripts.py	2025-09-01 13:31:22.258174924 -0400
+@@ -59,8 +59,17 @@
+ 
+ message = '# This file is auto-generated, changes made to it will be lost. Please edit %s instead.' % os.path.basename(__file__)
+ 
+-env_check_sh = 'if [ -z "${SNIPER_ROOT}" ] ; then SNIPER_ROOT=$(readlink -f "$(dirname "${BASH_SOURCE[0]}")/..") ; fi'
+-env_check_make = 'SELF_DIR := $(dir $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST)))\nSNIPER_ROOT ?= $(shell readlink -f $(SELF_DIR)/..)'
++env_check_sh = (
++  'if [ -z "${SNIPER_ROOT}" ] ; then SNIPER_ROOT=$(readlink -f "$(dirname "${BASH_SOURCE[0]}")/..") ; fi\n'
++  'if [ -z "${HOTGAUGE_ROOT}" ] ; then HOTGAUGE_ROOT=$(readlink -f "$(dirname "${BASH_SOURCE[0]}")/../..") ; fi'
++)
++
++env_check_make = (
++  'SELF_DIR := $(dir $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST)))\n'
++  'SNIPER_ROOT ?= $(shell readlink -f $(SELF_DIR)/..)\n'
++  'HOTGAUGE_ROOT ?= $(shell readlink -f $(SELF_DIR)/../..)'
++)
++
+ 
+ open('config/buildconf.sh', 'w').write('\n'.join(
+   [ message, '' ] +
+--- a/tools/mcpat.py	2026-01-06 16:08:56.947889695 -0500
++++ b/tools/mcpat.py	2025-12-01 11:12:51.030674757 -0500
+@@ -3,6 +3,12 @@
+ import os, sys, math, re, collections, buildstack, gnuplot, getopt, pprint, sniper_lib, sniper_config, sniper_stats
+ import math
+ 
++
++MCPAT_BIN_ENV = (
++    os.environ.get('MCPAT_BIN')
++)
++
++
+ #ISSUE_WIDTH = 4
+ #ALU_per_core = 6
+ 
+@@ -81,6 +87,10 @@
+ 
+ def mcpat_bin():
+   import platform
++ 
++  if MCPAT_BIN_ENV and os.path.isfile(MCPAT_BIN_ENV) and os.access(MCPAT_BIN_ENV, os.X_OK):
++    return MCPAT_BIN_ENV
++
+   mcpatdir = mcpat_path()
+   if platform.architecture()[0] != '64bit':
+     suffix = '.32'
+@@ -96,9 +106,12 @@
+     os.path.join(mcpatdir, 'mcpat-1.0')
+ 
+ def mcpat_run(inputfile, outputfile):
+-  os.system("LD_LIBRARY_PATH=$LD_LIBRARY_PATH:%s %s -print_level 5 -opt_for_clk 1 -infile %s > %s" % \
+-    (mcpat_path(), mcpat_bin(), inputfile, outputfile))
+-
++  cmd = "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:%s %s -print_level 5 -opt_for_clk 1 -infile %s > %s" % (
++     mcpat_path(), mcpat_bin(), inputfile, outputfile
++  )
++  print(f"[mcpat.py] CMD: {cmd}", file=sys.stderr)
++  ret = os.system(cmd)
++  print(f"[mcpat.py] McPAT exit status: {ret}", file=sys.stderr)
+ 
+ all_items = [
+   [ 'core',     .01,    [
+@@ -135,9 +148,14 @@
+   power, nuca_at_level = edit_XML(stats, results['results'], results['config'])
+   power = [v[0] for v in power]
+   open(tempfile, "w").write('\n'.join(power))
++  
++  print("[mcapt.py] before mcpat_run")
+ 
+   # Run McPAT
+   mcpat_run(tempfile, outputfile + '.txt')
++  
++
++  print("[mcpat.py] after mcpat_run")
+ 
+   # Parse output
+   power_txt = open(outputfile + '.txt')
+@@ -525,6 +543,34 @@
+             template[i][0] = template[i][0] % (cycles[core] - data[core]['idle_cycles'])
+           elif template[i][1][0]=="idle_cycles":
+             template[i][0] = template[i][0] % data[core]['idle_cycles']
++          elif template[i][1][0] == "AVX512_instructions":
++            
++            core_idx = template[i][1][2] if len(template[i][1]) > 2 else 0
++            possible_keys = [
++              'core.AVX512_instructions',   # registered from energystats.py
++              'core.avx512_instructions',   # lowercase variant
++              'interval_timer.uops_AVX512', # C++ interval timer registration
++              'rob_timer.uops_AVX512',      # C++ ROB timer registration
++              'uops_AVX512',                # final fallback
++            ]
++
++            val = 0
++            for key in possible_keys:
++              if key in stats:
++                arr = stats[key]
++                try:
++                  value = int(arr[core_idx])
++                except Exception:
++                  try:
++                    value = int(arr)
++                  except Exception:
++                    value = 0
++                break    
++
++          
++            template[i][0] = template[i][0] % val
++
++
+           elif template[i][1][0]=="total_system_cycles":
+             template[i][0] = template[i][0] % int(max_system_cycles)
+           elif template[i][1][0]=="total_system_idle_cycles":
+@@ -842,6 +888,7 @@
+     template.append(["\t\t\tdefault value is machine_bits, if not set --> ",""])
+     template.append(["\t\t\t<param name=\"machine_type\" value=\"%i\"/><!-- 1 inorder; 0 OOO-->",["machineType","cfg",iCount]])
+     template.append(["\t\t\t<!-- inorder/OoO -->",""])
++    template.append(["\t\t\t<stat name=\"AVX512_instructions\" value=\"%i\"/>",["AVX512_instructions","stat",iCount]])
+     template.append(["\t\t\t<param name=\"number_hardware_threads\" value=\"1\"/>",""])
+     template.append(["\t\t\t<!-- number_instruction_fetch_ports(icache ports) is always 1 in single-thread processor,",""])
+     template.append(["\t\t\tit only may be more than one in SMT processors. BTB ports always equals to fetch ports since ",""])
+--- a/scripts/sim/util.py	2026-01-06 16:08:56.939889762 -0500
++++ b/scripts/sim/util.py	2025-09-01 11:53:43.111849240 -0400
+@@ -198,12 +198,22 @@
+ have_deleted_stats = False
+ def db_delete(prefix, in_sim_end = False):
+   global have_deleted_stats
+-  cursor = sim.stats.db.cursor()
+-  prefixid = sim.stats.db.execute('SELECT prefixid FROM prefixes WHERE prefixname = ?', (prefix,)).fetchall()
+-  if prefixid:
+-    cursor.execute('DELETE FROM prefixes WHERE prefixid = ?', (prefixid[0][0],))
+-    cursor.execute('DELETE FROM `values` WHERE prefixid = ?', (prefixid[0][0],))
+-  sim.stats.db.commit()
++  
++  with sim.stats.db_lock:
++    cursor = sim.stats.db.cursor()
++    try:
++
++      prefixid = sim.stats.db.execute('SELECT prefixid FROM prefixes WHERE prefixname = ?', (prefix,)).fetchall()
++      if prefixid:
++        cursor.execute('DELETE FROM prefixes WHERE prefixid = ?', (prefixid[0][0],))
++        cursor.execute('DELETE FROM `values` WHERE prefixid = ?', (prefixid[0][0],))
++      sim.stats.db.commit()
++  
++    except sqlite3.Error:
++        sim.stats.db.rollback()
++        raise
++  
++
+   if not have_deleted_stats:
+     if in_sim_end:
+       # We shouldn't be registering a new sim_end hook while in sim_end

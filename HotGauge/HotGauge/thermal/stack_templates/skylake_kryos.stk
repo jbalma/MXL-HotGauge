@@ -45,7 +45,7 @@ top pluggable heat sink :
 	// needed to center the chip underneath the heatsink are
 	// (0.0528 - 0.03) / 2 = 0.0114
 	// (0.059 - 0.03) / 2 = 0.0145
-	plugin "{ICE_DIR}/heatsink_plugin/loaders/FMI/fmi_loader.so", "Cuplex.Cuplex21606_ConstantFlowRate_Interface3DICE 0.0114 0.0145 303.15 {plugin_args}" ;
+	plugin "{ICE_DIR}/heatsink_plugin/loaders/FMI/fmi_loader.so", "Cuplex21606_ConstantFlowRate_Interface3DICE 0.0114 0.0145 303.15 {plugin_args}" ;
 
 /*********************** Liquid‐cooled cavity ***********************/
 // N/A

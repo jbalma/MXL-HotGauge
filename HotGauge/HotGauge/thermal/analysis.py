@@ -6,6 +6,7 @@ import pandas as pd
 import click
 import numpy as np
 from scipy.signal import argrelmax
+import pickle as pkl
 
 from HotGauge.thermal.ICE import load_3DICE_grid_file
 from HotGauge.utils.io import open_file_or_stdout
@@ -66,7 +67,11 @@ def local_max_stats_dict(ice_grid_output, mltd_radius_px, in_both_dimensions=Tru
     return _local_max_stats_fn(ice_grid_output, mltd_radius_px, False, in_both_dimensions=True)
 
 def _local_max_stats_fn(ice_grid_output, mltd_radius_px, as_df, in_both_dimensions=True):
-    t_trace = load_3DICE_grid_file(ice_grid_output)
+    if isinstance(ice_grid_output, np.ndarray):
+        t_trace = ice_grid_output
+    else:
+        t_trace = load_3DICE_grid_file(ice_grid_output)
+
     maxima_data = characterize_maxima_from_trace(t_trace, mltd_radius_px,
                                                  in_both_dimensions=in_both_dimensions, as_df=False)
     if as_df:
@@ -86,6 +91,15 @@ def local_max_stats_to_file(local_max_stats_df, output_file=None):
         line_frmt = '\t'.join(['{}'] * len(columns)) + '\n'
         f.write(line_frmt.format(*columns))
         for _, row in local_max_stats_df.astype('O').iterrows():
+            values = [row[col] for col in columns]
+            f.write(line_frmt.format(*values))
+
+def sensor_data_to_file(sensor_traces_df, output_file=None):
+    with open_file_or_stdout(output_file) as f:
+        columns = ['sensor_name', 'time_step', 'sensor_temp']
+        line_frmt = '\t'.join(['{}'] * len(columns)) + '\n'
+        f.write(line_frmt.format(*columns))
+        for _, row in sensor_traces_df.astype('O').iterrows():
             values = [row[col] for col in columns]
             f.write(line_frmt.format(*values))
 
@@ -198,6 +212,52 @@ def local_max_stats(ice_grid_output, mltd_radius_px, in_both_dimensions=True, ou
         else:
             # Unknown extension, default to human readable format
             local_max_stats_to_file(df, output_file)
+
+@main.command()
+@click.argument('ice_grid_output', type=click.Path(exists=True))
+@click.argument('sensor_data_file', type=click.File(mode='rb'))
+@click.option('-o', '--output_file', multiple=True, type=click.Path(),
+              help='Output file(s)')
+def get_sensor_data(ice_grid_output, sensor_data_file, output_file):
+    """TODO
+
+    \b
+    Output file formats :
+                default : print human readable format to stdout
+                  *.csv : save as comma seperated values format
+                  *.pkl : save pickle file of pandas.DataFrame
+                      * : human-readable format otherwise
+    """
+    t_trace = load_3DICE_grid_file(ice_grid_output)
+    sensor_df = pkl.load(sensor_data_file)
+    output_data = defaultdict(list)
+    for _, sensor in sensor_df.iterrows():
+        t_sens_trace = t_trace[:,sensor['x_idx'], sensor['y_idx']]
+        output_data['sensor_temp'].extend(t_sens_trace)
+        output_data['time_step'].extend(range(len(t_sens_trace)))
+        output_data['sensor_name'].extend([sensor['name']] * len(t_sens_trace))
+    output_df = pd.DataFrame(output_data)
+
+    #TODO make this a single method shared with above...
+    if len(output_file) == 0:
+        outputs = [None]
+    else:
+        outputs = output_file
+
+    for output_file in outputs:
+        # Determine the output type
+        _, ext = os.path.splitext(output_file)
+
+        if ext in ['.pkl']:
+            output_df.to_pickle(output_file)
+        elif ext in ['.csv']:
+            output_df.to_csv(output_file, index=False)
+        elif ext in [None]:
+            # Indicates use of stdout; print in human readable format
+            sensor_data_to_file(output_df, output_file)
+        else:
+            # Unknown extension, default to human readable format
+            sensor_data_to_file(output_df, output_file)
 
 if __name__ == '__main__':
     main()

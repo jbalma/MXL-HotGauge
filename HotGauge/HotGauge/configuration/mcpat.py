@@ -64,26 +64,58 @@ MCPAT_UNIT_NAME_MAP = {
 # Regex for components that reside within a core
 CORE_COMPONENT_RGX = re.compile('^(Core)(\d+)(.*)')
 
-def mcpat_to_flp_name(label, include_core_idx=False, core_idx_lookup=None):
+def core_swap_rename_fn(unit, core_sources):
+    """ Find which unit(s) a given unit maps to based on core_sources
+
+    unit: the mcpat unit
+
+    core_sources: {mapped_core_i: mcpat_core_i}, otherwise don't swap
+    """
+    # See if the unit is a core
+    unit_is_core_match = CORE_COMPONENT_RGX.match(unit)
+
+    # If the unit isn't part of a core, don't rename the unit
+    if not unit_is_core_match:
+        return unit
+
+    # Extract the parts from the label
+    c, mcpat_core_num_str, rest = unit_is_core_match.groups() # c == 'Core'
+    mcpat_core_num = int(mcpat_core_num_str)
+
+    # See which floorplan cores this mcpat core is mapped to
+    mapped_core_nums = [mapped_core_num for mapped_core_num, source_mcpat_core_num in core_sources.items() \
+                        if source_mcpat_core_num == mcpat_core_num]
+
+    # If a core source for this core isn't specified, add the core itself as well
+    if mcpat_core_num not in core_sources:
+        mapped_core_nums.append(mcpat_core_num)
+
+    # Get the names of the unit for the specified floorplan cores
+    mapped_cores = ['{}{}{}'.format(c, mapped_core_num, rest) for mapped_core_num in mapped_core_nums]
+    return mapped_cores
+
+class NoSuchMCPATUnitError(ValueError):
+    def __init__(self, unit):
+        msg = 'There is no floorplan unit for {}'.format(unit)
+        super(NoSuchMCPATUnitError, self).__init__(msg)
+
+def mcpat_to_flp_name(label, include_core_idx=False):
     """Translate mcpat name to floorplan name
+
        label            : unit name in mcpat
        include_core_idx : specifies whether to append core number at end of name, e.g. ALU_0
-       core_idx_lookup  : Map (e.g. dict) 
 
        Returns: floorplan label (optionally with core number appended)
     """
 
     # See if the unit label includes the core number as in "Core0/L2"
     label_has_core_match = CORE_COMPONENT_RGX.match(label)
-    if label_has_core_match:
-        # Extract the parts from the label
-        c, cnum, rest = label_has_core_match.groups() # c == 'Core'
-    else:
-        # There's no core information included
-        # make sure it was not requested
-        assert include_core_idx==False, 'Cannot find core idx for {}'.format(label)
-        rest = label
-        c='' # no core information
+
+    if not label_has_core_match:
+        raise NoSuchMCPATUnitError(label)
+
+    # Extract the parts from the label
+    c, cnum, rest = label_has_core_match.groups() # c == 'Core'
 
     # Reassemble the label (without core num) and split it into the hierarchy
     hierarchy = (c+rest).split('/')
@@ -92,14 +124,6 @@ def mcpat_to_flp_name(label, include_core_idx=False, core_idx_lookup=None):
 
     # Optionally append the core index
     if include_core_idx:
-        # If no core mapping is provided, don't swap any cores (i.e. keep cnum unchanged)
-        if core_idx_lookup is not None:
-            # Default to cnum if the specific core isn't in the mapping (it wasn't swapped)
-            default_cnum = cnum
-            # Get the appropriate core from the lookup table
-            cnum = core_idx_lookup.get(cnum, default_cnum)
-
-        # Actualy append the core number
         unit_label = '{}_{}'.format(unit_label, cnum)
 
     return unit_label

@@ -18,7 +18,7 @@ mkdir -p $PLT_DIR
 ################################################################################
 ######################## Make the thermal image frames #########################
 ################################################################################
-$PLT_CMD die_grid.temps IC.flp 1.0 -o $PLT_DIR/ttrace_{step:04}.png -l die_grid.temps.2dmaxima
+$PLT_CMD die_grid.temps IC.flp --severity_threshold 0.75 --mltd_radius 1.0 -o $PLT_DIR/ttrace_{step:04}.png -l die_grid.temps.2dmaxima
 
 ################################################################################
 ################### Convert the images into a video (mp4) ####################

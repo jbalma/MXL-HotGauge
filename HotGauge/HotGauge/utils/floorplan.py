@@ -26,6 +26,15 @@ class Floorplan(object):
       self.minx = 0
       self.miny = 0
 
+   def __getitem__(self, el_name):
+       matches = [el for el in self.elements if el.name == el_name]
+       if len(matches) == 0:
+           raise ValueError('Cannot find {} in floorplan'.format(el_name))
+       elif len(matches) == 1:
+           return matches[0]
+       else:
+           raise ValueError('Multiple units for {} in floorplan'.format(el_name))
+
    @property
    def frmt(self):
       return self._frmt
@@ -404,7 +413,7 @@ class Floorplan(object):
       contents = output.getvalue()
       write_or_update_file(file_name, contents)
 
-
+# TODO use HotGauge version of the remaining functions below...
 def write_or_update_file(file_name, contents, warn=True, info=False):
     if os.path.isfile(file_name):
         with open(file_name, 'r') as f:
