@@ -1,0 +1,21 @@
+E :
+	position 4642.242, 0.001 ;
+	dimension 499.997, 3415.714 ;
+L2 :
+	position 3614.666, 500.001 ;
+	dimension 1027.573, 2076.440 ;
+L3 :
+	position 500.001, 2576.444 ;
+	dimension 4142.238, 339.271 ;
+N :
+	position 500.001, 2915.718 ;
+	dimension 4142.238, 499.997 ;
+S :
+	position 500.001, 0.001 ;
+	dimension 4142.238, 499.998 ;
+W :
+	position 0.001, 0.001 ;
+	dimension 499.998, 3415.714 ;
+core_other :
+	position 500.001, 500.001 ;
+	dimension 3114.662, 2076.440 ;

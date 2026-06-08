@@ -1,0 +1,52 @@
+AVX_FPU :
+	position 1405.000, 500.001 ;
+	dimension 913.279, 2060.454 ;
+	power values {powers[AVX_FPU]};
+E :
+	position 4626.235, 0.001 ;
+	dimension 499.997, 3401.044 ;
+	power values {powers[E]};
+EX :
+	position 2318.282, 500.001 ;
+	dimension 301.695, 2060.454 ;
+	power values {powers[EX]};
+IF :
+	position 2672.355, 500.001 ;
+	dimension 918.328, 958.501 ;
+	power values {powers[IF]};
+L2 :
+	position 3590.686, 500.001 ;
+	dimension 1035.546, 2060.454 ;
+	power values {powers[L2]};
+L3 :
+	position 500.001, 2560.458 ;
+	dimension 4126.231, 340.587 ;
+	power values {powers[L3]};
+LS :
+	position 2619.980, 1458.505 ;
+	dimension 946.086, 1101.950 ;
+	power values {powers[LS]};
+MMU :
+	position 3566.069, 1458.505 ;
+	dimension 24.614, 1101.950 ;
+	power values {powers[MMU]};
+N :
+	position 500.001, 2901.048 ;
+	dimension 4126.231, 499.997 ;
+	power values {powers[N]};
+Rename :
+	position 2619.980, 500.001 ;
+	dimension 52.372, 958.501 ;
+	power values {powers[Rename]};
+S :
+	position 500.001, 0.001 ;
+	dimension 4126.231, 499.998 ;
+	power values {powers[S]};
+W :
+	position 0.001, 0.001 ;
+	dimension 499.997, 3401.044 ;
+	power values {powers[W]};
+core_other :
+	position 500.001, 500.001 ;
+	dimension 904.996, 2060.454 ;
+	power values {powers[core_other]};

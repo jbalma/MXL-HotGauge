@@ -1,0 +1,111 @@
+AVXs :
+	position 1407.118, 1189.582 ;
+	dimension 915.417, 1366.061 ;
+BTB :
+	position 2669.371, 500.001 ;
+	dimension 90.762, 956.262 ;
+Chooser :
+	position 2760.136, 1071.420 ;
+	dimension 18.241, 307.327 ;
+DCache :
+	position 2610.488, 1589.213 ;
+	dimension 948.302, 966.430 ;
+E :
+	position 4621.441, 0.001 ;
+	dimension 499.997, 3396.628 ;
+FPUs :
+	position 1407.118, 500.001 ;
+	dimension 915.417, 689.578 ;
+FreeList :
+	position 2610.488, 1350.394 ;
+	dimension 52.496, 105.869 ;
+IF :
+	position 2662.987, 500.001 ;
+	dimension 6.381, 956.262 ;
+L1Pred :
+	position 2760.136, 896.230 ;
+	dimension 18.241, 175.187 ;
+L2 :
+	position 3583.468, 500.001 ;
+	dimension 1037.970, 2055.642 ;
+L2Pred :
+	position 2760.136, 807.332 ;
+	dimension 18.241, 88.895 ;
+L3 :
+	position 500.001, 2555.646 ;
+	dimension 4121.437, 340.983 ;
+LS :
+	position 2610.488, 1456.266 ;
+	dimension 948.302, 105.793 ;
+LoadQ :
+	position 2610.488, 1562.062 ;
+	dimension 948.302, 12.375 ;
+N :
+	position 500.001, 2896.632 ;
+	dimension 4121.437, 499.997 ;
+RAS :
+	position 2760.136, 1378.750 ;
+	dimension 18.241, 77.515 ;
+RBB :
+	position 2322.538, 1807.539 ;
+	dimension 287.947, 52.884 ;
+ROB :
+	position 2322.538, 1151.293 ;
+	dimension 287.947, 396.976 ;
+Rename :
+	position 2610.488, 500.001 ;
+	dimension 52.496, 116.290 ;
+S :
+	position 500.001, 0.001 ;
+	dimension 4121.437, 499.998 ;
+StoreQ :
+	position 2610.488, 1574.440 ;
+	dimension 948.302, 14.770 ;
+W :
+	position 0.001, 0.001 ;
+	dimension 499.998, 3396.628 ;
+cALU :
+	position 2322.538, 1860.426 ;
+	dimension 287.947, 226.357 ;
+core_other :
+	position 500.001, 500.001 ;
+	dimension 907.114, 2055.642 ;
+dTLB :
+	position 3558.793, 1808.031 ;
+	dimension 24.672, 500.190 ;
+fpRAT :
+	position 2610.488, 915.506 ;
+	dimension 52.496, 434.885 ;
+fpRF :
+	position 2322.538, 1711.104 ;
+	dimension 287.947, 96.432 ;
+fpiWin :
+	position 2322.538, 993.247 ;
+	dimension 287.947, 158.043 ;
+gPred :
+	position 2760.136, 500.001 ;
+	dimension 18.241, 307.328 ;
+iALU :
+	position 2322.538, 2086.786 ;
+	dimension 287.947, 452.715 ;
+iBuf :
+	position 3031.715, 500.001 ;
+	dimension 2.617, 956.262 ;
+iCache :
+	position 3034.335, 500.001 ;
+	dimension 549.130, 956.262 ;
+iDec :
+	position 2778.380, 500.001 ;
+	dimension 253.332, 956.262 ;
+iRAT :
+	position 2610.488, 616.294 ;
+	dimension 52.496, 299.209 ;
+iRF :
+	position 2322.538, 1548.274 ;
+	dimension 287.947, 162.827 ;
+iTLB :
+	position 3558.793, 1456.266 ;
+	dimension 24.672, 351.762 ;
+iWin :
+	position 2322.538, 500.001 ;
+	dimension 287.947, 493.243 ;

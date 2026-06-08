@@ -1,0 +1,100 @@
+IMC :
+	position 2916.728, 500.001 ;
+	dimension 2916.724, 1696.909 ;
+	power values {powers[IMC]};
+IO_N :
+	position 0.001, 5590.737 ;
+	dimension 8750.178, 499.997 ;
+	power values {powers[IO_N]};
+IO_S :
+	position 0.001, 0.001 ;
+	dimension 8750.178, 499.998 ;
+	power values {powers[IO_S]};
+L2_0 :
+	position 2184.000, 500.001 ;
+	dimension 732.725, 1455.996 ;
+	power values {powers[L2_0]};
+L2_1 :
+	position 8017.454, 500.001 ;
+	dimension 732.725, 1455.996 ;
+	power values {powers[L2_1]};
+L2_2 :
+	position 2184.000, 2196.913 ;
+	dimension 732.725, 1455.996 ;
+	power values {powers[L2_2]};
+L2_3 :
+	position 2916.728, 2196.913 ;
+	dimension 732.726, 1455.996 ;
+	power values {powers[L2_3]};
+L2_4 :
+	position 8017.454, 2196.913 ;
+	dimension 732.725, 1455.996 ;
+	power values {powers[L2_4]};
+L2_5 :
+	position 2184.000, 3893.825 ;
+	dimension 732.725, 1455.996 ;
+	power values {powers[L2_5]};
+L2_6 :
+	position 8017.454, 3893.825 ;
+	dimension 732.725, 1455.996 ;
+	power values {powers[L2_6]};
+L3_0 :
+	position 0.001, 1956.000 ;
+	dimension 2916.724, 240.910 ;
+	power values {powers[L3_0]};
+L3_1 :
+	position 5833.455, 1956.000 ;
+	dimension 2916.724, 240.910 ;
+	power values {powers[L3_1]};
+L3_2 :
+	position 0.001, 3652.912 ;
+	dimension 2916.724, 240.910 ;
+	power values {powers[L3_2]};
+L3_3 :
+	position 2916.728, 3652.912 ;
+	dimension 2916.724, 240.910 ;
+	power values {powers[L3_3]};
+L3_4 :
+	position 5833.455, 3652.912 ;
+	dimension 2916.724, 240.910 ;
+	power values {powers[L3_4]};
+L3_5 :
+	position 0.001, 5349.824 ;
+	dimension 2916.724, 240.910 ;
+	power values {powers[L3_5]};
+L3_6 :
+	position 5833.455, 5349.824 ;
+	dimension 2916.724, 240.910 ;
+	power values {powers[L3_6]};
+SoC :
+	position 2916.728, 3893.825 ;
+	dimension 2916.724, 1696.909 ;
+	power values {powers[SoC]};
+core_other_0 :
+	position 0.001, 500.001 ;
+	dimension 2183.996, 1455.996 ;
+	power values {powers[core_other_0]};
+core_other_1 :
+	position 5833.455, 500.001 ;
+	dimension 2183.996, 1455.996 ;
+	power values {powers[core_other_1]};
+core_other_2 :
+	position 0.001, 2196.913 ;
+	dimension 2183.996, 1455.996 ;
+	power values {powers[core_other_2]};
+core_other_3 :
+	position 3649.457, 2196.913 ;
+	dimension 2183.995, 1455.996 ;
+	power values {powers[core_other_3]};
+core_other_4 :
+	position 5833.455, 2196.913 ;
+	dimension 2183.996, 1455.996 ;
+	power values {powers[core_other_4]};
+core_other_5 :
+	position 0.001, 3893.825 ;
+	dimension 2183.996, 1455.996 ;
+	power values {powers[core_other_5]};
+core_other_6 :
+	position 5833.455, 3893.825 ;
+	dimension 2183.996, 1455.996 ;
+	power values {powers[core_other_6]};

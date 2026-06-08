@@ -1,0 +1,75 @@
+IMC :
+	position 4126.490, 500.001 ;
+	dimension 4126.486, 2401.279 ;
+IO_N :
+	position 0.001, 7703.845 ;
+	dimension 12379.463, 499.997 ;
+IO_S :
+	position 0.001, 0.001 ;
+	dimension 12379.463, 499.998 ;
+L2_0 :
+	position 3091.070, 500.001 ;
+	dimension 1035.417, 2060.710 ;
+L2_1 :
+	position 11344.047, 500.001 ;
+	dimension 1035.417, 2060.710 ;
+L2_2 :
+	position 3091.070, 2901.283 ;
+	dimension 1035.417, 2060.709 ;
+L2_3 :
+	position 4126.490, 2901.283 ;
+	dimension 1035.418, 2060.709 ;
+L2_4 :
+	position 11344.047, 2901.283 ;
+	dimension 1035.417, 2060.709 ;
+L2_5 :
+	position 3091.070, 5302.564 ;
+	dimension 1035.417, 2060.709 ;
+L2_6 :
+	position 11344.047, 5302.564 ;
+	dimension 1035.417, 2060.709 ;
+L3_0 :
+	position 0.001, 2560.714 ;
+	dimension 4126.486, 340.566 ;
+L3_1 :
+	position 8252.979, 2560.714 ;
+	dimension 4126.485, 340.566 ;
+L3_2 :
+	position 0.001, 4961.995 ;
+	dimension 4126.486, 340.566 ;
+L3_3 :
+	position 4126.490, 4961.995 ;
+	dimension 4126.486, 340.566 ;
+L3_4 :
+	position 8252.979, 4961.995 ;
+	dimension 4126.485, 340.566 ;
+L3_5 :
+	position 0.001, 7363.276 ;
+	dimension 4126.486, 340.566 ;
+L3_6 :
+	position 8252.979, 7363.276 ;
+	dimension 4126.485, 340.566 ;
+SoC :
+	position 4126.490, 5302.564 ;
+	dimension 4126.486, 2401.278 ;
+core_other_0 :
+	position 0.001, 500.001 ;
+	dimension 3091.066, 2060.710 ;
+core_other_1 :
+	position 8252.979, 500.001 ;
+	dimension 3091.065, 2060.710 ;
+core_other_2 :
+	position 0.001, 2901.283 ;
+	dimension 3091.066, 2060.709 ;
+core_other_3 :
+	position 5161.911, 2901.283 ;
+	dimension 3091.065, 2060.709 ;
+core_other_4 :
+	position 8252.979, 2901.283 ;
+	dimension 3091.065, 2060.709 ;
+core_other_5 :
+	position 0.001, 5302.564 ;
+	dimension 3091.066, 2060.709 ;
+core_other_6 :
+	position 8252.979, 5302.564 ;
+	dimension 3091.065, 2060.709 ;
