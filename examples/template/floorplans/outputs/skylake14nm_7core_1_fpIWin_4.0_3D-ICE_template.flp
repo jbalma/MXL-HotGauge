@@ -1,0 +1,268 @@
+AVX_FPU_0 :
+	position 898.032, 500.001 ;
+	dimension 906.248, 2076.440 ;
+	power values {powers[AVX_FPU_0]};
+AVX_FPU_1 :
+	position 9182.513, 500.001 ;
+	dimension 906.248, 2076.440 ;
+	power values {powers[AVX_FPU_1]};
+AVX_FPU_2 :
+	position 898.032, 2915.718 ;
+	dimension 906.248, 2076.440 ;
+	power values {powers[AVX_FPU_2]};
+AVX_FPU_3 :
+	position 6480.201, 2915.718 ;
+	dimension 906.248, 2076.440 ;
+	power values {powers[AVX_FPU_3]};
+AVX_FPU_4 :
+	position 9182.513, 2915.718 ;
+	dimension 906.248, 2076.440 ;
+	power values {powers[AVX_FPU_4]};
+AVX_FPU_5 :
+	position 898.032, 5331.435 ;
+	dimension 906.248, 2076.440 ;
+	power values {powers[AVX_FPU_5]};
+AVX_FPU_6 :
+	position 9182.513, 5331.435 ;
+	dimension 906.248, 2076.440 ;
+	power values {powers[AVX_FPU_6]};
+EX_0 :
+	position 1804.283, 500.001 ;
+	dimension 347.146, 2076.440 ;
+	power values {powers[EX_0]};
+EX_1 :
+	position 10088.764, 500.001 ;
+	dimension 347.146, 2076.440 ;
+	power values {powers[EX_1]};
+EX_2 :
+	position 1804.283, 2915.718 ;
+	dimension 347.146, 2076.440 ;
+	power values {powers[EX_2]};
+EX_3 :
+	position 6133.052, 2915.718 ;
+	dimension 347.146, 2076.440 ;
+	power values {powers[EX_3]};
+EX_4 :
+	position 10088.764, 2915.718 ;
+	dimension 347.146, 2076.440 ;
+	power values {powers[EX_4]};
+EX_5 :
+	position 1804.283, 5331.435 ;
+	dimension 347.146, 2076.440 ;
+	power values {powers[EX_5]};
+EX_6 :
+	position 10088.764, 5331.435 ;
+	dimension 347.146, 2076.440 ;
+	power values {powers[EX_6]};
+IF_0 :
+	position 2203.405, 500.001 ;
+	dimension 911.258, 965.937 ;
+	power values {powers[IF_0]};
+IF_1 :
+	position 10487.886, 500.001 ;
+	dimension 911.258, 965.937 ;
+	power values {powers[IF_1]};
+IF_2 :
+	position 2203.405, 2915.718 ;
+	dimension 911.258, 965.937 ;
+	power values {powers[IF_2]};
+IF_3 :
+	position 5169.818, 2915.718 ;
+	dimension 911.259, 965.937 ;
+	power values {powers[IF_3]};
+IF_4 :
+	position 10487.886, 2915.718 ;
+	dimension 911.258, 965.937 ;
+	power values {powers[IF_4]};
+IF_5 :
+	position 2203.405, 5331.435 ;
+	dimension 911.258, 965.937 ;
+	power values {powers[IF_5]};
+IF_6 :
+	position 10487.886, 5331.435 ;
+	dimension 911.258, 965.937 ;
+	power values {powers[IF_6]};
+IMC :
+	position 4142.242, 500.001 ;
+	dimension 4142.238, 2415.714 ;
+	power values {powers[IMC]};
+IO_N :
+	position 0.001, 7747.152 ;
+	dimension 12426.719, 499.997 ;
+	power values {powers[IO_N]};
+IO_S :
+	position 0.001, 0.001 ;
+	dimension 12426.719, 499.998 ;
+	power values {powers[IO_S]};
+L2_0 :
+	position 3114.666, 500.001 ;
+	dimension 1027.573, 2076.440 ;
+	power values {powers[L2_0]};
+L2_1 :
+	position 11399.147, 500.001 ;
+	dimension 1027.573, 2076.440 ;
+	power values {powers[L2_1]};
+L2_2 :
+	position 3114.666, 2915.718 ;
+	dimension 1027.573, 2076.440 ;
+	power values {powers[L2_2]};
+L2_3 :
+	position 4142.242, 2915.718 ;
+	dimension 1027.573, 2076.440 ;
+	power values {powers[L2_3]};
+L2_4 :
+	position 11399.147, 2915.718 ;
+	dimension 1027.573, 2076.440 ;
+	power values {powers[L2_4]};
+L2_5 :
+	position 3114.666, 5331.435 ;
+	dimension 1027.573, 2076.440 ;
+	power values {powers[L2_5]};
+L2_6 :
+	position 11399.147, 5331.435 ;
+	dimension 1027.573, 2076.440 ;
+	power values {powers[L2_6]};
+L3_0 :
+	position 0.001, 2576.444 ;
+	dimension 4142.238, 339.271 ;
+	power values {powers[L3_0]};
+L3_1 :
+	position 8284.483, 2576.444 ;
+	dimension 4142.237, 339.271 ;
+	power values {powers[L3_1]};
+L3_2 :
+	position 0.001, 4992.161 ;
+	dimension 4142.238, 339.271 ;
+	power values {powers[L3_2]};
+L3_3 :
+	position 4142.242, 4992.161 ;
+	dimension 4142.238, 339.271 ;
+	power values {powers[L3_3]};
+L3_4 :
+	position 8284.483, 4992.161 ;
+	dimension 4142.237, 339.271 ;
+	power values {powers[L3_4]};
+L3_5 :
+	position 0.001, 7407.878 ;
+	dimension 4142.238, 339.271 ;
+	power values {powers[L3_5]};
+L3_6 :
+	position 8284.483, 7407.878 ;
+	dimension 4142.237, 339.271 ;
+	power values {powers[L3_6]};
+LS_0 :
+	position 2151.432, 1465.941 ;
+	dimension 938.803, 1110.500 ;
+	power values {powers[LS_0]};
+LS_1 :
+	position 10435.913, 1465.941 ;
+	dimension 938.803, 1110.500 ;
+	power values {powers[LS_1]};
+LS_2 :
+	position 2151.432, 3881.658 ;
+	dimension 938.803, 1110.500 ;
+	power values {powers[LS_2]};
+LS_3 :
+	position 5194.246, 3881.658 ;
+	dimension 938.803, 1110.500 ;
+	power values {powers[LS_3]};
+LS_4 :
+	position 10435.913, 3881.658 ;
+	dimension 938.803, 1110.500 ;
+	power values {powers[LS_4]};
+LS_5 :
+	position 2151.432, 6297.375 ;
+	dimension 938.803, 1110.500 ;
+	power values {powers[LS_5]};
+LS_6 :
+	position 10435.913, 6297.375 ;
+	dimension 938.803, 1110.500 ;
+	power values {powers[LS_6]};
+MMU_0 :
+	position 3090.238, 1465.941 ;
+	dimension 24.425, 1110.500 ;
+	power values {powers[MMU_0]};
+MMU_1 :
+	position 11374.719, 1465.941 ;
+	dimension 24.425, 1110.500 ;
+	power values {powers[MMU_1]};
+MMU_2 :
+	position 3090.238, 3881.658 ;
+	dimension 24.425, 1110.500 ;
+	power values {powers[MMU_2]};
+MMU_3 :
+	position 5169.818, 3881.658 ;
+	dimension 24.425, 1110.500 ;
+	power values {powers[MMU_3]};
+MMU_4 :
+	position 11374.719, 3881.658 ;
+	dimension 24.425, 1110.500 ;
+	power values {powers[MMU_4]};
+MMU_5 :
+	position 3090.238, 6297.375 ;
+	dimension 24.425, 1110.500 ;
+	power values {powers[MMU_5]};
+MMU_6 :
+	position 11374.719, 6297.375 ;
+	dimension 24.425, 1110.500 ;
+	power values {powers[MMU_6]};
+Rename_0 :
+	position 2151.432, 500.001 ;
+	dimension 51.970, 965.937 ;
+	power values {powers[Rename_0]};
+Rename_1 :
+	position 10435.913, 500.001 ;
+	dimension 51.970, 965.937 ;
+	power values {powers[Rename_1]};
+Rename_2 :
+	position 2151.432, 2915.718 ;
+	dimension 51.970, 965.937 ;
+	power values {powers[Rename_2]};
+Rename_3 :
+	position 6081.080, 2915.718 ;
+	dimension 51.969, 965.937 ;
+	power values {powers[Rename_3]};
+Rename_4 :
+	position 10435.913, 2915.718 ;
+	dimension 51.970, 965.937 ;
+	power values {powers[Rename_4]};
+Rename_5 :
+	position 2151.432, 5331.435 ;
+	dimension 51.970, 965.937 ;
+	power values {powers[Rename_5]};
+Rename_6 :
+	position 10435.913, 5331.435 ;
+	dimension 51.970, 965.937 ;
+	power values {powers[Rename_6]};
+SoC :
+	position 4142.242, 5331.435 ;
+	dimension 4142.238, 2415.714 ;
+	power values {powers[SoC]};
+core_other_0 :
+	position 0.001, 500.001 ;
+	dimension 898.028, 2076.440 ;
+	power values {powers[core_other_0]};
+core_other_1 :
+	position 8284.483, 500.001 ;
+	dimension 898.027, 2076.440 ;
+	power values {powers[core_other_1]};
+core_other_2 :
+	position 0.001, 2915.718 ;
+	dimension 898.028, 2076.440 ;
+	power values {powers[core_other_2]};
+core_other_3 :
+	position 7386.452, 2915.718 ;
+	dimension 898.028, 2076.440 ;
+	power values {powers[core_other_3]};
+core_other_4 :
+	position 8284.483, 2915.718 ;
+	dimension 898.027, 2076.440 ;
+	power values {powers[core_other_4]};
+core_other_5 :
+	position 0.001, 5331.435 ;
+	dimension 898.028, 2076.440 ;
+	power values {powers[core_other_5]};
+core_other_6 :
+	position 8284.483, 5331.435 ;
+	dimension 898.027, 2076.440 ;
+	power values {powers[core_other_6]};

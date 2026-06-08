@@ -1,0 +1,148 @@
+AVXs :
+	position 947.080, 849.789 ;
+	dimension 451.167, 692.929 ;
+	power values {powers[AVXs]};
+BTB :
+	position 1654.902, 500.001 ;
+	dimension 40.626, 534.065 ;
+	power values {powers[BTB]};
+Chooser :
+	position 1695.531, 819.135 ;
+	dimension 8.164, 171.639 ;
+	power values {powers[Chooser]};
+DCache :
+	position 1538.342, 1095.580 ;
+	dimension 512.404, 447.138 ;
+	power values {powers[DCache]};
+E :
+	position 2575.653, 0.001 ;
+	dimension 499.997, 2211.984 ;
+	power values {powers[E]};
+FPUs :
+	position 947.080, 500.001 ;
+	dimension 451.167, 349.785 ;
+	power values {powers[FPUs]};
+FreeList :
+	position 1538.342, 1021.848 ;
+	dimension 113.699, 12.218 ;
+	power values {powers[FreeList]};
+IF :
+	position 1652.044, 500.001 ;
+	dimension 2.855, 534.065 ;
+	power values {powers[IF]};
+L1Pred :
+	position 1695.531, 721.292 ;
+	dimension 8.164, 97.840 ;
+	power values {powers[L1Pred]};
+L2 :
+	position 2064.081, 500.001 ;
+	dimension 511.569, 1042.717 ;
+	power values {powers[L2]};
+L2Pred :
+	position 1695.531, 671.643 ;
+	dimension 8.164, 49.646 ;
+	power values {powers[L2Pred]};
+L3 :
+	position 500.001, 1542.721 ;
+	dimension 2075.649, 169.264 ;
+	power values {powers[L3]};
+LS :
+	position 1538.342, 1034.069 ;
+	dimension 512.404, 48.946 ;
+	power values {powers[LS]};
+LoadQ :
+	position 1538.342, 1083.018 ;
+	dimension 512.404, 5.724 ;
+	power values {powers[LoadQ]};
+N :
+	position 500.001, 1711.988 ;
+	dimension 2075.649, 499.997 ;
+	power values {powers[N]};
+RAS :
+	position 1695.531, 990.777 ;
+	dimension 8.164, 43.290 ;
+	power values {powers[RAS]};
+RBB :
+	position 1398.250, 1171.889 ;
+	dimension 140.089, 13.586 ;
+	power values {powers[RBB]};
+ROB :
+	position 1398.250, 834.673 ;
+	dimension 140.089, 203.987 ;
+	power values {powers[ROB]};
+Rename :
+	position 1538.342, 500.001 ;
+	dimension 113.699, 13.421 ;
+	power values {powers[Rename]};
+S :
+	position 500.001, 0.001 ;
+	dimension 2075.649, 499.998 ;
+	power values {powers[S]};
+StoreQ :
+	position 1538.342, 1088.745 ;
+	dimension 512.404, 6.832 ;
+	power values {powers[StoreQ]};
+W :
+	position 0.001, 0.001 ;
+	dimension 499.998, 2211.984 ;
+	power values {powers[W]};
+cALU :
+	position 1398.250, 1185.478 ;
+	dimension 140.089, 116.313 ;
+	power values {powers[cALU]};
+core_other :
+	position 500.001, 500.001 ;
+	dimension 447.076, 1042.717 ;
+	power values {powers[core_other]};
+dTLB :
+	position 2050.749, 1196.821 ;
+	dimension 13.329, 231.422 ;
+	power values {powers[dTLB]};
+fpRAT :
+	position 1538.342, 720.653 ;
+	dimension 113.699, 301.192 ;
+	power values {powers[fpRAT]};
+fpRF :
+	position 1398.250, 1122.336 ;
+	dimension 140.089, 49.550 ;
+	power values {powers[fpRF]};
+fpiWin :
+	position 1398.250, 753.460 ;
+	dimension 140.089, 81.210 ;
+	power values {powers[fpiWin]};
+gPred :
+	position 1695.531, 500.001 ;
+	dimension 8.164, 171.639 ;
+	power values {powers[gPred]};
+iALU :
+	position 1398.250, 1301.794 ;
+	dimension 140.089, 232.630 ;
+	power values {powers[iALU]};
+iBuf :
+	position 1817.099, 500.001 ;
+	dimension 1.170, 534.065 ;
+	power values {powers[iBuf]};
+iCache :
+	position 1818.272, 500.001 ;
+	dimension 245.806, 534.065 ;
+	power values {powers[iCache]};
+iDec :
+	position 1703.698, 500.001 ;
+	dimension 113.398, 534.065 ;
+	power values {powers[iDec]};
+iRAT :
+	position 1538.342, 513.425 ;
+	dimension 113.699, 207.225 ;
+	power values {powers[iRAT]};
+iRF :
+	position 1398.250, 1038.664 ;
+	dimension 140.089, 83.669 ;
+	power values {powers[iRF]};
+iTLB :
+	position 2050.749, 1034.069 ;
+	dimension 13.329, 162.749 ;
+	power values {powers[iTLB]};
+iWin :
+	position 1398.250, 500.001 ;
+	dimension 140.089, 253.456 ;
+	power values {powers[iWin]};

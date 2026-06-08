@@ -1,0 +1,39 @@
+AVX_FPU :
+	position 1139.932, 500.002 ;
+	dimension 645.785, 1456.959 ;
+E :
+	position 3417.689, 0.001 ;
+	dimension 499.997, 2697.794 ;
+EX :
+	position 1785.720, 500.002 ;
+	dimension 213.329, 1456.959 ;
+IF :
+	position 2036.088, 500.002 ;
+	dimension 649.355, 677.761 ;
+L2 :
+	position 2685.446, 500.002 ;
+	dimension 732.240, 1456.959 ;
+L3 :
+	position 500.001, 1956.964 ;
+	dimension 2917.685, 240.831 ;
+LS :
+	position 1999.052, 1177.766 ;
+	dimension 668.984, 779.195 ;
+MMU :
+	position 2668.039, 1177.766 ;
+	dimension 17.404, 779.195 ;
+N :
+	position 500.001, 2197.798 ;
+	dimension 2917.685, 499.997 ;
+Rename :
+	position 1999.052, 500.002 ;
+	dimension 37.033, 677.761 ;
+S :
+	position 500.001, 0.001 ;
+	dimension 2917.685, 499.998 ;
+W :
+	position 0.001, 0.001 ;
+	dimension 499.998, 2697.794 ;
+core_other :
+	position 500.001, 500.002 ;
+	dimension 639.928, 1456.959 ;

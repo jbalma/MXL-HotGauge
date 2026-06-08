@@ -1,0 +1,28 @@
+E :
+	position 3413.557, 0.001 ;
+	dimension 499.997, 2693.987 ;
+	power values {powers[E]};
+L2 :
+	position 2679.223, 500.001 ;
+	dimension 734.331, 1452.812 ;
+	power values {powers[L2]};
+L3 :
+	position 500.001, 1952.816 ;
+	dimension 2913.553, 241.172 ;
+	power values {powers[L3]};
+N :
+	position 500.001, 2193.991 ;
+	dimension 2913.553, 499.997 ;
+	power values {powers[N]};
+S :
+	position 500.001, 0.001 ;
+	dimension 2913.553, 499.998 ;
+	power values {powers[S]};
+W :
+	position 0.001, 0.001 ;
+	dimension 499.998, 2693.987 ;
+	power values {powers[W]};
+core_other :
+	position 500.001, 500.001 ;
+	dimension 2179.219, 1452.812 ;
+	power values {powers[core_other]};

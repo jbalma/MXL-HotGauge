@@ -1,0 +1,90 @@
+AVXs :
+	position 1403.548, 1192.307 ;
+	dimension 911.814, 1371.459 ;
+BTB :
+	position 2713.639, 500.001 ;
+	dimension 87.576, 991.046 ;
+DCache :
+	position 2598.492, 1620.773 ;
+	dimension 971.869, 942.993 ;
+E :
+	position 4629.540, 0.001 ;
+	dimension 499.997, 3404.082 ;
+FPUs :
+	position 1403.548, 500.001 ;
+	dimension 911.814, 692.303 ;
+FreeList :
+	position 2598.492, 1440.051 ;
+	dimension 108.983, 50.996 ;
+IF :
+	position 2707.478, 500.001 ;
+	dimension 6.158, 991.046 ;
+L2 :
+	position 3595.652, 500.001 ;
+	dimension 1033.885, 2063.765 ;
+L3 :
+	position 500.002, 2563.769 ;
+	dimension 4129.535, 340.314 ;
+LS :
+	position 2598.492, 1491.050 ;
+	dimension 971.869, 103.227 ;
+LoadQ :
+	position 2598.492, 1594.280 ;
+	dimension 971.869, 12.075 ;
+N :
+	position 500.002, 2904.086 ;
+	dimension 4129.535, 499.997 ;
+RBB :
+	position 2315.365, 1829.812 ;
+	dimension 283.124, 26.892 ;
+Rename :
+	position 2598.492, 500.001 ;
+	dimension 108.983, 56.015 ;
+S :
+	position 500.002, 0.001 ;
+	dimension 4129.535, 499.998 ;
+StoreQ :
+	position 2598.492, 1606.358 ;
+	dimension 971.869, 14.412 ;
+W :
+	position 0.001, 0.001 ;
+	dimension 499.998, 3404.082 ;
+brPred :
+	position 2801.218, 500.001 ;
+	dimension 17.600, 991.046 ;
+cALU :
+	position 2315.365, 1856.707 ;
+	dimension 283.124, 230.212 ;
+core_other :
+	position 500.002, 500.001 ;
+	dimension 903.543, 2063.765 ;
+dTLB :
+	position 3570.364, 1834.284 ;
+	dimension 25.285, 488.060 ;
+fpRAT :
+	position 2598.492, 916.342 ;
+	dimension 108.983, 523.706 ;
+iALU :
+	position 2315.365, 2086.922 ;
+	dimension 283.124, 460.427 ;
+iBuf :
+	position 3063.265, 500.001 ;
+	dimension 2.525, 991.046 ;
+iCache :
+	position 3065.793, 500.001 ;
+	dimension 529.856, 991.046 ;
+iDec :
+	position 2818.821, 500.001 ;
+	dimension 244.441, 991.046 ;
+iRAT :
+	position 2598.492, 556.019 ;
+	dimension 108.983, 360.320 ;
+iSched :
+	position 2315.365, 500.001 ;
+	dimension 283.124, 1066.127 ;
+iTLB :
+	position 3570.364, 1491.050 ;
+	dimension 25.285, 343.231 ;
+regs :
+	position 2315.365, 1566.131 ;
+	dimension 283.124, 263.678 ;

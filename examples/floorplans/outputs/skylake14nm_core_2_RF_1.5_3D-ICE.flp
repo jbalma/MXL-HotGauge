@@ -1,0 +1,90 @@
+AVXs :
+	position 1405.000, 1191.196 ;
+	dimension 913.279, 1369.259 ;
+BTB :
+	position 2678.725, 500.001 ;
+	dimension 90.550, 958.501 ;
+DCache :
+	position 2619.980, 1591.763 ;
+	dimension 946.086, 968.692 ;
+E :
+	position 4626.235, 0.001 ;
+	dimension 499.997, 3401.044 ;
+FPUs :
+	position 1405.000, 500.001 ;
+	dimension 913.279, 691.192 ;
+FreeList :
+	position 2619.980, 1352.385 ;
+	dimension 52.372, 106.117 ;
+IF :
+	position 2672.355, 500.001 ;
+	dimension 6.367, 958.501 ;
+L2 :
+	position 3590.686, 500.001 ;
+	dimension 1035.546, 2060.454 ;
+L3 :
+	position 500.001, 2560.458 ;
+	dimension 4126.231, 340.587 ;
+LS :
+	position 2619.980, 1458.505 ;
+	dimension 946.086, 106.041 ;
+LoadQ :
+	position 2619.980, 1564.549 ;
+	dimension 946.086, 12.403 ;
+N :
+	position 500.001, 2901.048 ;
+	dimension 4126.231, 499.997 ;
+RBB :
+	position 2318.282, 1871.681 ;
+	dimension 301.695, 25.235 ;
+Rename :
+	position 2619.980, 500.001 ;
+	dimension 52.372, 116.562 ;
+S :
+	position 500.001, 0.001 ;
+	dimension 4126.231, 499.998 ;
+StoreQ :
+	position 2619.980, 1576.955 ;
+	dimension 946.086, 14.805 ;
+W :
+	position 0.001, 0.001 ;
+	dimension 499.997, 3401.044 ;
+brPred :
+	position 2769.278, 500.001 ;
+	dimension 18.198, 958.501 ;
+cALU :
+	position 2318.282, 1896.919 ;
+	dimension 301.695, 216.042 ;
+core_other :
+	position 500.001, 500.001 ;
+	dimension 904.996, 2060.454 ;
+dTLB :
+	position 3566.069, 1811.093 ;
+	dimension 24.614, 501.361 ;
+fpRAT :
+	position 2619.980, 916.478 ;
+	dimension 52.372, 435.904 ;
+iALU :
+	position 2318.282, 2112.964 ;
+	dimension 301.695, 432.085 ;
+iBuf :
+	position 3040.223, 500.001 ;
+	dimension 2.610, 958.501 ;
+iCache :
+	position 3042.836, 500.001 ;
+	dimension 547.847, 958.501 ;
+iDec :
+	position 2787.479, 500.001 ;
+	dimension 252.741, 958.501 ;
+iRAT :
+	position 2619.980, 616.566 ;
+	dimension 52.372, 299.909 ;
+iSched :
+	position 2318.282, 500.001 ;
+	dimension 301.695, 1000.501 ;
+iTLB :
+	position 3566.069, 1458.505 ;
+	dimension 24.614, 352.585 ;
+regs :
+	position 2318.282, 1500.505 ;
+	dimension 301.695, 371.173 ;

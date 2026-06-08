@@ -1,0 +1,558 @@
+AVXs_0 :
+	position 446.012, 850.627 ;
+	dimension 450.090, 694.588 ;
+AVXs_1 :
+	position 4602.360, 850.627 ;
+	dimension 450.090, 694.588 ;
+AVXs_2 :
+	position 446.012, 2064.904 ;
+	dimension 450.090, 694.588 ;
+AVXs_3 :
+	position 3260.246, 2064.904 ;
+	dimension 450.090, 694.588 ;
+AVXs_4 :
+	position 4602.360, 2064.904 ;
+	dimension 450.090, 694.588 ;
+AVXs_5 :
+	position 446.012, 3279.181 ;
+	dimension 450.090, 694.588 ;
+AVXs_6 :
+	position 4602.360, 3279.181 ;
+	dimension 450.090, 694.588 ;
+BTB_0 :
+	position 1118.384, 500.001 ;
+	dimension 44.624, 486.221 ;
+BTB_1 :
+	position 5274.732, 500.001 ;
+	dimension 44.624, 486.221 ;
+BTB_2 :
+	position 1118.384, 1714.279 ;
+	dimension 44.624, 486.221 ;
+BTB_3 :
+	position 2993.341, 1714.279 ;
+	dimension 44.624, 486.221 ;
+BTB_4 :
+	position 5274.732, 1714.279 ;
+	dimension 44.624, 486.221 ;
+BTB_5 :
+	position 1118.384, 2928.556 ;
+	dimension 44.624, 486.221 ;
+BTB_6 :
+	position 5274.732, 2928.556 ;
+	dimension 44.624, 486.221 ;
+DCache_0 :
+	position 1089.432, 1053.824 ;
+	dimension 466.258, 491.391 ;
+DCache_1 :
+	position 5245.780, 1053.824 ;
+	dimension 466.259, 491.391 ;
+DCache_2 :
+	position 1089.432, 2268.101 ;
+	dimension 466.258, 491.391 ;
+DCache_3 :
+	position 2600.658, 2268.101 ;
+	dimension 466.258, 491.391 ;
+DCache_4 :
+	position 5245.780, 2268.101 ;
+	dimension 466.259, 491.391 ;
+DCache_5 :
+	position 1089.432, 3482.379 ;
+	dimension 466.258, 491.390 ;
+DCache_6 :
+	position 5245.780, 3482.379 ;
+	dimension 466.259, 491.390 ;
+FPUs_0 :
+	position 446.012, 500.001 ;
+	dimension 450.090, 350.623 ;
+FPUs_1 :
+	position 4602.360, 500.001 ;
+	dimension 450.090, 350.623 ;
+FPUs_2 :
+	position 446.012, 1714.279 ;
+	dimension 450.090, 350.622 ;
+FPUs_3 :
+	position 3260.246, 1714.279 ;
+	dimension 450.090, 350.622 ;
+FPUs_4 :
+	position 4602.360, 1714.279 ;
+	dimension 450.090, 350.622 ;
+FPUs_5 :
+	position 446.012, 2928.556 ;
+	dimension 450.090, 350.622 ;
+FPUs_6 :
+	position 4602.360, 2928.556 ;
+	dimension 450.090, 350.622 ;
+FreeList_0 :
+	position 1089.432, 932.393 ;
+	dimension 25.809, 53.829 ;
+FreeList_1 :
+	position 5245.780, 932.393 ;
+	dimension 25.809, 53.829 ;
+FreeList_2 :
+	position 1089.432, 2146.671 ;
+	dimension 25.809, 53.829 ;
+FreeList_3 :
+	position 3041.107, 2146.671 ;
+	dimension 25.809, 53.829 ;
+FreeList_4 :
+	position 5245.780, 2146.671 ;
+	dimension 25.809, 53.829 ;
+FreeList_5 :
+	position 1089.432, 3360.948 ;
+	dimension 25.809, 53.829 ;
+FreeList_6 :
+	position 5245.780, 3360.948 ;
+	dimension 25.809, 53.829 ;
+IF_0 :
+	position 1115.244, 500.001 ;
+	dimension 3.137, 486.221 ;
+IF_1 :
+	position 5271.592, 500.001 ;
+	dimension 3.137, 486.221 ;
+IF_2 :
+	position 1115.244, 1714.279 ;
+	dimension 3.137, 486.221 ;
+IF_3 :
+	position 3037.968, 1714.279 ;
+	dimension 3.136, 486.221 ;
+IF_4 :
+	position 5271.592, 1714.279 ;
+	dimension 3.137, 486.221 ;
+IF_5 :
+	position 1115.244, 2928.556 ;
+	dimension 3.137, 486.221 ;
+IF_6 :
+	position 5271.592, 2928.556 ;
+	dimension 3.137, 486.221 ;
+IMC :
+	position 2078.176, 500.001 ;
+	dimension 2078.171, 1214.275 ;
+IO_N :
+	position 0.001, 4142.834 ;
+	dimension 6234.520, 499.997 ;
+IO_S :
+	position 0.001, 0.001 ;
+	dimension 6234.520, 499.998 ;
+L2_0 :
+	position 1567.826, 500.001 ;
+	dimension 510.347, 1045.214 ;
+L2_1 :
+	position 5724.174, 500.001 ;
+	dimension 510.347, 1045.214 ;
+L2_2 :
+	position 1567.826, 1714.279 ;
+	dimension 510.347, 1045.213 ;
+L2_3 :
+	position 2078.176, 1714.279 ;
+	dimension 510.346, 1045.213 ;
+L2_4 :
+	position 5724.174, 1714.279 ;
+	dimension 510.347, 1045.213 ;
+L2_5 :
+	position 1567.826, 2928.556 ;
+	dimension 510.347, 1045.213 ;
+L2_6 :
+	position 5724.174, 2928.556 ;
+	dimension 510.347, 1045.213 ;
+L3_0 :
+	position 0.001, 1545.218 ;
+	dimension 2078.172, 169.058 ;
+L3_1 :
+	position 4156.350, 1545.218 ;
+	dimension 2078.171, 169.058 ;
+L3_2 :
+	position 0.001, 2759.495 ;
+	dimension 2078.172, 169.058 ;
+L3_3 :
+	position 2078.176, 2759.495 ;
+	dimension 2078.171, 169.058 ;
+L3_4 :
+	position 4156.350, 2759.495 ;
+	dimension 2078.171, 169.058 ;
+L3_5 :
+	position 0.001, 3973.772 ;
+	dimension 2078.172, 169.059 ;
+L3_6 :
+	position 4156.350, 3973.772 ;
+	dimension 2078.171, 169.059 ;
+LS_0 :
+	position 1089.432, 986.225 ;
+	dimension 466.258, 53.791 ;
+LS_1 :
+	position 5245.780, 986.225 ;
+	dimension 466.259, 53.791 ;
+LS_2 :
+	position 1089.432, 2200.503 ;
+	dimension 466.258, 53.790 ;
+LS_3 :
+	position 2600.658, 2200.503 ;
+	dimension 466.258, 53.790 ;
+LS_4 :
+	position 5245.780, 2200.503 ;
+	dimension 466.259, 53.790 ;
+LS_5 :
+	position 1089.432, 3414.780 ;
+	dimension 466.258, 53.790 ;
+LS_6 :
+	position 5245.780, 3414.780 ;
+	dimension 466.259, 53.790 ;
+LoadQ_0 :
+	position 1089.432, 1040.019 ;
+	dimension 466.258, 6.290 ;
+LoadQ_1 :
+	position 5245.780, 1040.019 ;
+	dimension 466.259, 6.290 ;
+LoadQ_2 :
+	position 1089.432, 2254.296 ;
+	dimension 466.258, 6.291 ;
+LoadQ_3 :
+	position 2600.658, 2254.296 ;
+	dimension 466.258, 6.291 ;
+LoadQ_4 :
+	position 5245.780, 2254.296 ;
+	dimension 466.259, 6.291 ;
+LoadQ_5 :
+	position 1089.432, 3468.573 ;
+	dimension 466.258, 6.291 ;
+LoadQ_6 :
+	position 5245.780, 3468.573 ;
+	dimension 466.259, 6.291 ;
+RBB_0 :
+	position 896.105, 1276.498 ;
+	dimension 193.324, 9.844 ;
+RBB_1 :
+	position 5052.453, 1276.498 ;
+	dimension 193.324, 9.844 ;
+RBB_2 :
+	position 896.105, 2490.776 ;
+	dimension 193.324, 9.843 ;
+RBB_3 :
+	position 3066.919, 2490.776 ;
+	dimension 193.324, 9.843 ;
+RBB_4 :
+	position 5052.453, 2490.776 ;
+	dimension 193.324, 9.843 ;
+RBB_5 :
+	position 896.105, 3705.053 ;
+	dimension 193.324, 9.844 ;
+RBB_6 :
+	position 5052.453, 3705.053 ;
+	dimension 193.324, 9.844 ;
+Rename_0 :
+	position 1089.432, 500.001 ;
+	dimension 25.809, 59.128 ;
+Rename_1 :
+	position 5245.780, 500.001 ;
+	dimension 25.809, 59.128 ;
+Rename_2 :
+	position 1089.432, 1714.279 ;
+	dimension 25.809, 59.127 ;
+Rename_3 :
+	position 3041.107, 1714.279 ;
+	dimension 25.809, 59.127 ;
+Rename_4 :
+	position 5245.780, 1714.279 ;
+	dimension 25.809, 59.127 ;
+Rename_5 :
+	position 1089.432, 2928.556 ;
+	dimension 25.809, 59.127 ;
+Rename_6 :
+	position 5245.780, 2928.556 ;
+	dimension 25.809, 59.127 ;
+SoC :
+	position 2078.176, 2928.556 ;
+	dimension 2078.171, 1214.275 ;
+StoreQ_0 :
+	position 1089.432, 1046.312 ;
+	dimension 466.258, 7.509 ;
+StoreQ_1 :
+	position 5245.780, 1046.312 ;
+	dimension 466.259, 7.509 ;
+StoreQ_2 :
+	position 1089.432, 2260.590 ;
+	dimension 466.258, 7.508 ;
+StoreQ_3 :
+	position 2600.658, 2260.590 ;
+	dimension 466.258, 7.508 ;
+StoreQ_4 :
+	position 5245.780, 2260.590 ;
+	dimension 466.259, 7.508 ;
+StoreQ_5 :
+	position 1089.432, 3474.867 ;
+	dimension 466.258, 7.509 ;
+StoreQ_6 :
+	position 5245.780, 3474.867 ;
+	dimension 466.259, 7.509 ;
+brPred_0 :
+	position 1163.011, 500.001 ;
+	dimension 8.967, 486.221 ;
+brPred_1 :
+	position 5319.359, 500.001 ;
+	dimension 8.967, 486.221 ;
+brPred_2 :
+	position 1163.011, 1714.279 ;
+	dimension 8.967, 486.221 ;
+brPred_3 :
+	position 2984.370, 1714.279 ;
+	dimension 8.968, 486.221 ;
+brPred_4 :
+	position 5319.359, 1714.279 ;
+	dimension 8.967, 486.221 ;
+brPred_5 :
+	position 1163.011, 2928.556 ;
+	dimension 8.967, 486.221 ;
+brPred_6 :
+	position 5319.359, 2928.556 ;
+	dimension 8.967, 486.221 ;
+cALU_0 :
+	position 896.105, 1286.345 ;
+	dimension 193.324, 84.284 ;
+cALU_1 :
+	position 5052.453, 1286.345 ;
+	dimension 193.324, 84.284 ;
+cALU_2 :
+	position 896.105, 2500.622 ;
+	dimension 193.324, 84.285 ;
+cALU_3 :
+	position 3066.919, 2500.622 ;
+	dimension 193.324, 84.285 ;
+cALU_4 :
+	position 5052.453, 2500.622 ;
+	dimension 193.324, 84.285 ;
+cALU_5 :
+	position 896.105, 3714.900 ;
+	dimension 193.324, 84.284 ;
+cALU_6 :
+	position 5052.453, 3714.900 ;
+	dimension 193.324, 84.284 ;
+core_other_0 :
+	position 0.001, 500.001 ;
+	dimension 446.008, 1045.214 ;
+core_other_1 :
+	position 4156.350, 500.001 ;
+	dimension 446.007, 1045.214 ;
+core_other_2 :
+	position 0.001, 1714.279 ;
+	dimension 446.008, 1045.213 ;
+core_other_3 :
+	position 3710.339, 1714.279 ;
+	dimension 446.008, 1045.213 ;
+core_other_4 :
+	position 4156.350, 1714.279 ;
+	dimension 446.007, 1045.213 ;
+core_other_5 :
+	position 0.001, 2928.556 ;
+	dimension 446.008, 1045.213 ;
+core_other_6 :
+	position 4156.350, 2928.556 ;
+	dimension 446.007, 1045.213 ;
+dTLB_0 :
+	position 1555.693, 1165.084 ;
+	dimension 12.130, 254.326 ;
+dTLB_1 :
+	position 5712.042, 1165.084 ;
+	dimension 12.129, 254.326 ;
+dTLB_2 :
+	position 1555.693, 2379.362 ;
+	dimension 12.130, 254.326 ;
+dTLB_3 :
+	position 2588.525, 2379.362 ;
+	dimension 12.130, 254.326 ;
+dTLB_4 :
+	position 5712.042, 2379.362 ;
+	dimension 12.129, 254.326 ;
+dTLB_5 :
+	position 1555.693, 3593.639 ;
+	dimension 12.130, 254.326 ;
+dTLB_6 :
+	position 5712.042, 3593.639 ;
+	dimension 12.129, 254.326 ;
+fpRAT_0 :
+	position 1089.432, 711.269 ;
+	dimension 25.809, 221.121 ;
+fpRAT_1 :
+	position 5245.780, 711.269 ;
+	dimension 25.809, 221.121 ;
+fpRAT_2 :
+	position 1089.432, 1925.547 ;
+	dimension 25.809, 221.121 ;
+fpRAT_3 :
+	position 3041.107, 1925.547 ;
+	dimension 25.809, 221.121 ;
+fpRAT_4 :
+	position 5245.780, 1925.547 ;
+	dimension 25.809, 221.121 ;
+fpRAT_5 :
+	position 1089.432, 3139.824 ;
+	dimension 25.809, 221.121 ;
+fpRAT_6 :
+	position 5245.780, 3139.824 ;
+	dimension 25.809, 221.121 ;
+iALU_0 :
+	position 896.105, 1370.632 ;
+	dimension 193.324, 168.572 ;
+iALU_1 :
+	position 5052.453, 1370.632 ;
+	dimension 193.324, 168.572 ;
+iALU_2 :
+	position 896.105, 2584.910 ;
+	dimension 193.324, 168.572 ;
+iALU_3 :
+	position 3066.919, 2584.910 ;
+	dimension 193.324, 168.572 ;
+iALU_4 :
+	position 5052.453, 2584.910 ;
+	dimension 193.324, 168.572 ;
+iALU_5 :
+	position 896.105, 3799.187 ;
+	dimension 193.324, 168.572 ;
+iALU_6 :
+	position 5052.453, 3799.187 ;
+	dimension 193.324, 168.572 ;
+iBuf_0 :
+	position 1296.541, 500.001 ;
+	dimension 1.285, 486.221 ;
+iBuf_1 :
+	position 5452.889, 500.001 ;
+	dimension 1.285, 486.221 ;
+iBuf_2 :
+	position 1296.541, 1714.279 ;
+	dimension 1.285, 486.221 ;
+iBuf_3 :
+	position 2858.523, 1714.279 ;
+	dimension 1.285, 486.221 ;
+iBuf_4 :
+	position 5452.889, 1714.279 ;
+	dimension 1.285, 486.221 ;
+iBuf_5 :
+	position 1296.541, 2928.556 ;
+	dimension 1.285, 486.221 ;
+iBuf_6 :
+	position 5452.889, 2928.556 ;
+	dimension 1.285, 486.221 ;
+iCache_0 :
+	position 1297.829, 500.001 ;
+	dimension 269.994, 486.221 ;
+iCache_1 :
+	position 5454.177, 500.001 ;
+	dimension 269.994, 486.221 ;
+iCache_2 :
+	position 1297.829, 1714.279 ;
+	dimension 269.994, 486.221 ;
+iCache_3 :
+	position 2588.525, 1714.279 ;
+	dimension 269.995, 486.221 ;
+iCache_4 :
+	position 5454.177, 1714.279 ;
+	dimension 269.994, 486.221 ;
+iCache_5 :
+	position 1297.829, 2928.556 ;
+	dimension 269.994, 486.221 ;
+iCache_6 :
+	position 5454.177, 2928.556 ;
+	dimension 269.994, 486.221 ;
+iDec_0 :
+	position 1171.981, 500.001 ;
+	dimension 124.557, 486.221 ;
+iDec_1 :
+	position 5328.329, 500.001 ;
+	dimension 124.557, 486.221 ;
+iDec_2 :
+	position 1171.981, 1714.279 ;
+	dimension 124.557, 486.221 ;
+iDec_3 :
+	position 2859.811, 1714.279 ;
+	dimension 124.556, 486.221 ;
+iDec_4 :
+	position 5328.329, 1714.279 ;
+	dimension 124.557, 486.221 ;
+iDec_5 :
+	position 1171.981, 2928.556 ;
+	dimension 124.557, 486.221 ;
+iDec_6 :
+	position 5328.329, 2928.556 ;
+	dimension 124.557, 486.221 ;
+iRAT_0 :
+	position 1089.432, 559.132 ;
+	dimension 25.809, 152.134 ;
+iRAT_1 :
+	position 5245.780, 559.132 ;
+	dimension 25.809, 152.134 ;
+iRAT_2 :
+	position 1089.432, 1773.409 ;
+	dimension 25.809, 152.135 ;
+iRAT_3 :
+	position 3041.107, 1773.409 ;
+	dimension 25.809, 152.135 ;
+iRAT_4 :
+	position 5245.780, 1773.409 ;
+	dimension 25.809, 152.135 ;
+iRAT_5 :
+	position 1089.432, 2987.686 ;
+	dimension 25.809, 152.135 ;
+iRAT_6 :
+	position 5245.780, 2987.686 ;
+	dimension 25.809, 152.135 ;
+iSched_0 :
+	position 896.105, 500.001 ;
+	dimension 193.324, 390.333 ;
+iSched_1 :
+	position 5052.453, 500.001 ;
+	dimension 193.324, 390.333 ;
+iSched_2 :
+	position 896.105, 1714.279 ;
+	dimension 193.324, 390.333 ;
+iSched_3 :
+	position 3066.919, 1714.279 ;
+	dimension 193.324, 390.333 ;
+iSched_4 :
+	position 5052.453, 1714.279 ;
+	dimension 193.324, 390.333 ;
+iSched_5 :
+	position 896.105, 2928.556 ;
+	dimension 193.324, 390.333 ;
+iSched_6 :
+	position 5052.453, 2928.556 ;
+	dimension 193.324, 390.333 ;
+iTLB_0 :
+	position 1555.693, 986.225 ;
+	dimension 12.130, 178.856 ;
+iTLB_1 :
+	position 5712.042, 986.225 ;
+	dimension 12.129, 178.856 ;
+iTLB_2 :
+	position 1555.693, 2200.503 ;
+	dimension 12.130, 178.856 ;
+iTLB_3 :
+	position 2588.525, 2200.503 ;
+	dimension 12.130, 178.856 ;
+iTLB_4 :
+	position 5712.042, 2200.503 ;
+	dimension 12.129, 178.856 ;
+iTLB_5 :
+	position 1555.693, 3414.780 ;
+	dimension 12.130, 178.856 ;
+iTLB_6 :
+	position 5712.042, 3414.780 ;
+	dimension 12.129, 178.856 ;
+regs_0 :
+	position 896.105, 890.337 ;
+	dimension 193.324, 386.158 ;
+regs_1 :
+	position 5052.453, 890.337 ;
+	dimension 193.324, 386.158 ;
+regs_2 :
+	position 896.105, 2104.615 ;
+	dimension 193.324, 386.158 ;
+regs_3 :
+	position 3066.919, 2104.615 ;
+	dimension 193.324, 386.158 ;
+regs_4 :
+	position 5052.453, 2104.615 ;
+	dimension 193.324, 386.158 ;
+regs_5 :
+	position 896.105, 3318.892 ;
+	dimension 193.324, 386.158 ;
+regs_6 :
+	position 5052.453, 3318.892 ;
+	dimension 193.324, 386.158 ;
