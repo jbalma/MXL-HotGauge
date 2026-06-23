@@ -125,9 +125,10 @@ def load_config(path: Path) -> Dict[str, Any]:
     # keep using the old internal config structure.
     # ------------------------------------------------------------------
     user_edit = cfg.get("user_edit", {})
-    core_mapping = user_edit.get("core_mapping")
     if not isinstance(user_edit, dict):
                 raise ValueError("user_edit must be a mapping/dict.")
+    
+    core_mapping = user_edit.get("core_mapping")
 
     if core_mapping is not None:
         if not isinstance(core_mapping, dict):
@@ -152,7 +153,7 @@ def load_config(path: Path) -> Dict[str, Any]:
     exe_root = user_edit.get("executable_root")
     exe_names = user_edit.get("executable_names", [])
     exe_args = user_edit.get("executable_args", [])
-
+    
     if exe_root is not None:
         if not isinstance(exe_names, list) or len(exe_names) == 0:
             raise ValueError("user_edit.executable_names must be a non-empty list.")
@@ -214,6 +215,7 @@ def validate_config(cfg: Dict[str, Any]) -> None:
         "num_cores",
         "sde_arch",
         "energystats_interval",
+        "roi_enable",
         "instruction_count",
         "output_root",
         "tech_node_label",
@@ -236,6 +238,7 @@ def validate_config(cfg: Dict[str, Any]) -> None:
 
     # McPAT
     require(cfg, "mcpat.script")
+    require(cfg, "mcpat.max_jobs")
 
     # Trace generation
     require(cfg, "trace_gen.make_pow_trace_script")
@@ -349,21 +352,39 @@ def run_sniper_for_executable(cfg: Dict[str, Any], exe: Dict[str, Any], snipersi
     energystats_interval = str(cfg["sniper"]["energystats_interval"])
     icount = str(cfg["sniper"]["instruction_count"])
 
+    roi_enable = str(cfg["sniper"]["roi_enable"])
+
     out_dir = build_sniper_output_dir(cfg, exe_name)
     out_dir.parent.mkdir(parents=True, exist_ok=True)
 
-    cmd = [
-        str(snipersim_root / "run-sniper"),
-        "-c", str(sniper_cfg),
-        "-n", ncores,
-        "-d", str(out_dir),
-        "-s", f"energystats:{energystats_interval}",
-        "-s", f"stop-by-icount:{icount}",
-        f"--sde-arch={sde_arch}",
-        "--",
-        str(exe_path),
-        *exe_args,
-    ]
+    if roi_enable == "True":
+        cmd = [
+            str(snipersim_root / "run-sniper"),
+            "-c", str(sniper_cfg),
+            "-n", ncores,
+            "-d", str(out_dir),
+            "-s", f"energystats:{energystats_interval}",
+            "-s", f"stop-by-icount:{icount}",
+            f"--sde-arch={sde_arch}",
+            "--roi",
+            "--",
+            str(exe_path),
+            *exe_args,
+        ]
+    
+    else:
+        cmd = [
+           str(snipersim_root / "run-sniper"),
+            "-c", str(sniper_cfg),
+            "-n", ncores,
+            "-d", str(out_dir),
+            "-s", f"energystats:{energystats_interval}",
+            "-s", f"stop-by-icount:{icount}",
+            f"--sde-arch={sde_arch}",
+            "--",
+            str(exe_path),
+            *exe_args,
+        ]
 
     stage(f"Sniper: run {exe_name}")
     run_cmd(cmd, cwd=snipersim_root)
@@ -371,12 +392,25 @@ def run_sniper_for_executable(cfg: Dict[str, Any], exe: Dict[str, Any], snipersi
 
     return out_dir
 
-
 def run_mcpat(cfg: Dict[str, Any], sniper_out_dir: Path, num_cores: int, scripts_dir: Path) -> None:
     mcpat_script = Path(str(cfg["mcpat"]["script"])).expanduser().resolve()
+    max_jobs = int(cfg["mcpat"]["max_jobs"])
+
+    if max_jobs < 1:
+        raise ValueError("mcpat_max_jobs must be >= 1.")
+
     sniper_exe_root = sniper_out_dir.parent.parent
+
     stage("McPAT: perf -> power sims conversion")
-    run_cmd([str(mcpat_script), str(sniper_exe_root), str(num_cores)], cwd=scripts_dir)
+    run_cmd(
+        [
+            str(mcpat_script),
+            str(sniper_exe_root),
+            str(num_cores),
+            str(max_jobs),
+        ],
+        cwd=scripts_dir,
+    )
     log("McPAT conversion complete.")
 
 

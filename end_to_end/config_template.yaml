@@ -21,9 +21,10 @@ user_edit:
   # -------------------------
   #Pathway to the sniper configuration file. A sample one lives here: HotGauge/examples/skylake_14nm.cfg
   sniper_cfg:
-  num_cores: 
+  num_cores:
+  max_mcpat_jobs: 
   sde_arch:  #architecture Sniper will use, for example, tgl 
-
+  roi_enable: #ROI commd line input to sniper
   # Statistics printed at this nanosecond interval
   energystats_interval: 
 
@@ -38,9 +39,9 @@ user_edit:
   # -------------------------
   # Warmup / floorplan inputs
   # -------------------------
-  #path to the root of the warmup. One sample lives here: 
+  #path to the the warmup file. One sample lives here: 
   #HotGauge/examples/template/warmups/skylake_HS483/idle_00/skylake7nm_7core_3_3D-ICE_template.flp
-  tstack_root:
+  tstack_path:
   #The name of the flp template, see HotGauge/examples/template/floorplans/outputs for examples
   flp_template_name:
 
@@ -103,6 +104,7 @@ sniper:
   sniper_cfg: ${user_edit.sniper_cfg}
   num_cores: ${user_edit.num_cores}
   sde_arch: ${user_edit.sde_arch}
+  roi_enable: ${user_edit.roi_enable}
 
   energystats_interval: ${user_edit.energystats_interval}
   instruction_count: ${user_edit.instruction_count}
@@ -123,7 +125,7 @@ sniper:
 
 mcpat:
   script: ${paths.scripts_dir}/14_perf_sims_to_7_10_14_power_sims.sh
-
+  max_jobs: ${user_edit.max_mcpat_jobs}
 # ============================================================================
 # TRACE + METADATA GENERATION
 # ============================================================================
@@ -151,7 +153,7 @@ ice:
   sim_from_warmup_script: ${paths.examples_dir}/${experiment.name}/sim_from_warmup.py
 
   warmup:
-    tstack_path: ${user_edit.tstack_root}/final.tstack
+    tstack_path: ${user_edit.tstack_path}
 
   flp:
     template_name: ${user_edit.flp_template_name}
