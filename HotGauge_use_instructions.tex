@@ -126,7 +126,7 @@ Navigate back to \texttt{\textasciitilde/HotGauge/snipersim} and start sniper:
 
 \begin{lstlisting}
 ./run-sniper -c ~/HotGauge/examples/skylake_14nm.cfg -n 7 -d \
-~/HotGauge/snipersim/output/mod_linpack/14nm/4.7Ghz -s energystats:40000 -s \
+~/HotGauge/snipersim/output/mod_linpack/14nm/4.7GHz -s energystats:40000 -s \
 stop-by-icount:20000000 --sde-arch=tgl -- \
 ~/HotGauge/examples/mod_linpack
 \end{lstlisting}
@@ -149,8 +149,10 @@ Then run:
 
 \begin{lstlisting}
 ./14_perf_sims_to_7_10_14_power_sims.sh \
-~/HotGauge/snipersim/output/mod_linpack 7
+~/HotGauge/snipersim/output/mod_linpack 7 8
 \end{lstlisting}
+
+The two numbers that proceed the path to sniper output root are the number of cores being simulated and the maximum number of jobs that the scripts are allowed to have running at any given time.
 
 Inside of \verb|~/HotGauge/snipersim/output/mod_linpack/7nm/4.7GHz|
 you should see a bunch of time-stamped \verb|energystats-temp|,
@@ -283,7 +285,7 @@ It is important to note that \verb|diagram_visualize.py| takes in additional inp
 
 \begin{lstlisting}
 python diagram_visualize.py --metadata-file-name prefix_metadata.json -- \
-core-name cores_2_6 --grid-args "--heatmap_width 80.0" --grid-args "-- \
+core-name cores_2_6 --num-threads 8 --grid-args "--heatmap_width 80.0" --grid-args "-- \
 scale_width 8.0" --grid-args "--min_t 40" --grid-args "--max_t 115" 
 \end{lstlisting}
 

@@ -32,6 +32,20 @@ hg_env["PYTHONPATH"] = (
 def main(metadata_file_name, core_name):
 
     path_to_metadata = EXPERIMENT_DIR / "Metadata" / metadata_file_name
+    
+    if not path_to_metadata.exists():
+        raise click.ClickException(
+            "Metadata file does not exist.\n"
+            f"Requested metadata file: {metadata_file_name}\n"
+            f"Looked for: {path_to_metadata}\n"
+            f"Metadata directory: {EXPERIMENT_DIR / 'Metadata'}"
+        )
+
+    if not path_to_metadata.is_file():
+        raise click.ClickException(
+            "Metadata path exists but is not a file.\n"
+            f"Path: {path_to_metadata}"
+        )
 
     #load json info
     with path_to_metadata.open() as f:
@@ -47,6 +61,21 @@ def main(metadata_file_name, core_name):
 
     sim_dir = EXPERIMENT_DIR / "outputs" / "sims" / interval_ns / workload / tech_node / freq / core_name / "idle_00"
     
+    if not sim_dir.exists():
+    raise click.ClickException(
+        "Simulation directory does not exist.\n"
+        f"Looked for: {sim_dir}\n"
+        "This usually means the thermal simulation has not been run yet, "
+        "or one of interval_ns, workload, tech_node, frequency, or core_name "
+        "does not match the output directory structure."
+    )
+
+    if not sim_dir.is_dir():
+    raise click.ClickException(
+        "Simulation path exists but is not a directory.\n"
+        f"Path: {sim_dir}"
+    )
+
     os.chdir(sim_dir)
 
     PLT_DIR = Path("plots")

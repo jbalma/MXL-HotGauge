@@ -39,11 +39,32 @@ from HotGauge.thermal.thermal import make_transient_warmups, run_thermal_sims_wi
 from HotGauge.thermal.floorplan import get_flp_info
 
 BASE = os.getcwd()
-FLP_BASE_DIR = os.path.join(BASE, "floorplans", "outputs")
+FLP_BASE_DIR = os.path.join(EXAMPLES_DIR, "floorplans", "outputs")
 OUTPUT_DIR = os.path.join(BASE, "outputs")
 
 HEATSINK_MODEL = 'HS483'
 HEATSINK_ARGS = '6000'
+
+def validate_input_file(path, label):
+    """
+    Check that an input file exists and is actually a file.
+    Exit with a clear Click error if not.
+    """
+    if path is None:
+        return
+
+    expanded_path = os.path.expanduser(path)
+
+    if not os.path.exists(expanded_path):
+        raise click.ClickException(
+            f"{label} does not exist: {expanded_path}"
+        )
+
+    if not os.path.isfile(expanded_path):
+        raise click.ClickException(
+            f"{label} exists but is not a file: {expanded_path}"
+        )
+
 
 def parse_core_mapping(value: str) -> dict[int, int]:
     #Accepts either:
@@ -123,9 +144,22 @@ def load_workloads(trace_file, metadata_file, workload_manifest):
 
             if "trace" not in item or "meta" not in item:
                 raise click.UsageError(f"Manifest entry {i} must include keys 'trace' and 'meta'.")
+            
+            trace_path = Path(item["trace"]).expanduser()
+            meta_path = Path(item["meta"]).expanduser()
 
-            trace = str(Path(item["trace"]).expanduser()).resolve()
-            meta = str(Path(item["meta"]).expanduser()).resolve()
+            if not trace_path.is_absolute():
+                trace_path = base_dir / trace_path
+
+            if not meta_path.is_absolute():
+                meta_path = base_dir / meta_path
+
+            trace = str(trace_path.resolve())
+            meta = str(meta_path.resolve())
+
+            validate_input_file(trace, f"Manifest trace file for entry {i}")
+            validate_input_file(meta, f"Manifest metadata file for entry {i}")
+
             workloads.append({"trace": trace, "meta": meta})
 
         return workloads
@@ -137,14 +171,16 @@ def load_workloads(trace_file, metadata_file, workload_manifest):
     if trace_file is None and metadata_file is None:
         raise click.UsageError("Provide either --workload-manifest OR (--trace-file AND --metadata-file).")
 
+    validate_input_file(trace_file, "trace_file")
+    validate_input_file(metadata_file, "metadata_file")
+
     return [{"trace": trace_file, "meta": metadata_file}]
 
-
 @click.command()
-@click.option("--tstack-path", required=True, type=click.Path(file_okay=True),
+@click.option("--tstack-path", required=True, type=click.Path(exists=True, dir_okay=False),
               help="Path to tstack file")
 @click.option("--flp-template", required=True, type=str,
-        help="For example: skylake7nm_7core_3_3D-ICE_template.flp")
+              help="Name of the .flp template, e.g. skylake7nm_7core_3_3D-ICE_template.flp")
 @click.option("--trace-file", type=click.Path(exists=True, dir_okay=False),
               help="Path to one trace file (single-workload mode).")
 @click.option("--metadata-file", type=click.Path(exists=True, dir_okay=False),
@@ -177,7 +213,17 @@ def main(tstack_path, flp_template, trace_file, metadata_file, workload_manifest
 
         raw_workload_traces[trace_path] = wl_meta
 
-    flp_templates = glob.glob(os.path.join(EXAMPLES_DIR, flp_template))
+    flp_template_path = os.path.join(FLP_BASE_DIR, flp_template)
+    flp_templates = glob.glob(flp_template_path)
+
+    if not flp_templates:
+        raise click.ClickException(
+            "Floorplan template does not exist.\n"
+            f"Requested template: {flp_template}\n"
+            f"Looked for: {flp_template_path}\n"
+            f"Floorplan base directory: {FLP_BASE_DIR}"
+        )
+
     warmup_labels = ["idle_00"]
 
     #this is also a dictionary

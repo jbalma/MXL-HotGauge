@@ -37,11 +37,13 @@ from tqdm import tqdm
 # Repo / import setup
 # --------------------------------------------------------------------------------------
 
-# Absolute repo root. Keep this stable so imports and subprocess execution are predictable.
-REPO_ROOT = Path("/data/jake_m/HotGauge")
+SCRIPT_DIR = Path(__file__).resolve().parent
+EXPERIMENT_DIR = SCRIPT_DIR.parent
+EXAMPLES_DIR = EXPERIMENT_DIR.parent
+HOTGAUGE_ROOT = EXAMPLES_DIR.parent
 
 # Allow THIS Python process to import HotGauge modules.
-HG_PKG_PARENT = REPO_ROOT / "HotGauge"
+HG_PKG_PARENT = HOTGAUGE_ROOT / "HotGauge"
 sys.path.insert(0, str(HG_PKG_PARENT))
 
 # Import HotGauge loader after sys.path is set.
