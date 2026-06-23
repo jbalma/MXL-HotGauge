@@ -46,6 +46,21 @@ FLP_BASE_DIR = os.path.join(EXAMPLES_DIR, "floorplans", "outputs")
 def main(warmup_dir, flp_template):
     
     flp_templates = glob.glob(os.path.join(FLP_BASE_DIR, flp_template))
+    
+    if not flp_templates:
+    print(
+        f"ERROR: Floorplan template not found: {flp_template}",
+        file=sys.stderr
+    )
+    print(
+        f"Looked for it here: {flp_template_path}",
+        file=sys.stderr
+    )
+    print(
+        f"Available floorplan templates are in: {FLP_BASE_DIR}",
+        file=sys.stderr
+    )
+    sys.exit(1)
 
     stack_template = get_stack_template('skylake_{}'.format(HEATSINK_MODEL))
     

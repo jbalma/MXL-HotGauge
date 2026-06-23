@@ -80,6 +80,19 @@ def parse_output(outputfile):
   json.dump(power_dat, open(outfile, 'w'), sort_keys=True,  indent=2, separators=(',', ':'))
 
 def main():
+    
+
+    if len(sys.argv) < 2:
+        print("ERROR: Missing required input directory.", file=sys.stderr)
+        print("Usage: python mcpat_txt_to_json.py <mcpat_output_directory>", file=sys.stderr)
+        sys.exit(1)
+
+    input_dir = sys.argv[1]
+
+    if not os.path.isdir(input_dir):
+        print(f"ERROR: Input directory does not exist: {input_dir}", file=sys.stderr)
+        sys.exit(1)
+
     # Loop over all McPAT outputs (.txt)
     for out_file in tqdm.tqdm(glob.glob(os.path.join(sys.argv[1], "mcpat_output_*.txt"))):
         parse_output(out_file)
