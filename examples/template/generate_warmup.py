@@ -35,7 +35,7 @@ from HotGauge.thermal.thermal import make_transient_warmups
 HEATSINK_MODEL = 'HS483'
 HEATSINK_ARGS = '6000'
 CWD = os.getcwd()
-FLP_BASE_DIR = os.path.join(CWD, "floorplans", "outputs")
+FLP_BASE_DIR = os.path.join(EXAMPLES_DIR, "floorplans", "outputs")
 
 @click.command()
 @click.option("--warmup-dir", required=True, type=click.Path(file_okay=False),
