@@ -177,7 +177,7 @@ def main(tstack_path, flp_template, trace_file, metadata_file, workload_manifest
 
         raw_workload_traces[trace_path] = wl_meta
 
-    flp_templates = glob.glob(os.path.join(FLP_BASE_DIR, flp_template))
+    flp_templates = glob.glob(os.path.join(EXAMPLES_DIR, flp_template))
     warmup_labels = ["idle_00"]
 
     #this is also a dictionary
