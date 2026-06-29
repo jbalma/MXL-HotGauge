@@ -6,16 +6,28 @@ A framework for characterizing hotspots in next-generation processors
 # Local Machine Setup
 This codebase requires python 3 and was developed using python 3.9
 
+# Installing System Dependencies
+Follow the instructions below to install the system dependencies
+
+1) dnf -y install dnf-plugins-core and epel-release
+1) dnf config-manager --set-enabled crb
+1) dnf config-manager --add-repo https://build.openmodelica.org/linux/rpm/el9/omc.repo
+1) Install the packages from the next section
+1) chmod -R a+rX /opt/openmodelica-nightly/share/omc/runtime/c/fmi/buildproject/
+
 # System Dependencies (RHEL 9)
 
 The following packages must be installed before using HotGauge.
 
-| Package            | Required Version        | Notes |
+| Package            | Required Version       | Notes |
 |--------------------|------------------------|------|
+| Dnf-plugins-core   | 4.3.0                  | Required for downloading other packages |
+| Epel-release       | 9-10.el9               | Required for downloading other packages |
 | python3            | ≥ 3.9                  | Newer Scripts developed using Python 3.9, older ones with 3.4 |
 | python3-devel      | Matching Python3       | Needed for building Sniper |
 | gcc                | ≥ 7.4 (tested 11.5)    | Required for Sniper + 3D-ICE |
-| make / cmake       | Any recent             | Build tools |
+| gcc-c++            | ≥ 7.4                  | Required for Sniper + 3D-ICE |
+| make and cmake     | Any recent             | Build tools |
 | bison              | ≥ 3.0 (tested 3.7.4)   | Required for 3D-ICE |
 | flex               | ≥ 2.6                  | Required for 3D-ICE |
 | pkg-config         | Any recent             | Used in builds |
@@ -26,21 +38,16 @@ The following packages must be installed before using HotGauge.
 | openblas-openmp    | Any compatible         | Parallel BLAS |
 | bzip2-devel        | Any recent             | Build dependency |
 | xz                 | Any recent             | Needed for archive extraction |
-| wget / unzip / zip | Any recent             | Utility tools |
+| wget and unzip and zip | Any recent             | Utility tools |
 | csh                | Any recent             | Required by Sniper scripts |
 | parallel           | Any recent             | Used in workflows |
 | pugixml            | ≥ 1.8                  | Required for 3D-ICE plugin |
 | pugixml-devel      | ≥ 1.8                  | Headers |
-| OpenModelica       | ≥ 1.16                 | Required for heat-sink model |
-| ffmpeg             | Any Recent             | Required for analyis script |
-
-### Special Case: McPAT (32-bit dependencies)
-
-| Package              | Version |
-|----------------------|--------|
-| glibc-devel.i686     | Any compatible |
-| libstdc++.i686       | Any compatible |
-| libgcc.i686          | Any compatible |
+| openmodelica-nightly       | ≥ 1.16                 | Required for heat-sink model |
+| ffmpeg-free-devel.x86_64             | Any Recent             | Required for analyis script |
+| glibc-devel.i686   | Any Recent             | Required for McPAT |
+| libstdc++.i686     | Any Recent             | Required for McPAT |
+| libgcc.i686        | Any Recent             | Required for McPAT |
 
 
 # Version Compatibility Notes
@@ -64,29 +71,8 @@ In general:
 - No strict version pinning is required
 - If build issues occur, they are most likely due to missing packages rather than version incompatibility
 
-# System Depency Installation Help
-
-These commands install dependencies that are not available through the default `dnf` repositories.
-
-### Install McPAT 32-bit Dependencies
-
-1) `sudo dnf upgrade -y libstdc++.x86_64`
-1) `sudo dnf install -y glibc-devel.i686 libstdc++.i686 libgcc.i686`
-
-### Install pugixml and pugixml-devel
-
-1) `sudo subscription-manager repos --enable codeready-builder-for-rhel-9-$(arch)-rpms`
-1) `sudo dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm`
-1) `sudo dnf install pugixml pugixml-devel`
-
-### Install open-modelica
-1) `sudo dnf config-manager --add-repo https://build.openmodelica.org/rpm/el9/omc.repo`
-1) `sudo dnf install openmodelica-nightly`
-1) `sudo chmod -R a+rX /opt/openmodelica-nightly/share/omc/runtime/c/fmi/buildproject/`
-
-
 ## Initial Setup
-1. Clone this repository and enter it
+1. Clone this repository
 2. Set up a virtual-environment
    1. Create the virtual-environment: `python3 -m venv env`
    2. Activate the virtual-environment
@@ -96,11 +82,13 @@ These commands install dependencies that are not available through the default `
    3. Update pip `python -m pip install --upgrade pip`
    4. Install required modules: `pip install -r requirements.txt`
 3. Set up Sniper (the performance simulator)
-   1. Go to https://github.com/snipersim/snipersim and clone the repository.
-   2. Set the `SNIPER_ROOT` environment variable using: `export SNIPER_ROOT="$PWD"`
-   3. Enter the new directory
-   4. Apply the patch: `patch -p1 < ~/HotGauge/RHEL9_patches/sniper_rhel9_delta.patch`
-   5. Run: `make`
+   1. Clone snipersim: `https://github.com/snipersim/snipersim.git`
+   2. Enter the new directory
+   3. Check out the most recent commit before February 28, 2026: `git checkout $(git rev-list -n 1 --before="2026-02-28" HEAD)`
+   4. Create a named branch from that historical version before applying patches: `git switch -c snipersim-feb-2026-patched`
+   5. Set the `SNIPER_ROOT` environment variable using: `export SNIPER_ROOT="$PWD"`
+   6. Apply the patch: `patch -p1 < ~/HotGauge/RHEL9_patches/sniper_rhel9_delta.patch`
+   7. Run: `make`
 4. Set up McPAT (the power simulator)
    1. Re-enter the HotGauge root directory and download and patch McPAT using: `get_and_patch_McPAT.sh`
    2. Change into the HotGauge/McPAT directory and run: `make`
@@ -112,10 +100,11 @@ These commands install dependencies that are not available through the default `
       * At the end of the installation there will be a bunch of small tests that superlu runs and they may fail due to segmentation faults. Do not worry about this, the build was successful.
    3. Enter into the `SuperLU_4.3` directory and apply the patch: `patch -p1 < ~/HotGauge/RHEL9_patches/supLU_rhel9_delta.patch`
    4. Compile the heatsink plugin using `make` in `/3d-ice/heatsink_plugin/`
+      * This can take 30 minutes to an hour
    5. Compile 3D-ICE executables using `make` in `./3d-ice/`
    6. Test by navigating to `~/HotGauge/examples` and running: `Python custom_simulation_with_warmup.py`
       * You may need to go into the python file and then uncomment and adjust the sys path insert line
-      * Note: This script can take 2 days to run
+      * Note: This script can take up to 2 days to run. You can also test the system by following the instructions in `use_instructions.pdf`
 6. Utilize **HotGauge** as you see fit!
     
 ## Subsequent Use
