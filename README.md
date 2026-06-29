@@ -100,10 +100,11 @@ In general:
       * At the end of the installation there will be a bunch of small tests that superlu runs and they may fail due to segmentation faults. Do not worry about this, the build was successful.
    3. Enter into the `SuperLU_4.3` directory and apply the patch: `patch -p1 < ~/HotGauge/RHEL9_patches/supLU_rhel9_delta.patch`
    4. Compile the heatsink plugin using `make` in `/3d-ice/heatsink_plugin/`
+      * This can take 30 minutes to an hour
    5. Compile 3D-ICE executables using `make` in `./3d-ice/`
    6. Test by navigating to `~/HotGauge/examples` and running: `Python custom_simulation_with_warmup.py`
       * You may need to go into the python file and then uncomment and adjust the sys path insert line
-      * Note: This script can take 2 days to run
+      * Note: This script can take up to 2 days to run. You can also test the system by following the instructions in `use_instructions.pdf`
 6. Utilize **HotGauge** as you see fit!
     
 ## Subsequent Use
