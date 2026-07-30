@@ -116,18 +116,38 @@ def main():
             row += '{:>9.1f}'.format(K_to_C(temps[b])) if b in temps else '{:>9s}'.format('-')
         print(row)
 
-    # Simple verdict heuristic: largest single-iteration jump of the hottest block.
+    # Verdict heuristic. The discriminator is the SHAPE of the increment series, not the size
+    # of any one jump: an unstable fixed point (leakage gain > 1) produces increments that
+    # grow geometrically -- the huge final jump is just the tail of the exponential -- whereas
+    # a numerical/co-simulation spike is an isolated jump out of an otherwise steady series.
     hot_final = max(last, key=last.get)
     traj = [temps.get(hot_final) for _, temps in seq if temps.get(hot_final) is not None]
     if len(traj) >= 2:
         jumps = np.diff(traj)
-        print('\nHottest block {}: start {:.1f} C, end {:.1f} C, largest single-iter jump '
-              '{:+.1f} K'.format(hot_final, K_to_C(traj[0]), K_to_C(traj[-1]), np.max(jumps)))
-        if np.max(jumps) > 200:
-            print('  -> looks like a SOLVER SPIKE (order-of-magnitude jump in one iteration)')
+        print('\nHottest block {}: start {:.1f} C, end {:.1f} C'.format(
+            hot_final, K_to_C(traj[0]), K_to_C(traj[-1])))
+        print('  per-iteration increments [K]: ' +
+              ', '.join('{:+.3g}'.format(j) for j in jumps))
+        ratios = [jumps[k + 1] / jumps[k] for k in range(len(jumps) - 1) if jumps[k] > 0.05]
+        accelerating = len(ratios) >= 3 and all(r > 1.15 for r in ratios[-3:])
+        steady_body = np.median(np.abs(jumps)) if len(jumps) else 0.0
+        if accelerating:
+            print('  -> GRADUAL RATCHET with exponential acceleration: increments grow '
+                  'geometrically, i.e. leakage/temperature loop gain > 1 at this block. This '
+                  'is genuine electro-thermal runaway under the current leakage settings '
+                  '(leak fraction / doubling / T_ref), NOT solver instability. Note: '
+                  'under-relaxation cannot stabilize a supercritical gain -- reduce the gain '
+                  'itself (lower leak fraction, larger doubling delta, T_ref at the operating '
+                  'point, or better cooling).')
+        elif len(jumps) >= 3 and np.max(jumps) > 10 * max(steady_body, 0.5):
+            print('  -> SOLVER SPIKE: an isolated jump out of an otherwise steady series -- '
+                  'suspect numerical/co-simulation instability (e.g. heatsink FMU step size) '
+                  'rather than the leakage feedback itself.')
         elif traj[-1] > traj[0] + 5:
-            print('  -> looks like a GRADUAL RATCHET (leakage/temperature gain > 1 at this '
-                  'block under the current leakage settings)')
+            print('  -> steady upward drift without clear acceleration -- near the stability '
+                  'boundary; more iterations or slightly lower leakage gain would decide it.')
+        else:
+            print('  -> stable/settling: no runaway signature at this block.')
     return 0
 
 
