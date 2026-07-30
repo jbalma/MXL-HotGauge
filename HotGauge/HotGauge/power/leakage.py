@@ -256,7 +256,7 @@ def rescale_trace(total_trace, leakage_ref, temp_trace, model,
 def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model,
                                T_ref=DEFAULT_TREF_K, temp_units='K', name_map=None,
                                tol_K=0.1, max_iter=10, relax=1.0, max_power_growth=None,
-                               t_floor_K=None):
+                               t_floor_K=None, max_temp_K=None):
     """Fixed-point power<->temperature<->leakage iteration.
 
     total_trace       : baseline PowerTrace (leakage extracted at ``T_ref``).
@@ -278,6 +278,11 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
                         the next thermal solve, so we never hand a downstream solver (3D-ICE)
                         runaway-inflated power that would make it crash or diverge.
     t_floor_K         : forwarded to ``rescale_trace`` (ignore sub-floor/unphysical temps).
+    max_temp_K        : if set, stop and flag runaway as soon as any solved block temperature
+                        exceeds this (after t_floor filtering). Attribution is logged -- the
+                        offending block is named -- so a localized runaway (one dense block
+                        ratcheting) is identified at the first unphysical solve instead of
+                        many iterations later when total power overflows.
 
     returns dict with keys:
         'power_trace'  : latest PowerTrace,
@@ -286,7 +291,10 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
         'converged'    : bool -- reached tol_K,
         'diverged'     : bool -- runaway/solver-failure detected (mutually exclusive with
                          'converged'),
-        'max_delta_K'  : final max temperature change (inf if diverged).
+        'max_delta_K'  : final max temperature change (inf if diverged),
+        'history'      : list of per-iteration dicts {iter, max_T_K, max_T_key, total_W,
+                         max_delta_K} recording the hottest block and its temperature at each
+                         thermal solve -- the primary diagnostic for localized runaway.
 
     Convergence: with a monotonically-increasing leakage(T) and a passive thermal path this
     is a contraction while d(leakage)/dT * (thermal resistance) < 1. If that product exceeds
@@ -305,6 +313,7 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
     iterations = 0
     converged = False
     diverged = False
+    history = []
     for i in range(max_iter):
         # A downstream solver (3D-ICE) can fail outright when handed extreme power; treat any
         # failure as divergence rather than letting it crash the whole run.
@@ -323,6 +332,29 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
                            'runaway; stopping', i)
             diverged = True
             max_delta = float('inf')
+            break
+
+        # Record the hottest block this iteration (ignoring sub-floor/unphysical readings)
+        # -- the primary diagnostic for identifying a localized runaway.
+        max_T, max_T_key = -np.inf, None
+        for k, v in temps.items():
+            v = np.asarray(v, float)
+            if t_floor_K is not None:
+                v = v[v >= t_floor_K]
+            if v.size and float(np.max(v)) > max_T:
+                max_T, max_T_key = float(np.max(v)), k
+        history.append({'iter': i, 'max_T_K': max_T, 'max_T_key': max_T_key,
+                        'total_W': _total(current), 'max_delta_K': max_delta})
+
+        # Per-block temperature sanity guard: a single dense block ratcheting into runaway is
+        # caught (and NAMED) at the first unphysical solve, long before total power overflows.
+        if max_temp_K is not None and max_T > max_temp_K:
+            LOGGER.warning('leakage feedback iter %d: block %r reached %.1f K (> %.0f K '
+                           'limit) -> localized runaway; stopping', i, max_T_key, max_T,
+                           max_temp_K)
+            diverged = True
+            max_delta = float('inf')
+            prev_temps = temps
             break
 
         # Residual convergence check on the raw solved field.
@@ -370,4 +402,5 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
         'converged': converged,
         'diverged': diverged,
         'max_delta_K': max_delta,
+        'history': history,
     }

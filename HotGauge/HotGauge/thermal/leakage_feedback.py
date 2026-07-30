@@ -196,7 +196,8 @@ class ICEThermalSolver(object):
 # ---------------------------------------------------------------------------
 def run_leakage_feedback(baseline_trace, leakage_ref, thermal_solve_fn, model=None,
                          T_ref=DEFAULT_TREF_K, num_cores=8, tol_K=0.1, max_iter=10,
-                         relax=0.5, max_power_growth=10.0, t_floor_K=200.0):
+                         relax=0.5, max_power_growth=10.0, t_floor_K=200.0,
+                         max_temp_K=1000.0):
     """Run the fixed-point leakage feedback given a baseline trace and a thermal solver.
 
     baseline_trace   : McPAT-named PowerTrace (leakage extracted at ``T_ref``).
@@ -213,9 +214,12 @@ def run_leakage_feedback(baseline_trace, leakage_ref, thermal_solve_fn, model=No
                        workload/stack can't feed the emulator power that makes it crash.
     t_floor_K        : ignore per-block temperatures below this (default 200 K) -- 3D-ICE emits
                        0 K for floorplan elements outside the die layer; those must not scale.
+    max_temp_K       : flag runaway as soon as any block's solved temperature exceeds this
+                       (default 1000 K) -- names the offending block, catching a localized
+                       single-block runaway at the first unphysical solve.
 
     Returns the dict from ``converge_power_temperature`` ('power_trace', 'temp_trace',
-    'iterations', 'converged', 'diverged', 'max_delta_K').
+    'iterations', 'converged', 'diverged', 'max_delta_K', 'history').
     """
     if model is None:
         model = LeakageModel.exponential()
@@ -223,4 +227,5 @@ def run_leakage_feedback(baseline_trace, leakage_ref, thermal_solve_fn, model=No
     return converge_power_temperature(baseline_trace, leakage_ref, thermal_solve_fn, model,
                                       T_ref=T_ref, temp_units='K', name_map=name_map,
                                       tol_K=tol_K, max_iter=max_iter, relax=relax,
-                                      max_power_growth=max_power_growth, t_floor_K=t_floor_K)
+                                      max_power_growth=max_power_growth, t_floor_K=t_floor_K,
+                                      max_temp_K=max_temp_K)

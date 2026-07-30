@@ -199,6 +199,39 @@ def test_solver_failure_is_caught_as_divergence():
     assert res['diverged'] and not res['converged']
 
 
+def test_max_temp_guard_names_offending_block():
+    model = LeakageModel.exponential(10.0)
+    total = BasicPowerTrace({'dense': [1.0], 'calm': [0.5]}, time_step=1.0)
+    leak = {'dense': 0.4, 'calm': 0.1}
+
+    def solve(trace):
+        # 'dense' runs hot enough to ratchet; 'calm' stays benign.
+        return {'dense': [TREF + 50.0 * float(trace.powers['dense'][0])],
+                'calm': [TREF - 20.0]}
+
+    res = converge_power_temperature(total, leak, solve, model, T_ref=TREF, tol_K=1e-3,
+                                     max_iter=30, max_temp_K=TREF + 120.0)
+    assert res['diverged'] and not res['converged']
+    # history must attribute the hottest block correctly at every recorded iteration
+    assert res['history'], 'history should be recorded'
+    assert res['history'][-1]['max_T_key'] == 'dense'
+    assert res['history'][-1]['max_T_K'] > TREF + 120.0
+
+
+def test_history_recorded_on_convergence():
+    model = LeakageModel.exponential(10.0)
+    total = BasicPowerTrace({'hot': [1.0]}, time_step=1.0)
+    leak = {'hot': 0.4}
+    solver = _lumped_thermal_solver(theta_K_per_W=2.0, t_ambient_K=TREF)
+    res = converge_power_temperature(total, leak, solver, model, T_ref=TREF,
+                                     tol_K=1e-4, max_iter=50)
+    assert res['converged']
+    assert len(res['history']) == res['iterations']
+    assert all(h['max_T_key'] == 'hot' for h in res['history'])
+    # totals recorded per iteration should be finite and near baseline
+    assert all(np.isfinite(h['total_W']) for h in res['history'])
+
+
 def test_t_floor_ignores_unphysical_temps():
     model = LeakageModel.exponential(10.0)
     total = BasicPowerTrace({'a': [1.0], 'b': [1.0]}, time_step=1.0)

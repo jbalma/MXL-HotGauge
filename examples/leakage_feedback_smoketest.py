@@ -139,7 +139,8 @@ def stage2_feedback(cfg, trace):
     res = run_leakage_feedback(trace, leak, solver, model=model, T_ref=cfg['t_ref'],
                                num_cores=cfg['num_cores'], tol_K=cfg['tol'],
                                max_iter=cfg['max_iter'], relax=cfg['relax'],
-                               max_power_growth=cfg['max_power_growth'])
+                               max_power_growth=cfg['max_power_growth'],
+                               max_temp_K=cfg['max_temp_K'])
 
     # The smoke test validates the PLUMBING: the loop must run to completion on real 3D-ICE
     # without crashing. BOTH outcomes are valid physics -- convergence, or a cleanly-detected
@@ -157,11 +158,18 @@ def stage2_feedback(cfg, trace):
     print('  loop result: {}'.format(status))
     ok = _passfail(True, 'feedback loop ran to completion on real 3D-ICE (no crash)')
 
+    if res.get('history'):
+        print('  per-iteration history (iter | power in [W] | hottest block | max T [C]):')
+        for h in res['history']:
+            print('     {:>4d} | {:12.2f} | {:<22s} | {:9.1f}'.format(
+                h['iter'], h['total_W'], str(h['max_T_key'])[:22], K_to_C(h['max_T_K'])))
+
     base_total = sum(float(np.sum(s)) for s in trace.powers.values())
-    conv_total = sum(float(np.sum(s)) for s in res['power_trace'].powers.values())
-    dP = conv_total - base_total
-    print('  total power (all units, all steps): baseline {:.3f} W -> converged {:.3f} W '
-          '({:+.3f} W, {:+.2%})'.format(base_total, conv_total, dP,
+    final_total = sum(float(np.sum(s)) for s in res['power_trace'].powers.values())
+    dP = final_total - base_total
+    label = 'converged' if res['converged'] else 'final (pre-divergence state NOT physical)'
+    print('  total power (all units, all steps): baseline {:.3f} W -> {} {:.3f} W '
+          '({:+.3f} W, {:+.2%})'.format(base_total, label, final_total, dP,
                                         dP / base_total if base_total else 0.0))
     ok &= _passfail(abs(dP) > 0, 'feedback changed total power (leakage no longer frozen)')
 
@@ -200,6 +208,8 @@ def main():
     ap.add_argument('--relax', type=float, default=0.5, help='under-relaxation factor (0,1]')
     ap.add_argument('--max-power-growth', type=float, default=10.0,
                     help='flag runaway if total power exceeds this x baseline')
+    ap.add_argument('--max-temp-K', type=float, default=1000.0,
+                    help='flag (and name) a localized runaway block above this solved temp')
     ap.add_argument('--warmup-repeats', type=int, default=10)
     ap.add_argument('--multi-thread', action='store_true', help='use GNU parallel run path')
     args = ap.parse_args()
@@ -221,6 +231,7 @@ def main():
                time_slot=args.time_slot_ms / 1000.0, leak_fraction=args.leak_fraction,
                doubling=args.doubling, t_ref=args.t_ref, tol=args.tol, max_iter=args.max_iter,
                relax=args.relax, max_power_growth=args.max_power_growth,
+               max_temp_K=args.max_temp_K,
                warmup_repeats=args.warmup_repeats, single_thread=not args.multi_thread)
 
     print('3D-ICE leakage-feedback smoke test')
