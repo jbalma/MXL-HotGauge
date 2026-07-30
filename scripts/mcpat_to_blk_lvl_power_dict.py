@@ -12,7 +12,7 @@ import pprint
 from functools import partial
 
 
-def single_mcpat_to_blk_lvl_power_dict(mcpat_json_file, num_cores, write=True):
+def single_mcpat_to_blk_lvl_power_dict(mcpat_json_file, num_cores, write=True, emit_split=True):
     # Alex Hankin
 
     # Objective: Parse power model output (json format) and create input format for thermal simulator (python dictionary)
@@ -236,10 +236,19 @@ def single_mcpat_to_blk_lvl_power_dict(mcpat_json_file, num_cores, write=True):
         #     scaled_leakage_power
         # ]
 
+    # Preserve the [dynamic, leakage] split BEFORE it is collapsed below. This is the data
+    # needed for temperature-dependent leakage feedback (HotGauge.power.leakage): the frozen
+    # block_powers_*.json total loses the leakage component, so we emit a companion
+    # block_powers_split_*.json mapping unit -> [dynamic, leakage] (watts, at the McPAT
+    # reference temperature). Purely additive; block_powers_*.json is unchanged.
+    split_input_dict = {u: list(v) for u, v in thermal_input_dict.items()}
+
     # Sum dynamic and leakage power here
     for unit_name in thermal_input_dict:
-        # TODO: This is where we can also scale leakage (right before we combine them)
-        # Look-up unit_name in temperature dictionary to get leakage scale factor (comes from 3D ICE)
+        # NOTE: temperature-dependent leakage feedback is now applied downstream at the
+        # power-trace layer (HotGauge.power.leakage.converge_power_temperature), which needs
+        # the 3D-ICE per-block temperatures and therefore cannot run here at McPAT-parse time.
+        # The split emitted above (split_input_dict) is what makes that feedback possible.
         thermal_input_dict[unit_name] = sum(thermal_input_dict[unit_name])
 
     # Pretty print thermal input dictionary for validation/visualization
@@ -253,6 +262,12 @@ def single_mcpat_to_blk_lvl_power_dict(mcpat_json_file, num_cores, write=True):
 
         with open(out_file, 'w') as json_file:
             json.dump(thermal_input_dict, json_file)
+
+        if emit_split:
+            split_fname = fname.replace('block_powers_', 'block_powers_split_')
+            split_out_file = os.path.join(dirname, split_fname)
+            with open(split_out_file, 'w') as json_file:
+                json.dump(split_input_dict, json_file)
 
     return dict(thermal_input_dict)
 
@@ -273,7 +288,14 @@ def single_mcpat_to_blk_lvl_power_dict(mcpat_json_file, num_cores, write=True):
     show_default=True,
     help='Maximum number of worker processes'
 )
-def mcpat_to_blk_lvl_power_dict(mcpat_run_dir, num_cores, jobs):
+@click.option(
+    '--emit-split/--no-emit-split',
+    default=True,
+    show_default=True,
+    help='Also write block_powers_split_*.json (unit -> [dynamic, leakage]) for '
+         'temperature-dependent leakage feedback. Additive; block_powers_*.json is unchanged.'
+)
+def mcpat_to_blk_lvl_power_dict(mcpat_run_dir, num_cores, jobs, emit_split):
     input_files = glob.glob(os.path.join(mcpat_run_dir, 'mcpat_output_*.json'))
 
     num_processes = min(jobs, len(input_files))
@@ -281,7 +303,8 @@ def mcpat_to_blk_lvl_power_dict(mcpat_run_dir, num_cores, jobs):
         print("No mcpat_output_*.json files found")
         return
 
-    worker = partial(single_mcpat_to_blk_lvl_power_dict, num_cores=num_cores)
+    worker = partial(single_mcpat_to_blk_lvl_power_dict, num_cores=num_cores,
+                     emit_split=emit_split)
 
     with multiprocessing.Pool(num_processes) as pool:
         for _ in tqdm.tqdm(
