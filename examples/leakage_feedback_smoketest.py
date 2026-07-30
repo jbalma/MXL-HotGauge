@@ -69,13 +69,13 @@ def stage0_environment(flp_template, stack_template, trace_dir):
 
 
 def _build_warmup_tstack(stack_template, flp_template, trace, tech_node, num_cores,
-                         warmup_repeats, warmup_dir, single_thread):
+                         warmup_repeats, warmup_dir, single_thread, plugin_args=None):
     """Run a short transient soak from 40 C and return (tstack_file, initial_K)."""
     warmup_initial = C_to_K(40)
     warmup_trace = prepare_dice_trace(trace[0] ** warmup_repeats, flp_template, tech_node,
                                       num_cores=num_cores)
     outputs = [ICETransientSim.OUTPUT_TSTACK_FINAL]
-    cfg = ICESimConfig(initial_temp=warmup_initial, plugin_args=None, output_list=outputs)
+    cfg = ICESimConfig(initial_temp=warmup_initial, plugin_args=plugin_args, output_list=outputs)
     sim = ICETransientSim(stack_template, flp_template, warmup_trace, cfg, warmup_dir)
     (ICETransientSim.run if single_thread else ICETransientSim.run_with_parallels)([sim])
     tstack = os.path.join(sim.run_path, parse_file_name_from_output_line(outputs[0]))
@@ -89,13 +89,14 @@ def stage1_single_solve(cfg):
 
     tstack, init_K = _build_warmup_tstack(
         cfg['stack'], cfg['flp'], trace, cfg['tech_node'], cfg['num_cores'],
-        cfg['warmup_repeats'], os.path.join(cfg['out_dir'], 'warmup'), cfg['single_thread'])
+        cfg['warmup_repeats'], os.path.join(cfg['out_dir'], 'warmup'), cfg['single_thread'],
+        plugin_args=cfg['plugin_args'])
     _passfail(os.path.isfile(tstack), 'warmup produced tstack: {}'.format(tstack))
 
     solver = ICEThermalSolver(cfg['stack'], cfg['flp'], cfg['tech_node'],
                               run_base_dir=os.path.join(cfg['out_dir'], 'stage1'),
                               initial_temp=(tstack, init_K), num_cores=cfg['num_cores'],
-                              single_thread=cfg['single_thread'])
+                              plugin_args=cfg['plugin_args'], single_thread=cfg['single_thread'])
     temps = solver(trace)
 
     all_T = np.array([v for series in temps.values() for v in series], dtype=float)
@@ -134,7 +135,7 @@ def stage2_feedback(cfg, trace):
     solver = ICEThermalSolver(cfg['stack'], cfg['flp'], cfg['tech_node'],
                               run_base_dir=os.path.join(cfg['out_dir'], 'stage2'),
                               initial_temp=cfg['stage2_initial'], num_cores=cfg['num_cores'],
-                              single_thread=cfg['single_thread'])
+                              plugin_args=cfg['plugin_args'], single_thread=cfg['single_thread'])
     res = run_leakage_feedback(trace, leak, solver, model=model, T_ref=cfg['t_ref'],
                                num_cores=cfg['num_cores'], tol_K=cfg['tol'],
                                max_iter=cfg['max_iter'], relax=cfg['relax'],
@@ -184,7 +185,10 @@ def main():
     ap.add_argument('--tech-node', type=int, default=7)
     ap.add_argument('--num-cores', type=int, default=8)
     ap.add_argument('--flp-template', default=None, help='defaults to shipped 7nm 7core_3')
-    ap.add_argument('--stack', default='skylake', help='stack template name (no plugin)')
+    ap.add_argument('--stack', default='skylake', help='stack template name')
+    ap.add_argument('--plugin-args', default=None,
+                    help='heatsink plugin arg for pluggable stacks, e.g. 6000 (fan rpm) for '
+                         'skylake_HS483. Leave unset for the plain skylake convection stack.')
     ap.add_argument('--trace-dir', default=None, help='defaults to shipped example_workload/7nm')
     ap.add_argument('--out-dir', default=None, help='defaults to ./leakage_feedback_smoketest')
     ap.add_argument('--time-slot-ms', type=float, default=0.2)
@@ -192,7 +196,7 @@ def main():
     ap.add_argument('--doubling', type=float, default=15.0, help='leakage doubling delta [K]')
     ap.add_argument('--t-ref', type=float, default=360.0, help='McPAT leakage ref temp [K]')
     ap.add_argument('--tol', type=float, default=0.5, help='convergence tol [K]')
-    ap.add_argument('--max-iter', type=int, default=12)
+    ap.add_argument('--max-iter', type=int, default=20)
     ap.add_argument('--relax', type=float, default=0.5, help='under-relaxation factor (0,1]')
     ap.add_argument('--max-power-growth', type=float, default=10.0,
                     help='flag runaway if total power exceeds this x baseline')
@@ -206,10 +210,13 @@ def main():
     trace_dir = args.trace_dir or os.path.join(
         _HERE, 'ICE_simulation_from_MCPAT', 'traces', 'example_workload',
         '{}nm'.format(args.tech_node))
-    out_dir = args.out_dir or os.path.join(os.getcwd(), 'leakage_feedback_smoketest')
+    # Per-stack output dir so a failed run with one stack can't leave stale outputs that mask
+    # (or get mistaken for) another stack's results.
+    out_dir = args.out_dir or os.path.join(os.getcwd(), 'leakage_feedback_smoketest', args.stack)
     os.makedirs(out_dir, exist_ok=True)
 
     cfg = dict(flp=flp, stack=get_stack_template(args.stack), trace_dir=trace_dir,
+               plugin_args=args.plugin_args,
                out_dir=out_dir, tech_node=args.tech_node, num_cores=args.num_cores,
                time_slot=args.time_slot_ms / 1000.0, leak_fraction=args.leak_fraction,
                doubling=args.doubling, t_ref=args.t_ref, tol=args.tol, max_iter=args.max_iter,
