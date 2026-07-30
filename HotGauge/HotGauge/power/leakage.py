@@ -206,7 +206,8 @@ def rescale_total_power(total, leakage_ref, T, model, T_ref=DEFAULT_TREF_K, temp
 
 
 def rescale_trace(total_trace, leakage_ref, temp_trace, model,
-                  T_ref=DEFAULT_TREF_K, temp_units='K', name_map=None, missing='keep'):
+                  T_ref=DEFAULT_TREF_K, temp_units='K', name_map=None, missing='keep',
+                  t_floor_K=None):
     """Apply leakage rescaling across a full power trace using a per-unit temperature trace.
 
     total_trace : PowerTrace-like -> its ``.powers`` maps unit -> [p0, p1, ...] (W).
@@ -218,6 +219,10 @@ def rescale_trace(total_trace, leakage_ref, temp_trace, model,
     model       : a ``LeakageModel``.
     missing     : what to do when a unit has no temperature/leakage entry --
                   'keep' (leave power unchanged, default) or 'error'.
+    t_floor_K   : if set, temperatures below this floor are treated as unphysical (e.g. the
+                  0 K readings 3D-ICE emits for floorplan elements outside the die layer) and
+                  replaced with ``T_ref`` (leakage scale 1.0), so they neither zero-out nor
+                  inflate leakage. Interpreted in the same units as ``temp_units``.
 
     returns a new ``BasicPowerTrace`` with corrected per-unit power. Import of the trace
     class is deferred so this module has no import-time dependency on the trace stack.
@@ -238,6 +243,8 @@ def rescale_trace(total_trace, leakage_ref, temp_trace, model,
             new_powers[unit] = series  # unchanged
             continue
         temps = np.asarray(temps, dtype=float)
+        if t_floor_K is not None:
+            temps = np.where(temps < t_floor_K, float(T_ref), temps)
         if temps.shape != series.shape:
             raise ValueError('Temperature length {} != power length {} for unit {!r}'.format(
                 temps.shape, series.shape, unit))
@@ -248,7 +255,8 @@ def rescale_trace(total_trace, leakage_ref, temp_trace, model,
 
 def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model,
                                T_ref=DEFAULT_TREF_K, temp_units='K', name_map=None,
-                               tol_K=0.1, max_iter=10):
+                               tol_K=0.1, max_iter=10, relax=1.0, max_power_growth=None,
+                               t_floor_K=None):
     """Fixed-point power<->temperature<->leakage iteration.
 
     total_trace       : baseline PowerTrace (leakage extracted at ``T_ref``).
@@ -260,44 +268,67 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
     tol_K             : convergence threshold on the max per-cell temperature change between
                         successive iterations.
     max_iter          : safety cap on iterations.
+    relax             : under-relaxation factor in (0, 1] for the temperature field that
+                        drives the leakage update: T_drive = (1-relax)*T_prev + relax*T_solved.
+                        1.0 is plain Gauss-Seidel (fastest when it converges); <1 damps
+                        oscillation/overshoot near the stability boundary. Does not move the
+                        fixed point, only the path to it.
+    max_power_growth  : if set, stop and flag runaway once the total power of the rescaled
+                        trace exceeds this multiple of the baseline total -- caught *before*
+                        the next thermal solve, so we never hand a downstream solver (3D-ICE)
+                        runaway-inflated power that would make it crash or diverge.
+    t_floor_K         : forwarded to ``rescale_trace`` (ignore sub-floor/unphysical temps).
 
     returns dict with keys:
-        'power_trace'  : converged PowerTrace,
-        'temp_trace'   : converged temperature field,
+        'power_trace'  : latest PowerTrace,
+        'temp_trace'   : latest temperature field,
         'iterations'   : number of thermal solves performed,
-        'converged'    : bool,
-        'max_delta_K'  : final max temperature change.
+        'converged'    : bool -- reached tol_K,
+        'diverged'     : bool -- runaway/solver-failure detected (mutually exclusive with
+                         'converged'),
+        'max_delta_K'  : final max temperature change (inf if diverged).
 
-    Note on convergence: with a monotonically-increasing leakage(T) and a passive thermal
-    path this is a contraction while d(leakage)/dT * (thermal resistance) < 1; if that
-    product exceeds 1 the physical system is in thermal runaway and this loop will not
-    converge -- that non-convergence is itself the physically meaningful signal, surfaced
-    via 'converged': False rather than hidden.
+    Convergence: with a monotonically-increasing leakage(T) and a passive thermal path this
+    is a contraction while d(leakage)/dT * (thermal resistance) < 1. If that product exceeds
+    1 the physical device is in thermal runaway and no stable fixed point exists; this is
+    surfaced as 'diverged': True (via non-finite temps, the power-growth guard, or a solver
+    failure) rather than hidden or raised.
     """
+    def _total(trace):
+        return sum(float(np.sum(np.asarray(s, float))) for s in trace.powers.values())
+
+    baseline_total = _total(total_trace)
     current = total_trace
-    prev_temps = None
+    prev_temps = None      # last raw solved field, for the residual convergence check
+    driving = None         # under-relaxed field that actually drives the leakage update
     max_delta = float('inf')
     iterations = 0
     converged = False
+    diverged = False
     for i in range(max_iter):
-        temps = thermal_solve_fn(current)
+        # A downstream solver (3D-ICE) can fail outright when handed extreme power; treat any
+        # failure as divergence rather than letting it crash the whole run.
+        try:
+            temps = thermal_solve_fn(current)
+        except Exception as e:  # noqa: BLE001 - deliberately broad: any solver failure
+            LOGGER.error('leakage feedback iter %d: thermal solve failed (%s) -> treating as '
+                         'divergence/runaway; stopping', i, e)
+            diverged = True
+            break
         iterations += 1
 
-        # Runaway guard: non-finite temperatures mean the leakage/temperature loop diverged
-        # (the physical device would be in thermal runaway). Stop and report it rather than
-        # feeding inf back into the model.
+        # Non-finite temperatures also mean the loop diverged.
         if any(not np.all(np.isfinite(np.asarray(v, float))) for v in temps.values()):
             LOGGER.warning('leakage feedback iter %d: non-finite temperature -> thermal '
-                           'runaway; stopping (not converged)', i)
+                           'runaway; stopping', i)
+            diverged = True
             max_delta = float('inf')
             break
 
+        # Residual convergence check on the raw solved field.
         if prev_temps is not None:
-            deltas = []
-            for k, v in temps.items():
-                if k in prev_temps:
-                    deltas.append(np.max(np.abs(np.asarray(v, float)
-                                                - np.asarray(prev_temps[k], float))))
+            deltas = [np.max(np.abs(np.asarray(v, float) - np.asarray(prev_temps[k], float)))
+                      for k, v in temps.items() if k in prev_temps]
             max_delta = max(deltas) if deltas else 0.0
             LOGGER.info('leakage feedback iter %d: max dT = %.4f K', i, max_delta)
             if max_delta <= tol_K:
@@ -305,15 +336,38 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
                 prev_temps = temps
                 break
         prev_temps = temps
+
+        # Under-relax the field that drives the leakage update.
+        if driving is None or relax >= 1.0:
+            driving = temps
+        else:
+            driving = {k: (1.0 - relax) * np.asarray(driving.get(k, v), float)
+                            + relax * np.asarray(v, float)
+                       for k, v in temps.items()}
+
         # Always rescale from the BASELINE trace: dynamic = baseline_total - leakage_ref is
         # temperature-independent, so re-deriving it from an already-rescaled trace would make
-        # the dynamic component drift each iteration and diverge. Only leakage tracks T.
-        current = rescale_trace(total_trace, leakage_ref, temps, model,
-                                T_ref=T_ref, temp_units=temp_units, name_map=name_map)
+        # the dynamic component drift each iteration. Only leakage tracks T.
+        current = rescale_trace(total_trace, leakage_ref, driving, model, T_ref=T_ref,
+                                temp_units=temp_units, name_map=name_map, t_floor_K=t_floor_K)
+
+        # Early runaway guard: stop before the next solve if power has blown up.
+        cur_total = _total(current)
+        if not np.isfinite(cur_total) or (
+                max_power_growth is not None and baseline_total > 0
+                and cur_total > max_power_growth * baseline_total):
+            LOGGER.warning('leakage feedback iter %d: total power grew to %.4g W (%.1fx '
+                           'baseline) -> runaway; stopping', i, cur_total,
+                           (cur_total / baseline_total) if baseline_total else float('inf'))
+            diverged = True
+            max_delta = float('inf')
+            break
+
     return {
         'power_trace': current,
         'temp_trace': prev_temps,
         'iterations': iterations,
         'converged': converged,
+        'diverged': diverged,
         'max_delta_K': max_delta,
     }

@@ -156,6 +156,59 @@ def test_cooling_reduces_total_power():
     assert cooled['power_trace']['hot'][0] < hot['power_trace']['hot'][0]
 
 
+def test_under_relaxation_reaches_same_fixed_point():
+    model = LeakageModel.exponential(10.0)
+    total = BasicPowerTrace({'hot': [1.0]}, time_step=1.0)
+    leak = {'hot': 0.4}
+    solver = _lumped_thermal_solver(theta_K_per_W=2.0, t_ambient_K=TREF)
+    plain = converge_power_temperature(total, leak, solver, model, T_ref=TREF,
+                                       tol_K=1e-5, max_iter=100, relax=1.0)
+    damped = converge_power_temperature(total, leak, solver, model, T_ref=TREF,
+                                        tol_K=1e-5, max_iter=100, relax=0.5)
+    assert plain['converged'] and damped['converged']
+    # Relaxation changes the path, not the fixed point.
+    assert damped['power_trace']['hot'][0] == pytest.approx(plain['power_trace']['hot'][0], rel=1e-3)
+
+
+def test_power_growth_guard_flags_runaway_without_nonfinite():
+    model = LeakageModel.exponential(10.0)
+    total = BasicPowerTrace({'hot': [1.0]}, time_step=1.0)
+    leak = {'hot': 0.4}
+    # Strong coupling would blow up; the guard should stop it early (finite, not converged).
+    solver = _lumped_thermal_solver(theta_K_per_W=40.0, t_ambient_K=TREF)
+    res = converge_power_temperature(total, leak, solver, model, T_ref=TREF, tol_K=1e-3,
+                                     max_iter=20, max_power_growth=5.0)
+    assert res['diverged'] and not res['converged']
+    assert np.isfinite(res['power_trace']['hot'][0])   # stopped before it went to inf
+
+
+def test_solver_failure_is_caught_as_divergence():
+    model = LeakageModel.exponential(10.0)
+    total = BasicPowerTrace({'hot': [1.0]}, time_step=1.0)
+    leak = {'hot': 0.4}
+
+    calls = {'n': 0}
+    def flaky_solver(trace):
+        calls['n'] += 1
+        if calls['n'] >= 2:
+            raise RuntimeError('3D-ICE crashed on runaway power')
+        return {'hot': [TREF + 30.0 * float(trace.powers['hot'][0])]}
+
+    res = converge_power_temperature(total, leak, flaky_solver, model, T_ref=TREF,
+                                     tol_K=1e-3, max_iter=10)   # must not raise
+    assert res['diverged'] and not res['converged']
+
+
+def test_t_floor_ignores_unphysical_temps():
+    model = LeakageModel.exponential(10.0)
+    total = BasicPowerTrace({'a': [1.0], 'b': [1.0]}, time_step=1.0)
+    leak = {'a': 0.4, 'b': 0.4}
+    temps = {'a': [0.0], 'b': [TREF + 10.0]}   # 'a' is a bogus 0 K reading
+    out = rescale_trace(total, leak, temps, model, T_ref=TREF, t_floor_K=200.0)
+    np.testing.assert_allclose(out['a'], [1.0])   # floored to T_ref -> unchanged
+    np.testing.assert_allclose(out['b'], [1.4])   # real heating still applied
+
+
 # ----------------------------------------------------------------------------
 # Plumbing check against a real shipped 280-unit block_powers trace
 # ----------------------------------------------------------------------------

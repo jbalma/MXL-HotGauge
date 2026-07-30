@@ -195,7 +195,8 @@ class ICEThermalSolver(object):
 # High-level entry point
 # ---------------------------------------------------------------------------
 def run_leakage_feedback(baseline_trace, leakage_ref, thermal_solve_fn, model=None,
-                         T_ref=DEFAULT_TREF_K, num_cores=8, tol_K=0.1, max_iter=10):
+                         T_ref=DEFAULT_TREF_K, num_cores=8, tol_K=0.1, max_iter=10,
+                         relax=0.5, max_power_growth=10.0, t_floor_K=200.0):
     """Run the fixed-point leakage feedback given a baseline trace and a thermal solver.
 
     baseline_trace   : McPAT-named PowerTrace (leakage extracted at ``T_ref``).
@@ -205,13 +206,21 @@ def run_leakage_feedback(baseline_trace, leakage_ref, thermal_solve_fn, model=No
                        in production, or any callable (e.g. a mock) in tests.
     model            : a ``LeakageModel``; defaults to the exponential (doubles per 10 C).
     num_cores        : controls whether floorplan names carry a core index in the name bridge.
+    relax            : under-relaxation factor (default 0.5) -- damps overshoot so a real
+                       3D-ICE-in-the-loop solve is less likely to spike into runaway.
+    max_power_growth : stop and flag runaway if total power exceeds this multiple of baseline
+                       (default 10x) -- caught before the next 3D-ICE solve, so a runaway
+                       workload/stack can't feed the emulator power that makes it crash.
+    t_floor_K        : ignore per-block temperatures below this (default 200 K) -- 3D-ICE emits
+                       0 K for floorplan elements outside the die layer; those must not scale.
 
-    Returns the dict from ``converge_power_temperature`` (converged 'power_trace',
-    'temp_trace', 'iterations', 'converged', 'max_delta_K').
+    Returns the dict from ``converge_power_temperature`` ('power_trace', 'temp_trace',
+    'iterations', 'converged', 'diverged', 'max_delta_K').
     """
     if model is None:
         model = LeakageModel.exponential()
     name_map = mcpat_flp_name_map(include_core_idx=(num_cores > 1))
     return converge_power_temperature(baseline_trace, leakage_ref, thermal_solve_fn, model,
                                       T_ref=T_ref, temp_units='K', name_map=name_map,
-                                      tol_K=tol_K, max_iter=max_iter)
+                                      tol_K=tol_K, max_iter=max_iter, relax=relax,
+                                      max_power_growth=max_power_growth, t_floor_K=t_floor_K)
