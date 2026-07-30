@@ -199,6 +199,16 @@ def test_solver_failure_is_caught_as_divergence():
     assert res['diverged'] and not res['converged']
 
 
+def test_load_block_powers_ignores_split_companions(tmp_path):
+    """block_powers_split_*.json (leakage splits) must not be picked up as trace steps."""
+    from HotGauge.configuration import load_block_powers
+    for name in ('block_powers_200.json', 'block_powers_100.json',
+                 'block_powers_split_100.json', 'block_powers_split_200.json'):
+        (tmp_path / name).write_text('{}')
+    files = [os.path.basename(f) for f in load_block_powers(str(tmp_path))]
+    assert files == ['block_powers_100.json', 'block_powers_200.json']
+
+
 def test_max_temp_guard_names_offending_block():
     model = LeakageModel.exponential(10.0)
     total = BasicPowerTrace({'dense': [1.0], 'calm': [0.5]}, time_step=1.0)

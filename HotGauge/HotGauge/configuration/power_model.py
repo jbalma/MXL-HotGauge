@@ -54,4 +54,8 @@ def load_block_powers(simulation_dir):
         f = os.path.basename(fp)
         return int(BLOCK_POWERS_REGEX.match(f).group(1))
     files = glob.glob(os.path.join(simulation_dir, 'block_powers_*.json'))
+    # The glob also catches companion files like block_powers_split_<tick>.json (the
+    # dynamic/leakage split emitted for temperature-dependent leakage feedback); only
+    # numeric-tick block_powers_<tick>.json files are trace steps, so filter to those.
+    files = [f for f in files if BLOCK_POWERS_REGEX.match(os.path.basename(f))]
     return sorted(files, key=get_tick)
