@@ -87,16 +87,24 @@ def stage1_single_solve(cfg):
     trace = JSONFilesPowerTrace(load_block_powers(cfg['trace_dir']), cfg['time_slot'])
     print('  loaded trace: {} units x {} timesteps'.format(len(trace.powers), len(trace)))
 
-    tstack, init_K = _build_warmup_tstack(
-        cfg['stack'], cfg['flp'], trace, cfg['tech_node'], cfg['num_cores'],
-        cfg['warmup_repeats'], os.path.join(cfg['out_dir'], 'warmup'), cfg['single_thread'],
-        plugin_args=cfg['plugin_args'])
-    _passfail(os.path.isfile(tstack), 'warmup produced tstack: {}'.format(tstack))
+    if cfg['mode'] == 'steady':
+        # A steady solve converges to the same equilibrium regardless of where it starts, so
+        # the (expensive) warmup soak buys nothing here.
+        print('  steady mode: skipping warmup (equilibrium is initial-condition independent)')
+        initial_temp = C_to_K(40)
+    else:
+        tstack, init_K = _build_warmup_tstack(
+            cfg['stack'], cfg['flp'], trace, cfg['tech_node'], cfg['num_cores'],
+            cfg['warmup_repeats'], os.path.join(cfg['out_dir'], 'warmup'), cfg['single_thread'],
+            plugin_args=cfg['plugin_args'])
+        _passfail(os.path.isfile(tstack), 'warmup produced tstack: {}'.format(tstack))
+        initial_temp = (tstack, init_K)
 
     solver = ICEThermalSolver(cfg['stack'], cfg['flp'], cfg['tech_node'],
                               run_base_dir=os.path.join(cfg['out_dir'], 'stage1'),
-                              initial_temp=(tstack, init_K), num_cores=cfg['num_cores'],
-                              plugin_args=cfg['plugin_args'], single_thread=cfg['single_thread'])
+                              initial_temp=initial_temp, num_cores=cfg['num_cores'],
+                              plugin_args=cfg['plugin_args'], single_thread=cfg['single_thread'],
+                              mode=cfg['mode'], steady_reduce=cfg['steady_reduce'])
     temps = solver(trace)
 
     all_T = np.array([v for series in temps.values() for v in series], dtype=float)
@@ -135,7 +143,8 @@ def stage2_feedback(cfg, trace):
     solver = ICEThermalSolver(cfg['stack'], cfg['flp'], cfg['tech_node'],
                               run_base_dir=os.path.join(cfg['out_dir'], 'stage2'),
                               initial_temp=cfg['stage2_initial'], num_cores=cfg['num_cores'],
-                              plugin_args=cfg['plugin_args'], single_thread=cfg['single_thread'])
+                              plugin_args=cfg['plugin_args'], single_thread=cfg['single_thread'],
+                              mode=cfg['mode'], steady_reduce=cfg['steady_reduce'])
     res = run_leakage_feedback(trace, leak, solver, model=model, T_ref=cfg['t_ref'],
                                num_cores=cfg['num_cores'], tol_K=cfg['tol'],
                                max_iter=cfg['max_iter'], relax=cfg['relax'],
@@ -212,6 +221,14 @@ def main():
                     help='flag (and name) a localized runaway block above this solved temp')
     ap.add_argument('--warmup-repeats', type=int, default=10)
     ap.add_argument('--multi-thread', action='store_true', help='use GNU parallel run path')
+    ap.add_argument('--steady', action='store_true',
+                    help='use 3D-ICE steady-state solves instead of transients. Required for '
+                         'cooling-technology comparisons: ms-scale transients never diffuse '
+                         'past the die, so the heatsink stack has no effect on die temps. '
+                         'Also skips the warmup (equilibrium ignores the initial condition).')
+    ap.add_argument('--steady-reduce', default='mean', choices=['mean', 'max'],
+                    help="steady operating point: 'mean' (time-averaged, default) or 'max' "
+                         "(per-block peak; a worst-case bound, not a real instant)")
     args = ap.parse_args()
 
     flp = args.flp_template or os.path.join(
@@ -232,13 +249,17 @@ def main():
                doubling=args.doubling, t_ref=args.t_ref, tol=args.tol, max_iter=args.max_iter,
                relax=args.relax, max_power_growth=args.max_power_growth,
                max_temp_K=args.max_temp_K,
-               warmup_repeats=args.warmup_repeats, single_thread=not args.multi_thread)
+               warmup_repeats=args.warmup_repeats, single_thread=not args.multi_thread,
+               mode='steady' if args.steady else 'transient',
+               steady_reduce=args.steady_reduce)
 
     print('3D-ICE leakage-feedback smoke test')
     print('  stack   : {}'.format(cfg['stack']))
     print('  floorplan: {}'.format(cfg['flp']))
     print('  trace   : {}'.format(cfg['trace_dir']))
     print('  outputs : {}'.format(cfg['out_dir']))
+    print('  solver  : {}{}'.format(cfg['mode'],
+          ' (reduce={})'.format(cfg['steady_reduce']) if cfg['mode'] == 'steady' else ''))
 
     results = []
     if not stage0_environment(cfg['flp'], cfg['stack'], cfg['trace_dir']):
@@ -253,10 +274,13 @@ def main():
         _summary(results)
         return 1
 
-    # Reuse the warmup soak as the feedback loop's initial condition.
-    cfg['stage2_initial'] = (os.path.join(cfg['out_dir'], 'warmup',
-                             parse_file_name_from_output_line(ICETransientSim.OUTPUT_TSTACK_FINAL)),
-                             C_to_K(40))
+    if cfg['mode'] == 'steady':
+        cfg['stage2_initial'] = C_to_K(40)   # unused physically; steady ignores the IC
+    else:
+        # Reuse the warmup soak as the feedback loop's initial condition.
+        cfg['stage2_initial'] = (os.path.join(cfg['out_dir'], 'warmup',
+                                 parse_file_name_from_output_line(ICETransientSim.OUTPUT_TSTACK_FINAL)),
+                                 C_to_K(40))
     results.append(('stage2', stage2_feedback(cfg, trace)))
     return _summary(results)
 

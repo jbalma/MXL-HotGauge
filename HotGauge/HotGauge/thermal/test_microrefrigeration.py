@@ -1,0 +1,291 @@
+"""Tests for the microrefrigeration bridge (Goal 3). Pure Python -- no 3D-ICE binary."""
+import numpy as np
+import pytest
+
+from HotGauge.power import BasicPowerTrace
+from HotGauge.thermal.microrefrigeration import (MRParams, clipping_plan, apply_cooling_to_trace,
+                                                 mr_accounting, estimate_sensitivity,
+                                                 run_mr_clipping)
+
+GEOM = {'hot': {'area_mm2': 0.02, 'min_dim_um': 140.0},
+        'small': {'area_mm2': 0.002, 'min_dim_um': 13.0},
+        'cool': {'area_mm2': 0.02, 'min_dim_um': 140.0}}
+
+
+def test_params_reject_nonsense():
+    with pytest.raises(ValueError):
+        MRParams(target_K=0)
+    with pytest.raises(ValueError):
+        MRParams(target_K=350, h_max=0)
+    with pytest.raises(ValueError):
+        MRParams(target_K=350, cop=0)
+
+
+# ---------------------------------------------------------------------------
+# Clipping: only the excess, only where it is hot
+# ---------------------------------------------------------------------------
+def test_only_blocks_above_target_are_cooled():
+    p = MRParams(target_K=350.0, h_max=1e6, dt_max_K=1e6)
+    plan, _ = clipping_plan({'hot': 370.0, 'cool': 340.0}, GEOM, p, {'hot': 1.0, 'cool': 1.0})
+    assert 'hot' in plan and 'cool' not in plan
+
+
+def test_clipping_removes_only_the_excess_not_the_whole_load():
+    """20 K over target at 2 K/W of sensitivity => 10 W, regardless of the block's heat load."""
+    p = MRParams(target_K=350.0, h_max=1e6, dt_max_K=1e6)
+    plan, detail = clipping_plan({'hot': 370.0}, GEOM, p, {'hot': 2.0})
+    assert plan['hot'] == pytest.approx(10.0)
+    assert detail['hot']['limit'] == 'need'
+
+
+def test_out_of_die_zero_kelvin_blocks_are_ignored():
+    p = MRParams(target_K=350.0)
+    plan, _ = clipping_plan({'hot': 0.0}, GEOM, p, {'hot': 1.0}, t_floor_K=200.0)
+    assert plan == {}
+
+
+def test_block_without_measured_sensitivity_is_skipped_not_guessed():
+    p = MRParams(target_K=350.0)
+    plan, detail = clipping_plan({'hot': 400.0}, GEOM, p, {})
+    assert plan == {}
+    assert detail['hot']['limit'] == 'no_sensitivity'
+
+
+# ---------------------------------------------------------------------------
+# The envelope actually binds, and says which limit bound it
+# ---------------------------------------------------------------------------
+def test_cooling_density_ceiling_binds_and_is_reported():
+    p = MRParams(target_K=350.0, h_max=10.0, dt_max_K=1e6)   # 10 W/mm^2 * 0.02 mm^2 = 0.2 W
+    plan, detail = clipping_plan({'hot': 500.0}, GEOM, p, {'hot': 1.0})
+    assert plan['hot'] == pytest.approx(0.2)
+    assert detail['hot']['limit'] == 'h_max'
+
+
+def test_temperature_lift_ceiling_binds_and_is_reported():
+    p = MRParams(target_K=350.0, h_max=1e6, dt_max_K=10.0)
+    plan, detail = clipping_plan({'hot': 500.0}, GEOM, p, {'hot': 2.0})
+    assert plan['hot'] == pytest.approx(5.0)          # dt_max / sensitivity
+    assert detail['hot']['limit'] == 'dt_max'
+    assert detail['hot']['achievable_dT_K'] == pytest.approx(10.0)
+
+
+def test_spot_limited_blocks_are_flagged_not_silently_cooled():
+    """Most units are narrower than the ~100 um targeting limit; that must be visible."""
+    p = MRParams(target_K=350.0, h_max=1e6, dt_max_K=1e6, spot_min_um=100.0)
+    _, detail = clipping_plan({'hot': 370.0, 'small': 370.0}, GEOM, p,
+                              {'hot': 1.0, 'small': 1.0})
+    assert detail['small']['spot_limited'] is True
+    assert detail['hot']['spot_limited'] is False
+
+
+def test_budget_goes_to_the_hottest_block_first():
+    p = MRParams(target_K=350.0, h_max=1e6, dt_max_K=1e6, max_total_W=3.0)
+    temps = {'hot': 400.0, 'cool': 360.0}     # excesses 50 K and 10 K
+    geom = {'hot': GEOM['hot'], 'cool': GEOM['cool']}
+    plan, detail = clipping_plan(temps, geom, p, {'hot': 1.0, 'cool': 1.0})
+    assert sum(plan.values()) == pytest.approx(3.0)
+    assert plan['hot'] == pytest.approx(3.0)   # hottest takes the whole budget
+    assert plan.get('cool', 0.0) == pytest.approx(0.0)
+    assert detail['cool']['limit'] in ('budget', 'budget_exhausted')
+
+
+# ---------------------------------------------------------------------------
+# Injection as negative sources
+# ---------------------------------------------------------------------------
+def _name_map(u):
+    return u.split('/')[0]
+
+
+def test_cooling_is_applied_as_negative_power_at_every_timestep():
+    tr = BasicPowerTrace({'hot/a': [1.0, 1.0, 1.0], 'cool/a': [2.0, 2.0, 2.0]}, 1.0)
+    out = apply_cooling_to_trace(tr, {'hot': 0.4}, _name_map)
+    assert out['hot/a'] == pytest.approx([0.6, 0.6, 0.6])
+    assert out['cool/a'] == pytest.approx([2.0, 2.0, 2.0])
+
+
+def test_cooling_can_drive_a_block_negative():
+    """Validated against real 3D-ICE: negative sources are accepted and cool locally."""
+    tr = BasicPowerTrace({'hot/a': [0.3]}, 1.0)
+    out = apply_cooling_to_trace(tr, {'hot': 0.5}, _name_map)
+    assert out['hot/a'][0] == pytest.approx(-0.2)
+
+
+def test_removal_is_split_across_units_sharing_a_block_by_power():
+    tr = BasicPowerTrace({'hot/a': [3.0], 'hot/b': [1.0]}, 1.0)
+    out = apply_cooling_to_trace(tr, {'hot': 0.8}, _name_map)
+    assert out['hot/a'][0] == pytest.approx(3.0 - 0.6)
+    assert out['hot/b'][0] == pytest.approx(1.0 - 0.2)
+
+
+def test_equal_split_when_block_has_no_power():
+    tr = BasicPowerTrace({'hot/a': [0.0], 'hot/b': [0.0]}, 1.0)
+    out = apply_cooling_to_trace(tr, {'hot': 1.0}, _name_map)
+    assert out['hot/a'][0] == pytest.approx(-0.5)
+    assert out['hot/b'][0] == pytest.approx(-0.5)
+
+
+# ---------------------------------------------------------------------------
+# Cost accounting
+# ---------------------------------------------------------------------------
+def test_gross_electrical_cost_is_heat_over_cop():
+    p = MRParams(target_K=350.0, cop=0.1, recover=False)
+    acc = mr_accounting({'hot': 2.0}, p, compute_power_W=100.0)
+    assert acc['heat_removed_W'] == pytest.approx(2.0)
+    assert acc['electrical_gross_W'] == pytest.approx(20.0)   # COP 0.1 => 10x
+    assert acc['electrical_power_W'] == pytest.approx(20.0)   # no recovery => net == gross
+    assert acc['total_power_W'] == pytest.approx(120.0)
+
+
+def test_better_cop_costs_less():
+    plan = {'hot': 2.0}
+    assert (mr_accounting(plan, MRParams(350.0, cop=0.3))['electrical_power_W'] <
+            mr_accounting(plan, MRParams(350.0, cop=0.1))['electrical_power_W'])
+
+
+# ---------------------------------------------------------------------------
+# LPC power recovery
+# ---------------------------------------------------------------------------
+def test_lpc_recovery_follows_the_energy_balance():
+    """P_opt_out = P_opt_in + Q exactly; recovery is collection * lpc_eff of that."""
+    p = MRParams(350.0, cop=0.2, laser_wallplug=0.5, lpc_efficiency=0.75,
+                 collection_efficiency=0.9)
+    acc = mr_accounting({'hot': 1.0}, p)
+    assert acc['electrical_gross_W'] == pytest.approx(5.0)        # 1 W / 0.2
+    assert acc['optical_in_W'] == pytest.approx(2.5)              # 50% wall-plug
+    assert acc['optical_to_lpc_W'] == pytest.approx(3.5)          # 2.5 optical + 1.0 heat
+    assert acc['recovered_W'] == pytest.approx(0.9 * 0.75 * 3.5)  # 2.3625
+    assert acc['electrical_power_W'] == pytest.approx(5.0 - 2.3625)
+
+
+def test_recovery_roughly_doubles_the_effective_cop():
+    p = MRParams(350.0, cop=0.2, laser_wallplug=0.5, lpc_efficiency=0.75,
+                 collection_efficiency=0.9)
+    acc = mr_accounting({'hot': 1.0}, p)
+    assert acc['effective_cop'] > 1.8 * p.cop
+    assert acc['recovery_fraction'] == pytest.approx(2.3625 / 5.0)
+
+
+def test_better_lpc_cells_lower_the_net_cost():
+    plan = {'hot': 1.0}
+    lo = mr_accounting(plan, MRParams(350.0, cop=0.2, lpc_efficiency=0.75))
+    hi = mr_accounting(plan, MRParams(350.0, cop=0.2, lpc_efficiency=0.90))
+    assert hi['electrical_power_W'] < lo['electrical_power_W']
+    assert hi['effective_cop'] > lo['effective_cop']
+
+
+def test_recovery_can_be_disabled_for_comparison():
+    plan = {'hot': 1.0}
+    with_rec = mr_accounting(plan, MRParams(350.0, cop=0.2))
+    without = mr_accounting(plan, MRParams(350.0, cop=0.2, recover=False))
+    assert without['recovered_W'] == 0.0
+    assert without['electrical_power_W'] > with_rec['electrical_power_W']
+
+
+def test_net_generating_is_a_reported_regime_not_an_error():
+    """Above breakeven the loop returns more than it draws. That is a TARGET regime
+    (spreadsheet MVP-3 sits there), so it must be reported plainly, not flagged."""
+    p = MRParams(350.0, eta_asf=0.62, laser_wallplug=0.85, lpc_efficiency=0.92)
+    acc = mr_accounting({'hot': 1.0}, p)
+    assert acc['breakeven_ratio'] > 1.0
+    assert acc['self_sustaining'] is True
+    assert acc['net_generating'] is True
+    assert acc['electrical_power_W'] < 0
+    # ...and it must still conserve energy.
+    assert acc['first_law_ok'] is True
+
+
+def test_first_law_holds_across_the_whole_efficiency_range():
+    """The real bug detector: recovered power can never exceed pump-in plus heat-in."""
+    for wp in (0.3, 0.7, 1.0):
+        for lpc in (0.5, 0.9, 1.0):
+            for asf in (0.05, 0.2, 0.62, 1.0):
+                acc = mr_accounting({'hot': 1.0}, MRParams(
+                    350.0, eta_asf=asf, laser_wallplug=wp, lpc_efficiency=lpc))
+                assert acc['first_law_ok'] is True, (wp, lpc, asf)
+                assert acc['recovered_W'] <= acc['electrical_gross_W'] + 1.0 + 1e-9
+
+
+def test_breakeven_threshold_is_set_by_the_extractor():
+    """At eta_laser 0.70 / eta_LPC 0.90, breakeven needs eta_ASF >= ~0.587."""
+    below = MRParams(350.0, eta_asf=0.55, laser_wallplug=0.70, lpc_efficiency=0.90)
+    above = MRParams(350.0, eta_asf=0.62, laser_wallplug=0.70, lpc_efficiency=0.90)
+    assert below.breakeven_ratio < 1.0 < above.breakeven_ratio
+
+
+def test_optical_asf_is_not_the_electrical_cop():
+    """20 % ASF at 70 % wall-plug is COP 0.14 -- conflating them overstates the cooler."""
+    p = MRParams(350.0, eta_asf=0.20, laser_wallplug=0.70)
+    assert p.cop == pytest.approx(0.14)
+
+
+@pytest.mark.parametrize('name,wp,lpc,asf,p_laser,expected_used', [
+    ('MVP-1', 0.74, 0.80, 0.100, 1360.0, 474.368),
+    ('MVP-2', 0.80, 0.87, 0.437, 290.0, -0.04408),
+    ('MVP-3', 0.85, 0.92, 0.620, 190.0, -50.6996),
+])
+def test_reproduces_mxl_photonic_cooling_spreadsheet(name, wp, lpc, asf, p_laser, expected_used):
+    """Regression against docs/MXL-Photonic-Cooling-Power-Analysis.xlsx (MVP cases)."""
+    p = MRParams(350.0, eta_asf=asf, laser_wallplug=wp, lpc_efficiency=lpc)
+    q = asf * wp * p_laser                     # heat the sheet's P_laser corresponds to
+    acc = mr_accounting({'hot': q}, p)
+    assert acc['electrical_gross_W'] == pytest.approx(p_laser, rel=1e-9)
+    assert acc['electrical_power_W'] == pytest.approx(expected_used, abs=1e-3)
+
+
+def test_efficiencies_must_be_physical():
+    for kw in ({'laser_wallplug': 1.2}, {'lpc_efficiency': -0.1},
+               {'collection_efficiency': 2.0}, {'eta_asf': 1.5}):
+        with pytest.raises(ValueError):
+            MRParams(350.0, **kw)
+
+
+# ---------------------------------------------------------------------------
+# Measured sensitivity
+# ---------------------------------------------------------------------------
+def test_sensitivity_is_measured_from_the_observed_response():
+    s = estimate_sensitivity({'hot': 380.0}, {'hot': 370.0}, {'hot': 2.0})
+    assert s['hot'] == pytest.approx(5.0)      # 10 K per 2 W
+
+
+def test_non_positive_sensitivity_is_discarded():
+    """A block that warmed despite cooling must not become a negative gain."""
+    assert estimate_sensitivity({'hot': 370.0}, {'hot': 380.0}, {'hot': 2.0}) == {}
+
+
+# ---------------------------------------------------------------------------
+# The loop
+# ---------------------------------------------------------------------------
+def test_clipping_loop_converges_against_a_linear_mock_solver():
+    """Mock: each block cools 4 K per watt removed, so the loop should find the right plan."""
+    base = {'hot': 380.0, 'cool': 340.0}
+    geom = {'hot': GEOM['hot'], 'cool': GEOM['cool']}
+    trace = BasicPowerTrace({'hot/a': [5.0], 'cool/a': [5.0]}, 1.0)
+
+    def solver(tr):
+        removed = {b: 0.0 for b in base}
+        for u, series in tr.powers.items():
+            b = _name_map(u)
+            removed[b] += 5.0 - float(np.sum(series))
+        return {b: np.array([base[b] - 4.0 * removed[b]]) for b in base}
+
+    p = MRParams(target_K=350.0, h_max=1e6, dt_max_K=1e6, cop=0.1)
+    res = run_mr_clipping(trace, solver, geom, p, _name_map, max_iter=12, tol_K=0.5, relax=1.0)
+    assert res['converged'] is True
+    assert res['plan']['hot'] == pytest.approx(30.0 / 4.0, rel=0.15)
+    assert 'cool' not in res['plan']
+
+
+def test_loop_reports_failure_when_envelope_is_too_small():
+    """Not converging is a real result -- the envelope cannot clip this workload."""
+    base = {'hot': 500.0}
+    trace = BasicPowerTrace({'hot/a': [5.0]}, 1.0)
+
+    def solver(tr):
+        removed = 5.0 - float(np.sum(tr.powers['hot/a']))
+        return {'hot': np.array([base['hot'] - 4.0 * removed])}
+
+    p = MRParams(target_K=350.0, h_max=0.5, dt_max_K=1e6)   # 0.5*0.02 = 0.01 W ceiling
+    res = run_mr_clipping(trace, solver, {'hot': GEOM['hot']}, p, _name_map,
+                          max_iter=3, tol_K=0.5)
+    assert res['converged'] is False
+    assert res['accounting']['heat_removed_W'] > 0

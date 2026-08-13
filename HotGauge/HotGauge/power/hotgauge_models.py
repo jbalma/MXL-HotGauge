@@ -4,7 +4,8 @@ LOGGER = logging.getLogger(__name__)
 import numpy as np
 
 from HotGauge.utils import Floorplan
-from HotGauge.configuration.power_model import DRAM_IMC_UNITS, DRAM_IO_UNITS, NO_POWER_UNITS, \
+from HotGauge.configuration.power_model import DRAM_IMC_UNITS, DRAM_IO_UNITS, \
+    NO_POWER_UNITS, is_no_power_unit, \
                                                DRAM_IMC_POWER, DRAM_IO_POWER, \
                                                get_IO_SoC_powers, IMC_REGEX
 
@@ -16,7 +17,7 @@ def get_IMC_IO_area(floorplan):
         elif el.name in DRAM_IO_UNITS:
             total_IO_area += el.area
         # Skip no power units
-        elif el.name in NO_POWER_UNITS:
+        elif is_no_power_unit(el.name):
             continue
         # Make sure the unit isn't an IMC
         elif IMC_REGEX.match(el.name):
@@ -61,7 +62,7 @@ def add_extra_DICE_units(trace, floorplan, tech_node):
         elif el.name in DRAM_IO_UNITS:
             trace[el.name] = total_IO_power * el.area / total_IO_area * unit_power_trace
         # Add the units that are missing power models =(
-        elif el.name in NO_POWER_UNITS:
+        elif is_no_power_unit(el.name):
              trace[el.name] = zero_power_trace.copy()
         elif el.name in IO_SoC_power_splits:
             trace[el.name] = unit_power_trace * IO_SoC_power_splits[el.name]

@@ -350,7 +350,11 @@ PROBLEM_UNITS = [('RF', [iRF, fpRF]),
                  ('RATS', [fpRAT,iRAT])]
 PROBLEM_FLP_UNITS = []
 for group, units in PROBLEM_UNITS:
-    flp_units = list(map(mcpat_to_flp_name, units))
+    # mcpat_to_flp_name requires a "CoreN/" prefix (CORE_COMPONENT_RGX); passing the bare
+    # hierarchy path raises NoSuchMCPATUnitError at import time, which made this whole module
+    # unimportable. The core index is irrelevant here -- include_core_idx defaults to False,
+    # so the result is the same unit label either way.
+    flp_units = list(map(lambda u: mcpat_to_flp_name('Core0/' + u), units))
     PROBLEM_FLP_UNITS.append((group, flp_units))
 
 def main():

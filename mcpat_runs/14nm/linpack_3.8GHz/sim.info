@@ -1,0 +1,51 @@
+{'cmdline': ['./snipersim/run-sniper',
+             '-n',
+             '8',
+             '-c',
+             '/mnt/nfs01/scratch/jbalma/MXL-HotGauge/examples/skylake_14nm.cfg',
+             '-s',
+             'energystats:200000',
+             '--sde-arch=tgl',
+             '-s',
+             'stop-by-icount:100000000',
+             '-d',
+             '/mnt/nfs01/scratch/jbalma/MXL-HotGauge/mcpat_runs/14nm/linpack_3.8GHz',
+             '--',
+             '/mnt/nfs01/scratch/jbalma/MXL-HotGauge/examples/linpack'],
+ 'git_revision': '9ccff919e7ed862cbcc7f9eed9da2377d38270b2',
+ 'host': 'phonon',
+ 'pin_version': 'unknown',
+ 'rusage': None,
+ 'snipercmd': ['bash',
+               '-c',
+               '/mnt/nfs01/scratch/jbalma/MXL-HotGauge/snipersim/lib/sniper -c '
+               '/mnt/nfs01/scratch/jbalma/MXL-HotGauge/snipersim/config/base.cfg '
+               '--general/total_cores=8 '
+               '--general/output_dir=/mnt/nfs01/scratch/jbalma/MXL-HotGauge/mcpat_runs/14nm/linpack_3.8GHz '
+               '--config=/mnt/nfs01/scratch/jbalma/MXL-HotGauge/examples/skylake_14nm.cfg '
+               '-g --traceinput/stop_with_first_app=true -g '
+               '--traceinput/restart_apps=false -g --hooks/numscripts=1 -g '
+               '--hooks/script0name=/mnt/nfs01/scratch/jbalma/MXL-HotGauge/mcpat_runs/14nm/linpack_3.8GHz/sim.scripts.py '
+               '-g --hooks/script0args= -g '
+               '--traceinput/stop_with_first_app=false -g '
+               '--traceinput/enabled=true -g '
+               '--traceinput/emulate_syscalls=true -g --traceinput/num_apps=1 '
+               '-g --traceinput/trace_prefix=/tmp/tmpn43n5634/run_benchmarks'],
+ 't_elapsed': 1245.006840467453,
+ 't_start': 1785450922.1928654,
+ 'tracecmds': [['/mnt/nfs01/scratch/jbalma/MXL-HotGauge/snipersim/record-trace',
+                '-o',
+                '/tmp/tmpn43n5634/run_benchmarks',
+                '--sde-arch=tgl',
+                '-e',
+                '1',
+                '-s',
+                '0',
+                '-r',
+                '1',
+                '--follow',
+                '--routine-tracing',
+                '--',
+                '/mnt/nfs01/scratch/jbalma/MXL-HotGauge/examples/linpack']],
+ 'user': 'jbalma',
+ 'vmem': 2123583488}

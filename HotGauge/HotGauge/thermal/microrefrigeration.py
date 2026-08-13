@@ -1,0 +1,410 @@
+"""Goal 3: photonic microrefrigeration (MR) as targeted heat removal in the HotGauge pipeline.
+
+The model
+---------
+MR is injected as **negative power sources** at floorplan blocks. This is validated behaviour,
+not an assumption: removing 0.5 W at ``cALU_0`` in a 35 W steady solve drops that block 10.7 K,
+cools its neighbours (``RBB_0`` by 9.5 K), and leaves distant blocks essentially untouched.
+
+**Thermal clipping, not bulk cooling.** MR removes only the heat needed to pull a block down to
+a temperature target -- the *excess* -- rather than its whole heat load. That is what makes a
+poor cooler COP acceptable: you pay to move a small amount of heat from exactly the place that
+limits the clock. Two measured facts make the case:
+
+* McPAT leakage is nearly flat below ~340 K and explodes above ~350 K (see
+  ``examples/calibrate_leakage_model.py``), so cooling a cool block buys almost nothing while
+  clipping a hot one buys a great deal.
+* A core runs at one clock, set by its **hottest** block, so removing one hotspot lifts the
+  frequency of the whole core.
+
+Operating envelope (docs/Microrefrigeration_v1.pdf)
+--------------------------------------------------
+The MR stage is not unlimited. Defaults encode the documented envelope:
+
+* cooling power density ``H`` ~1-10 W/mm^2 -- a block's removal is capped at ``H_max * area``
+* temperature lift ``dT`` <~ 10 K
+* spatial targeting <~100 um -- blocks narrower than this cannot be addressed individually; a
+  spot cools a neighbourhood, which ``spot_limited`` flags rather than silently ignoring
+* ``COP`` -- electrical cost is ``Q_removed / COP``. The working assumption is **0.2 (20 %
+  efficiency)**, i.e. 5 W electrical per watt of heat removed; the literature range for
+  thin-film uTEC practical COP is ~0.1-0.3. MR only wins because ``Q_removed`` is small and
+  buys a disproportionate frequency gain; it is trivially a net loss if used as a bulk cooler.
+
+Sensitivity is measured, not assumed
+------------------------------------
+Converting "this block is 20 K too hot" into "remove q watts" needs dT/dq [K/W] per block.
+That is NOT derivable from the block's own thermal resistance -- lateral spreading dominates.
+For ``cALU_0`` the naive R_die estimate gives 153 K for 0.5 W; the measured response is 10.7 K,
+15x smaller. So ``run_mr_clipping`` measures the sensitivity by secant update across iterations
+and never trusts an analytical value.
+"""
+
+import logging
+
+import numpy as np
+
+LOGGER = logging.getLogger(__name__)
+
+#: Documented MR envelope
+DEFAULT_H_MAX_W_PER_MM2 = 10.0
+DEFAULT_DT_MAX_K = 10.0
+#: Laser wall-plug efficiency (electrical -> optical pump). Maxwell Labs working assumption.
+DEFAULT_LASER_WALLPLUG = 0.70
+#: Laser power converter (LPC) cell efficiency, optical -> DC. Working assumption.
+DEFAULT_LPC_EFFICIENCY = 0.90
+#: Anti-Stokes fluorescence (ASF) / extractor efficiency: heat removed per watt of *optical*
+#: pump delivered. Working assumption 0.20. NOTE this is an OPTICAL efficiency -- the
+#: electrical COP is eta_asf * eta_laser, so 0.20 ASF at 70 % wall-plug is COP 0.14.
+DEFAULT_ETA_ASF = 0.20
+#: Optical-path collection loss between the cooling element and the LPC. 1.0 reproduces the
+#: MXL-Photonic-Cooling-Power-Analysis.xlsx model exactly (it assumes perfect routing).
+DEFAULT_COLLECTION_EFFICIENCY = 1.0
+DEFAULT_SPOT_MIN_UM = 100.0
+#: Maxwell Labs working assumption (2026-08-11): 20% MR efficiency, i.e. 5 W electrical per
+#: watt of heat removed. The literature range for thin-film uTEC practical COP is ~0.1-0.3.
+DEFAULT_COP = 0.2
+
+
+class MRParams(object):
+    """Microrefrigeration stage capability and cost.
+
+    target_K       : temperature the clipper pulls hot blocks down to.
+    h_max          : max cooling power density [W/mm^2] the stage can deliver.
+    dt_max_K       : max temperature lift the stage can sustain.
+    cop            : coefficient of performance; electrical cost = Q_removed / cop.
+    spot_min_um    : spatial targeting limit; narrower blocks are flagged ``spot_limited``.
+    max_total_W    : optional cap on total heat removed (a laser power budget).
+    """
+
+    def __init__(self, target_K, h_max=DEFAULT_H_MAX_W_PER_MM2, dt_max_K=DEFAULT_DT_MAX_K,
+                 eta_asf=DEFAULT_ETA_ASF, spot_min_um=DEFAULT_SPOT_MIN_UM, max_total_W=None,
+                 laser_wallplug=DEFAULT_LASER_WALLPLUG, lpc_efficiency=DEFAULT_LPC_EFFICIENCY,
+                 collection_efficiency=DEFAULT_COLLECTION_EFFICIENCY, recover=True, cop=None):
+        if target_K <= 0:
+            raise ValueError('target_K must be > 0')
+        if h_max <= 0:
+            raise ValueError('h_max must be > 0')
+        for name, val in (('laser_wallplug', laser_wallplug),
+                          ('lpc_efficiency', lpc_efficiency),
+                          ('collection_efficiency', collection_efficiency),
+                          ('eta_asf', eta_asf)):
+            if not 0.0 <= val <= 1.0:
+                raise ValueError('{} must be in [0, 1], got {!r}'.format(name, val))
+        self.target_K = float(target_K)
+        self.h_max = float(h_max)
+        self.dt_max_K = float(dt_max_K)
+        self.spot_min_um = float(spot_min_um)
+        self.max_total_W = None if max_total_W is None else float(max_total_W)
+        self.laser_wallplug = float(laser_wallplug)
+        self.lpc_efficiency = float(lpc_efficiency)
+        self.collection_efficiency = float(collection_efficiency)
+        self.recover = bool(recover)
+        if cop is not None:
+            # Back-compat: an explicit electrical COP pins eta_asf = cop / eta_laser.
+            if cop <= 0:
+                raise ValueError('cop must be > 0')
+            if self.laser_wallplug <= 0:
+                raise ValueError('cannot derive eta_asf from cop with zero wall-plug')
+            self.eta_asf = float(cop) / self.laser_wallplug
+        else:
+            self.eta_asf = float(eta_asf)
+
+    @property
+    def cop(self):
+        """Electrical COP = heat removed per watt of electrical draw, BEFORE recovery.
+
+        The spreadsheet parameterises the cooler by its *optical* efficiency ``eta_asf``
+        (heat removed per watt of optical pump), so the electrical figure is
+        ``eta_asf * eta_laser``: 20 % ASF at 70 % wall-plug is an electrical COP of 0.14,
+        not 0.20. Keeping these distinct matters -- conflating them overstates the cooler
+        by 1/eta_laser.
+        """
+        return self.eta_asf * self.laser_wallplug
+
+    @property
+    def breakeven_ratio(self):
+        """``eta_LPC * (1 + eta_ASF) * eta_laser`` -- recovered power per watt drawn.
+
+        This is the master design number from MXL-Photonic-Cooling-Power-Analysis.xlsx:
+
+        * ``< 1`` -- MR costs net electrical power (the usual regime)
+        * ``= 1`` -- self-sustaining: recovery exactly pays for the pump
+        * ``> 1`` -- net-generating: the loop returns more electrical power than it draws,
+          with the extracted chip heat as the additional energy source
+
+        Collection loss multiplies it. With eta_LPC 0.90 and eta_laser 0.70, breakeven needs
+        ``eta_ASF >= 0.587`` -- i.e. **the extractor, not the LPC, is the binding constraint**.
+        """
+        return (self.lpc_efficiency * self.collection_efficiency
+                * (1.0 + self.eta_asf) * self.laser_wallplug)
+
+    def __repr__(self):
+        rec = ('eta_LPC={:.2f}, eta_ASF={:.2f}, eta_laser={:.2f} -> breakeven ratio {:.3f}'
+               .format(self.lpc_efficiency, self.eta_asf, self.laser_wallplug,
+                       self.breakeven_ratio)
+               if self.recover else 'no recovery (eta_ASF={:.2f})'.format(self.eta_asf))
+        return ('MRParams(target={:.1f} K, H<={:.1f} W/mm^2, dT<={:.1f} K, COP_elec={:.3f}, '
+                'spot>={:.0f} um, {}{})'.format(
+                    self.target_K, self.h_max, self.dt_max_K, self.cop, self.spot_min_um, rec,
+                    '' if self.max_total_W is None else
+                    ', budget<={:.2f} W'.format(self.max_total_W)))
+
+
+def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floor_K=200.0):
+    """Heat to remove per block [W] to clip everything above ``params.target_K``.
+
+    block_temps_K       : {block: T_K}
+    block_geom          : {block: {'area_mm2': .., 'min_dim_um': ..}}
+    sensitivity_K_per_W : {block: dT/dq} -- how much this block cools per watt removed.
+                          Measured, never assumed (see module docstring).
+
+    Each block's removal is the smallest of what the excess needs and what the stage can do:
+
+        q_need = (T - target) / sensitivity        (what would clip it)
+        q_H    = h_max * area                      (cooling-density ceiling)
+        q_dT   = dt_max / sensitivity              (temperature-lift ceiling)
+
+    Returns ``(plan, detail)`` where plan is ``{block: q_W}`` (positive = heat removed) and
+    detail records, per block, which limit bound it -- so a disappointing result can be traced
+    to the physical constraint responsible rather than guessed at.
+    """
+    plan, detail = {}, {}
+    for blk, T in block_temps_K.items():
+        T = float(np.ravel(T)[-1]) if np.ndim(T) else float(T)
+        if T <= t_floor_K or T <= params.target_K:
+            continue
+        geom = block_geom.get(blk)
+        if geom is None:
+            continue
+        s = float(sensitivity_K_per_W.get(blk, 0.0))
+        if s <= 0:
+            # Without a positive measured sensitivity we cannot size the removal; skipping is
+            # the honest choice (removing a guessed amount would be untraceable).
+            detail[blk] = {'limit': 'no_sensitivity', 'q_W': 0.0, 'excess_K': T - params.target_K}
+            continue
+        excess = T - params.target_K
+        q_need = excess / s
+        q_H = params.h_max * geom['area_mm2']
+        q_dT = params.dt_max_K / s
+        q = min(q_need, q_H, q_dT)
+        limit = ('need' if q == q_need else ('h_max' if q == q_H else 'dt_max'))
+        if q <= 0:
+            continue
+        plan[blk] = q
+        detail[blk] = {'limit': limit, 'q_W': q, 'excess_K': excess,
+                       'q_need_W': q_need, 'q_h_max_W': q_H, 'q_dt_max_W': q_dT,
+                       'spot_limited': geom['min_dim_um'] < params.spot_min_um,
+                       'achievable_dT_K': q * s}
+
+    # A laser budget is spent on the blocks with the largest excess first: the hottest block
+    # sets the clock, so the marginal watt is worth most there.
+    if params.max_total_W is not None and plan:
+        total = sum(plan.values())
+        if total > params.max_total_W:
+            order = sorted(plan, key=lambda b: -detail[b]['excess_K'])
+            remaining, trimmed = params.max_total_W, {}
+            for blk in order:
+                if remaining <= 0:
+                    detail[blk]['limit'] = 'budget_exhausted'
+                    detail[blk]['q_W'] = 0.0
+                    continue
+                take = min(plan[blk], remaining)
+                trimmed[blk] = take
+                remaining -= take
+                if take < plan[blk]:
+                    detail[blk]['limit'] = 'budget'
+                    detail[blk]['q_W'] = take
+            plan = trimmed
+    return plan, detail
+
+
+def apply_cooling_to_trace(trace, plan, name_map):
+    """Return a new trace with MR heat removal applied as negative power at mapped units.
+
+    ``plan`` is keyed by floorplan block; the power trace is keyed by McPAT unit, so
+    ``name_map`` bridges them. If several McPAT units map to one block, the removal is split
+    between them in proportion to their power -- removing it all from one would distort the
+    within-block distribution that 3D-ICE sees.
+    """
+    from HotGauge.power.traces import BasicPowerTrace
+
+    by_block = {}
+    for unit in trace.powers:
+        blk = name_map(unit)
+        if blk in plan:
+            by_block.setdefault(blk, []).append(unit)
+
+    powers = {u: np.array(v, dtype=float).copy() for u, v in trace.powers.items()}
+    for blk, units in by_block.items():
+        weights = np.array([max(float(np.sum(powers[u])), 0.0) for u in units], dtype=float)
+        total = weights.sum()
+        share = (weights / total) if total > 0 else np.full(len(units), 1.0 / len(units))
+        for u, frac in zip(units, share):
+            # plan is a steady removal rate in W, so it applies at every timestep.
+            powers[u] = powers[u] - plan[blk] * frac
+    return BasicPowerTrace(powers, trace.time_step)
+
+
+def mr_accounting(plan, params, compute_power_W=None):
+    """Laser power, LPC recovery, and net cost -- the MXL-Photonic-Cooling-Power-Analysis model.
+
+    Implements the spreadsheet's formulation exactly (validated against its MVP-1/2/3 cases)::
+
+        P_laser    = Q / (eta_ASF * eta_laser)                  electrical draw
+        P_removed  = eta_ASF * eta_laser * P_laser              = Q, by construction
+        P_recovered= eta_LPC * collection * (1 + eta_ASF) * eta_laser * P_laser
+        P_used     = P_laser - P_recovered = (1 - breakeven_ratio) * P_laser
+
+    The ``(1 + eta_ASF)`` term is the physics that makes this interesting: the light reaching
+    the LPC is the pump *plus* the heat that was up-converted into it, so the recoverable
+    optical power exceeds what the laser emitted.
+
+    **Net-generating operation is a regime, not an error.** When
+    ``breakeven_ratio = eta_LPC * collection * (1 + eta_ASF) * eta_laser`` exceeds 1, the loop
+    returns more electrical power than it draws and ``P_used`` goes negative -- the extracted
+    chip heat is the additional source. The spreadsheet's own MVP-3 sits there
+    (eta 0.85/0.92/0.62 -> ratio 1.267, P_used = -50.7 W on 190 W of laser), and it is a
+    target regime, so it is reported plainly rather than flagged.
+
+    What *is* checked is the **first law**: energy out must not exceed energy in
+    (``P_recovered <= P_laser + Q``). That catches genuine bookkeeping bugs without
+    editorialising about which efficiency combinations are achievable -- that judgement belongs
+    to the device model, not here.
+
+    With eta_laser 0.70 / eta_LPC 0.90 / eta_ASF 0.20 the ratio is 0.756, so MR still costs
+    net power; breakeven at that laser and LPC needs eta_ASF >= 0.587, which makes the
+    **extractor the binding constraint**.
+    """
+    q_total = float(sum(plan.values())) if plan else 0.0
+    cop_elec = params.cop
+    gross = (q_total / cop_elec) if cop_elec > 0 else 0.0
+
+    if params.recover:
+        ratio = params.breakeven_ratio
+        recovered = ratio * gross
+        optical_in = params.laser_wallplug * gross
+        optical_out = optical_in + q_total
+    else:
+        ratio = 0.0
+        recovered = optical_in = optical_out = 0.0
+    net = gross - recovered
+
+    # First law: what leaves as recovered electricity cannot exceed pump-in plus heat-in.
+    first_law_ok = recovered <= gross + q_total + 1e-9
+    if not first_law_ok:
+        LOGGER.error(
+            'MR accounting violates energy conservation: recovered %.4f W > laser %.4f W + '
+            'heat %.4f W. Check eta_LPC/collection/eta_laser/eta_ASF.', recovered, gross, q_total)
+
+    out = {'heat_removed_W': q_total, 'cop': cop_elec, 'eta_asf': params.eta_asf,
+           'n_blocks_cooled': len(plan),
+           'electrical_gross_W': gross, 'optical_in_W': optical_in,
+           'optical_to_lpc_W': optical_out, 'recovered_W': recovered,
+           'electrical_power_W': net,
+           'breakeven_ratio': ratio,
+           'net_generating': bool(q_total > 0 and net < 0),
+           'self_sustaining': bool(ratio >= 1.0),
+           'recovery_fraction': (recovered / gross) if gross > 0 else 0.0,
+           'effective_cop': (q_total / net) if net > 0 else float('inf'),
+           'first_law_ok': bool(first_law_ok)}
+    if compute_power_W is not None:
+        out['compute_power_W'] = float(compute_power_W)
+        out['total_power_W'] = float(compute_power_W) + net
+        out['mr_overhead_frac'] = net / float(compute_power_W) if compute_power_W else float('nan')
+    return out
+
+
+def estimate_sensitivity(temps_before_K, temps_after_K, plan, floor=1e-6):
+    """Secant estimate of dT/dq [K/W] per block from one applied cooling step.
+
+    Positive means the block got cooler when heat was removed, which is the physical sign.
+    A non-positive result (block warmed despite cooling, e.g. because leakage feedback moved
+    more than the removal did) is dropped rather than fed back as a negative gain, which would
+    make the controller push heat the wrong way.
+    """
+    out = {}
+    for blk, q in plan.items():
+        if q <= floor:
+            continue
+        t0 = float(np.ravel(temps_before_K.get(blk, np.nan))[-1])
+        t1 = float(np.ravel(temps_after_K.get(blk, np.nan))[-1])
+        if not (np.isfinite(t0) and np.isfinite(t1)):
+            continue
+        s = (t0 - t1) / q
+        if s > 0:
+            out[blk] = s
+    return out
+
+
+def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
+                    initial_sensitivity=None, max_iter=6, tol_K=1.0, relax=0.7,
+                    t_floor_K=200.0):
+    """Iterate MR cooling against the thermal solver until hot blocks reach the target.
+
+    Structurally the same fixed point as the leakage loop: the plan changes the temperatures,
+    which change the plan. Sensitivities start from ``initial_sensitivity`` (or a small
+    positive seed) and are refined by secant update each iteration, so the controller learns
+    the real dT/dq including lateral spreading instead of assuming it.
+
+    Returns a dict with the final plan, temperature trace, accounting, per-iteration history
+    and a ``converged`` flag. Not converging is a real answer -- it means the envelope cannot
+    clip this workload -- so it is reported, not raised.
+    """
+    sens = dict(initial_sensitivity or {})
+
+    # The plan is always recomputed against the UNCOOLED baseline using the latest measured
+    # sensitivity. Planning against the already-cooled temperatures instead would let a first
+    # overshoot stand forever: the loop would see nothing above target, declare success, and
+    # report a laser budget several times larger than needed. Overspending must be corrected,
+    # not just under-spending.
+    base_temps = thermal_solve_fn(trace)
+    base_hot = {b: float(np.ravel(t)[-1]) for b, t in base_temps.items()
+                if float(np.ravel(t)[-1]) > max(t_floor_K, params.target_K)}
+    history = []
+
+    if not base_hot:
+        return {'plan': {}, 'detail': {}, 'temp_trace': base_temps, 'sensitivity': sens,
+                'converged': True, 'iterations': 0, 'history': history,
+                'accounting': mr_accounting({}, params),
+                'reason': 'nothing above target; no cooling needed'}
+
+    for b in base_hot:
+        sens.setdefault(b, 1.0)
+
+    plan, detail, temps = {}, {}, base_temps
+    for it in range(max_iter):
+        new_plan, detail = clipping_plan(base_hot, block_geom, params, sens,
+                                         t_floor_K=t_floor_K)
+        if not new_plan:
+            return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+                    'converged': False, 'iterations': it, 'history': history,
+                    'accounting': mr_accounting(plan, params),
+                    'reason': 'envelope allows no further cooling'}
+
+        blended = ({b: relax * new_plan[b] + (1 - relax) * plan.get(b, 0.0) for b in new_plan}
+                   if plan else dict(new_plan))
+        cooled_trace = apply_cooling_to_trace(trace, blended, name_map)
+        temps = thermal_solve_fn(cooled_trace)
+
+        # Refine dT/dq against the baseline, which is what the plan is sized from.
+        sens.update(estimate_sensitivity(base_temps, temps, blended))
+
+        peak = max((float(np.ravel(t)[-1]) for t in temps.values()
+                    if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+        delta_plan = max((abs(blended[b] - plan.get(b, 0.0)) for b in blended), default=0.0)
+        total = float(sum(blended.values()))
+        history.append({'iter': it, 'peak_K': peak, 'heat_removed_W': total,
+                        'max_plan_change_W': delta_plan})
+        plan = blended
+
+        # Converged when the plan has stopped moving AND the peak is at target (within tol).
+        # Requiring both is what distinguishes "clipped efficiently" from "overcooled".
+        if delta_plan <= max(1e-3, 0.01 * total) and abs(peak - params.target_K) <= tol_K:
+            return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+                    'converged': True, 'iterations': it + 1, 'history': history,
+                    'accounting': mr_accounting(plan, params)}
+
+    return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+            'converged': False, 'iterations': max_iter, 'history': history,
+            'accounting': mr_accounting(plan, params),
+            'reason': 'max_iter reached'}

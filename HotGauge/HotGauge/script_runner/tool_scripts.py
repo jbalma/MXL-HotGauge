@@ -24,9 +24,14 @@ def pipe_args_to_cmd_stdin(cmd_array, stdin_arr=[], stdin_delim="\n"):
 
 def terminal_size():
     import fcntl, termios, struct
-    th, tw, hp, wp = struct.unpack('HHHH',
-                                   fcntl.ioctl(0, termios.TIOCGWINSZ,
-                                   struct.pack('HHHH', 0, 0, 0, 0)))
+    try:
+        th, tw, hp, wp = struct.unpack('HHHH',
+                                       fcntl.ioctl(0, termios.TIOCGWINSZ,
+                                       struct.pack('HHHH', 0, 0, 0, 0)))
+    except OSError:
+        # No controlling terminal (batch/srun/redirected stdin): fall back to a
+        # default width rather than crashing. Unchanged when a tty is present.
+        return 80, 24
     return tw, th
 
 def run_args_with_cmd_prefix(cmd_prefix, args_list):

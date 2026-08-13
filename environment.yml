@@ -1,0 +1,59 @@
+# MXL-HotGauge conda environment.
+#
+# Everything the build and the Python package need, from conda-forge, so no root is required.
+# The one thing conda cannot supply is the 32-bit glibc runtime McPAT needs (McPAT/mcpat.mk
+# forces -m32); install.sh stages that separately without root. See README.md.
+#
+#   conda env create -f environment.yml     # or: install.sh, which does this for you
+#
+name: mxl_hotgauge
+channels:
+  - conda-forge
+dependencies:
+  # --- interpreter -------------------------------------------------------------------
+  # 3.10 is what the working environment on phonon runs. Sniper's own scripts are older
+  # Python but are invoked as subprocesses, so they do not constrain this.
+  - python=3.10
+
+  # --- build toolchain ---------------------------------------------------------------
+  # Sniper and 3D-ICE are compiled from source. Taking the compilers from conda keeps the
+  # build off the system toolchain, which differs between the head node and the compute
+  # nodes and is the usual source of "works on phonon, fails under srun".
+  - gcc_linux-64
+  - gxx_linux-64
+  - gfortran_linux-64          # SuperLU
+  - make
+  - cmake
+  - pkg-config
+  - bison>=3.0                 # 3D-ICE stack-description grammar
+  - flex>=2.6
+
+  # --- native libraries --------------------------------------------------------------
+  - boost-cpp                  # Sniper
+  - sqlite                     # Sniper
+  - zlib                       # Sniper
+  - bzip2
+  - libopenblas                # 3D-ICE solver backend
+  - pugixml>=1.8               # 3D-ICE heatsink plugin
+
+  # --- runtime tools the pipeline shells out to --------------------------------------
+  - parallel                   # scripts/run_mcpat.py fans out over timesteps with this
+  - tcsh                       # some Sniper helper scripts are csh
+  - wget
+  - unzip
+  - patch
+
+  # --- Python ------------------------------------------------------------------------
+  - numpy=2.2
+  - scipy=1.15
+  - pandas=2.3
+  - matplotlib=3.10
+  - seaborn=0.13
+  - pillow
+  - tqdm
+  - pyyaml
+  - openpyxl                   # reads the fan efficiency spreadsheet in docs/Data_sheets
+  - pytest
+  - pip
+  - pip:
+      - joypy==0.2.6           # not on conda-forge; used by the distribution plots

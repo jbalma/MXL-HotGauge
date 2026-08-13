@@ -118,3 +118,69 @@ examples/*/outputs
 
 # Included simulation tools
 3d-ice/
+
+# =============================================================================
+# MXL-HotGauge additions
+# =============================================================================
+
+# --- Vendored simulators -----------------------------------------------------
+# Fetched by get_and_patch_*.sh, not by cloning. snipersim is 1.6 GB, 3d-ice 457 MB,
+# McPAT 13 MB. Our four hand-edited 3D-ICE sources live in MXL_3DICE_fixes/ instead --
+# see that directory's README before touching the 3d-ice tree.
+McPAT/
+snipersim/
+# (3d-ice/ is already ignored above)
+
+# --- Installer scratch -------------------------------------------------------
+.mxl/
+
+# --- Simulation output -------------------------------------------------------
+# 3D-ICE runs emit hundreds of MB per study. Everything here is regenerable from
+# examples/*.py; total is ~2.3 GB.
+fmu_equilibrium/
+fmu_equilibrium_150s/
+hybrid_opt/
+leakage_feedback_smoketest/
+mr_cliff/
+mr_cliff_25/
+mr_cliff_8core/
+mr_cliff_v2/
+mr_clipping_study/
+mr_clipping_study_55/
+mr_clipping_study_65/
+sink_calibration/
+steady_sink_sweep/
+viability_probe/
+plots/
+results/
+simscale_hpc/
+mr_compare/
+examples/simscale_replication/
+
+# --- Keep source data that the generic rules above would swallow -------------
+# `*.png` is ignored as build output, but these are INPUTS: the fan P-Q and power
+# curves, and the SimScale figures the alpha/beta coefficients were digitised from.
+!docs/**/*.png
+!docs/**/*.svg
+# Likewise `*.flp` is ignored as generated and `examples/*/outputs` excludes the whole
+# directory -- but git cannot re-include a file inside an excluded directory, so the
+# directory has to be un-excluded first. The N-core floorplans take up to an hour each to
+# build and the studies reference them by name, and 3000+ .flp files here are already
+# tracked, so this directory is meant to be under version control.
+!examples/floorplans/outputs/
+!examples/floorplans/outputs/**
+
+# --- Leakage calibration: keep the fit, drop the raw McPAT sweep ------------
+# leakage_calibration.json is an INPUT to every study that loads a calibrated model.
+# The mcpat_T*.xml/txt it was fitted from are regenerable via
+# examples/calibrate_leakage_model.py and add ~2 MB of noise.
+leakage_calibration/*
+!leakage_calibration/leakage_calibration.json
+
+# --- Compiled benchmark binary ----------------------------------------------
+# examples/linpack is a 64-bit ELF built elsewhere; rebuild or fetch it rather than
+# versioning a binary blob.
+examples/linpack
+
+# --- Personal scratch --------------------------------------------------------
+runit.sh

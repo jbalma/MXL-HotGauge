@@ -282,3 +282,50 @@ def test_real_trace_plumbing_uniform_field():
 if __name__ == '__main__':
     import sys
     sys.exit(pytest.main([__file__, '-v']))
+
+# ---------------------------------------------------------------------------
+# Extrapolation above the McPAT ceiling (400 K)
+# ---------------------------------------------------------------------------
+def test_extrapolated_table_is_continuous_at_the_boundary():
+    from HotGauge.power.leakage import LeakageModel
+    T = [330.0, 360.0, 400.0]; rel = [1.0, 3.15, 36.1]
+    m = LeakageModel.from_table_extrapolated(T, rel, activation_eV=0.8)
+    lo = m.scale(400.0, T_ref=330.0); hi = m.scale(400.0001, T_ref=330.0)
+    assert abs(hi - lo) / lo < 1e-4
+
+
+def test_extrapolation_keeps_growing_where_clamping_would_freeze():
+    """The whole point: a clamped table removes the feedback that produces runaway, so a
+    divergent configuration silently 'converges'."""
+    from HotGauge.power.leakage import LeakageModel
+    T = [330.0, 360.0, 400.0]; rel = [1.0, 3.15, 36.1]
+    clamped = LeakageModel.from_table(T, rel)
+    extrap = LeakageModel.from_table_extrapolated(T, rel, activation_eV=0.8)
+    assert clamped.scale(450.0, T_ref=330.0) == pytest.approx(clamped.scale(400.0, T_ref=330.0))
+    assert extrap.scale(450.0, T_ref=330.0) > 3 * extrap.scale(400.0, T_ref=330.0)
+
+
+def test_extrapolation_is_monotonic_and_finite():
+    from HotGauge.power.leakage import LeakageModel
+    T = [330.0, 360.0, 400.0]; rel = [1.0, 3.15, 36.1]
+    m = LeakageModel.from_table_extrapolated(T, rel, activation_eV=0.8)
+    vals = [m.scale(t, T_ref=330.0) for t in (400, 410, 425, 450, 475, 500)]
+    assert all(np.isfinite(v) for v in vals)
+    assert vals == sorted(vals)
+
+
+def test_activation_energy_is_fitted_from_the_hot_end_when_not_given():
+    from HotGauge.power.leakage import LeakageModel
+    T = [310., 330., 350., 370., 380., 390., 400.]
+    rel = [0.923, 1.0, 1.598, 6.041, 9.591, 16.159, 36.099]
+    m = LeakageModel.from_table_extrapolated(T, rel)
+    # physically sensible effective activation energy for subthreshold leakage
+    assert 0.5 < m.activation_eV < 1.3
+    assert m.measured_max_K == pytest.approx(400.0)
+
+
+def test_extrapolated_rejects_bad_activation_energy():
+    from HotGauge.power.leakage import LeakageModel
+    with pytest.raises(ValueError):
+        LeakageModel.from_table_extrapolated([330., 400.], [1.0, 36.1], activation_eV=-1)
+

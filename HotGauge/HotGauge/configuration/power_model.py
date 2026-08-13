@@ -12,7 +12,25 @@ MISSING_POWER_INFO = {'Execution Unit', 'Memory Management Unit'}
 
 # HACK: current sims don't have AVX power data
 # NOTE: This was removed when running linpack sims with AVX power data
+#
+# This was hardcoded to range(8), which silently caps the pipeline at 8 cores: on a 34-core
+# floorplan the solve dies with ``KeyError: 'AVXs_10'`` because AVXs_8.. were never marked
+# power-free. Matched by pattern instead so any core count works. Keep the explicit 0-7 entries
+# so anything doing a literal ``in NO_POWER_UNITS`` membership test still behaves as before.
 NO_POWER_UNITS.update(['AVXs_{}'.format(n) for n in range(8)])
+
+#: Floorplan block names that carry no power, for any core index.
+NO_POWER_UNIT_PATTERNS = (re.compile(r'^AVXs_\d+$'),)
+
+
+def is_no_power_unit(name):
+    """True if ``name`` is a floorplan block that should be assigned zero power.
+
+    Prefer this over ``name in NO_POWER_UNITS`` -- the set cannot express "for every core".
+    """
+    if name in NO_POWER_UNITS:
+        return True
+    return any(rgx.match(name) for rgx in NO_POWER_UNIT_PATTERNS)
 
 ################################ DRAM Power model
 

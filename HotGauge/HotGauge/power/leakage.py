@@ -48,6 +48,12 @@ import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
+#: Exceptions from a thermal solve that mean "this run is misconfigured", never "the die ran
+#: away". Recording these as divergence would report a bad path or a wrong argument as a
+#: physical result, so they propagate instead.
+_SETUP_ERRORS = (FileNotFoundError, NotADirectoryError, IsADirectoryError, PermissionError,
+                 ImportError, TypeError, AttributeError, KeyError, IndexError, NameError)
+
 # McPAT XML reference temperatures (Kelvin) at which the shipped templates extract leakage.
 # These MUST match the `<param name="temperature" ...>` used when the trace was generated.
 # The shipped HotGauge McPAT templates use 330 K for some cores and 360 K for others; there
@@ -152,17 +158,105 @@ class LeakageModel(object):
         order = np.argsort(temps_K)
         temps_K, rel_leakage = temps_K[order], rel_leakage[order]
 
+        # Clamping is a correctness hazard, not noise: above the table the modelled leakage
+        # STOPS GROWING, which removes the very feedback that produces thermal runaway and can
+        # make a divergent configuration appear to converge. Report it once, loudly, with the
+        # worst excursion -- per-call warnings drowned the real output in earlier runs.
+        state = {'warned': False, 'max_T': -np.inf, 'min_T': np.inf}
+
         def factor_fn(T_K, Tref_K):
             T_K = np.asarray(T_K, dtype=float)
-            if np.any(T_K < temps_K[0]) or np.any(T_K > temps_K[-1]):
-                LOGGER.warning('Temperature outside leakage table [%g, %g] K; clamping',
-                               temps_K[0], temps_K[-1])
+            if T_K.size:
+                state['max_T'] = max(state['max_T'], float(np.max(T_K)))
+                state['min_T'] = min(state['min_T'], float(np.min(T_K)))
+            if not state['warned'] and (np.any(T_K < temps_K[0]) or np.any(T_K > temps_K[-1])):
+                state['warned'] = True
+                LOGGER.warning(
+                    'Temperature outside calibrated leakage table [%g, %g] K -- CLAMPING. '
+                    'Leakage is held constant beyond the table, so runaway is suppressed and '
+                    'results in that range are not trustworthy. Seen up to %.1f K (%.1f C). '
+                    'Extend the calibration, or treat the operating point as outside the '
+                    'power model.',
+                    temps_K[0], temps_K[-1], state['max_T'], state['max_T'] - 273.15)
             at_T = np.interp(T_K, temps_K, rel_leakage)
             at_ref = np.interp(Tref_K, temps_K, rel_leakage)
             return at_T / at_ref
 
         return cls(factor_fn, 'from_table({} points, {:.0f}-{:.0f} K)'.format(
             len(temps_K), temps_K[0], temps_K[-1]))
+
+    @classmethod
+    def from_table_extrapolated(cls, temps_K, rel_leakage, activation_eV=None,
+                                fit_from_K=380.0):
+        """Measured table below the top point, physically-shaped Arrhenius tail above it.
+
+        Why this exists: ``from_table`` CLAMPS above its range, holding leakage constant. That
+        is the worst possible behaviour for a runaway study -- freezing the feedback term
+        removes the very mechanism that produces divergence, so a thermally divergent
+        configuration silently "converges". McPAT cannot be measured past 400 K (it rejects the
+        input outright: *"Temperature must be between 300 and 400 Kelvin and multiple of 10"*),
+        so the choice is between clamping and extrapolating, and extrapolating is the only one
+        that preserves the qualitative behaviour.
+
+        Above the table the scale continues as the subthreshold form
+        ``(T/T_top)^2 * exp(-Ea/k * (1/T - 1/T_top))``, matched to be continuous at the top
+        measured point. ``activation_eV`` defaults to a fit over ``fit_from_K``..top.
+
+        **The extrapolated region is uncertain.** On the 7nm trace an Arrhenius fit and a
+        local-exponential continuation of the same data disagree by ~2.5x at 450 K. Treat
+        values above the measured range as indicating *whether* a configuration runs away, not
+        by how much. ``scale()`` warns once when it is used there.
+        """
+        temps_K = np.asarray(temps_K, dtype=float)
+        rel_leakage = np.asarray(rel_leakage, dtype=float)
+        if temps_K.ndim != 1 or temps_K.shape != rel_leakage.shape:
+            raise ValueError('temps_K and rel_leakage must be 1-D and the same length')
+        order = np.argsort(temps_K)
+        temps_K, rel_leakage = temps_K[order], rel_leakage[order]
+        t_top, rel_top = float(temps_K[-1]), float(rel_leakage[-1])
+
+        if activation_eV is None:
+            mask = temps_K >= min(fit_from_K, temps_K[-2] if temps_K.size > 1 else temps_K[-1])
+            tf, rf = temps_K[mask], rel_leakage[mask]
+            if tf.size >= 2:
+                # log(rel) = const - (Ea/k)(1/T) + 2 log T  ->  linear in 1/T after removing T^2
+                y = np.log(rf) - 2.0 * np.log(tf)
+                slope = np.polyfit(1.0 / tf, y, 1)[0]
+                activation_eV = float(-slope * BOLTZMANN_EV_PER_K)
+            else:
+                activation_eV = 0.9
+        if activation_eV <= 0:
+            raise ValueError('activation_eV must be positive, got {!r}'.format(activation_eV))
+
+        state = {'warned': False, 'max_T': -np.inf}
+
+        def factor_fn(T_K, Tref_K):
+            T_K = np.asarray(T_K, dtype=float)
+            at_ref = np.interp(Tref_K, temps_K, rel_leakage)
+            below = np.interp(T_K, temps_K, rel_leakage)
+            hot = T_K > t_top
+            if np.any(hot):
+                state['max_T'] = max(state['max_T'], float(np.max(T_K)))
+                if not state['warned']:
+                    state['warned'] = True
+                    LOGGER.warning(
+                        'Leakage EXTRAPOLATED above the measured range (top measured %.1f K); '
+                        'seen up to %.1f K (%.1f C). McPAT cannot be run hotter, so values '
+                        'there are physically shaped but uncertain (Arrhenius vs local-'
+                        'exponential differ ~2.5x at 450 K). Use them to decide WHETHER a '
+                        'configuration diverges, not by how much.',
+                        t_top, state['max_T'], state['max_T'] - 273.15)
+                tail = rel_top * (T_K / t_top) ** 2 * np.exp(
+                    -(activation_eV / BOLTZMANN_EV_PER_K) * (1.0 / np.maximum(T_K, 1e-9) - 1.0 / t_top))
+                below = np.where(hot, tail, below)
+            return below / at_ref
+
+        model = cls(factor_fn, 'from_table_extrapolated({} pts, {:.0f}-{:.0f} K, '
+                               'Arrhenius tail Ea={:.3f} eV)'.format(
+                                   len(temps_K), temps_K[0], t_top, activation_eV))
+        model.measured_max_K = t_top
+        model.activation_eV = activation_eV
+        return model
 
     # ---- evaluation ---------------------------------------------------------
     def scale(self, T, T_ref=DEFAULT_TREF_K, temp_units='K'):
@@ -313,16 +407,26 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
     iterations = 0
     converged = False
     diverged = False
+    solver_error = None
     history = []
     for i in range(max_iter):
-        # A downstream solver (3D-ICE) can fail outright when handed extreme power; treat any
-        # failure as divergence rather than letting it crash the whole run.
+        # A downstream solver (3D-ICE) can fail outright when handed extreme power, and that
+        # genuinely is divergence. But a missing floorplan, a bad path, or a type error is a
+        # *bug*, not physics -- and silently recording it as "thermal runaway" turns a
+        # configuration mistake into a false scientific claim. Those propagate.
         try:
             temps = thermal_solve_fn(current)
+        except _SETUP_ERRORS:
+            raise
         except Exception as e:  # noqa: BLE001 - deliberately broad: any solver failure
+            if i == 0:
+                # Nothing has heated up yet, so the very first solve failing is a setup
+                # problem rather than runaway. Let it surface instead of mislabelling it.
+                raise
             LOGGER.error('leakage feedback iter %d: thermal solve failed (%s) -> treating as '
                          'divergence/runaway; stopping', i, e)
             diverged = True
+            solver_error = str(e)
             break
         iterations += 1
 
@@ -401,6 +505,7 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
         'iterations': iterations,
         'converged': converged,
         'diverged': diverged,
+        'solver_error': solver_error,
         'max_delta_K': max_delta,
         'history': history,
     }
