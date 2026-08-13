@@ -36,6 +36,18 @@ environment; nothing is written outside the repo, the conda env, and `$MXL_PREFI
 | `MXL_CONDA=/path/to/conda ./install.sh` | Your conda is somewhere unusual |
 | `MXL_JOBS=8 ./install.sh` | Limit build parallelism |
 
+> **Do this first if you value your afternoon.** Phonon's conda is 4.12 with the classic
+> solver, which takes **25+ minutes just to solve** this environment — long enough that it
+> looks hung, and people kill it. One-time fix, worth it for every conda env you ever create:
+>
+> ```bash
+> conda install -n base -c conda-forge conda-libmamba-solver
+> conda config --set solver libmamba
+> ```
+>
+> `install.sh` detects mamba/libmamba and uses whichever is fastest, warning you if it is stuck
+> with the classic solver.
+
 ### Running on a compute node
 
 ```bash

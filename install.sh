@@ -67,13 +67,41 @@ note "conda root: $CONDA_ROOT"
 # ---------------------------------------------------------------------------
 # 1. Conda environment
 # ---------------------------------------------------------------------------
+# Pick the fastest available solver. Phonon ships conda 4.12 with the classic solver, which
+# takes >25 minutes on this spec -- long enough that it looks hung. In order of preference:
+# mamba, conda's libmamba solver, then classic with a warning so nobody kills it at minute 10.
+pick_solver() {
+    if command -v mamba >/dev/null 2>&1; then
+        CONDA_CMD="mamba"; SOLVER_ARGS=(); note "using mamba"
+        return
+    fi
+    if command -v micromamba >/dev/null 2>&1; then
+        CONDA_CMD="micromamba"; SOLVER_ARGS=(); note "using micromamba"
+        return
+    fi
+    CONDA_CMD="conda"
+    if python -c "import libmambapy" >/dev/null 2>&1; then
+        SOLVER_ARGS=(--solver=libmamba); note "using conda with the libmamba solver"
+    else
+        SOLVER_ARGS=()
+        warn "conda $(conda --version 2>/dev/null | awk '{print $2}') with the classic solver."
+        warn "The solve alone can take 25+ minutes. It is not hung -- let it run."
+        warn "To make this fast once, and for every future env:"
+        warn "    conda install -n base -c conda-forge conda-libmamba-solver"
+        warn "    conda config --set solver libmamba"
+    fi
+}
+
 if [ "$CHECK_ONLY" -eq 0 ]; then
     say "Creating conda environment '$ENV_NAME'"
+    pick_solver
     if conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
         note "already exists -- updating from environment.yml"
-        conda env update -n "$ENV_NAME" -f "$REPO/environment.yml" --prune
+        "$CONDA_CMD" env update -n "$ENV_NAME" -f "$REPO/environment.yml" --prune \
+            "${SOLVER_ARGS[@]}"
     else
-        conda env create -n "$ENV_NAME" -f "$REPO/environment.yml"
+        note "solving and downloading (grab a coffee)"
+        "$CONDA_CMD" env create -n "$ENV_NAME" -f "$REPO/environment.yml" "${SOLVER_ARGS[@]}"
     fi
 fi
 conda activate "$ENV_NAME"
