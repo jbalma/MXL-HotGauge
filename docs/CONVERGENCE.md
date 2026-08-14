@@ -146,20 +146,27 @@ K/W of convective resistance; the clock search finds the same die holding 1.070 
 R_th = 0.1 K/W and 1.163 W/mm² at 0.05 K/W. Two studies that share no operating point put the
 failure of this die in the same 1.05–1.16 W/mm² band.
 
-Both rescue rows are **verified**, and the leverage in them is the result worth carrying
-forward:
+### RETRACTED later the same day — see docs/MR_RESCUE_COST.md
+
+The rescue costs first published here were wrong. They were sized by a plan builder that read a
+**divergent** baseline field, and two further defects sat behind that one. The corrected
+measurement is in `docs/MR_RESCUE_COST.md`; the retracted table is kept below so the error stays
+legible.
 
 | | 1.10 W/mm² | 1.15 W/mm² |
 |---|---|---|
-| heat removed | **0.394 W** over 30 blocks | 1.98 W over 42 blocks |
-| net electrical cost | 0.685 W | 3.43 W |
-| die power | 113.5 W | 116.7 W |
-| result | no steady state → 99.55 °C, 4.002 GHz | no steady state → 96.83 °C, 4.013 GHz |
-| throttling | no | no |
-| peak agreement between damping levels | 0.010 K | 0.012 K |
+| heat removed | ~~0.394 W over 30 blocks~~ | ~~1.98 W over 42 blocks~~ |
+| net electrical cost | ~~0.685 W~~ | ~~3.43 W~~ |
+| claim | ~~290 W of die stabilised per watt removed~~ | |
 
-**0.394 W of hotspot cooling stabilises a 113.5 W die** — 290 W of die per watt removed. That is
-the constriction picture paying off exactly as predicted: the instability is local, so arresting
-it is cheap, while a bulk cooler has to move the whole 113 W to achieve the same thing. It is
-also why the honest metric here is the *stability boundary*, not a throughput ratio: there is no
-baseline value to divide by, which is precisely the error the retired +150% made.
+What is true after the correction: a plan of ~0.34 W does give the 1.10 W/mm² die a steady
+state, but that state sits at **133.8 °C** — past McPAT's 127 °C validity ceiling and past
+anything shippable. Holding a *usable* 92 °C costs **26.8 W of heat removed and 46.6 W
+electrical**, cooling all 1126 blocks. There is no cheap rescue on this die, and the reason is
+the same degeneracy that limits the clock: when 15 blocks sit within the device's lift of the
+peak, moving the peak means cooling the whole plateau.
+
+The surviving structural results from this page — that 1.10 and 1.15 W/mm² have **no steady
+state** without MR, that the verified cliff is 1.05–1.10, and everything in the convergence
+sections above — are unaffected. What changed is the price of the intervention, not whether the
+die needs one.

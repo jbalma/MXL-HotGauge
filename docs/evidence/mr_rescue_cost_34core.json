@@ -1,0 +1,81 @@
+{
+  "note": "Corrected MR rescue cost (docs/MR_RESCUE_COST.md). Envelope-anchored plan, bisected onto the target. 34-core 7nm, 88 CFM, target 92 C.",
+  "rows": {
+    "target_holding": {
+      "d1.10": {
+        "peak_C": 90.96083984375002,
+        "heat_removed_W": 26.836097826047606,
+        "p_mr_net_W": 46.55266344272411,
+        "n_targets": 1126,
+        "mr_plan_is_minimum": true,
+        "mr_plan_holds_target": true,
+        "mr_minimum_plan_W": 26.836097826047606,
+        "mr_largest_failing_plan_W": null,
+        "p_chip_W": 95.2312238411428,
+        "diverged": false
+      },
+      "d1.15": {
+        "peak_C": 90.60198364257815,
+        "heat_removed_W": 42.05155402789617,
+        "p_mr_net_W": 72.94670701930227,
+        "n_targets": 1126,
+        "mr_plan_is_minimum": true,
+        "mr_plan_holds_target": true,
+        "mr_minimum_plan_W": 42.05155402789617,
+        "mr_largest_failing_plan_W": null,
+        "p_chip_W": 91.67342412964159,
+        "diverged": false
+      },
+      "d1.18": {
+        "peak_C": 92.64995727539065,
+        "heat_removed_W": 44.86315336408711,
+        "p_mr_net_W": 77.84005423967756,
+        "n_targets": 1126,
+        "mr_plan_is_minimum": true,
+        "mr_plan_holds_target": true,
+        "mr_minimum_plan_W": 44.86315336408711,
+        "mr_largest_failing_plan_W": null,
+        "p_chip_W": 94.47930624285634,
+        "diverged": false
+      }
+    },
+    "stability_only": {
+      "d1.10": {
+        "peak_C": 95.42092285156252,
+        "heat_removed_W": 0.3371918936377526,
+        "p_mr_net_W": 0.587677300340083,
+        "n_targets": 7,
+        "mr_plan_is_minimum": false,
+        "mr_plan_holds_target": null,
+        "mr_minimum_plan_W": null,
+        "mr_largest_failing_plan_W": null,
+        "p_chip_W": 113.1338356115845,
+        "diverged": false
+      },
+      "d1.15": {
+        "peak_C": 133.78228149414065,
+        "heat_removed_W": 0.7084689742015482,
+        "p_mr_net_W": 1.2347602121798413,
+        "n_targets": 16,
+        "mr_plan_is_minimum": true,
+        "mr_plan_holds_target": null,
+        "mr_minimum_plan_W": 0.7084689742015482,
+        "mr_largest_failing_plan_W": 0.7037672289447658,
+        "p_chip_W": 124.87106415590353,
+        "diverged": false
+      },
+      "d1.18": {
+        "peak_C": 132.50429687500002,
+        "heat_removed_W": 1.2934426759386757,
+        "p_mr_net_W": 2.2542583924534876,
+        "n_targets": 27,
+        "mr_plan_is_minimum": true,
+        "mr_plan_holds_target": null,
+        "mr_minimum_plan_W": 1.2934426759386757,
+        "mr_largest_failing_plan_W": 1.2839286907245901,
+        "p_chip_W": 128.89423484995365,
+        "diverged": false
+      }
+    }
+  }
+}
