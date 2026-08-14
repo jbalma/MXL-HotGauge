@@ -95,7 +95,10 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
         leakage_voltage_exponent=args.leak_v_exponent)
 
     counter = {'n': 0}
-    state = {'unconverged': False, 'last': None}
+    # Accumulated over every solve the MR loop makes, not just the last one -- see the same
+    # note in examples/mr_comparison.py. A point can fail on an intermediate MR iteration and
+    # still finish with a reassuring final spread.
+    state = {'unconverged': 0, 'last': None, 'n_solves': 0, 'worst_spread_K': None}
 
     def solver_factory(sub):
         return ICEThermalSolver(stack, flp, args.tech_node,
@@ -113,8 +116,12 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
                                  t_floor_K=T_FLOOR_K, bridge_aggregates=True,
                                  verify=not args.no_verify, verify_tol_K=args.verify_tol)
         state['last'] = r
+        state['n_solves'] += 1
+        spread = r.get('peak_spread_K')
+        if spread is not None:
+            state['worst_spread_K'] = max(state['worst_spread_K'] or 0.0, float(spread))
         if r.get('unconverged'):
-            state['unconverged'] = True
+            state['unconverged'] += 1
         return r['temp_trace']
 
     mr = MRParams(target_K=args.mr_target_K, h_max=args.mr_h_max,
@@ -132,7 +139,10 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
 
     last = state['last'] or {}
     out = {'f_GHz': f_GHz, 'diverged': bool(last.get('diverged')) or temps is None,
-           'unconverged': state['unconverged'], 'vf_clamped': scale_info['vf_clamped'],
+           'unconverged': bool(state['unconverged']),
+           'n_unconverged_solves': state['unconverged'], 'n_solves': state['n_solves'],
+           'worst_peak_spread_K': state['worst_spread_K'],
+           'vf_clamped': scale_info['vf_clamped'],
            'peak_spread_K': last.get('peak_spread_K'),
            'p_mr_net_W': acc['electrical_power_W'],
            'heat_removed_W': acc['heat_removed_W'],

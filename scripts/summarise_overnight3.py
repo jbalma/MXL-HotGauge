@@ -41,9 +41,16 @@ def fmt(pair):
     # anything. Reporting it alongside converged points is how the earlier errors spread.
     bad = [n for n, r in (('no-MR', a), ('MR', b)) if r.get('unconverged')]
     if bad:
-        spread = max((r.get('peak_spread_K') or 0.0) for r in (a, b))
+        # The WORST spread across every solve the point made, not the last one's: the MR loop
+        # runs several leakage solves and a point can fail on an intermediate one while
+        # finishing with a reassuring final agreement.
+        spread = max((r.get('worst_peak_spread_K') or r.get('peak_spread_K') or 0.0)
+                     for r in (a, b))
+        failed = sum(r.get('n_unconverged_solves') or 0 for r in (a, b))
+        total = sum(r.get('n_solves') or 0 for r in (a, b))
         return ('** UNCONVERGED ({}) **'.format(', '.join(bad)),
-                'peak moves {:.1f} K between damping levels -- not a result'.format(spread))
+                '{} of {} solves failed verification, worst peak spread {:.1f} K '
+                '-- not a result'.format(failed or '?', total or '?', spread))
 
     if a.get('diverged') and b.get('diverged'):
         return 'RUNAWAY both', 'no steady state with or without MR, at every damping tried'

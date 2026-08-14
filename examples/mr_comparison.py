@@ -108,6 +108,12 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
                                 single_thread=True, mode='steady',
                                 session_cache=args.session_cache)
 
+    # The MR clipping loop calls this several times, so verification has to be accumulated over
+    # ALL of them. Reporting only the last solve's agreement is actively misleading: a point can
+    # fail verification on an intermediate MR iteration and still finish with a reassuring
+    # 0.01 K spread, which invites someone to wave the flag away.
+    ver = {'n_solves': 0, 'n_unconverged': 0, 'worst_spread_K': None}
+
     def solve_with_leakage(tr):
         counter['n'] += 1
         r = run_leakage_feedback(tr, leak_ref, solver_factory('it{:02d}'.format(counter['n'])),
@@ -116,11 +122,15 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
                                  t_floor_K=T_FLOOR_K, bridge_aggregates=True,
                                  verify=not args.no_verify, verify_tol_K=args.verify_tol)
         solve_with_leakage.last = r
+        ver['n_solves'] += 1
+        spread = r.get('peak_spread_K')
+        if spread is not None:
+            ver['worst_spread_K'] = max(ver['worst_spread_K'] or 0.0, float(spread))
         # An unverified solve is not a result. Record it so the row is flagged rather than
         # quoted: every large error in this project so far has been a damping artefact that
         # looked exactly like a converged number.
         if r.get('unconverged'):
-            solve_with_leakage.unconverged = True
+            ver['n_unconverged'] += 1
         return r['temp_trace']
 
     mr = MRParams(target_K=args.mr_target_C + 273.15, h_max=args.mr_h_max,
@@ -137,9 +147,12 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
         acc = mr_accounting({}, mr)
 
     last = getattr(solve_with_leakage, 'last', None)
-    unconverged = bool(getattr(solve_with_leakage, 'unconverged', False))
     row = {'tag': tag, 'cores': n_cores, 'mr': use_mr, 'fan_W': sink.parasitic_power_W(),
-           'unconverged': unconverged,
+           'unconverged': bool(ver['n_unconverged']),
+           'n_solves': ver['n_solves'], 'n_unconverged_solves': ver['n_unconverged'],
+           # worst_ is the one that decides whether this row is quotable; peak_spread_K is the
+           # final solve's, kept because it is what the reported temperatures came from.
+           'worst_peak_spread_K': ver['worst_spread_K'],
            'peak_spread_K': (last or {}).get('peak_spread_K'),
            'relax_final': (last or {}).get('relax_final')}
     if last is None or last.get('diverged'):
@@ -375,8 +388,10 @@ def main():
             else:
                 flags = '  THROTTLED' if r['throttling'] else ''
                 if r.get('unconverged'):
-                    flags += '  ** UNCONVERGED (peak moves {:.1f} K with damping) **'.format(
-                        r.get('peak_spread_K') or float('nan'))
+                    flags += ('  ** UNCONVERGED: {}/{} solves failed verification, worst peak '
+                              'spread {:.1f} K **').format(
+                        r.get('n_unconverged_solves', '?'), r.get('n_solves', '?'),
+                        r.get('worst_peak_spread_K') or float('nan'))
                 print('{:>6d} {:>8.1f} {:>7.1f} {:>4s} {:>8.1f} {:>8.3f} {:>8.2f} {:>8.2f} '
                       '{:>7.3f} {:>10.1f} {:>9.3f}{}'.format(
                           n, area_m2 * 1e6, power_W, 'yes' if use_mr else 'no',
