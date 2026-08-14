@@ -126,11 +126,19 @@ by lowering `relax` — that is what made this class of error possible in the fi
 |---|---|---|
 | 1.00 | 89.19 °C | 89.19 °C (MR idle) |
 | 1.05 | 93.08 °C | 92.34 °C |
+| 1.10 | **no steady state** | **99.55 °C** |
 | 1.15 | **no steady state** | **96.83 °C, 4.013 GHz, not throttling** |
 | 1.18–1.45 | no steady state | no steady state |
 
-So the no-MR cliff is between 1.05 and 1.15 W/mm², MR moves it to between 1.15 and 1.18, and
-the rescue band is **narrow** — a few percent of density, not a regime.
+So the no-MR cliff is between **1.05 and 1.10** W/mm² and MR moves it to between **1.15 and
+1.18** — an extension of roughly **8%** in sustainable power density, for a few watts of laser.
+That is the honest replacement for the retired "+150%": a modest, verified shift of the
+stability boundary, not a throughput multiple.
+
+(The 1.15 MR peak being *lower* than the 1.10 MR peak is not a paradox: MR clips against a fixed
+92 °C target, and at the higher density more blocks exceed it, so more of the die gets cooled —
+1.98 W removed over 42 blocks at 1.15. It is the coverage, not the density, that sets the peak
+once MR is active.)
 
 An independent cross-check falls out of the clock study (`examples/clock_headroom.py`), which
 holds density free and searches the clock instead. The 88 CFM baffled-fin sink presents ~0.076
@@ -138,7 +146,20 @@ K/W of convective resistance; the clock search finds the same die holding 1.070 
 R_th = 0.1 K/W and 1.163 W/mm² at 0.05 K/W. Two studies that share no operating point put the
 failure of this die in the same 1.05–1.16 W/mm² band.
 
-The 1.15 row is a **verified MR rescue**: 1.98 W of heat removed from 42 blocks, 3.43 W net
-electrical, converting a die with no thermal solution into one holding full clock. No percentage
-is quoted against it, because there is no baseline value to take a ratio against — which is
-exactly the error the retired +150% made.
+Both rescue rows are **verified**, and the leverage in them is the result worth carrying
+forward:
+
+| | 1.10 W/mm² | 1.15 W/mm² |
+|---|---|---|
+| heat removed | **0.394 W** over 30 blocks | 1.98 W over 42 blocks |
+| net electrical cost | 0.685 W | 3.43 W |
+| die power | 113.5 W | 116.7 W |
+| result | no steady state → 99.55 °C, 4.002 GHz | no steady state → 96.83 °C, 4.013 GHz |
+| throttling | no | no |
+| peak agreement between damping levels | 0.010 K | 0.012 K |
+
+**0.394 W of hotspot cooling stabilises a 113.5 W die** — 290 W of die per watt removed. That is
+the constriction picture paying off exactly as predicted: the instability is local, so arresting
+it is cheap, while a bulk cooler has to move the whole 113 W to achieve the same thing. It is
+also why the honest metric here is the *stability boundary*, not a throughput ratio: there is no
+baseline value to divide by, which is precisely the error the retired +150% made.

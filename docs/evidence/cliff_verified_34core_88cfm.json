@@ -1,5 +1,5 @@
 {
-  "note": "34-core 7nm, 88 CFM, damping-verified re-measurement of the thermal cliff (P0.1). Every point solved at two damping levels; peaks must agree within 1 K.",
+  "note": "34-core 7nm, 88 CFM, damping-verified re-measurement of the thermal cliff (P0.1).",
   "driver": "scripts/cliff_reverify.sh -> examples/mr_comparison.py",
   "points": {
     "d1.00": {
@@ -62,6 +62,36 @@
         "n_targets": 2
       }
     },
+    "d1.10": {
+      "nomr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null,
+        "peak_block": null,
+        "peak_spread_K": null,
+        "relax_final": 0.025,
+        "p_chip_W": null,
+        "f_GHz": null,
+        "throttling": null,
+        "heat_removed_W": null,
+        "p_mr_net_W": null,
+        "n_targets": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 99.55477294921877,
+        "peak_block": "RBB_0",
+        "peak_spread_K": 0.010498046875,
+        "relax_final": 0.25,
+        "p_chip_W": 113.54374514364062,
+        "f_GHz": 4.001780908203125,
+        "throttling": false,
+        "heat_removed_W": 0.39397572931877894,
+        "p_mr_net_W": 0.6852652564858057,
+        "n_targets": 30
+      }
+    },
     "d1.15": {
       "nomr": {
         "diverged": true,
@@ -92,7 +122,67 @@
         "n_targets": 42
       }
     },
+    "d1.18": {
+      "nomr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null,
+        "peak_block": null,
+        "peak_spread_K": null,
+        "relax_final": 0.025,
+        "p_chip_W": null,
+        "f_GHz": null,
+        "throttling": null,
+        "heat_removed_W": null,
+        "p_mr_net_W": null,
+        "n_targets": null
+      },
+      "mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null,
+        "peak_block": null,
+        "peak_spread_K": null,
+        "relax_final": 0.025,
+        "p_chip_W": null,
+        "f_GHz": null,
+        "throttling": null,
+        "heat_removed_W": null,
+        "p_mr_net_W": null,
+        "n_targets": null
+      }
+    },
     "d1.20": {
+      "nomr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null,
+        "peak_block": null,
+        "peak_spread_K": null,
+        "relax_final": 0.025,
+        "p_chip_W": null,
+        "f_GHz": null,
+        "throttling": null,
+        "heat_removed_W": null,
+        "p_mr_net_W": null,
+        "n_targets": null
+      },
+      "mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null,
+        "peak_block": null,
+        "peak_spread_K": null,
+        "relax_final": 0.025,
+        "p_chip_W": null,
+        "f_GHz": null,
+        "throttling": null,
+        "heat_removed_W": null,
+        "p_mr_net_W": null,
+        "n_targets": null
+      }
+    },
+    "d1.22": {
       "nomr": {
         "diverged": true,
         "unconverged": false,
