@@ -508,7 +508,8 @@ class ICEThermalSolver(object):
     def __init__(self, stack_template, flp_template, tech_node, run_base_dir,
                  initial_temp=DEFAULT_TREF_K, plugin_args=None, num_cores=8,
                  core_sources=None, single_thread=True, steps_per_slot=None,
-                 mode='transient', steady_reduce='mean', session_cache=None):
+                 mode='transient', steady_reduce='mean', session_cache=None,
+                 extra_die_outputs=None):
         if mode not in self.SIM_MODES:
             raise ValueError('mode must be one of {}, got {!r}'.format(self.SIM_MODES, mode))
         if steady_reduce not in STEADY_REDUCERS:
@@ -534,6 +535,11 @@ class ICEThermalSolver(object):
             raise ValueError('session_cache requires mode="steady"; the transient path does '
                              'its own multi-step solve')
         self.session_cache = session_cache
+        # Extra ``Tflp(...)`` instructions for dies beyond the processor die. A 3D stack reports
+        # nothing for a die with no output instruction, so a stacked run without these would
+        # silently return only the logic layer -- and a memory layer that is never read cannot
+        # be shown to be the binding constraint.
+        self.extra_die_outputs = list(extra_die_outputs or [])
         self._iter = 0
 
     def __call__(self, power_trace):
@@ -581,7 +587,8 @@ class ICEThermalSolver(object):
         steady_trace = collapse_trace_for_steady(dice_trace, reduce=self.steady_reduce)
         # Note ICESteadySim.DIE_TFLP_OUTPUT differs from the transient one: it reports at
         # 'final' rather than per 'slot', so the Tflp file holds exactly one row per block.
-        outputs = [ICESteadySim.OUTPUT_TSTACK_FINAL, ICESteadySim.DIE_TFLP_OUTPUT]
+        outputs = ([ICESteadySim.OUTPUT_TSTACK_FINAL, ICESteadySim.DIE_TFLP_OUTPUT]
+                   + self.extra_die_outputs)
         config = ICESimConfig(initial_temp=self.initial_temp, plugin_args=self.plugin_args,
                               output_list=outputs)
         sim = ICESteadySim(self.stack_template, self.flp_template, steady_trace, config, run_dir)
@@ -604,9 +611,18 @@ class ICEThermalSolver(object):
         else:
             ICESteadySim.run_with_parallels([sim])
 
-        tflp_name = parse_file_name_from_output_line(ICESteadySim.DIE_TFLP_OUTPUT)
-        tflp_file = os.path.join(sim.run_path, tflp_name)
-        steady = die_block_temps(load_3DICE_block_file(tflp_file, convert_K_to_C=False))
+        # One Tflp file per die, merged by block name. Reading the names from the files
+        # themselves means nothing here assumes an ordering across dies -- which is exactly the
+        # assumption a stacked run must not make silently.
+        steady = {}
+        for line in [ICESteadySim.DIE_TFLP_OUTPUT] + self.extra_die_outputs:
+            tflp_file = os.path.join(sim.run_path, parse_file_name_from_output_line(line))
+            if not os.path.isfile(tflp_file):
+                raise RuntimeError(
+                    'no Tflp output at {} for instruction {!r}. A die without an output '
+                    'instruction reports nothing.'.format(tflp_file, line))
+            steady.update(die_block_temps(load_3DICE_block_file(tflp_file,
+                                                                convert_K_to_C=False)))
         return broadcast_steady_temps(steady, n_steps)
 
 

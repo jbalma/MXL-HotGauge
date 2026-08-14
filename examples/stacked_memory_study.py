@@ -60,13 +60,16 @@ from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           chip_area_m2_from_floorplan, SIMSCALE_T0_K)
 from HotGauge.thermal.stack_models import (memory_floorplan, render_stacked_memory_template,
                                            split_layer_temps)
-from HotGauge.thermal.ice_server import ICESessionCache
 from HotGauge.power.dram import (stacked_dram_model, dram_block_powers, dram_limit_report,
                                  DEFAULT_REFRESH_BREAK_K, DEFAULT_DRAM_LIMIT_K)
 from HotGauge.power.clock_search import emphasise_units
 from HotGauge.thermal.utils import K_to_C
 
 T_FLOOR_K = 200.0
+
+#: Output instruction for the stacked memory die. Without one 3D-ICE reports nothing for that
+#: die, and a memory layer that is never read cannot be shown to be the binding constraint.
+MEMORY_TFLP_OUTPUT = 'Tflp (MEMORY_DIE, "memory_elements.temps", average, final ) ;'
 
 
 def tier_structure(temps_C, dt_max_K):
@@ -192,17 +195,23 @@ def main():
             args.emphasise, args.emphasis_factor))
     print()
 
-    cache = ICESessionCache()
     counter = {'n': 0}
 
     def solve_stacked(mem_powers):
         """One damping-verified logic solve with the memory power held at ``mem_powers``."""
         counter['n'] += 1
+        # The persistent-session path cannot serve a two-die stack yet: it identifies blocks
+        # positionally from ONE floorplan, and its own guard says so rather than mislabelling
+        # them ("floorplan has 16 named elements but the server reports 1142"). The emulator
+        # path reads names from each Tflp file, so nothing has to assume an ordering across
+        # dies. It costs ~85 s a solve instead of ~0.6 s, which is affordable for a screen and
+        # is the right trade against silently attributing memory power to logic blocks.
         solver = ICEThermalSolver(
             stack, flp, args.tech_node,
             run_base_dir=os.path.join(args.out_dir, 'it{:02d}'.format(counter['n'])),
             initial_temp=args.ambient_K, num_cores=args.cores, single_thread=True,
-            mode='steady', session_cache=cache)
+            mode='steady', session_cache=None,
+            extra_die_outputs=[MEMORY_TFLP_OUTPUT])
 
         # The memory banks are extra blocks on the same solve. They carry their own power and
         # are not in the McPAT trace, so they are injected here rather than through the trace.
