@@ -120,3 +120,49 @@ def test_bisection_stays_within_its_evaluation_budget():
     res = find_max_sustainable_clock(_thermal_stand_in(4.37), 3.5, 5.0, tol_GHz=1e-6,
                                      max_evals=8)
     assert len(res['evaluations']) <= 8
+
+
+# ---------------------------------------------------------------------------
+# Per-core activity -- the degeneracy axis (see docs/DESIGN_STUDY_PLAN.md)
+# ---------------------------------------------------------------------------
+def _core_trace():
+    return BasicPowerTrace({'Core0/Execution Unit/Integer ALUs': np.array([2.0]),
+                            'Core1/Execution Unit/Integer ALUs': np.array([2.0]),
+                            'Core2/Execution Unit/Integer ALUs': np.array([2.0]),
+                            'BUSES': np.array([1.0]),
+                            'Processor/Total L3s': np.array([3.0])}, 1.0)
+
+
+def test_scale_cores_touches_only_per_core_entries():
+    from HotGauge.power.clock_search import scale_cores
+    out = scale_cores(_core_trace(), {0: 1.0, 1: 0.25, 2: 0.0})
+    assert out['Core0/Execution Unit/Integer ALUs'][0] == pytest.approx(2.0)
+    assert out['Core1/Execution Unit/Integer ALUs'][0] == pytest.approx(0.5)
+    assert out['Core2/Execution Unit/Integer ALUs'][0] == pytest.approx(0.0)
+    # Uncore is not per-core and must be left alone.
+    assert out['BUSES'][0] == pytest.approx(1.0)
+    assert out['Processor/Total L3s'][0] == pytest.approx(3.0)
+
+
+def test_single_core_turbo_leaves_one_core_saturated():
+    from HotGauge.power.clock_search import single_core_turbo, scale_cores
+    m = single_core_turbo(3, hot_core=1, background=0.2)
+    assert m == {0: 0.2, 1: 1.0, 2: 0.2}
+    out = scale_cores(_core_trace(), m)
+    assert out['Core1/Execution Unit/Integer ALUs'][0] == pytest.approx(2.0)
+    assert out['Core0/Execution Unit/Integer ALUs'][0] == pytest.approx(0.4)
+
+
+def test_mixed_utilisation_activates_the_requested_fraction():
+    from HotGauge.power.clock_search import mixed_utilisation
+    m = mixed_utilisation(8, active_fraction=0.5, background=0.1)
+    assert sum(1 for v in m.values() if v == 1.0) == 4
+    assert sum(1 for v in m.values() if v == 0.1) == 4
+
+
+def test_activity_maps_reject_out_of_range_fractions():
+    from HotGauge.power.clock_search import single_core_turbo, mixed_utilisation
+    with pytest.raises(ValueError):
+        single_core_turbo(4, background=1.5)
+    with pytest.raises(ValueError):
+        mixed_utilisation(4, active_fraction=-0.1)

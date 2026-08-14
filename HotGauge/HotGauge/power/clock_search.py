@@ -217,3 +217,72 @@ def find_max_sustainable_clock(evaluate, f_lo, f_hi, tol_GHz=0.05, max_evals=14,
     out.update({'f_sustainable_GHz': lo, 'bracket_GHz': (lo, hi),
                 'limited_by': limit_reason, 'vf_clamped': vf_clamped})
     return out
+
+
+# ---------------------------------------------------------------------------
+# Per-core activity: the degeneracy axis
+# ---------------------------------------------------------------------------
+def scale_cores(trace, core_scale, default=1.0):
+    """Scale each core's power independently: ``{core_index: factor}``.
+
+    Why this exists
+    ---------------
+    ``replicate_trace_cores`` copies one core's power onto every core, which models a
+    homogeneous many-core running the same kernel everywhere. That is the worst case for peak
+    temperature -- and, it turns out, the worst possible case for microrefrigeration.
+    ``examples/thermal_tiers.py`` measured 15 blocks within ``dt_max`` of the peak on the
+    34-core die, and they are the *same functional units repeated across cores*: `RBB_16`,
+    `RBB_0`, `cALU_16`, `cALU_0`, ... The thermal peak is N-fold degenerate, so clipping the
+    hottest block buys only the 1.25 K gap to its twin, and MR has to pay for every copy to
+    move the peak at all.
+
+    Every MR result to date is therefore measured against the most hostile workload the model
+    can express, and nothing else has ever been tried. This makes the alternatives expressible:
+
+    * **single-core turbo** -- one core at full activity, the rest low, which is the
+      non-degenerate case MR should be best at;
+    * **mixed utilisation** -- a realistic server workload where cores are not all saturated.
+
+    Non-core keys (``BUSES``, ``Processor``, hierarchy aggregates) are left untouched: they are
+    not per-core, and ``die_power_of_trace`` already discards the ones that are not real blocks.
+    Scaling is applied to the whole per-core entry -- dynamic and leakage alike -- which
+    corresponds to duty-cycling the core rather than changing its microarchitecture.
+    """
+    import re as _re
+    from HotGauge.power.traces import BasicPowerTrace
+    rgx = _re.compile(r'^Core(\d+)(/.*)?$')
+    powers = {}
+    for key, val in trace.powers.items():
+        m = rgx.match(key)
+        f = float(core_scale.get(int(m.group(1)), default)) if m else 1.0
+        powers[key] = np.asarray(val, dtype=float) * f
+    return BasicPowerTrace(powers, trace.time_step)
+
+
+def single_core_turbo(n_cores, hot_core=0, background=0.25):
+    """Activity map for one saturated core against a quiet background.
+
+    ``background`` is the fraction of full activity the other cores run at; 0.0 is the fully
+    idle limit, which is optimistic about how cold the neighbours get. This is the geometry MR
+    should like most: one hot core surrounded by silicon acting as a heat sink, with the
+    intervention sitting upstream of the constriction resistance that dominates that path.
+    """
+    if not 0.0 <= background <= 1.0:
+        raise ValueError('background must be in [0, 1], got {!r}'.format(background))
+    return {i: (1.0 if i == hot_core else float(background)) for i in range(int(n_cores))}
+
+
+def mixed_utilisation(n_cores, active_fraction=0.5, background=0.25, seed_order=None):
+    """Activity map with a fraction of cores saturated and the rest at ``background``.
+
+    ``seed_order`` optionally gives the core order to activate (default: lowest index first),
+    so the placement of the hot cores is explicit rather than incidental -- adjacency matters
+    thermally, and a study that changes it by accident is not comparing what it thinks.
+    """
+    if not 0.0 <= active_fraction <= 1.0:
+        raise ValueError('active_fraction must be in [0, 1], got {!r}'.format(active_fraction))
+    n = int(n_cores)
+    order = list(seed_order) if seed_order is not None else list(range(n))
+    n_active = int(round(active_fraction * n))
+    active = set(order[:n_active])
+    return {i: (1.0 if i in active else float(background)) for i in range(n)}

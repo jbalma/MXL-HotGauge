@@ -52,6 +52,7 @@ from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           render_stack_with_sink,
                                           chip_area_m2_from_floorplan, SIMSCALE_T0_K)
 from HotGauge.thermal.ice_server import ICESessionCache
+from HotGauge.power.clock_search import scale_cores, single_core_turbo, mixed_utilisation
 from HotGauge.thermal.utils import K_to_C
 
 T_FLOOR_K = 200.0
@@ -104,6 +105,18 @@ def main():
                     help='the most MR can pull a single block down [K] -- the device roadmap '
                          'parameter this whole analysis turns on')
     ap.add_argument('--top', type=int, default=25)
+    # The degeneracy axis. Homogeneous activity is what makes the peak N-fold degenerate and
+    # therefore what makes MR look weak; these let a design be screened against workloads that
+    # break that symmetry. See docs/DESIGN_STUDY_PLAN.md.
+    ap.add_argument('--activity', default='uniform',
+                    choices=('uniform', 'turbo', 'mixed'),
+                    help='per-core activity: uniform (every core saturated -- the current and '
+                         'most hostile assumption), turbo (one core saturated), mixed')
+    ap.add_argument('--hot-core', type=int, default=0)
+    ap.add_argument('--background', type=float, default=0.25,
+                    help='activity of the non-saturated cores')
+    ap.add_argument('--active-fraction', type=float, default=0.5,
+                    help='for --activity mixed')
     ap.add_argument('--tol', type=float, default=0.5)
     ap.add_argument('--max-iter', type=int, default=60)
     ap.add_argument('--relax', type=float, default=0.5)
@@ -134,6 +147,15 @@ def main():
     base0 = BasicPowerTrace({u: np.array([p]) for u, p in first.items()}, 1.0)
     base = (replicate_trace_cores(base0, args.cores, n_src=args.trace_cores)
             if args.cores > args.trace_cores else base0)
+    # Apply the activity map BEFORE normalising to the target die power, so every design is
+    # compared at the same die-average density and the only thing that changes is where that
+    # power sits. Comparing at equal density is the whole point: otherwise a quiet die would
+    # look cooler simply for dissipating less.
+    if args.activity == 'turbo':
+        base = scale_cores(base, single_core_turbo(args.cores, args.hot_core, args.background))
+    elif args.activity == 'mixed':
+        base = scale_cores(base, mixed_utilisation(args.cores, args.active_fraction,
+                                                   args.background))
     trace, scale, _ = scale_trace_to_die_power(base, flp, args.tech_node, power_W,
                                                num_cores=args.cores)
     split = os.path.join(args.trace_dir, os.path.basename(files[0]).replace(
@@ -158,10 +180,16 @@ def main():
                                num_cores=args.cores, tol_K=args.tol, max_iter=args.max_iter,
                                relax=args.relax, t_floor_K=T_FLOOR_K, bridge_aggregates=True)
 
+    act = ('uniform (every core saturated)' if args.activity == 'uniform' else
+           'turbo: core {} at 1.0, others {:.2f}'.format(args.hot_core, args.background)
+           if args.activity == 'turbo' else
+           'mixed: {:.0%} of cores at 1.0, others {:.2f}'.format(args.active_fraction,
+                                                                 args.background))
     print('thermal tier structure: {}-core {}, {:.3f} W/mm^2 ({:.1f} W), {}'.format(
         args.cores, args.node, args.density, power_W,
         'R_th {:.3g} K/W'.format(args.r_th) if args.r_th is not None
         else '{:.0f} CFM'.format(args.cfm)))
+    print('  activity : {}'.format(act))
     if res.get('diverged'):
         print('  NO STEADY STATE at this operating point -- pick a lower density')
         return 1
@@ -196,6 +224,8 @@ def main():
     with open(out, 'w') as f:
         json.dump({'cores': args.cores, 'node': args.node, 'density': args.density,
                    'power_W': power_W, 'r_th': args.r_th, 'cfm': args.cfm,
+                   'activity': args.activity, 'hot_core': args.hot_core,
+                   'background': args.background, 'active_fraction': args.active_fraction,
                    'dt_max_K': args.dt_max, 'floorplan': flp,
                    'peak_C': t['peak_C'], 'peak_block': t['ranked'][0][0],
                    'plateau_within_dt_max': t['plateau_within_dt_max'],
