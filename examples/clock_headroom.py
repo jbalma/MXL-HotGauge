@@ -117,7 +117,7 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
             state['unconverged'] = True
         return r['temp_trace']
 
-    mr = MRParams(target_K=args.mr_target_C + 273.15, h_max=args.mr_h_max,
+    mr = MRParams(target_K=args.mr_target_K, h_max=args.mr_h_max,
                   dt_max_K=args.mr_dt_max, eta_asf=args.eta_asf,
                   laser_wallplug=args.eta_laser, lpc_efficiency=args.eta_lpc,
                   spot_min_um=args.spot_min_um, spot_policy=args.spot_policy)
@@ -183,7 +183,23 @@ def main():
                          'and the power cost of the clock is UNDERSTATED' % VF_TABLE_MAX_GHZ)
     # --- MR ---
     ap.add_argument('--mr', action='store_true', help='also search with hotspot clipping on')
-    ap.add_argument('--mr-target-C', type=float, default=92.0)
+    ap.add_argument('--mr-target-C', type=float, default=92.0,
+                    help='absolute MR clip target [C]. NOTE this is usually the wrong policy '
+                         'here -- see --mr-target-margin-K')
+    # An ABSOLUTE MR target is self-defeating once the clock is free, and the sweep showed it:
+    # searching the clock cools the die until it holds the limit, so at poor cooling the
+    # sustainable clock lands where the peak is BELOW the target and MR clips nothing. Measured
+    # at R_th 1.0 K/W: 2.797 GHz, peak 85.7 C, target 92 C -> MR idle, buys exactly 0.000 GHz.
+    # MR is doing nothing precisely where cooling is worst, which is backwards.
+    #
+    # A margin policy tracks the operating point instead: clip whatever exceeds
+    # (thermal limit - margin), so MR engages at every cooling class. This is the cheap version
+    # of the leakage-ranked policy in docs/GAMEPLAN.md; it still selects by temperature, but at
+    # least it selects relative to the constraint that actually binds.
+    ap.add_argument('--mr-target-margin-K', type=float, default=None,
+                    help='set the MR target this many K BELOW the thermal limit instead of at a '
+                         'fixed temperature (e.g. 8 -> clip above 92 C when the limit is 100 C). '
+                         'Overrides --mr-target-C.')
     ap.add_argument('--eta-asf', type=float, default=0.20)
     ap.add_argument('--eta-laser', type=float, default=0.70)
     ap.add_argument('--eta-lpc', type=float, default=0.90)
@@ -224,6 +240,14 @@ def main():
         leak_src = 'assumed exponential'
     fmax = FMaxModel.linear_derate(args.derate_per_K)
     thermal_limit_K = args.thermal_limit_C + 273.15
+    if args.mr_target_margin_K is not None:
+        args.mr_target_K = thermal_limit_K - args.mr_target_margin_K
+        mr_target_note = '{:.1f} C  (thermal limit - {:.1f} K)'.format(
+            args.mr_target_K - 273.15, args.mr_target_margin_K)
+    else:
+        args.mr_target_K = args.mr_target_C + 273.15
+        mr_target_note = '{:.1f} C  (absolute -- MR goes idle wherever the sustainable clock ' \
+                         'keeps the die below this)'.format(args.mr_target_C)
 
     # Baseline trace at the trace's own clock; the search rescales it per candidate clock.
     files = load_block_powers(args.trace_dir)
@@ -258,6 +282,8 @@ def main():
         args.thermal_limit_C))
     print('  leakage  : {}, +V^{:.2g} with clock (assumption)'.format(
         leak_src, args.leak_v_exponent))
+    if args.mr:
+        print('  MR target: {}'.format(mr_target_note))
     if node_obj is not None:
         print(describe_assumptions())
         print('  rated    : {} = {:.2f} GHz'.format(node_obj.name, node_obj.f_nominal_GHz))
@@ -341,6 +367,8 @@ def main():
                    'p_ref_W': p_ref, 'trace_GHz': TRACE_REFERENCE_GHZ,
                    'thermal_limit_C': args.thermal_limit_C,
                    'leak_v_exponent': args.leak_v_exponent,
+                   'mr_target_C': args.mr_target_K - 273.15,
+                   'mr_target_margin_K': args.mr_target_margin_K,
                    'rated_GHz': node_obj.f_nominal_GHz if node_obj else None,
                    'rows': rows}, f, indent=2)
     print('\n  written: {}'.format(out))
