@@ -97,6 +97,35 @@ it is what modern AI-oriented silicon actually looks like.
 * **Screen first:** plateau width on such a floorplan. If it is 1–3, MR becomes a clock lever
   and the whole positioning changes.
 
+### 1c. Design G screened: intra-core dominance does break the intra-core plateau
+
+`emphasise_units` concentrates a core's power into its FPUs at **constant core power**, so the
+comparison isolates where power sits inside a core from how much the core dissipates. Same die,
+same density, same cooling:
+
+| emphasis | peak °C | peak block | plateau | clip-one gain |
+|---|---|---|---|---|
+| none | 89.19 | RBB_16 | 15 | 1.25 K |
+| FPU ×2 | 86.27 | RBB_16 | **29** | **0.21 K** |
+| FPU ×3 | 87.24 | FPUs_0 | 21 | 2.99 K |
+| FPU ×4 | 90.35 | **FPUs_0** | **6** | **5.44 K** |
+
+Two findings, one of them counter-intuitive:
+
+**Partial concentration is the worst case.** At ×2 the FPU rises to meet the existing hot units
+rather than passing them, so the crowd at the top *doubles* (plateau 29) and clipping the peak
+buys almost nothing (0.21 K). A design half-way to an accelerator is thermally worse than either
+end. Anyone reasoning "more concentration is more hotspot, which is better for MR" has it
+backwards over this range.
+
+**Full concentration works.** At ×4 the top blocks are FPUs and clip-one gain reaches 5.44 K —
+4.4× the baseline, and 54% of the device's 10 K capability. The intra-core degeneracy is gone.
+
+But the remaining plateau of 6 is `FPUs_0, FPUs_16, FPUs_24, FPUs_5` — **the same unit across
+cores**, i.e. degeneracy 1 again. So the two are independent and should compose: G breaks the
+intra-core one, turbo breaks the inter-core one. That combination is the decisive screen, and if
+it lands at plateau ≈ 1–2 with clip-one ≈ `dt_max`, MR has a design where it is a clock lever.
+
 ### Caveat on the screening metric itself
 `tier_analysis` assumes clipping one block leaves the others where they are. That is **not**
 true here: the measured lateral coupling on this die is strong (removing 0.5 W at `cALU_0`
