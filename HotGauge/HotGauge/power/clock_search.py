@@ -371,3 +371,64 @@ def emphasise_units(trace, patterns, factor, keep_core_power=True):
         idx = int(m.group(1))
         powers[key] = arr * (factor if _matches(key) else rest_scale.get(idx, 1.0))
     return BasicPowerTrace(powers, trace.time_step)
+
+
+def scale_trace_for_clock_per_core(trace, leakage_ref, core_clocks, f_ref_GHz,
+                                   default_f_GHz=None, leakage_voltage_exponent=1.0):
+    """Rescale a trace when cores run at DIFFERENT clocks.
+
+    ``scale_trace_for_clock`` moves the whole die together, which is right for an all-core
+    frequency but cannot express the case microrefrigeration should suit best: **one core
+    boosted while the rest stay at base**. That is single-thread turbo, a real product mode, and
+    it is the geometry where the hot structure has cool silicon around it to spread into --
+    upstream of the constriction resistance MR acts on.
+
+    core_clocks    : ``{core_index: f_GHz}``; cores not listed run at ``default_f_GHz``
+                     (defaults to ``f_ref_GHz``, i.e. unchanged).
+    Everything else follows ``scale_trace_for_clock``: dynamic power scales as ``V^2 f`` through
+    the shipped V/F table, leakage as ``V**leakage_voltage_exponent``, and the split matters, so
+    this takes the leakage reference and returns a rescaled one.
+
+    Uncore keys are left at the reference clock. That is a simplification worth stating: on a
+    real part the uncore has its own clock domain, and boosting one core does not leave the ring
+    and L3 untouched. Modelling that needs a domain map the trace does not carry.
+
+    Returns ``(scaled_trace, scaled_leakage_ref, info)`` where ``info['per_core']`` records the
+    factors actually applied, since with several clocks in play a single scale factor is no
+    longer a meaningful summary.
+    """
+    import re as _re
+    from HotGauge.power.traces import BasicPowerTrace
+    core_rgx = _re.compile(r'^Core(\d+)(?:/.*)?$')
+    default_f = float(default_f_GHz if default_f_GHz is not None else f_ref_GHz)
+
+    factors, vf_clamped = {}, False
+    def _for(f):
+        nonlocal vf_clamped
+        key = round(float(f), 6)
+        if key not in factors:
+            dyn, leak, info = clock_power_factors(f, f_ref_GHz, leakage_voltage_exponent)
+            vf_clamped = vf_clamped or info['vf_clamped']
+            factors[key] = (dyn, leak)
+        return factors[key]
+
+    powers, new_leak = {}, {}
+    for unit, series in trace.powers.items():
+        total = np.asarray(series, dtype=float)
+        m = core_rgx.match(unit)
+        f = float(core_clocks.get(int(m.group(1)), default_f)) if m else float(f_ref_GHz)
+        dyn_scale, leak_scale = _for(f)
+        leak = leakage_ref.get(unit) if leakage_ref else None
+        if leak is None:
+            powers[unit] = total * dyn_scale
+            continue
+        leak = np.asarray(leak, dtype=float)
+        if leak.shape != total.shape:
+            leak = np.full(total.shape, float(np.ravel(leak)[0]))
+        powers[unit] = (total - leak) * dyn_scale + leak * leak_scale
+        new_leak[unit] = leak * leak_scale
+
+    return (BasicPowerTrace(powers, trace.time_step), new_leak,
+            {'vf_clamped': vf_clamped, 'f_ref_GHz': float(f_ref_GHz),
+             'default_f_GHz': default_f,
+             'per_core': {int(k): float(v) for k, v in core_clocks.items()}})

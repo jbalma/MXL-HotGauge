@@ -222,3 +222,30 @@ def test_emphasis_rejects_a_non_positive_factor():
     from HotGauge.power.clock_search import emphasise_units
     with pytest.raises(ValueError):
         emphasise_units(_balanced_core(), 'Floating Point Units', 0.0)
+
+
+def test_per_core_clock_scales_only_the_boosted_core():
+    from HotGauge.power.clock_search import (scale_trace_for_clock_per_core,
+                                             clock_power_factors)
+    trace = BasicPowerTrace({'Core0/Execution Unit/Integer ALUs': np.array([2.0]),
+                             'Core1/Execution Unit/Integer ALUs': np.array([2.0]),
+                             'BUSES': np.array([1.0])}, 1.0)
+    leak = {'Core0/Execution Unit/Integer ALUs': np.array([0.5]),
+            'Core1/Execution Unit/Integer ALUs': np.array([0.5])}
+    out, new_leak, info = scale_trace_for_clock_per_core(trace, leak, {0: 4.6}, 3.8)
+    dyn, lk, _ = clock_power_factors(4.6, 3.8)
+    assert out['Core0/Execution Unit/Integer ALUs'][0] == pytest.approx(1.5 * dyn + 0.5 * lk)
+    assert out['Core1/Execution Unit/Integer ALUs'][0] == pytest.approx(2.0)  # untouched
+    assert out['BUSES'][0] == pytest.approx(1.0)                              # uncore untouched
+    assert info['per_core'] == {0: 4.6}
+
+
+def test_per_core_clock_matches_the_global_one_when_every_core_is_boosted():
+    from HotGauge.power.clock_search import (scale_trace_for_clock,
+                                             scale_trace_for_clock_per_core)
+    trace = BasicPowerTrace({'Core0/a': np.array([2.0]), 'Core1/a': np.array([2.0])}, 1.0)
+    leak = {'Core0/a': np.array([0.5]), 'Core1/a': np.array([0.5])}
+    g, _, _ = scale_trace_for_clock(trace, leak, 4.6, 3.8)
+    p, _, _ = scale_trace_for_clock_per_core(trace, leak, {0: 4.6, 1: 4.6}, 3.8)
+    for k in ('Core0/a', 'Core1/a'):
+        assert p[k][0] == pytest.approx(g[k][0])
