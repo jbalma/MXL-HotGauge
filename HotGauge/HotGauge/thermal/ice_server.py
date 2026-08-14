@@ -189,13 +189,32 @@ class ICEServerSession(object):
         s.close()
         return p
 
+    #: How many times to re-pick a port when the server loses the bind race. Choosing a free
+    #: port here and handing it to a child process to bind is inherently racy -- nothing owns
+    #: the port in between -- and a sweep running a dozen concurrent points hits it. It shows up
+    #: as "ERROR :: server bind: Address already in use" in the server log and kills the study
+    #: point, which is an expensive way to lose a run to a one-line race.
+    _BIND_RETRIES = 5
+
     def start(self):
         if self._proc is not None:
             return self
         if not os.path.isfile(self.server_bin):
             raise ICEServerError(
                 '3D-ICE-Server not built at {}. Run: make -C 3d-ice'.format(self.server_bin))
+        for attempt in range(self._BIND_RETRIES):
+            try:
+                return self._start_once()
+            except ICEServerError as e:
+                if 'Address already in use' not in str(e) or attempt == self._BIND_RETRIES - 1:
+                    raise
+                LOGGER.warning('3D-ICE server lost the bind race on port %d (attempt %d/%d); '
+                               'retrying on a fresh port', self.port, attempt + 1,
+                               self._BIND_RETRIES)
+                self._proc = None
+                self.port = self._free_port()
 
+    def _start_once(self):
         self._log_path = self.stack_file + '.server{}.log'.format(self.port)
         log = open(self._log_path, 'wb')
         t0 = time.time()
