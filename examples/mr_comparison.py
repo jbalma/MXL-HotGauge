@@ -169,6 +169,9 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
            # Whether the reported plan is the MINIMUM MR that keeps a steady state, or merely
            # an upper bound the descent stopped at. Only the former is a rescue-cost claim.
            'mr_plan_is_minimum': (res or {}).get('plan_is_minimum') if use_mr else None,
+           # The one that decides whether a row is a RESCUE or merely a stable-but-hot die:
+           # the minimum plan for a steady state to exist can leave the peak at 133 C.
+           'mr_plan_holds_target': (res or {}).get('plan_holds_target') if use_mr else None,
            'mr_minimum_plan_W': (res or {}).get('minimum_plan_W') if use_mr else None,
            'mr_largest_failing_plan_W': (res or {}).get('largest_failing_plan_W') if use_mr
                                         else None,

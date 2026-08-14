@@ -517,3 +517,29 @@ def test_a_descent_that_never_reaches_the_boundary_is_flagged_as_an_upper_bound(
     assert res['plan_is_minimum'] is False
     assert res['plan']['hot'] > 3.0            # holds the die, but is bigger than it needs to be
     assert 'UPPER BOUND' in res['reason']
+
+
+def test_descent_stops_at_the_target_not_at_the_stability_boundary():
+    """Two different questions, and conflating them produced a 133 C 'rescue'.
+
+    Descending from the envelope the peak RISES, so it crosses the target while the plan is
+    still moving. If the loop only stops when the plan is also stationary it sails past and
+    ends at the minimum for a steady state to EXIST -- which here is a stable 133 C, past
+    McPAT's validity ceiling and not a shippable operating point. The product number is the
+    minimum plan that holds the TARGET, and it must be the one reported when the target is
+    reachable.
+    """
+    trace = BasicPowerTrace({'hot/a': [5.0]}, 1.0)
+    geom = {'hot': {'area_mm2': 1.0, 'min_dim_um': 500.0}}
+    # Holding 350 K needs 2.5 W (base 360 K, 4 K/W); a steady state merely EXISTS from 1.0 W.
+    p = MRParams(target_K=350.0, h_max=4.0, dt_max_K=1e6, cop=0.1)
+    solver, status = _runaway_unless_cooled(base_K=360.0, gain_K_per_W=4.0, needed_W=1.0)
+
+    res = run_mr_clipping(trace, solver, geom, p, _name_map, max_iter=20, tol_K=1.0,
+                          status_fn=status, plan_mode='envelope')
+    assert res['converged'] is True
+    assert res['plan_holds_target'] is True
+    assert res['plan']['hot'] == pytest.approx(2.6, abs=0.4), \
+        'should stop at the target-holding plan, not walk on to the stability boundary'
+    peak = max(float(np.ravel(t)[-1]) for t in res['temp_trace'].values())
+    assert peak <= p.target_K + 1.0

@@ -599,11 +599,13 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
     if not envelope:
         return {'plan': {}, 'detail': detail, 'temp_trace': base_temps, 'sensitivity': sens,
                 'converged': False, 'iterations': 0, 'history': history,
+                'plan_is_minimum': False, 'plan_holds_target': False,
                 'temp_trace_diverged': bool((base_status or {}).get('diverged')),
                 'accounting': mr_accounting({}, params, detail=detail),
                 'reason': 'device envelope allows no cooling on any block'}
 
     plan = dict(envelope)
+    prev_peak = None
     temps = thermal_solve_fn(apply_cooling_to_trace(trace, plan, name_map))
     st = status_fn()
     peak = max((float(np.ravel(t)[-1]) for t in temps.values()
@@ -617,6 +619,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
         return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
                 'converged': False, 'iterations': 1, 'history': history,
                 'temp_trace_diverged': True,
+                'plan_is_minimum': False, 'plan_holds_target': False,
                 'accounting': mr_accounting(plan, params, detail=detail),
                 'reason': 'envelope insufficient: no steady state even at full MR capability'}
 
@@ -625,7 +628,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
 
     # Descend: reduce cooling where blocks sit below target, restore it where they sit above.
     for it in range(1, max_iter):
-        prev_temps, prev_plan = temps, plan
+        prev_temps, prev_plan, prev_peak = temps, plan, peak
         plan = _relax_plan_toward_target(plan, envelope, temps, params, sens, relax, t_floor_K)
         if not plan:
             temps = thermal_solve_fn(trace)
@@ -638,6 +641,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
             return {'plan': {}, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
                     'converged': not st.get('diverged'), 'iterations': it + 1,
                     'history': history, 'temp_trace_diverged': bool(st.get('diverged')),
+                    'plan_is_minimum': True, 'plan_holds_target': True,
                     'accounting': mr_accounting({}, params),
                     'reason': 'no cooling needed to hold the target'}
 
@@ -686,20 +690,63 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                     'sensitivity': sens, 'converged': True,
                     'iterations': it + 1, 'history': history, 'temp_trace_diverged': False,
                     'accounting': mr_accounting(plan, params, detail=detail),
-                    'plan_is_minimum': True,
+                    'plan_is_minimum': True, 'plan_holds_target': False,
                     'minimum_plan_W': float(sum(plan.values())),
                     'largest_failing_plan_W': float(sum(bad.values())),
-                    'reason': 'minimum plan that holds a steady state, bracketed by bisection '
-                              'against the largest plan that does not'}
+                    'reason': 'minimum plan for a steady state to EXIST, bracketed by '
+                              'bisection. The target was NOT reachable on the way down, so the '
+                              'die is stable but hot -- read the peak before calling this a '
+                              'rescue'}
+
+        # Crossing the TARGET on the way down is the product-relevant answer, and it has to be
+        # caught here rather than waiting for the plan to go stationary too: descending from the
+        # envelope the peak RISES, so it sails past the target while the plan is still moving
+        # fast. Without this the loop carries on to the stability boundary and reports a plan
+        # whose steady state sits at 133 C -- stable, past McPAT's 127 C validity ceiling, and
+        # not an operating point anyone would ship. Bisect to land ON the target instead.
+        if peak > params.target_K + tol_K and prev_peak is not None \
+                and prev_peak <= params.target_K + tol_K:
+            too_little, enough, temps_ok = plan, prev_plan, prev_temps
+            for _ in range(bisect_iters):
+                trial = {b: 0.5 * (enough.get(b, 0.0) + too_little.get(b, 0.0))
+                         for b in set(enough) | set(too_little)}
+                trial = {b: q for b, q in trial.items() if q > 0.0}
+                t_trial = thermal_solve_fn(apply_cooling_to_trace(trace, trial, name_map))
+                st_trial = status_fn()
+                pk = max((float(np.ravel(t)[-1]) for t in t_trial.values()
+                          if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+                history.append({'iter': len(history), 'peak_K': pk,
+                                'heat_removed_W': float(sum(trial.values())),
+                                'max_plan_change_W': float('nan'),
+                                'stage': 'target bisection'})
+                if st_trial.get('diverged') or pk > params.target_K + tol_K:
+                    too_little = trial
+                else:
+                    enough, temps_ok = trial, t_trial
+                    if abs(pk - params.target_K) <= tol_K:
+                        break
+            return {'plan': enough, 'detail': detail, 'temp_trace': temps_ok,
+                    'sensitivity': sens, 'converged': True, 'iterations': it + 1,
+                    'history': history, 'temp_trace_diverged': False,
+                    'plan_is_minimum': True, 'plan_holds_target': True,
+                    'minimum_plan_W': float(sum(enough.values())),
+                    'accounting': mr_accounting(enough, params, detail=detail),
+                    'reason': 'minimum plan that holds the target, bracketed by bisection'}
 
         if delta_plan <= max(1e-3, 0.01 * total) and abs(peak - params.target_K) <= tol_K:
             return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
                     'converged': True, 'iterations': it + 1, 'history': history,
+                    'temp_trace_diverged': False,
+                    # Landed on the target smoothly. It holds the target; whether it is also the
+                    # smallest plan that keeps a steady state is a different question and was
+                    # not probed, so that flag stays False.
+                    'plan_is_minimum': False, 'plan_holds_target': True,
                     'accounting': mr_accounting(plan, params, detail=detail)}
 
     return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
             'converged': not st.get('diverged'), 'iterations': max_iter, 'history': history,
             'temp_trace_diverged': bool(st.get('diverged')), 'plan_is_minimum': False,
+            'plan_holds_target': bool(peak <= params.target_K + tol_K),
             'accounting': mr_accounting(plan, params, detail=detail),
             'reason': 'max_iter reached during envelope descent: the descent never reached the '
                       'stability boundary, so this plan is an UPPER BOUND on what MR needs, not '
