@@ -92,6 +92,45 @@ no limit-anchored target ever engages. A policy that works at every cooling clas
 anchored to the operating point (peak minus a margin) or to leakage contribution — the
 leakage-ranked policy in `docs/GAMEPLAN.md`, which this makes a stronger case for.
 
+## CORRECTION (later the same day): the V/F table does not match the roadmap for this node
+
+I earlier concluded that the shipped V/F table "ends where the device does", on the strength of
+an alpha-power fit showing 5.5 GHz would need 1.82 V. The fit is good (0.30% RMS) and that
+conclusion is right *about the table*. Checked against **IRDS 2024 More Moore, MM01 - LOGIC**,
+the table itself is the problem:
+
+| clock GHz | our table needs | IRDS Vdd | ratio |
+|---|---|---|---|
+| 3.85 | 0.936 V | 0.70 V | 1.34× |
+| 4.22 | 1.044 V | 0.65 V | 1.61× |
+| 4.36 | 1.092 V | 0.60 V | 1.82× |
+| 5.19 | 1.528 V | 0.60 V | 2.55× |
+
+IRDS puts a high-performance logic node at **0.6–0.7 V** reaching 3.85–5.19 GHz (wireloaded HP;
+its CPU-frequency row is 3.1–4.2 GHz). The shipped table needs **1.19 V for 4.6 GHz and 1.4 V
+for 5.0 GHz** — roughly twice the supply voltage for the same clock. It is not a 7 nm-class
+curve.
+
+**What that invalidates.** Dynamic power goes as V²f, so at 5.19 GHz our model charges about
+**6.5×** the dynamic power the roadmap implies. Consequences, in order of how much they matter:
+
+* the "voltage-limited at 5.0 GHz" ceiling in design A is a property of **this table**, not of
+  7 nm silicon — IRDS reaches 5.19 GHz at 0.6 V;
+* every absolute power number at high clock is overstated, and the overstatement grows with
+  clock, so the *shape* of the clock/power trade is wrong too, not just its scale;
+* MR's measured clock benefit is therefore **understated**: the model charges too much voltage
+  for the extra clock MR enables.
+
+**What it does not invalidate.** Everything that compares two configurations at the same clock
+through the same table — the degeneracy results, the plateau widths, the design comparisons,
+the cliff and rescue work, which use density rather than clock. The table is a consistent error
+where it is used as a common yardstick and a real one where it sets an absolute ceiling.
+
+**The fix** is to rebuild the V/F relation from the IRDS table for the node being modelled,
+which is now the highest-value item in the performance model — above extending the existing
+curve, which is what I was about to do and which would have extrapolated a curve that starts
+from the wrong place.
+
 ## Assumptions, and how much they matter
 
 * **V/F table stops at 5.0 GHz / 1.4 V.** Above it voltage clamps and the power cost of clock is

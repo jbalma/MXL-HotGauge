@@ -211,8 +211,15 @@ def performance_summary(block_temps_K, model, f_nominal_GHz=4.0, compute_power_W
 # The V/F envelope: why the table ends where it does
 # ---------------------------------------------------------------------------
 #: Maximum operating voltage in the shipped V/F table (``configuration.performance.VF_PAIRS``).
-#: This is a **device** limit, not a table limit, and the distinction matters for any study that
-#: searches the clock: past it a part does not run slower, it fails.
+#: Past it a part does not run slower, it fails -- so a clock search that stops here is reporting
+#: a limit rather than running out of data.
+#:
+#: **But the table is not a 7 nm-class curve.** IRDS 2024 More Moore (MM01 - LOGIC) puts a
+#: high-performance logic node at Vdd **0.6-0.7 V** reaching 3.85-5.19 GHz wireloaded, while
+#: this table needs 1.19 V for 4.6 GHz and 1.4 V for 5.0 GHz -- about twice the supply voltage
+#: for the same clock, and 6.5x the dynamic power at 5.19 GHz. Absolute power and any
+#: clock CEILING taken from it are wrong for a modern node; comparisons of two configurations
+#: through the same table are not. See docs/CLOCK_HEADROOM.md.
 VF_MAX_VOLTAGE = 1.4
 
 #: Alpha-power-law fit to the shipped table, ``f = k (V - Vth)^alpha / V``, which is the
