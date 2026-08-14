@@ -166,3 +166,59 @@ def test_activity_maps_reject_out_of_range_fractions():
         single_core_turbo(4, background=1.5)
     with pytest.raises(ValueError):
         mixed_utilisation(4, active_fraction=-0.1)
+
+
+# ---------------------------------------------------------------------------
+# Unit emphasis -- the intra-core degeneracy axis (design G)
+# ---------------------------------------------------------------------------
+def _balanced_core():
+    """A core whose power is spread over many similar units -- i.e. a thermal plateau."""
+    p = {'Core0/Execution Unit/Floating Point Units': np.array([0.55]),
+         'Core0/Execution Unit/Complex ALUs': np.array([0.36]),
+         'Core0/Execution Unit/Integer ALUs': np.array([0.31]),
+         'Core0/Execution Unit/Results Broadcast Bus': np.array([0.26]),
+         'Core0/Load Store Unit/Data Cache': np.array([0.23]),
+         'Core0/L2': np.array([0.07]),
+         'Core1/Execution Unit/Floating Point Units': np.array([0.55]),
+         'Core1/L2': np.array([0.07]),
+         'BUSES': np.array([1.0])}
+    return BasicPowerTrace(p, 1.0)
+
+
+def _core_total(trace, idx):
+    return sum(float(np.sum(v)) for k, v in trace.powers.items()
+               if k.startswith('Core{}/'.format(idx)))
+
+
+def test_emphasis_concentrates_power_without_changing_core_power():
+    from HotGauge.power.clock_search import emphasise_units
+    t = _balanced_core()
+    before = _core_total(t, 0)
+    out = emphasise_units(t, 'Floating Point Units', 2.0)
+    assert _core_total(out, 0) == pytest.approx(before, rel=1e-9)
+    # The emphasised unit doubled; the rest of the same core gave it back.
+    assert out['Core0/Execution Unit/Floating Point Units'][0] == pytest.approx(1.10)
+    assert out['Core0/Execution Unit/Complex ALUs'][0] < 0.36
+
+
+def test_emphasis_is_per_core_and_leaves_the_uncore_alone():
+    from HotGauge.power.clock_search import emphasise_units
+    out = emphasise_units(_balanced_core(), 'Floating Point Units', 2.0)
+    assert out['BUSES'][0] == pytest.approx(1.0)
+    # Core1 has a different mix, so it gets its own scaling, not Core0's.
+    assert out['Core1/Execution Unit/Floating Point Units'][0] == pytest.approx(1.10)
+    assert out['Core1/L2'][0] < 0.07
+
+
+def test_emphasis_raises_the_share_of_the_targeted_unit():
+    from HotGauge.power.clock_search import emphasise_units
+    t = _balanced_core()
+    share = lambda tr: (float(tr['Core0/Execution Unit/Floating Point Units'][0])
+                        / _core_total(tr, 0))
+    assert share(emphasise_units(t, 'Floating Point Units', 1.5)) > share(t)
+
+
+def test_emphasis_rejects_a_non_positive_factor():
+    from HotGauge.power.clock_search import emphasise_units
+    with pytest.raises(ValueError):
+        emphasise_units(_balanced_core(), 'Floating Point Units', 0.0)

@@ -43,10 +43,14 @@ Honest limits
   rather than ignored -- ignoring it would flatter every high-clock result.
 """
 
+import logging
+
 import numpy as np
 
 from HotGauge.power.performance_model import (voltage_for_frequency, dynamic_power_scale,
                                               DEFAULT_THROTTLE_K)
+
+LOGGER = logging.getLogger(__name__)
 
 #: Top of the shipped V/F table (``configuration.performance.VF_PAIRS``). Above this the
 #: voltage -- and therefore the dynamic-power cost of the clock -- is clamped.
@@ -286,3 +290,84 @@ def mixed_utilisation(n_cores, active_fraction=0.5, background=0.25, seed_order=
     n_active = int(round(active_fraction * n))
     active = set(order[:n_active])
     return {i: (1.0 if i in active else float(background)) for i in range(n)}
+
+
+def emphasise_units(trace, patterns, factor, keep_core_power=True):
+    """Concentrate a core's power into the units matching ``patterns``.
+
+    Why this exists
+    ---------------
+    ``examples/thermal_tiers.py`` found two stacked degeneracies. Activity maps break the
+    inter-core one; nothing in the workload domain breaks the *intra-core* one, because a
+    balanced scalar core spreads its power across many similar-sized units that then sit within
+    a few K of each other. On the 7nm trace a core's largest single unit (the FPUs) carries only
+    20% of core power, with a long tail behind it -- which is precisely a thermal plateau.
+
+    An accelerator-style core is not like that: a matrix/vector engine carries most of the
+    power, so the die has one structure that is distinctly hottest. That is the only shape found
+    so far that could make hotspot clipping a clock lever rather than bulk cooling in disguise,
+    and it is what current AI silicon looks like.
+
+    This emulates that redistribution on the existing floorplan rather than requiring a new one:
+    matching units are scaled by ``factor`` and, with ``keep_core_power``, the rest of the same
+    core is scaled down so the core's total power is unchanged. So the comparison isolates
+    *where the power sits inside a core* from *how much the core dissipates* -- otherwise a
+    concentrated core would simply be a hotter core and the screen would prove nothing.
+
+    patterns : substring or list of substrings matched against the McPAT unit name, e.g.
+               'Floating Point Units'.
+
+    It is a thermal proxy, not a microarchitecture: the floorplan geometry is unchanged, so this
+    answers "what if this unit carried the power" and not "what would a real matrix engine look
+    like". A dedicated floorplan is the follow-up if the screen says the shape matters.
+    """
+    import re as _re
+    from HotGauge.power.traces import BasicPowerTrace
+    if isinstance(patterns, str):
+        patterns = [patterns]
+    if factor <= 0:
+        raise ValueError('factor must be > 0, got {!r}'.format(factor))
+    core_rgx = _re.compile(r'^Core(\d+)(?:/.*)?$')
+
+    def _matches(name):
+        return any(p in name for p in patterns)
+
+    # Per-core totals before and after, so the rest of the core can absorb the difference.
+    hot_before, rest_before = {}, {}
+    for key, val in trace.powers.items():
+        m = core_rgx.match(key)
+        if not m:
+            continue
+        p = float(np.sum(np.asarray(val, dtype=float)))
+        idx = int(m.group(1))
+        if _matches(key):
+            hot_before[idx] = hot_before.get(idx, 0.0) + p
+        else:
+            rest_before[idx] = rest_before.get(idx, 0.0) + p
+
+    rest_scale = {}
+    for idx, hot in hot_before.items():
+        rest = rest_before.get(idx, 0.0)
+        if not keep_core_power or rest <= 0:
+            rest_scale[idx] = 1.0
+            continue
+        # Give back exactly what the emphasised units took, so the core total is preserved.
+        surplus = hot * (factor - 1.0)
+        s = 1.0 - surplus / rest
+        if s < 0.0:
+            LOGGER.warning('emphasis factor %.2f on core %d would need negative power from the '
+                           'rest of the core; clamping to zero and letting the core total rise',
+                           factor, idx)
+            s = 0.0
+        rest_scale[idx] = s
+
+    powers = {}
+    for key, val in trace.powers.items():
+        m = core_rgx.match(key)
+        arr = np.asarray(val, dtype=float)
+        if not m:
+            powers[key] = arr
+            continue
+        idx = int(m.group(1))
+        powers[key] = arr * (factor if _matches(key) else rest_scale.get(idx, 1.0))
+    return BasicPowerTrace(powers, trace.time_step)

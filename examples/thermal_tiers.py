@@ -52,7 +52,8 @@ from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           render_stack_with_sink,
                                           chip_area_m2_from_floorplan, SIMSCALE_T0_K)
 from HotGauge.thermal.ice_server import ICESessionCache
-from HotGauge.power.clock_search import scale_cores, single_core_turbo, mixed_utilisation
+from HotGauge.power.clock_search import (scale_cores, single_core_turbo,
+                                         mixed_utilisation, emphasise_units)
 from HotGauge.thermal.utils import K_to_C
 
 T_FLOOR_K = 200.0
@@ -127,6 +128,14 @@ def main():
     #     comparing FLOORPLANS at a fixed power budget, wrong for activity: concentrating the
     #     same total power into one core of 34 puts ~3.7x the average density on it and the die
     #     runs away, which says nothing about turbo and everything about the normalisation.
+    # Design G: concentrate a core's power into one structure, at constant core power, to test
+    # whether INTRA-core dominance breaks the plateau that activity maps cannot touch.
+    ap.add_argument('--emphasise', default=None,
+                    help="McPAT unit substring to concentrate a core's power into, e.g. "
+                         "'Floating Point Units' (accelerator-style core)")
+    ap.add_argument('--emphasis-factor', type=float, default=3.0,
+                    help='multiplier on the emphasised units; the rest of the same core is '
+                         'scaled down so core power is unchanged')
     ap.add_argument('--activity-scope', default='iso-per-core',
                     choices=('iso-per-core', 'iso-density'),
                     help='whether a quiet die keeps its per-core power (default) or is '
@@ -161,6 +170,11 @@ def main():
     base0 = BasicPowerTrace({u: np.array([p]) for u, p in first.items()}, 1.0)
     base = (replicate_trace_cores(base0, args.cores, n_src=args.trace_cores)
             if args.cores > args.trace_cores else base0)
+    # Emphasis is applied to the per-core mix BEFORE any activity map or normalisation, so it
+    # composes with them and does not change core power on its own.
+    if args.emphasise:
+        base = emphasise_units(base, args.emphasise, args.emphasis_factor)
+
     activity_map = None
     if args.activity == 'turbo':
         activity_map = single_core_turbo(args.cores, args.hot_core, args.background)
@@ -211,6 +225,9 @@ def main():
         'R_th {:.3g} K/W'.format(args.r_th) if args.r_th is not None
         else '{:.0f} CFM'.format(args.cfm)))
     print('  activity : {}  [{}]'.format(act, args.activity_scope))
+    if args.emphasise:
+        print('  emphasis : {!r} x{:.2f} at constant core power'.format(
+            args.emphasise, args.emphasis_factor))
     print('  actual   : {:.1f} W on the die ({:.3f} W/mm^2)'.format(
         actual_W, actual_W / (area_m2 * 1e6)))
     if res.get('diverged'):
@@ -248,6 +265,7 @@ def main():
         json.dump({'cores': args.cores, 'node': args.node, 'density': args.density,
                    'power_W': power_W, 'r_th': args.r_th, 'cfm': args.cfm,
                    'activity': args.activity, 'activity_scope': args.activity_scope,
+                   'emphasise': args.emphasise, 'emphasis_factor': args.emphasis_factor,
                    'actual_power_W': actual_W,
                    'actual_density_W_per_mm2': actual_W / (area_m2 * 1e6),
                    'hot_core': args.hot_core,
