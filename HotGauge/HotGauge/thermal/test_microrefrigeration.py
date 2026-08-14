@@ -570,3 +570,37 @@ def test_hot_branch_solutions_are_rejected_when_bisecting():
         assert res['plan']['hot'] >= 2.4, 'hot-branch plan reported as the minimum'
     else:
         assert peak > p.target_K + 1.0        # correctly flagged as not holding the target
+
+
+# ---------------------------------------------------------------------------
+# Design E -- distributed MR, the control arm for the hotspot framing
+# ---------------------------------------------------------------------------
+def test_distributed_plan_spreads_by_area_and_respects_the_flux_ceiling():
+    from HotGauge.thermal.microrefrigeration import distributed_plan
+    geom = {'big': {'area_mm2': 3.0, 'min_dim_um': 500.0},
+            'small': {'area_mm2': 1.0, 'min_dim_um': 500.0}}
+    p = MRParams(target_K=350.0, h_max=1e6, dt_max_K=1e6, cop=0.1)
+    plan, _ = distributed_plan(geom, p, total_W=4.0)
+    assert plan['big'] == pytest.approx(3.0)      # area-weighted: 3/4 of the budget
+    assert plan['small'] == pytest.approx(1.0)
+    assert sum(plan.values()) == pytest.approx(4.0)
+
+
+def test_distributed_plan_reports_what_it_can_actually_deliver():
+    """A budget the device cannot deliver must not be silently accepted: the comparison against
+    hotspot clipping is only fair against the delivered watts."""
+    from HotGauge.thermal.microrefrigeration import distributed_plan
+    geom = {'a': {'area_mm2': 1.0, 'min_dim_um': 500.0}}
+    p = MRParams(target_K=350.0, h_max=2.0, dt_max_K=1e6, cop=0.1)   # ceiling 2 W
+    plan, detail = distributed_plan(geom, p, total_W=10.0)
+    assert plan['a'] == pytest.approx(2.0)
+    assert detail['a']['limit'] == 'h_max'
+    assert detail['a']['requested_W'] == pytest.approx(10.0)
+
+
+def test_distributed_plan_rejects_a_nonpositive_budget():
+    from HotGauge.thermal.microrefrigeration import distributed_plan
+    geom = {'a': {'area_mm2': 1.0, 'min_dim_um': 500.0}}
+    p = MRParams(target_K=350.0, h_max=1.0, dt_max_K=1e6, cop=0.1)
+    with pytest.raises(ValueError):
+        distributed_plan(geom, p, total_W=0.0)

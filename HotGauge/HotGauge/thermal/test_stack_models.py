@@ -24,12 +24,16 @@ def test_memory_floorplan_tiles_the_logic_footprint(tmp_path):
     logic = _write_logic_flp(tmp_path)
     out, names = memory_floorplan(logic, str(tmp_path / 'mem.flp'), n_x=4, n_y=2)
     assert len(names) == 8
-    rows = [l.split('\t') for l in open(out).read().strip().split('\n')]
+    text = open(out).read()
+    # 3D-ICE floorplan syntax, not the HotSpot tab-separated form -- both are called .flp and
+    # only one of them parses, which cost a run to discover.
+    assert 'position' in text and 'dimension' in text and 'power values' in text
+    import re
+    pos = [(float(a), float(b)) for a, b in re.findall(r'position ([\d.]+), ([\d.]+)', text)]
+    dim = [(float(a), float(b)) for a, b in re.findall(r'dimension ([\d.]+), ([\d.]+)', text)]
     # Banks must cover the die exactly: 3D-ICE stacks share one footprint.
-    right = max(float(r[1]) + float(r[3]) for r in rows)
-    top = max(float(r[2]) + float(r[4]) for r in rows)
-    assert right == pytest.approx(2000.0)
-    assert top == pytest.approx(1000.0)
+    assert max(x + w for (x, _), (w, _) in zip(pos, dim)) == pytest.approx(2000.0)
+    assert max(y + h for (_, y), (_, h) in zip(pos, dim)) == pytest.approx(1000.0)
 
 
 def test_memory_blocks_are_named_so_the_layers_can_be_told_apart(tmp_path):

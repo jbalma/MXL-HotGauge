@@ -763,3 +763,57 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
             'reason': 'max_iter reached during envelope descent: the descent never reached the '
                       'stability boundary, so this plan is an UPPER BOUND on what MR needs, not '
                       'the minimum. Raise max_iter to bracket the boundary.'}
+
+
+def distributed_plan(block_geom, params, total_W, weight='area', t_floor_K=200.0):
+    """Spread a fixed cooling budget over the whole die instead of clipping hotspots.
+
+    Design E in docs/DESIGN_STUDY_PLAN.md: the control arm. Every MR result in this project
+    assumes MR is a *hotspot* tool, and that assumption is load-bearing -- it is why a poor
+    cooler COP is tolerable, because ``Q_removed`` is small and buys a disproportionate
+    frequency gain. If spreading the same watts over the die did as well, the framing would be
+    wrong and the comparison should be against a better heat sink rather than against nothing.
+
+    It is included because it is the strongest argument against the hotspot framing, and an
+    argument you have not measured is an argument you have not answered. The expectation is that
+    it loses badly on wall-plug grounds -- an electrical COP of 0.14 against a cold plate that
+    moves heat for the cost of a pump -- but it can only be *reported* as a loss if it is run.
+
+    weight : 'area' spreads the budget by block area (uniform cooling flux, which is what a
+             tile array with no targeting would do), 'uniform' splits it evenly per block
+             (which over-cools small blocks and is mostly a sanity contrast).
+
+    Blocks are still capped by the device envelope, so a budget larger than the device can
+    deliver is silently truncated -- the returned plan's total is the honest deliverable amount
+    and callers should compare against that rather than against what they asked for.
+    """
+    if total_W <= 0:
+        raise ValueError('total_W must be > 0, got {!r}'.format(total_W))
+    if weight not in ('area', 'uniform'):
+        raise ValueError("weight must be 'area' or 'uniform', got {!r}".format(weight))
+
+    names = [b for b, g in block_geom.items() if g and g.get('area_mm2', 0.0) > 0]
+    if not names:
+        return {}, {}
+    if weight == 'area':
+        tot_area = sum(block_geom[b]['area_mm2'] for b in names)
+        share = {b: block_geom[b]['area_mm2'] / tot_area for b in names}
+    else:
+        share = {b: 1.0 / len(names) for b in names}
+
+    plan, detail = {}, {}
+    for b in names:
+        want = total_W * share[b]
+        cap = params.h_max * block_geom[b]['area_mm2']      # the device's flux ceiling
+        q = min(want, cap)
+        if q <= 0:
+            continue
+        plan[b] = q
+        detail[b] = {'limit': 'h_max' if q < want else 'budget', 'q_W': q,
+                     'requested_W': want, 'q_h_max_W': cap}
+    delivered = float(sum(plan.values()))
+    if delivered < 0.999 * total_W:
+        LOGGER.warning('distributed plan could only deliver %.3f W of the requested %.3f W: the '
+                       'per-block h_max ceiling binds. Compare against the delivered figure.',
+                       delivered, total_W)
+    return plan, detail

@@ -55,6 +55,7 @@ from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           chip_area_m2_from_floorplan, simscale_fan_power,
                                           SIMSCALE_T0_K)
 from HotGauge.thermal.microrefrigeration import (MRParams, run_mr_clipping, mr_accounting,
+                                                 distributed_plan, apply_cooling_to_trace,
                                                  DEFAULT_SPOT_MIN_UM, DEFAULT_SPOT_POLICY)
 from HotGauge.thermal.ice_server import ICESessionCache
 from HotGauge.power.process_nodes import NODES, describe_assumptions, TRACE_REFERENCE_GHZ
@@ -144,7 +145,17 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
         return {'diverged': bool(r.get('diverged')), 'unconverged': bool(r.get('unconverged'))}
 
     res = None
-    if use_mr:
+    if use_mr and args.mr_mode == 'distributed':
+        # Design E, the control arm: spend the SAME budget spread over the die instead of
+        # clipping hotspots. If this buys the same clock, the hotspot framing is wrong and the
+        # comparison should be against a better sink rather than against nothing.
+        plan, plan_detail = distributed_plan(geom, mr, args.mr_budget_W, weight=args.mr_weight)
+        temps = solve_with_leakage(apply_cooling_to_trace(trace, plan, name_map))
+        acc = mr_accounting(plan, mr, detail=plan_detail)
+        res = {'plan': plan, 'converged': True, 'temp_trace': temps,
+               'temp_trace_diverged': bool((state['last'] or {}).get('diverged')),
+               'reason': 'distributed plan at a fixed budget (control arm)'}
+    elif use_mr:
         res = run_mr_clipping(trace, solve_with_leakage, geom, mr, name_map,
                               max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
                               status_fn=last_status, plan_mode=args.mr_plan_mode)
@@ -254,6 +265,13 @@ def main():
     ap.add_argument('--mr-h-max', type=float, default=10.0)
     ap.add_argument('--mr-dt-max', type=float, default=10.0)
     ap.add_argument('--mr-iter', type=int, default=6)
+    # Design E: 'clip' targets hot blocks (the assumption behind every MR result here);
+    # 'distributed' spreads a fixed budget over the die, which is the control that tests it.
+    ap.add_argument('--mr-mode', default='clip', choices=('clip', 'distributed'))
+    ap.add_argument('--mr-budget-W', type=float, default=1.0,
+                    help='heat to remove [W] in distributed mode; set it to the clipping run\'s '
+                         'Q so the two are compared at equal cooling')
+    ap.add_argument('--mr-weight', default='area', choices=('area', 'uniform'))
     ap.add_argument('--mr-plan-mode', default='auto', choices=('auto', 'baseline', 'envelope'),
                     help='how the MR plan is sized; auto switches to the envelope-anchored '
                          'descent when the uncooled die has no steady state')
@@ -432,6 +450,7 @@ def main():
                    'leak_v_exponent': args.leak_v_exponent,
                    'turbo_core': args.turbo_core, 'turbo_background': args.turbo_background,
                    'emphasise': args.emphasise, 'emphasis_factor': args.emphasis_factor,
+                   'mr_mode': args.mr_mode, 'mr_budget_W': args.mr_budget_W,
                    'mr_target_C': args.mr_target_K - 273.15,
                    'mr_target_margin_K': args.mr_target_margin_K,
                    'rated_GHz': node_obj.f_nominal_GHz if node_obj else None,

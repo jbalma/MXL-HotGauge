@@ -60,20 +60,31 @@ DEFAULT_BOND_UM = 5.0
 #: microbump-ish value, because assuming the good one flatters every stacked result.
 DEFAULT_BOND_CONDUCTIVITY = 0.5e-4
 
-_MEM_DIE_BLOCK = """
-/*********************** Stacked memory die (design D) ***********************/
+#: 3D-ICE's grammar is section-ordered: materials, then layers, then dies, then the stack. A
+#: declaration in the wrong section is a parse error ("unexpected keyword material, expecting
+#: keyword die or keyword stack"), so the three pieces are inserted separately rather than as
+#: one block next to the stack.
+_MEM_MATERIAL = """
 material BOND_MATERIAL :
    thermal conductivity     {bond_k} ;
    volumetric heat capacity 1.628e-12 ; // ASSUMPTION: taken as the solder TIM value
 
+"""
+
+_MEM_LAYER = """
 layer BOND_LAYER :
    height {bond_um} ;
    material BOND_MATERIAL ;
 
+"""
+
+_MEM_DIE = """
+/*********************** Stacked memory die (design D) ***********************/
 die MEM :
    layer  {mem_upper} SILICON ;
    source {mem_source} SILICON ;
    layer  {mem_lower} SILICON ;
+
 """
 
 
@@ -101,8 +112,10 @@ def memory_floorplan(logic_flp, out_path, n_x=4, n_y=4, name_prefix='MEM'):
         for c in range(n_x):
             name = '{}_r{}c{}'.format(name_prefix, r, c)
             names.append(name)
-            lines.append('{}\t{:.1f}\t{:.1f}\t{:.1f}\t{:.1f}'.format(
-                name, bw, bh, c * bw, r * bh))
+            # 3D-ICE's own floorplan syntax, NOT the HotSpot tab-separated form: the two are
+            # both called .flp and only one of them parses here.
+            lines.append('{} :\n\tposition {:.3f}, {:.3f} ;\n\tdimension {:.3f}, {:.3f} ;\n'
+                         '\tpower values 0.0;'.format(name, c * bw, r * bh, bw, bh))
     with open(out_path, 'w') as f:
         f.write('\n'.join(lines) + '\n')
     LOGGER.info('wrote %d-bank memory floorplan (%.0f x %.0f um) to %s',
@@ -132,12 +145,22 @@ def render_stacked_memory_template(base_template, out_path, mem_flp_file,
     # power and reports the temperatures.
     source_um = max(10.0, mem_die_um * 0.2)
     rest = max(mem_die_um - source_um, 2.0)
-    block = _MEM_DIE_BLOCK.format(bond_k=bond_conductivity, bond_um=bond_um,
-                                  mem_upper=rest * 0.5, mem_source=source_um,
-                                  mem_lower=rest * 0.5)
-    # Definitions must precede the stack section.
-    stack = stack.replace('/*********************** Stack ***********************/',
-                          block + '\n/*********************** Stack ***********************/', 1)
+
+    # Each declaration goes in its own section: 3D-ICE parses materials, then layers, then
+    # dies, then the stack, and rejects anything out of order.
+    def _insert_before(text, marker, block, what):
+        if marker not in text:
+            raise ValueError('{} has no {!r} section to insert the {} into'
+                             .format(base_template, marker, what))
+        return text.replace(marker, block + marker, 1)
+
+    stack = _insert_before(stack, '/*********************** Heat Sink ***********************/',
+                           _MEM_MATERIAL.format(bond_k=bond_conductivity), 'bond material')
+    stack = _insert_before(stack, '/*********************** Dies ***********************/',
+                           _MEM_LAYER.format(bond_um=bond_um), 'bond layer')
+    stack = _insert_before(stack, '/*********************** Stack ***********************/',
+                           _MEM_DIE.format(mem_upper=rest * 0.5, mem_source=source_um,
+                                           mem_lower=rest * 0.5), 'memory die')
 
     mem_abs = os.path.abspath(mem_flp_file)
     # Memory ABOVE logic: it appears earlier in the stack list, which 3D-ICE reads top-down.
