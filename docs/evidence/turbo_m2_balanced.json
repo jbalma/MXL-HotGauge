@@ -1,0 +1,168 @@
+{
+  "node": "7nm",
+  "cores": 34,
+  "area_mm2": 101.19016152807,
+  "p_ref_W": 24.57119186751926,
+  "trace_GHz": 3.8,
+  "thermal_limit_C": 100.0,
+  "leak_v_exponent": 1.0,
+  "turbo_core": 0,
+  "turbo_background": 0.25,
+  "emphasise": null,
+  "emphasis_factor": 4.0,
+  "mr_target_C": 98.0,
+  "mr_target_margin_K": 2.0,
+  "rated_GHz": 5.0,
+  "rows": [
+    {
+      "cooling": "88 CFM",
+      "r_th": null,
+      "cfm": 88.0,
+      "mr": false,
+      "f_sustainable_GHz": 4.8125,
+      "limited_by": "over_thermal_limit",
+      "at_ceiling": false,
+      "vf_clamped": false,
+      "bracket_GHz": [
+        4.8125,
+        4.84375
+      ],
+      "evaluations": [
+        {
+          "f_GHz": 3.0,
+          "sustainable": true,
+          "peak_K": 315.2311096191406,
+          "reason": null
+        },
+        {
+          "f_GHz": 5.0,
+          "sustainable": false,
+          "peak_K": null,
+          "reason": "thermal_runaway"
+        },
+        {
+          "f_GHz": 4.0,
+          "sustainable": true,
+          "peak_K": 332.8279724121094,
+          "reason": null
+        },
+        {
+          "f_GHz": 4.5,
+          "sustainable": true,
+          "peak_K": 351.7006530761719,
+          "reason": null
+        },
+        {
+          "f_GHz": 4.75,
+          "sustainable": true,
+          "peak_K": 366.1033630371094,
+          "reason": null
+        },
+        {
+          "f_GHz": 4.875,
+          "sustainable": false,
+          "peak_K": 378.7512512207031,
+          "reason": "over_thermal_limit"
+        },
+        {
+          "f_GHz": 4.8125,
+          "sustainable": true,
+          "peak_K": 371.4317932128906,
+          "reason": null
+        },
+        {
+          "f_GHz": 4.84375,
+          "sustainable": false,
+          "peak_K": 374.98052978515625,
+          "reason": "over_thermal_limit"
+        }
+      ],
+      "fan_W": 34.984,
+      "rated_GHz": 5.0,
+      "peak_C": 98.28179321289065,
+      "peak_block": "RBB_0",
+      "p_chip_W": 30.248852890480844,
+      "density_W_per_mm2": 0.29893076988606104,
+      "p_mr_net_W": 0.0,
+      "heat_removed_W": 0.0,
+      "p_cool_W": 34.984,
+      "gflops": 5236.0,
+      "gflops_per_total_W": 80.26630398628583
+    },
+    {
+      "cooling": "88 CFM",
+      "r_th": null,
+      "cfm": 88.0,
+      "mr": true,
+      "f_sustainable_GHz": 4.8125,
+      "limited_by": "over_thermal_limit",
+      "at_ceiling": false,
+      "vf_clamped": false,
+      "bracket_GHz": [
+        4.8125,
+        4.84375
+      ],
+      "evaluations": [
+        {
+          "f_GHz": 3.0,
+          "sustainable": true,
+          "peak_K": 315.2311096191406,
+          "reason": null
+        },
+        {
+          "f_GHz": 5.0,
+          "sustainable": false,
+          "peak_K": 384.2936706542969,
+          "reason": "unverified"
+        },
+        {
+          "f_GHz": 4.0,
+          "sustainable": true,
+          "peak_K": 332.8279724121094,
+          "reason": null
+        },
+        {
+          "f_GHz": 4.5,
+          "sustainable": true,
+          "peak_K": 351.7006530761719,
+          "reason": null
+        },
+        {
+          "f_GHz": 4.75,
+          "sustainable": true,
+          "peak_K": 366.1033630371094,
+          "reason": null
+        },
+        {
+          "f_GHz": 4.875,
+          "sustainable": false,
+          "peak_K": 376.68365478515625,
+          "reason": "over_thermal_limit"
+        },
+        {
+          "f_GHz": 4.8125,
+          "sustainable": true,
+          "peak_K": 371.1388244628906,
+          "reason": null
+        },
+        {
+          "f_GHz": 4.84375,
+          "sustainable": false,
+          "peak_K": 374.2760009765625,
+          "reason": "over_thermal_limit"
+        }
+      ],
+      "fan_W": 34.984,
+      "rated_GHz": 5.0,
+      "peak_C": 97.98882446289065,
+      "peak_block": "RBB_0",
+      "p_chip_W": 30.237243800610244,
+      "density_W_per_mm2": 0.29881604440588305,
+      "p_mr_net_W": 0.013966999753784314,
+      "heat_removed_W": 0.008013852317745096,
+      "p_cool_W": 34.997966999753785,
+      "gflops": 5236.0,
+      "gflops_per_total_W": 80.26340278141298
+    }
+  ]
+}

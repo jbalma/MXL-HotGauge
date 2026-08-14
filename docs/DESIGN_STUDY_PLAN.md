@@ -126,6 +126,37 @@ cores**, i.e. degeneracy 1 again. So the two are independent and should compose:
 intra-core one, turbo breaks the inter-core one. That combination is the decisive screen, and if
 it lands at plateau ≈ 1–2 with clip-one ≈ `dt_max`, MR has a design where it is a clock lever.
 
+### 1d. Design A measured: the design gives MR room, the policy decides whether it is affordable
+
+Single-core turbo clock search (only the boosted core's clock is searched), 34-core 7 nm,
+88 CFM, thermal limit 100 °C:
+
+| design | MR target | f no-MR | f with MR | gain | MR electrical | heat removed |
+|---|---|---|---|---|---|---|
+| balanced | 92 °C | 4.812 | 4.844 | +0.6% | 0.31 W | 0.178 W |
+| concentrated ×4 | 92 °C | 4.719 | 5.000 | +6.0% | **57.9 W** | 33.4 W |
+| balanced | 98 °C | 4.812 | 4.812 | **+0.0%** | 0.01 W | 0.008 W |
+| concentrated ×4 | 98 °C | 4.719 | **5.000** | **+6.0%** | **9.01 W** | 5.198 W |
+
+Two separate conclusions, and they were entangled in the first pair of rows:
+
+**The design decides whether MR has anything to work with.** On the balanced die MR buys nothing
+once the target is set sensibly — there is no single block to clip, only a plateau. On the
+concentrated die the same device buys ≥6%.
+
+**The policy decides what that costs.** A 92 °C target on a part running at 98 °C clips every
+block in the 6 K band — the whole boosted core — when the clock is set by one block. Moving the
+target to 2 K under the limit gives the *same* clock gain for **9.01 W instead of 57.9 W**. The
+absolute-temperature target has now been wrong in both directions: idle at poor cooling
+(R_th 1.0 K/W, MR clipped nothing), profligate at good cooling (57.9 W here).
+
+**+6.0% is a floor, not the answer.** Both concentrated runs stopped at `search_ceiling` — the
+shipped V/F table ends at 5.0 GHz, so the part had more headroom than the search could express.
+Measuring the real gain needs the V/F table extended past 5.0 GHz, which is a data question
+(what voltage does 5.5 GHz need on this node?) rather than a modelling one. Running past the
+table with the voltage clamped would flatter MR by understating the power its extra clock costs,
+so it is not done here.
+
 ### Caveat on the screening metric itself
 `tier_analysis` assumes clipping one block leaves the others where they are. That is **not**
 true here: the measured lateral coupling on this die is strong (removing 0.5 W at `cALU_0`
