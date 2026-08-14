@@ -125,7 +125,8 @@ def memory_floorplan(logic_flp, out_path, n_x=4, n_y=4, name_prefix='MEM'):
 
 def render_stacked_memory_template(base_template, out_path, mem_flp_file,
                                    mem_die_um=DEFAULT_MEM_DIE_UM, bond_um=DEFAULT_BOND_UM,
-                                   bond_conductivity=DEFAULT_BOND_CONDUCTIVITY):
+                                   bond_conductivity=DEFAULT_BOND_CONDUCTIVITY,
+                                   n_dies=1):
     """Insert a memory die above the logic die and return a stack template.
 
     The memory floorplan path is baked in as an absolute path while the logic placeholders
@@ -162,18 +163,66 @@ def render_stacked_memory_template(base_template, out_path, mem_flp_file,
                            _MEM_DIE.format(mem_upper=rest * 0.5, mem_source=source_um,
                                            mem_lower=rest * 0.5), 'memory die')
 
-    mem_abs = os.path.abspath(mem_flp_file)
     # Memory ABOVE logic: it appears earlier in the stack list, which 3D-ICE reads top-down.
+    #
+    # n_dies > 1 is the case the HIR thermal chapter says actually matters: "HBMs are generally
+    # challenging to cool due to the LARGE STACK THERMAL RESISTANCE and thermal coupling from
+    # high power logic chips close by, which might have higher operating temperature limits
+    # than that of HBMs" (HIR 2023 ch.20 s.2.10). A single thin bonded die is the most
+    # favourable memory geometry there is; an 8-high stack puts seven more dies and seven more
+    # bond layers between the hot one and the sink, and each bond is a thermal wall.
+    if n_dies < 1:
+        raise ValueError('n_dies must be >= 1, got {!r}'.format(n_dies))
+    # One floorplan per die, because every die needs DISTINCT block names. Sharing one
+    # floorplan would put MEM_r0c0 on every layer, and merging the Tflp files by name would
+    # then silently keep whichever was read last -- seven dies' temperatures discarded without
+    # a word.
+    flps = [mem_flp_file] if isinstance(mem_flp_file, str) else list(mem_flp_file)
+    if len(flps) != n_dies:
+        raise ValueError('need one floorplan per die: {} dies, {} floorplans'
+                         .format(n_dies, len(flps)))
     old = [l for l in stack.split('\n') if l.strip().startswith('die PROCESSOR_DIE')][0]
-    new = ('   die MEMORY_DIE MEM floorplan "{}";\n'
-           '   layer BOND BOND_LAYER ;\n'.format(mem_abs)) + old
-    stack = stack.replace(old, new, 1)
+    dies = []
+    for i, flp in enumerate(flps):
+        # Numbered from the sink downward, so MEMORY_DIE0 is the coolest and the highest index
+        # sits directly on the logic -- which is the one that gets cooked.
+        dies.append('   die MEMORY_DIE{} MEM floorplan "{}";\n'
+                    '   layer BOND{} BOND_LAYER ;\n'.format(i, os.path.abspath(flp), i))
+    stack = stack.replace(old, ''.join(dies) + old, 1)
 
     with open(out_path, 'w') as f:
         f.write(stack)
     LOGGER.info('wrote stacked-memory template to %s (memory %g um above %g um bond)',
                 out_path, mem_die_um, bond_um)
     return out_path
+
+
+def memory_stack_floorplans(logic_flp, out_dir, n_dies=1, n_x=4, n_y=4):
+    """One prefixed floorplan per memory die: ``(paths, names_by_die, all_names)``.
+
+    Distinct names per die are not cosmetic. 3D-ICE reports temperatures per die, and the
+    reader merges them by name -- shared names would mean six of an eight-high stack vanish
+    into the seventh without any error.
+    """
+    paths, by_die, every = [], [], []
+    for i in range(n_dies):
+        p = os.path.join(out_dir, 'memory{}.flp'.format(i))
+        path, names = memory_floorplan(logic_flp, p, n_x=n_x, n_y=n_y,
+                                       name_prefix='MEM{}'.format(i))
+        paths.append(path)
+        by_die.append(names)
+        every.extend(names)
+    return paths, by_die, every
+
+
+def memory_output_instructions(n_dies=1):
+    """Tflp instruction per memory die: a die with no output instruction reports nothing.
+
+    Returned in stack order (die 0 nearest the sink), and each writes its own file so the
+    reader never has to assume an ordering across dies.
+    """
+    return ['Tflp (MEMORY_DIE{0}, "memory{0}_elements.temps", average, final ) ;'.format(i)
+            for i in range(n_dies)]
 
 
 def split_layer_temps(temps, mem_prefix='MEM'):

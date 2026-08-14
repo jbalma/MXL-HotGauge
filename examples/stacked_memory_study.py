@@ -58,8 +58,8 @@ from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power, replica
 from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           render_stack_with_sink,
                                           chip_area_m2_from_floorplan, SIMSCALE_T0_K)
-from HotGauge.thermal.stack_models import (memory_floorplan, render_stacked_memory_template,
-                                           split_layer_temps)
+from HotGauge.thermal.stack_models import (memory_stack_floorplans, memory_output_instructions,
+                                           render_stacked_memory_template, split_layer_temps)
 from HotGauge.power.dram import (stacked_dram_model, dram_block_powers, dram_limit_report,
                                  DEFAULT_REFRESH_BREAK_K, DEFAULT_DRAM_LIMIT_K)
 from HotGauge.power.clock_search import emphasise_units
@@ -67,9 +67,9 @@ from HotGauge.thermal.utils import K_to_C
 
 T_FLOOR_K = 200.0
 
-#: Output instruction for the stacked memory die. Without one 3D-ICE reports nothing for that
-#: die, and a memory layer that is never read cannot be shown to be the binding constraint.
-MEMORY_TFLP_OUTPUT = 'Tflp (MEMORY_DIE, "memory_elements.temps", average, final ) ;'
+# Output instructions come from stack_models.memory_output_instructions(): 3D-ICE reports
+# nothing for a die without one, and a memory layer that is never read cannot be shown to be
+# the binding constraint.
 
 
 def tier_structure(temps_C, dt_max_K):
@@ -103,6 +103,13 @@ def main():
     ap.add_argument('--r-th', type=float, default=None)
     ap.add_argument('--ambient-K', type=float, default=SIMSCALE_T0_K)
     # --- memory ---
+    # A single thin bonded die is the most FAVOURABLE memory geometry there is, and the first
+    # run showed why that matters: the memory came out 28 K cooler than the logic and the logic
+    # stayed the binding constraint. HIR 2023 ch.20 s.2.10 says the real difficulty is "large
+    # stack thermal resistance" -- an 8-high stack, where seven more dies and seven more bond
+    # layers sit between the hot die and the sink.
+    ap.add_argument('--mem-dies', type=int, default=1,
+                    help='memory dies in the stack (HBM is 2- to 8-high)')
     ap.add_argument('--mem-banks-x', type=int, default=4)
     ap.add_argument('--mem-banks-y', type=int, default=4)
     ap.add_argument('--mem-density', type=float, default=0.15,
@@ -142,11 +149,13 @@ def main():
     power_W = args.density * area_mm2
 
     # --- the stack: memory die above the logic die -------------------------------------
-    mem_flp, mem_blocks = memory_floorplan(flp, os.path.join(args.out_dir, 'memory.flp'),
-                                           n_x=args.mem_banks_x, n_y=args.mem_banks_y)
+    mem_flps, mem_by_die, mem_blocks = memory_stack_floorplans(
+        flp, args.out_dir, n_dies=args.mem_dies,
+        n_x=args.mem_banks_x, n_y=args.mem_banks_y)
+    mem_outputs = memory_output_instructions(args.mem_dies)
     stacked_template = render_stacked_memory_template(
         get_stack_template(args.stack), os.path.join(args.out_dir, 'stacked_template.stk'),
-        mem_flp, mem_die_um=args.mem_die_um, bond_um=args.bond_um)
+        mem_flps, mem_die_um=args.mem_die_um, bond_um=args.bond_um, n_dies=args.mem_dies)
     sink = (ThermalResistanceSink(args.r_th, area_m2, ambient_K=args.ambient_K)
             if args.r_th is not None
             else BaffledFinSink(args.cfm, area_m2, ambient_K=args.ambient_K))
@@ -183,9 +192,9 @@ def main():
         args.cores, args.node, area_mm2))
     print('  logic    : {:.3f} W/mm^2 ({:.1f} W), limit {:.0f} C'.format(
         args.density, power_W, args.logic_limit_C))
-    print('  memory   : {}x{} banks, {:.3g} W/mm^2 at the breakpoint, {:.0f} um die on {:.0f} um '
-          'bond'.format(args.mem_banks_x, args.mem_banks_y, args.mem_density,
-                        args.mem_die_um, args.bond_um))
+    print('  memory   : {} die(s) x {}x{} banks, {:.3g} W/mm^2 at the breakpoint, {:.0f} um '
+          'die on {:.0f} um bond'.format(args.mem_dies, args.mem_banks_x, args.mem_banks_y,
+                                         args.mem_density, args.mem_die_um, args.bond_um))
     print('  memory   : refresh breakpoint {:.0f} C, hard limit {:.0f} C  [{}]'.format(
         args.dram_break_C, args.dram_limit_C, 'UNCALIBRATED -- JEDEC conventions'))
     print('  cooling  : {}'.format('R_th {:.3g} K/W'.format(args.r_th) if args.r_th is not None
@@ -211,7 +220,7 @@ def main():
             run_base_dir=os.path.join(args.out_dir, 'it{:02d}'.format(counter['n'])),
             initial_temp=args.ambient_K, num_cores=args.cores, single_thread=True,
             mode='steady', session_cache=None,
-            extra_die_outputs=[MEMORY_TFLP_OUTPUT])
+            extra_die_outputs=mem_outputs)
 
         # The memory banks are extra blocks on the same solve. They carry their own power and
         # are not in the McPAT trace, so they are injected here rather than through the trace.
@@ -254,6 +263,7 @@ def main():
     out = {'cores': args.cores, 'node': args.node, 'area_mm2': area_mm2,
            'logic_density': args.density, 'logic_power_W': power_W,
            'mem_density': args.mem_density, 'mem_banks': len(mem_blocks),
+           'mem_dies': args.mem_dies,
            'dram_break_C': args.dram_break_C, 'dram_limit_C': args.dram_limit_C,
            'logic_limit_C': args.logic_limit_C, 'calibrated': False,
            'emphasise': args.emphasise, 'history': history}

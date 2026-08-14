@@ -51,11 +51,11 @@ def test_stacked_template_puts_memory_between_the_sink_and_the_logic(tmp_path):
                                          str(tmp_path / 'mem.flp'))
     text = open(out).read()
     stack_section = text[text.index('/*********************** Stack ***'):]
-    mem_at = stack_section.index('die MEMORY_DIE')
+    mem_at = stack_section.index('die MEMORY_DIE0')
     logic_at = stack_section.index('die PROCESSOR_DIE')
     sink_at = stack_section.index('layer SINK')
     assert sink_at < mem_at < logic_at, 'memory must be above the logic die'
-    assert 'die MEM :' in text and 'layer BOND BOND_LAYER' in text
+    assert 'die MEM :' in text and 'layer BOND0 BOND_LAYER' in text
 
 
 def test_stacked_template_leaves_the_logic_placeholders_for_the_stock_machinery(tmp_path):
@@ -76,3 +76,42 @@ def test_refuses_to_stack_twice(tmp_path):
                                            str(tmp_path / 'a.stk'), str(tmp_path / 'm.flp'))
     with pytest.raises(ValueError):
         render_stacked_memory_template(first, str(tmp_path / 'b.stk'), str(tmp_path / 'm.flp'))
+
+
+def test_multi_die_stack_gives_every_die_distinct_block_names(tmp_path):
+    """Shared names would make six dies of an eight-high stack vanish into the seventh when the
+    Tflp files are merged, with no error anywhere."""
+    from HotGauge.thermal.stack_models import (memory_stack_floorplans,
+                                               memory_output_instructions)
+    logic = _write_logic_flp(tmp_path)
+    paths, by_die, every = memory_stack_floorplans(logic, str(tmp_path), n_dies=4, n_x=2, n_y=2)
+    assert len(paths) == 4 and len(every) == 16
+    assert len(set(every)) == 16, 'block names collide across dies'
+    assert by_die[0][0].startswith('MEM0_') and by_die[3][0].startswith('MEM3_')
+    # ...and one output instruction per die, or the extra dies report nothing at all.
+    outs = memory_output_instructions(4)
+    assert len(outs) == 4 and 'MEMORY_DIE3' in outs[3]
+    assert len(set(outs)) == 4
+
+
+def test_multi_die_stack_places_every_die_above_the_logic(tmp_path):
+    from HotGauge.thermal.stack_models import memory_stack_floorplans
+    logic = _write_logic_flp(tmp_path)
+    paths, _, _ = memory_stack_floorplans(logic, str(tmp_path), n_dies=4, n_x=2, n_y=2)
+    out = render_stacked_memory_template(get_stack_template('skylake'),
+                                         str(tmp_path / 'stack4.stk'), paths, n_dies=4)
+    section = open(out).read()
+    section = section[section.index('/*********************** Stack ***'):]
+    logic_at = section.index('die PROCESSOR_DIE')
+    for i in range(4):
+        assert section.index('die MEMORY_DIE{}'.format(i)) < logic_at
+    assert section.count('layer BOND') == 4
+
+
+def test_floorplan_count_must_match_die_count(tmp_path):
+    from HotGauge.thermal.stack_models import memory_stack_floorplans
+    paths, _, _ = memory_stack_floorplans(_write_logic_flp(tmp_path), str(tmp_path),
+                                          n_dies=2, n_x=2, n_y=2)
+    with pytest.raises(ValueError):
+        render_stacked_memory_template(get_stack_template('skylake'),
+                                       str(tmp_path / 'x.stk'), paths, n_dies=4)
