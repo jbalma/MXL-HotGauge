@@ -1,5 +1,12 @@
 #!/usr/bin/env python
-"""Roll the overnight study up into one table per phase.
+"""Roll the overnight2 study up into one table per phase.
+
+**These results are VOID at and above ~1.05 W/mm^2.** The convergence test they passed measured
+the change between successive solves, which scales with the damping, so points near the leakage
+instability are truncations of diverging trajectories rather than solutions. Superseded by
+``scripts/summarise_overnight3.py`` on ``results/overnight3``. This script is kept to read the
+historical run and prints the warning on every invocation, so a stale table cannot be mistaken
+for a current one. Full account: docs/CONVERGENCE.md.
 
 Reads every ``results/overnight2/*/mr_comparison.json`` and pairs the MR-off and MR-on rows for
 each point. Points that produced no JSON are listed as incomplete rather than skipped silently,
@@ -11,6 +18,20 @@ import glob
 import json
 
 OUT = '/mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/overnight2'
+
+#: Below this the trajectory really does flatten and these numbers stand (cross-checked at
+#: 1.00 W/mm^2: 89.165 C here against 89.186 C from the verified path). At and above it they
+#: do not.
+VOID_ABOVE_W_PER_MM2 = 1.05
+
+print('*' * 100)
+print('WARNING: this study is VOID at and above ~{:.2f} W/mm^2.'.format(VOID_ABOVE_W_PER_MM2))
+print('Its convergence test measured the change between successive solves, which scales with')
+print('relax -- so tightening the damping made the tolerance weaker. At 1.15 W/mm^2 it stopped')
+print('on iteration 2 reporting 101.09 C; that trajectory reaches 1092 C by iteration 52.')
+print('Superseded by results/overnight3 (scripts/summarise_overnight3.py). docs/CONVERGENCE.md.')
+print('*' * 100)
+print()
 
 
 def load(tag_dir):
