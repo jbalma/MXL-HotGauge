@@ -129,16 +129,28 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
                   laser_wallplug=args.eta_laser, lpc_efficiency=args.eta_lpc,
                   spot_min_um=args.spot_min_um, spot_policy=args.spot_policy)
 
+    def last_status():
+        r = state.get('last') or {}
+        return {'diverged': bool(r.get('diverged')), 'unconverged': bool(r.get('unconverged'))}
+
+    res = None
     if use_mr:
         res = run_mr_clipping(trace, solve_with_leakage, geom, mr, name_map,
-                              max_iter=args.mr_iter, tol_K=2.0, relax=0.7)
+                              max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
+                              status_fn=last_status, plan_mode=args.mr_plan_mode)
         temps, acc = res['temp_trace'], res['accounting']
     else:
         temps = solve_with_leakage(trace)
         acc = mr_accounting({}, mr)
 
     last = state['last'] or {}
-    out = {'f_GHz': f_GHz, 'diverged': bool(last.get('diverged')) or temps is None,
+    # See the note in examples/mr_comparison.py: for an MR point the MR loop's own verdict is
+    # authoritative, because the envelope descent probes past the boundary on purpose.
+    if use_mr and 'temp_trace_diverged' in (res or {}):
+        field_diverged = bool(res.get('temp_trace_diverged'))
+    else:
+        field_diverged = bool(last.get('diverged'))
+    out = {'f_GHz': f_GHz, 'diverged': field_diverged or temps is None,
            'unconverged': bool(state['unconverged']),
            'n_unconverged_solves': state['unconverged'], 'n_solves': state['n_solves'],
            'worst_peak_spread_K': state['worst_spread_K'],
@@ -221,6 +233,9 @@ def main():
     ap.add_argument('--mr-h-max', type=float, default=10.0)
     ap.add_argument('--mr-dt-max', type=float, default=10.0)
     ap.add_argument('--mr-iter', type=int, default=6)
+    ap.add_argument('--mr-plan-mode', default='auto', choices=('auto', 'baseline', 'envelope'),
+                    help='how the MR plan is sized; auto switches to the envelope-anchored '
+                         'descent when the uncooled die has no steady state')
     ap.add_argument('--spot-min-um', type=float, default=DEFAULT_SPOT_MIN_UM)
     ap.add_argument('--spot-policy', default=DEFAULT_SPOT_POLICY,
                     choices=('dilute', 'exclude', 'ideal'))

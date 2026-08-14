@@ -400,9 +400,51 @@ def estimate_sensitivity(temps_before_K, temps_after_K, plan, floor=1e-6):
     return out
 
 
+def envelope_plan(block_geom, params, sensitivity_K_per_W, blocks=None, t_floor_K=200.0):
+    """The most cooling the device can apply to each block, ignoring how much is needed.
+
+    Obtained by asking ``clipping_plan`` about an unboundedly hot die, so ``q_need`` never binds
+    and every block is capped by ``h_max * area`` or ``dt_max / sensitivity`` -- which also
+    means the spot pitch and policy are applied by exactly the same code path as a normal plan.
+
+    This is the anchor for the rescue regime: it is the most-cooled state the device can reach,
+    so if the coupled system has no steady state even here, MR cannot rescue that operating
+    point at all. That is a statement about the device, where the old path gave one about the
+    solver.
+    """
+    names = list(blocks if blocks is not None else block_geom)
+    hot = {b: params.target_K + 1.0e6 for b in names}
+    return clipping_plan(hot, block_geom, params, sensitivity_K_per_W, t_floor_K=t_floor_K)
+
+
+def _relax_plan_toward_target(plan, envelope, temps, params, sens, relax, t_floor_K):
+    """One Newton step on the plan, from the cooled state: cool more where hot, less where cold.
+
+    Symmetric by construction -- a block below target has its cooling *reduced* -- so an initial
+    over-cool is corrected rather than locked in, which is the property the baseline-anchored
+    scheme was written to get and only got when the baseline existed.
+    """
+    new = {}
+    for blk, q_env in envelope.items():
+        t = temps.get(blk)
+        if t is None:
+            continue
+        t = float(np.ravel(t)[-1])
+        if t <= t_floor_K:
+            continue
+        s = float(sens.get(blk, 0.0))
+        if s <= 0:
+            new[blk] = plan.get(blk, 0.0)
+            continue
+        step = (t - params.target_K) / s          # >0 wants more cooling, <0 wants less
+        q = plan.get(blk, 0.0) + relax * step
+        new[blk] = min(max(q, 0.0), q_env)
+    return {b: q for b, q in new.items() if q > 0.0}
+
+
 def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
                     initial_sensitivity=None, max_iter=6, tol_K=1.0, relax=0.7,
-                    t_floor_K=200.0):
+                    t_floor_K=200.0, status_fn=None, plan_mode='auto'):
     """Iterate MR cooling against the thermal solver until hot blocks reach the target.
 
     Structurally the same fixed point as the leakage loop: the plan changes the temperatures,
@@ -410,11 +452,53 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
     positive seed) and are refined by secant update each iteration, so the controller learns
     the real dT/dq including lateral spreading instead of assuming it.
 
+    Two ways to size the plan
+    -------------------------
+    ``plan_mode='baseline'`` (the original) sizes every plan from the UNCOOLED solve. Correct
+    and cheap when the bare die has a steady state.
+
+    **It is invalid in the rescue regime, which is the regime MR exists for.** There the
+    uncooled solve diverges, so the field it plans from is whichever one the iteration happened
+    to be passing through when a runaway guard fired. Measured on the 34-core die at 88 CFM:
+    the baseline peak used to size the plan was 138.7 C at 1.12 W/mm^2 and 142.8 C at 1.15,
+    giving plans of 0.561 W and 1.979 W -- a 3.5x difference between two points 3% apart in
+    density. The small plan failed to arrest the runaway and the large one succeeded, so
+    "does MR rescue this die" was decided by where a divergent sequence stopped. The rescue was
+    correspondingly non-monotone: 1.10 yes, 1.12 no, 1.15 yes, 1.16 no.
+
+    ``plan_mode='envelope'`` starts from the other side instead. It applies the full device
+    envelope and relaxes the cooling *down* toward the target, so it never reads a divergent
+    field:
+
+      * if the fully-cooled system still has no steady state, MR cannot rescue this point --
+        reported as ``reason='envelope insufficient'``;
+      * otherwise the loop reduces cooling where blocks sit below target and adds it back where
+        they sit above, converging on the *minimum* plan that holds the target.
+
+    ``plan_mode='auto'`` (default) picks 'baseline' when the uncooled solve converged and
+    'envelope' when it did not. That keeps previously-validated convergent-regime results
+    unchanged while making the rescue regime mean something.
+
+    ``status_fn`` is an optional zero-argument callable returning the status of the most recent
+    solve (``{'diverged': ..., 'unconverged': ...}``) -- ``run_leakage_feedback`` callers can
+    supply it directly. Without it 'auto' cannot tell the two cases apart and falls back to
+    'baseline', so a caller that needs the rescue regime handled correctly must pass it.
+
     Returns a dict with the final plan, temperature trace, accounting, per-iteration history
     and a ``converged`` flag. Not converging is a real answer -- it means the envelope cannot
     clip this workload -- so it is reported, not raised.
     """
+    if plan_mode not in ('auto', 'baseline', 'envelope'):
+        raise ValueError("plan_mode must be 'auto', 'baseline' or 'envelope', got {!r}"
+                         .format(plan_mode))
     sens = dict(initial_sensitivity or {})
+
+    def _status():
+        try:
+            return dict(status_fn() or {}) if status_fn is not None else {}
+        except Exception:                      # noqa: BLE001 - a broken probe must not decide physics
+            LOGGER.warning('status_fn raised; treating the solve status as unknown')
+            return {}
 
     # The plan is always recomputed against the UNCOOLED baseline using the latest measured
     # sensitivity. Planning against the already-cooled temperatures instead would let a first
@@ -422,9 +506,20 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
     # report a laser budget several times larger than needed. Overspending must be corrected,
     # not just under-spending.
     base_temps = thermal_solve_fn(trace)
+    base_status = _status()
+    history = []
+
+    mode = plan_mode
+    if mode == 'auto':
+        mode = 'envelope' if base_status.get('diverged') else 'baseline'
+    if mode == 'envelope':
+        return _run_mr_clipping_envelope(
+            trace, thermal_solve_fn, block_geom, params, name_map, sens,
+            max_iter=max_iter, tol_K=tol_K, relax=relax, t_floor_K=t_floor_K,
+            status_fn=_status, base_temps=base_temps, base_status=base_status)
+
     base_hot = {b: float(np.ravel(t)[-1]) for b, t in base_temps.items()
                 if float(np.ravel(t)[-1]) > max(t_floor_K, params.target_K)}
-    history = []
 
     if not base_hot:
         return {'plan': {}, 'detail': {}, 'temp_trace': base_temps, 'sensitivity': sens,
@@ -466,9 +561,112 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
         if delta_plan <= max(1e-3, 0.01 * total) and abs(peak - params.target_K) <= tol_K:
             return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
                     'converged': True, 'iterations': it + 1, 'history': history,
+                    'temp_trace_diverged': False,
                     'accounting': mr_accounting(plan, params, detail=detail)}
 
     return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
             'converged': False, 'iterations': max_iter, 'history': history,
             'accounting': mr_accounting(plan, params, detail=detail),
             'reason': 'max_iter reached'}
+
+
+def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_map, sens,
+                              max_iter=6, tol_K=1.0, relax=0.7, t_floor_K=200.0,
+                              status_fn=None, base_temps=None, base_status=None):
+    """MR sizing anchored on the device envelope rather than on an uncooled baseline.
+
+    Used when the bare die has no steady state, where the baseline the original scheme plans
+    from does not exist. See ``run_mr_clipping`` for why that matters.
+
+    Strategy: start at the most-cooled state the device can produce and walk *down* toward the
+    target. The first solve then answers the question that actually matters -- can MR hold this
+    die at all? -- and everything after it is a descent from a known-feasible point, so the
+    answer never depends on where a divergent sequence stopped.
+    """
+    status_fn = status_fn or (lambda: {})
+    history = []
+
+    # Seed sensitivities for every block we might cool. 1.0 K/W is a placeholder that the
+    # secant update replaces after the first cooled solve; it only sets the first step.
+    for b in block_geom:
+        sens.setdefault(b, 1.0)
+
+    envelope, detail = envelope_plan(block_geom, params, sens, t_floor_K=t_floor_K)
+    if not envelope:
+        return {'plan': {}, 'detail': detail, 'temp_trace': base_temps, 'sensitivity': sens,
+                'converged': False, 'iterations': 0, 'history': history,
+                'temp_trace_diverged': bool((base_status or {}).get('diverged')),
+                'accounting': mr_accounting({}, params, detail=detail),
+                'reason': 'device envelope allows no cooling on any block'}
+
+    plan = dict(envelope)
+    temps = thermal_solve_fn(apply_cooling_to_trace(trace, plan, name_map))
+    st = status_fn()
+    peak = max((float(np.ravel(t)[-1]) for t in temps.values()
+                if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+    history.append({'iter': 0, 'peak_K': peak, 'heat_removed_W': float(sum(plan.values())),
+                    'max_plan_change_W': float('inf'), 'stage': 'full envelope'})
+
+    if st.get('diverged'):
+        # The strongest statement this model can make about MR at an operating point: even at
+        # full device capability the coupled system has no steady state.
+        return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+                'converged': False, 'iterations': 1, 'history': history,
+                'temp_trace_diverged': True,
+                'accounting': mr_accounting(plan, params, detail=detail),
+                'reason': 'envelope insufficient: no steady state even at full MR capability'}
+
+    if base_temps is not None:
+        sens.update(estimate_sensitivity(base_temps, temps, plan))
+
+    # Descend: reduce cooling where blocks sit below target, restore it where they sit above.
+    for it in range(1, max_iter):
+        prev_temps, prev_plan = temps, plan
+        plan = _relax_plan_toward_target(plan, envelope, temps, params, sens, relax, t_floor_K)
+        if not plan:
+            temps = thermal_solve_fn(trace)
+            st = status_fn()
+            peak = max((float(np.ravel(t)[-1]) for t in temps.values()
+                        if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+            history.append({'iter': it, 'peak_K': peak, 'heat_removed_W': 0.0,
+                            'max_plan_change_W': float(sum(prev_plan.values())),
+                            'stage': 'relaxed to zero'})
+            return {'plan': {}, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+                    'converged': not st.get('diverged'), 'iterations': it + 1,
+                    'history': history, 'temp_trace_diverged': bool(st.get('diverged')),
+                    'accounting': mr_accounting({}, params),
+                    'reason': 'no cooling needed to hold the target'}
+
+        temps = thermal_solve_fn(apply_cooling_to_trace(trace, plan, name_map))
+        st = status_fn()
+        sens.update(estimate_sensitivity(prev_temps, temps,
+                                         {b: plan.get(b, 0.0) - prev_plan.get(b, 0.0)
+                                          for b in set(plan) | set(prev_plan)}))
+        peak = max((float(np.ravel(t)[-1]) for t in temps.values()
+                    if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+        total = float(sum(plan.values()))
+        delta_plan = max((abs(plan.get(b, 0.0) - prev_plan.get(b, 0.0))
+                          for b in set(plan) | set(prev_plan)), default=0.0)
+        history.append({'iter': it, 'peak_K': peak, 'heat_removed_W': total,
+                        'max_plan_change_W': delta_plan, 'stage': 'descent'})
+
+        if st.get('diverged'):
+            # Walked past the feasible boundary: the previous plan is the last one that held.
+            return {'plan': prev_plan, 'detail': detail, 'temp_trace': prev_temps,
+                    'sensitivity': sens, 'converged': True, 'iterations': it + 1,
+                    'history': history, 'temp_trace_diverged': False,
+                    'accounting': mr_accounting(prev_plan, params, detail=detail),
+                    'reason': 'descent reached the stability boundary; reporting the last '
+                              'plan that held'}
+
+        if delta_plan <= max(1e-3, 0.01 * total) and abs(peak - params.target_K) <= tol_K:
+            return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+                    'converged': True, 'iterations': it + 1, 'history': history,
+                    'accounting': mr_accounting(plan, params, detail=detail)}
+
+    return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+            'converged': not st.get('diverged'), 'iterations': max_iter, 'history': history,
+            'temp_trace_diverged': bool(st.get('diverged')),
+            'accounting': mr_accounting(plan, params, detail=detail),
+            'reason': 'max_iter reached during envelope descent; the plan holds the die but is '
+                      'not necessarily the minimum one'}

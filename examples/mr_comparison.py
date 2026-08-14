@@ -138,16 +138,34 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
                   laser_wallplug=args.eta_laser, lpc_efficiency=args.eta_lpc,
                   spot_min_um=args.spot_min_um, spot_policy=args.spot_policy)
 
+    def last_status():
+        # Lets run_mr_clipping tell a converged baseline from a divergent one, which is what
+        # decides whether the plan can be sized from the baseline at all.
+        r = getattr(solve_with_leakage, 'last', None) or {}
+        return {'diverged': bool(r.get('diverged')), 'unconverged': bool(r.get('unconverged'))}
+
+    res = None
     if use_mr:
         res = run_mr_clipping(trace, solve_with_leakage, geom, mr, name_map,
-                              max_iter=args.mr_iter, tol_K=2.0, relax=0.7)
+                              max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
+                              status_fn=last_status, plan_mode=args.mr_plan_mode)
         temps, acc = res['temp_trace'], res['accounting']
     else:
         temps = solve_with_leakage(trace)
         acc = mr_accounting({}, mr)
 
     last = getattr(solve_with_leakage, 'last', None)
+    # For an MR point the verdict belongs to the MR loop, not to the last leakage solve: the
+    # envelope-anchored descent deliberately probes past the stability boundary and then reports
+    # the last plan that held, so its final solve can be a diverged probe while the RESULT is a
+    # perfectly good solution.
+    if use_mr and 'temp_trace_diverged' in (res or {}):
+        mr_field_diverged = bool(res.get('temp_trace_diverged'))
+    else:
+        mr_field_diverged = bool((last or {}).get('diverged'))
     row = {'tag': tag, 'cores': n_cores, 'mr': use_mr, 'fan_W': sink.parasitic_power_W(),
+           'mr_reason': (res or {}).get('reason') if use_mr else None,
+           'mr_loop_converged': bool((res or {}).get('converged')) if use_mr else None,
            'unconverged': bool(ver['n_unconverged']),
            'n_solves': ver['n_solves'], 'n_unconverged_solves': ver['n_unconverged'],
            # worst_ is the one that decides whether this row is quotable; peak_spread_K is the
@@ -155,7 +173,7 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
            'worst_peak_spread_K': ver['worst_spread_K'],
            'peak_spread_K': (last or {}).get('peak_spread_K'),
            'relax_final': (last or {}).get('relax_final')}
-    if last is None or last.get('diverged'):
+    if last is None or mr_field_diverged:
         row['diverged'] = True
         return row
 
@@ -221,6 +239,13 @@ def main():
     ap.add_argument('--mr-h-max', type=float, default=10.0)
     ap.add_argument('--mr-dt-max', type=float, default=10.0)
     ap.add_argument('--mr-iter', type=int, default=6)
+    # 'auto' sizes the plan from the uncooled baseline when that baseline exists, and from the
+    # device envelope (descending toward the target) when it does not. The latter is required in
+    # the rescue regime: there the baseline diverges, and planning from a point on a divergent
+    # trajectory made the rescue depend on where the iteration stopped. See
+    # HotGauge/thermal/microrefrigeration.py.
+    ap.add_argument('--mr-plan-mode', default='auto', choices=('auto', 'baseline', 'envelope'),
+                    help='how the MR plan is sized (default auto)')
     ap.add_argument('--spot-min-um', type=float, default=DEFAULT_SPOT_MIN_UM)
     ap.add_argument('--spot-policy', default=DEFAULT_SPOT_POLICY,
                     choices=('dilute', 'exclude', 'ideal'),

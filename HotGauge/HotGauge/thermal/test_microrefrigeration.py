@@ -366,3 +366,110 @@ class TestSpotPolicy:
     def test_bad_policy_rejected(self):
         with pytest.raises(ValueError):
             MRParams(target_K=350.0, spot_policy='nonsense')
+
+
+# ---------------------------------------------------------------------------
+# The rescue regime: sizing the plan when the bare die has NO steady state.
+# These pin the fix for the path-dependence measured on the 34-core die, where the plan was
+# sized from whichever field a divergent baseline happened to stop on (0.561 W at 1.12 W/mm^2
+# against 1.979 W at 1.15) and the rescue came out non-monotone in density.
+# ---------------------------------------------------------------------------
+def _runaway_unless_cooled(base_K, gain_K_per_W, needed_W):
+    """Mock whose bare die has no steady state: it reports divergence unless enough heat is
+    removed. ``status_fn`` mirrors what run_leakage_feedback tells its caller."""
+    state = {'diverged': True}
+
+    def solver(tr):
+        removed = 5.0 - float(np.sum(tr.powers['hot/a']))
+        state['diverged'] = removed < needed_W
+        # While diverging the reported field is a point on the runaway, not a solution -- and
+        # crucially it depends on how far the iteration ran, which is the whole problem.
+        t = base_K + 60.0 if state['diverged'] else base_K - gain_K_per_W * removed
+        return {'hot': np.array([t])}
+
+    return solver, (lambda: dict(state))
+
+
+def test_envelope_mode_rescues_where_baseline_mode_reads_a_divergent_field():
+    trace = BasicPowerTrace({'hot/a': [5.0]}, 1.0)
+    geom = {'hot': {'area_mm2': 1.0, 'min_dim_um': 500.0}}
+    p = MRParams(target_K=350.0, h_max=2.0, dt_max_K=1e6, cop=0.1)   # envelope 2.0 W
+
+    solver, status = _runaway_unless_cooled(base_K=360.0, gain_K_per_W=4.0, needed_W=1.0)
+    res = run_mr_clipping(trace, solver, geom, p, _name_map, max_iter=8, tol_K=1.0,
+                          status_fn=status, plan_mode='envelope')
+    assert res['converged'] is True
+    assert res['plan']['hot'] > 0.0
+    # It found a plan that holds the die, and did not need the (nonexistent) baseline to do it.
+    assert res['history'][0]['stage'] == 'full envelope'
+
+
+def test_auto_mode_switches_on_the_baseline_status():
+    trace = BasicPowerTrace({'hot/a': [5.0]}, 1.0)
+    geom = {'hot': {'area_mm2': 1.0, 'min_dim_um': 500.0}}
+    p = MRParams(target_K=350.0, h_max=2.0, dt_max_K=1e6, cop=0.1)
+
+    solver, status = _runaway_unless_cooled(base_K=360.0, gain_K_per_W=4.0, needed_W=1.0)
+    auto = run_mr_clipping(trace, solver, geom, p, _name_map, max_iter=8, tol_K=1.0,
+                           status_fn=status)                      # plan_mode='auto'
+    assert auto['history'][0]['stage'] == 'full envelope'          # took the envelope path
+
+    # A die that converges on its own must still use the validated baseline path. Give it an
+    # envelope big enough to actually reach the target, or the loop would (correctly) report
+    # that the device cannot do it and the mode would not be what was under test.
+    base = {'hot': 380.0}
+    roomy = MRParams(target_K=350.0, h_max=1e6, dt_max_K=1e6, cop=0.1)
+
+    def calm(tr):
+        removed = 5.0 - float(np.sum(tr.powers['hot/a']))
+        return {'hot': np.array([base['hot'] - 4.0 * removed])}
+
+    res = run_mr_clipping(trace, calm, geom, roomy, _name_map, max_iter=8, tol_K=0.5,
+                          status_fn=lambda: {'diverged': False})
+    assert res['converged'] is True
+    assert not any(h.get('stage') == 'full envelope' for h in res['history'])
+
+
+def test_envelope_insufficient_is_a_statement_about_the_device():
+    """If the fully-cooled system still has no steady state, MR cannot rescue the point. That
+    must be reported as such rather than as a plan that happened to be too small."""
+    trace = BasicPowerTrace({'hot/a': [5.0]}, 1.0)
+    geom = {'hot': {'area_mm2': 1.0, 'min_dim_um': 500.0}}
+    p = MRParams(target_K=350.0, h_max=0.2, dt_max_K=1e6, cop=0.1)   # envelope 0.2 W
+
+    solver, status = _runaway_unless_cooled(base_K=360.0, gain_K_per_W=4.0, needed_W=1.0)
+    res = run_mr_clipping(trace, solver, geom, p, _name_map, max_iter=6, tol_K=1.0,
+                          status_fn=status, plan_mode='envelope')
+    assert res['converged'] is False
+    assert 'envelope insufficient' in res['reason']
+
+
+def test_envelope_plan_respects_the_device_caps_and_spot_policy():
+    from HotGauge.thermal.microrefrigeration import envelope_plan
+    geom = {'big': {'area_mm2': 1.0, 'min_dim_um': 500.0},
+            'sliver': {'area_mm2': 0.01, 'min_dim_um': 1.0}}
+    p = MRParams(target_K=350.0, h_max=2.0, dt_max_K=1e6, spot_min_um=10.0,
+                 spot_policy='exclude', cop=0.1)
+    plan, _ = envelope_plan(geom, p, {'big': 1.0, 'sliver': 1.0})
+    assert plan['big'] == pytest.approx(2.0)      # h_max * area
+    assert 'sliver' not in plan                   # narrower than the pitch, policy excludes it
+
+
+def test_status_fn_failure_does_not_decide_physics():
+    """A broken status probe must degrade to the documented default, not crash or silently
+    pick the other algorithm."""
+    trace = BasicPowerTrace({'hot/a': [5.0]}, 1.0)
+    geom = {'hot': {'area_mm2': 1.0, 'min_dim_um': 500.0}}
+    p = MRParams(target_K=350.0, h_max=1e6, dt_max_K=1e6, cop=0.1)
+    base = {'hot': 380.0}
+
+    def calm(tr):
+        removed = 5.0 - float(np.sum(tr.powers['hot/a']))
+        return {'hot': np.array([base['hot'] - 4.0 * removed])}
+
+    def broken():
+        raise RuntimeError('probe exploded')
+
+    res = run_mr_clipping(trace, calm, geom, p, _name_map, max_iter=8, tol_K=0.5,
+                          status_fn=broken)
+    assert res['converged'] is True
