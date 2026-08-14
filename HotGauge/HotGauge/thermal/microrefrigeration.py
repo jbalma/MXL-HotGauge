@@ -561,8 +561,11 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
         if delta_plan <= max(1e-3, 0.01 * total) and abs(peak - params.target_K) <= tol_K:
             return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
                     'converged': True, 'iterations': it + 1, 'history': history,
-                    'temp_trace_diverged': False,
-                    'accounting': mr_accounting(plan, params, detail=detail)}
+                    'temp_trace_diverged': False, 'plan_is_minimum': False,
+                    'accounting': mr_accounting(plan, params, detail=detail),
+                    'reason': 'descent converged on the target; this plan holds the target but '
+                              'the stability boundary was never probed, so it is not known to '
+                              'be the smallest plan that keeps a steady state'}
 
     return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
             'converged': False, 'iterations': max_iter, 'history': history,
@@ -572,7 +575,8 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
 
 def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_map, sens,
                               max_iter=6, tol_K=1.0, relax=0.7, t_floor_K=200.0,
-                              status_fn=None, base_temps=None, base_status=None):
+                              status_fn=None, base_temps=None, base_status=None,
+                              bisect_iters=8):
     """MR sizing anchored on the device envelope rather than on an uncooled baseline.
 
     Used when the bare die has no steady state, where the baseline the original scheme plans
@@ -651,13 +655,42 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                         'max_plan_change_W': delta_plan, 'stage': 'descent'})
 
         if st.get('diverged'):
-            # Walked past the feasible boundary: the previous plan is the last one that held.
-            return {'plan': prev_plan, 'detail': detail, 'temp_trace': prev_temps,
-                    'sensitivity': sens, 'converged': True, 'iterations': it + 1,
-                    'history': history, 'temp_trace_diverged': False,
-                    'accounting': mr_accounting(prev_plan, params, detail=detail),
-                    'reason': 'descent reached the stability boundary; reporting the last '
-                              'plan that held'}
+            # Walked past the feasible boundary. Do NOT stop here: "the last plan that held"
+            # depends on the step size that got us here, which is exactly the iteration-count
+            # dependence this rewrite exists to remove (the plan drifted 0.615 -> 0.335 W at
+            # 1.10 W/mm^2 between 6 and 20 iterations). Bisect the plan scale between the
+            # smallest plan known to hold and the largest known to fail, which converges on the
+            # true minimum instead of wherever the descent happened to overshoot.
+            bad = plan
+            plan, temps = prev_plan, prev_temps
+            for _ in range(bisect_iters):
+                trial = {b: 0.5 * (plan.get(b, 0.0) + bad.get(b, 0.0))
+                         for b in set(plan) | set(bad)}
+                trial = {b: q for b, q in trial.items() if q > 0.0}
+                t_trial = thermal_solve_fn(apply_cooling_to_trace(trace, trial, name_map))
+                st_trial = status_fn()
+                pk = max((float(np.ravel(t)[-1]) for t in t_trial.values()
+                          if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+                history.append({'iter': len(history), 'peak_K': pk,
+                                'heat_removed_W': float(sum(trial.values())),
+                                'max_plan_change_W': float('nan'),
+                                'stage': 'boundary bisection'})
+                if st_trial.get('diverged'):
+                    bad = trial
+                else:
+                    plan, temps = trial, t_trial
+                lo, hi = float(sum(plan.values())), float(sum(bad.values()))
+                if lo <= 0 or (lo - hi) <= 0.01 * lo:
+                    break
+            return {'plan': plan, 'detail': detail, 'temp_trace': temps,
+                    'sensitivity': sens, 'converged': True,
+                    'iterations': it + 1, 'history': history, 'temp_trace_diverged': False,
+                    'accounting': mr_accounting(plan, params, detail=detail),
+                    'plan_is_minimum': True,
+                    'minimum_plan_W': float(sum(plan.values())),
+                    'largest_failing_plan_W': float(sum(bad.values())),
+                    'reason': 'minimum plan that holds a steady state, bracketed by bisection '
+                              'against the largest plan that does not'}
 
         if delta_plan <= max(1e-3, 0.01 * total) and abs(peak - params.target_K) <= tol_K:
             return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
@@ -666,7 +699,8 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
 
     return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
             'converged': not st.get('diverged'), 'iterations': max_iter, 'history': history,
-            'temp_trace_diverged': bool(st.get('diverged')),
+            'temp_trace_diverged': bool(st.get('diverged')), 'plan_is_minimum': False,
             'accounting': mr_accounting(plan, params, detail=detail),
-            'reason': 'max_iter reached during envelope descent; the plan holds the die but is '
-                      'not necessarily the minimum one'}
+            'reason': 'max_iter reached during envelope descent: the descent never reached the '
+                      'stability boundary, so this plan is an UPPER BOUND on what MR needs, not '
+                      'the minimum. Raise max_iter to bracket the boundary.'}

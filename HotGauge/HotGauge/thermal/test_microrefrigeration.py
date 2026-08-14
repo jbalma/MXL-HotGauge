@@ -473,3 +473,47 @@ def test_status_fn_failure_does_not_decide_physics():
     res = run_mr_clipping(trace, calm, geom, p, _name_map, max_iter=8, tol_K=0.5,
                           status_fn=broken)
     assert res['converged'] is True
+
+
+def test_boundary_bisection_converges_on_the_minimum_plan():
+    """The reported rescue plan must not depend on the descent's step size.
+
+    Before the bisection the loop stopped at whatever plan happened to be the last one that
+    held, which drifted 0.615 -> 0.335 W at 1.10 W/mm^2 just by allowing more iterations.
+
+    The mock is arranged so the descent MUST cross the stability boundary: holding the 350 K
+    target needs 2.5 W (base 360 K, 4 K/W), but the die has no steady state below 3.0 W. So the
+    loop starts at the 4.0 W envelope, walks down toward 2.5, loses stability at 3.0, and must
+    bracket the threshold rather than report wherever it happened to land.
+    """
+    trace = BasicPowerTrace({'hot/a': [5.0]}, 1.0)
+    geom = {'hot': {'area_mm2': 1.0, 'min_dim_um': 500.0}}
+
+    results = []
+    for iters in (12, 20):
+        p = MRParams(target_K=350.0, h_max=4.0, dt_max_K=1e6, cop=0.1)
+        solver, status = _runaway_unless_cooled(base_K=360.0, gain_K_per_W=4.0, needed_W=3.0)
+        res = run_mr_clipping(trace, solver, geom, p, _name_map, max_iter=iters, tol_K=1.0,
+                              status_fn=status, plan_mode='envelope')
+        assert res['converged'] is True
+        results.append(res['plan']['hot'])
+
+    for q in results:
+        assert 3.0 <= q <= 3.1, 'plan {} is not the minimum that holds (threshold 3.0)'.format(q)
+    assert abs(results[0] - results[1]) < 0.05, \
+        'plan moved with the iteration budget: {}'.format(results)
+
+
+def test_a_descent_that_never_reaches_the_boundary_is_flagged_as_an_upper_bound():
+    """With too small a budget the descent stops short, and that plan is an upper bound on what
+    MR needs -- not the minimum. Callers must be able to tell the two apart without parsing
+    prose, because the difference is the whole rescue claim."""
+    trace = BasicPowerTrace({'hot/a': [5.0]}, 1.0)
+    geom = {'hot': {'area_mm2': 1.0, 'min_dim_um': 500.0}}
+    p = MRParams(target_K=350.0, h_max=4.0, dt_max_K=1e6, cop=0.1)
+    solver, status = _runaway_unless_cooled(base_K=360.0, gain_K_per_W=4.0, needed_W=3.0)
+    res = run_mr_clipping(trace, solver, geom, p, _name_map, max_iter=4, tol_K=1.0,
+                          status_fn=status, plan_mode='envelope')
+    assert res['plan_is_minimum'] is False
+    assert res['plan']['hot'] > 3.0            # holds the die, but is bigger than it needs to be
+    assert 'UPPER BOUND' in res['reason']

@@ -166,6 +166,12 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
     row = {'tag': tag, 'cores': n_cores, 'mr': use_mr, 'fan_W': sink.parasitic_power_W(),
            'mr_reason': (res or {}).get('reason') if use_mr else None,
            'mr_loop_converged': bool((res or {}).get('converged')) if use_mr else None,
+           # Whether the reported plan is the MINIMUM MR that keeps a steady state, or merely
+           # an upper bound the descent stopped at. Only the former is a rescue-cost claim.
+           'mr_plan_is_minimum': (res or {}).get('plan_is_minimum') if use_mr else None,
+           'mr_minimum_plan_W': (res or {}).get('minimum_plan_W') if use_mr else None,
+           'mr_largest_failing_plan_W': (res or {}).get('largest_failing_plan_W') if use_mr
+                                        else None,
            'unconverged': bool(ver['n_unconverged']),
            'n_solves': ver['n_solves'], 'n_unconverged_solves': ver['n_unconverged'],
            # worst_ is the one that decides whether this row is quotable; peak_spread_K is the
