@@ -186,19 +186,24 @@ def main():
     ap.add_argument('--mr-target-C', type=float, default=92.0,
                     help='absolute MR clip target [C]. NOTE this is usually the wrong policy '
                          'here -- see --mr-target-margin-K')
-    # An ABSOLUTE MR target is self-defeating once the clock is free, and the sweep showed it:
-    # searching the clock cools the die until it holds the limit, so at poor cooling the
-    # sustainable clock lands where the peak is BELOW the target and MR clips nothing. Measured
-    # at R_th 1.0 K/W: 2.797 GHz, peak 85.7 C, target 92 C -> MR idle, buys exactly 0.000 GHz.
-    # MR is doing nothing precisely where cooling is worst, which is backwards.
+    # Convenience: express the target relative to the thermal limit rather than absolutely, so
+    # a study that changes --thermal-limit-C does not silently change the MR coverage too.
     #
-    # A margin policy tracks the operating point instead: clip whatever exceeds
-    # (thermal limit - margin), so MR engages at every cooling class. This is the cheap version
-    # of the leakage-ranked policy in docs/GAMEPLAN.md; it still selects by temperature, but at
-    # least it selects relative to the constraint that actually binds.
+    # It does NOT fix the policy problem this sweep uncovered, and it is worth being precise
+    # about why. With the clock free, MR clipped nothing exactly where cooling was worst:
+    # at R_th 1.0 K/W the part settles at 2.797 GHz with a peak of 85.7 C and MR buys 0.000 GHz.
+    # The tempting reading is "the 92 C target is too high, tie it to the 100 C limit" -- but
+    # that point is not limited by the 100 C limit at all, it is limited by RUNAWAY at 85.7 C.
+    # The leakage instability bites 14 K below the spec limit, so no target anchored to the limit
+    # will ever engage there.
+    #
+    # A target that works at every cooling class has to be anchored to the operating point (peak
+    # minus a margin) or to leakage contribution rather than temperature -- which is the
+    # leakage-ranked policy in docs/GAMEPLAN.md, and needs its own study rather than a flag.
     ap.add_argument('--mr-target-margin-K', type=float, default=None,
-                    help='set the MR target this many K BELOW the thermal limit instead of at a '
-                         'fixed temperature (e.g. 8 -> clip above 92 C when the limit is 100 C). '
+                    help='set the MR target this many K below the THERMAL LIMIT instead of at a '
+                         'fixed temperature (8 -> 92 C when the limit is 100 C). Note this does '
+                         'not help where the binding constraint is runaway below the limit. '
                          'Overrides --mr-target-C.')
     ap.add_argument('--eta-asf', type=float, default=0.20)
     ap.add_argument('--eta-laser', type=float, default=0.70)
@@ -246,8 +251,7 @@ def main():
             args.mr_target_K - 273.15, args.mr_target_margin_K)
     else:
         args.mr_target_K = args.mr_target_C + 273.15
-        mr_target_note = '{:.1f} C  (absolute -- MR goes idle wherever the sustainable clock ' \
-                         'keeps the die below this)'.format(args.mr_target_C)
+        mr_target_note = '{:.1f} C  (absolute)'.format(args.mr_target_C)
 
     # Baseline trace at the trace's own clock; the search rescales it per candidate clock.
     files = load_block_powers(args.trace_dir)
