@@ -57,6 +57,58 @@ Rank candidate designs on those before spending a sweep on any of them.
 
 ---
 
+## 1b. First results: the prediction was wrong, and there are TWO degeneracies
+
+Screened at 1.00 W/mm² equivalent, 88 CFM, `--activity-scope iso-per-core` (each core keeps its
+saturated power; total die power falls as cores go quiet, as a real part does):
+
+| activity | die W | peak °C | plateau width | clip-one gain |
+|---|---|---|---|---|
+| uniform (today's assumption) | 101.2 | 89.19 | **15** | 1.25 K |
+| mixed, 50% of cores active | 65.2 | 78.34 | 12 | 1.15 K |
+| mixed, 25% active | 44.2 | 72.79 | 6 | 2.42 K |
+| turbo, 1 core, others at 0.25 | 31.3 | 65.31 | **7** | 2.56 K |
+| turbo, 1 core, others at 0.05 | 12.7 | 59.83 | 8 | 2.61 K |
+
+**Predicted:** turbo collapses the plateau to 1–3 and clip-one gain approaches the full 10 K.
+**Measured:** the plateau halves (15 → 7) and the gain doubles (1.25 → 2.6 K). Real, and far
+short of the prediction. The hypothesis as stated is falsified.
+
+The block names say why. Under turbo the top five are `RBB_0, cALU_0, fpRF_0, fpiWin_0, iRF_0` —
+**all from the same core**. There are two degeneracies stacked:
+
+1. **Inter-core** — N copies of each unit at nearly the same temperature. Broken by activity
+   (turbo, low active fraction). This is the one the plan assumed was the whole problem.
+2. **Intra-core** — the hot functional units *within* one core also sit within a few K of each
+   other. Nothing in the activity domain touches this, and it is what still limits MR after
+   turbo.
+
+That relegates design C (heterogeneous cores): it attacks degeneracy 1, which turbo already
+addresses, and leaves 2 untouched. It promotes a candidate the data suggests rather than the
+plan:
+
+### G. A core with one dominant hot unit (accelerator-style)
+A design where a single structure — a matrix/vector engine, not a balanced scalar core —
+carries most of the core's power. That is the only way found so far to break degeneracy 2, and
+it is what modern AI-oriented silicon actually looks like.
+
+* **Tests:** whether intra-core dominance is what MR needs, as opposed to any property of the
+  workload or the core count.
+* **Screen first:** plateau width on such a floorplan. If it is 1–3, MR becomes a clock lever
+  and the whole positioning changes.
+
+### Caveat on the screening metric itself
+`tier_analysis` assumes clipping one block leaves the others where they are. That is **not**
+true here: the measured lateral coupling on this die is strong (removing 0.5 W at `cALU_0`
+cooled `RBB_0` by 9.5 K, nearly as much as `cALU_0`'s own 10.7 K). Clipping the top block
+therefore also pulls its plateau-mates down, so the metric is **pessimistic** by an unknown
+factor. It is a screen, not a measurement — the clock search is the measurement, and the two
+agree on "weak" for the uniform die (+1.1%), which is what gives the screen its credibility.
+Coupling cuts both ways: it also means the plateau cannot be clipped independently, since
+cooling one member cools the neighbours it is competing with.
+
+---
+
 ## 2. Blocking correctness work (do first)
 
 **2.1 The MR loop is not verified, and may be path-dependent.** `run_mr_clipping` sizes its
