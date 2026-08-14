@@ -1,0 +1,132 @@
+{
+  "node": "7nm",
+  "cores": 34,
+  "area_mm2": 101.19016152807,
+  "p_ref_W": 25.491486361435754,
+  "trace_GHz": 3.8,
+  "thermal_limit_C": 100.0,
+  "leak_v_exponent": 1.0,
+  "turbo_core": 0,
+  "turbo_background": 0.25,
+  "emphasise": "Floating Point Units",
+  "emphasis_factor": 4.0,
+  "mr_target_C": 92.0,
+  "mr_target_margin_K": null,
+  "rated_GHz": 5.0,
+  "rows": [
+    {
+      "cooling": "88 CFM",
+      "r_th": null,
+      "cfm": 88.0,
+      "mr": false,
+      "f_sustainable_GHz": 4.71875,
+      "limited_by": "over_thermal_limit",
+      "at_ceiling": false,
+      "vf_clamped": false,
+      "bracket_GHz": [
+        4.71875,
+        4.75
+      ],
+      "evaluations": [
+        {
+          "f_GHz": 3.0,
+          "sustainable": true,
+          "peak_K": 317.49102783203125,
+          "reason": null
+        },
+        {
+          "f_GHz": 5.0,
+          "sustainable": false,
+          "peak_K": null,
+          "reason": "thermal_runaway"
+        },
+        {
+          "f_GHz": 4.0,
+          "sustainable": true,
+          "peak_K": 337.1829528808594,
+          "reason": null
+        },
+        {
+          "f_GHz": 4.5,
+          "sustainable": true,
+          "peak_K": 358.1460266113281,
+          "reason": null
+        },
+        {
+          "f_GHz": 4.75,
+          "sustainable": false,
+          "peak_K": 373.46197509765625,
+          "reason": "over_thermal_limit"
+        },
+        {
+          "f_GHz": 4.625,
+          "sustainable": true,
+          "peak_K": 365.0018005371094,
+          "reason": null
+        },
+        {
+          "f_GHz": 4.6875,
+          "sustainable": true,
+          "peak_K": 368.8413391113281,
+          "reason": null
+        },
+        {
+          "f_GHz": 4.71875,
+          "sustainable": true,
+          "peak_K": 371.0428466796875,
+          "reason": null
+        }
+      ],
+      "fan_W": 34.984,
+      "rated_GHz": 5.0,
+      "peak_C": 97.89284667968752,
+      "peak_block": "FPUs_0",
+      "p_chip_W": 30.26919469505031,
+      "density_W_per_mm2": 0.2991317954033869,
+      "p_mr_net_W": 0.0,
+      "heat_removed_W": 0.0,
+      "p_cool_W": 34.984,
+      "gflops": 5134.0,
+      "gflops_per_total_W": 78.67814018904168
+    },
+    {
+      "cooling": "88 CFM",
+      "r_th": null,
+      "cfm": 88.0,
+      "mr": true,
+      "f_sustainable_GHz": 5.0,
+      "limited_by": "search_ceiling",
+      "at_ceiling": true,
+      "vf_clamped": false,
+      "bracket_GHz": [
+        5.0,
+        null
+      ],
+      "evaluations": [
+        {
+          "f_GHz": 3.0,
+          "sustainable": true,
+          "peak_K": 317.49102783203125,
+          "reason": null
+        },
+        {
+          "f_GHz": 5.0,
+          "sustainable": true,
+          "peak_K": 366.30975341796875,
+          "reason": null
+        }
+      ],
+      "fan_W": 34.984,
+      "rated_GHz": 5.0,
+      "peak_C": 93.15975341796877,
+      "peak_block": "FPUs_0",
+      "p_chip_W": 13.85813392836873,
+      "density_W_per_mm2": 0.13695139645097318,
+      "p_mr_net_W": 57.8789840549247,
+      "heat_removed_W": 33.37298063958185,
+      "p_cool_W": 92.86298405492471,
+      "gflops": 5440.0,
+      "gflops_per_total_W": 50.973978747595204
+    }
+  ]
+}
