@@ -39,6 +39,11 @@ JOBID="${1:?usage: overnight3_study.sh <slurm_jobid>}"
 REPO=/mnt/nfs01/scratch/jbalma/MXL-HotGauge
 OUT="$REPO/results/overnight3"
 SEED="$REPO/results/cliff_verified"
+# node-03 has 64 CPUs and a point costs ~2 (one busy 3D-ICE server at ~87% plus a mostly-idle
+# Python driver), so ~25 points fit. 8 is a deliberately safe default for sharing the node with
+# another sweep; raise it when the node is yours. NB `uptime` on the phonon head node reports
+# the HEAD node's load, not the compute node's -- check with
+#   srun --jobid=<id> --overlap uptime
 MAX_CONC="${MAX_CONC:-8}"
 mkdir -p "$OUT"
 
