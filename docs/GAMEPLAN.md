@@ -37,8 +37,35 @@ baseline value to divide by, which is exactly what the +150% got wrong. The band
 the retraction list, and the trajectory evidence.
 
 **P2.6 done** — `HotGauge/HotGauge/power/clock_search.py` + `examples/clock_headroom.py` search
-the highest clock the die can hold instead of derating from a fixed `f_nominal`. Early results
-below.
+the highest clock the die can hold instead of derating from a fixed `f_nominal`.
+
+**P1.3 (no-MR arm) — what cooling does a 7nm part at rated clock need?** 34-core, thermal limit
+100 °C, clock searched:
+
+| R_th K/W | f sustainable | peak °C | P_die | W/mm² | limited by |
+|---|---|---|---|---|---|
+| 0.5 | 3.500 | 96.1 | 67.2 | 0.664 | runaway |
+| 0.3 | 3.828 | 97.1 | 83.4 | 0.825 | runaway |
+| 0.1 | 4.203 | 96.3 | 108.3 | 1.070 | 100 °C limit |
+| 0.05 | 4.297 | 97.4 | 117.6 | 1.163 | 100 °C limit |
+| 0.02 | 4.344 | 97.1 | 122.4 | 1.210 | 100 °C limit |
+
+**A 25× better cooler buys +24% clock and never reaches the rated 5.0 GHz**, and the last 2.5×
+of cooling buys 1.1%. That is the constriction floor expressed in the unit a customer buys. The
+MR arms are still running.
+
+The one new assumption in that model — leakage rising with supply voltage as `V^n` — was checked
+rather than asserted: at R_th 0.1 K/W the sustainable clock is **4.203 GHz for n = 0, 1 and 2
+alike**. It moves the peak (96.05 / 96.3 / 99.77 °C) and which limit binds, not the answer.
+
+**overnight3 is queued** (`scripts/overnight3_study.sh`, summarised by
+`scripts/summarise_overnight3.py`). It re-measures everything with verification and is
+re-centred on where the answers turned out to be: the cliff at 1.05–1.15 rather than 1.30–1.40,
+and the MR rescue ceiling between 1.15 and 1.18. Its Phase 3 asks the question that is now the
+most valuable open one — **does a lower MR target push that ceiling out?** If it does, coverage
+is the binding constraint; if it does not, the limit is the heat budget, which is a different
+device. Points already measured with identical arguments are seeded from `results/cliff_verified`
+rather than re-run.
 
 ---
 
