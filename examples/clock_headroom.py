@@ -59,7 +59,8 @@ from HotGauge.thermal.microrefrigeration import (MRParams, run_mr_clipping, mr_a
 from HotGauge.thermal.ice_server import ICESessionCache
 from HotGauge.power.process_nodes import NODES, describe_assumptions, TRACE_REFERENCE_GHZ
 from HotGauge.power.clock_search import (scale_trace_for_clock, find_max_sustainable_clock,
-                                         VF_TABLE_MAX_GHZ)
+                                         scale_trace_for_clock_per_core, scale_cores,
+                                         single_core_turbo, emphasise_units, VF_TABLE_MAX_GHZ)
 from HotGauge.power.performance_model import FMaxModel, performance_summary
 from HotGauge.thermal.utils import K_to_C
 
@@ -90,9 +91,18 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
                    n_cores, sink, stack, use_mr, f_GHz, tag):
     """One coupled solve at clock ``f_GHz``: rescale the trace, run the leakage fixed point
     (with damping verification), optionally clip hotspots with MR, return the peak."""
-    trace, leak_ref, scale_info = scale_trace_for_clock(
-        base_trace, leak_ref_base, f_GHz, TRACE_REFERENCE_GHZ,
-        leakage_voltage_exponent=args.leak_v_exponent)
+    if args.turbo_core is not None:
+        # Single-thread turbo: only the boosted core's clock is searched; the rest stay at the
+        # trace's own clock. This is the geometry the tier screen says MR should suit best --
+        # one hot structure with cool silicon around it -- and it cannot be expressed by a
+        # global clock.
+        trace, leak_ref, scale_info = scale_trace_for_clock_per_core(
+            base_trace, leak_ref_base, {args.turbo_core: f_GHz}, TRACE_REFERENCE_GHZ,
+            leakage_voltage_exponent=args.leak_v_exponent)
+    else:
+        trace, leak_ref, scale_info = scale_trace_for_clock(
+            base_trace, leak_ref_base, f_GHz, TRACE_REFERENCE_GHZ,
+            leakage_voltage_exponent=args.leak_v_exponent)
 
     counter = {'n': 0}
     # Accumulated over every solve the MR loop makes, not just the last one -- see the same
@@ -200,6 +210,17 @@ def main():
     ap.add_argument('--leak-v-exponent', type=float, default=1.0,
                     help='leakage scales as V**this with clock/voltage (ASSUMPTION; 0 ignores '
                          'the voltage dependence entirely)')
+    # Design A/G axes: which core is boosted, how quiet the others are, and whether a core's
+    # power is concentrated into one structure. See docs/DESIGN_STUDY_PLAN.md.
+    ap.add_argument('--turbo-core', type=int, default=None,
+                    help='search the clock of THIS core only; the others stay at the trace '
+                         'clock and are quieted by --turbo-background')
+    ap.add_argument('--turbo-background', type=float, default=0.25,
+                    help='activity of the non-boosted cores (with --turbo-core)')
+    ap.add_argument('--emphasise', default=None,
+                    help="concentrate each core's power into units matching this substring, "
+                         "e.g. 'Floating Point Units' (accelerator-style core)")
+    ap.add_argument('--emphasis-factor', type=float, default=4.0)
     ap.add_argument('--above-vf-table', action='store_true',
                     help='allow searching past %.1f GHz, where the V/F table clamps the voltage '
                          'and the power cost of the clock is UNDERSTATED' % VF_TABLE_MAX_GHZ)
@@ -297,6 +318,13 @@ def main():
     area_m2 = chip_area_m2_from_floorplan(flp)
     base = (replicate_trace_cores(base0, args.cores, n_src=args.trace_cores)
             if args.cores > args.trace_cores else base0)
+    # Design shape first (constant core power), then activity. Both are properties of the part
+    # and the workload, not of the clock, so they are applied before the clock search begins.
+    if args.emphasise:
+        base = emphasise_units(base, args.emphasise, args.emphasis_factor)
+    if args.turbo_core is not None:
+        base = scale_cores(base, single_core_turbo(args.cores, args.turbo_core,
+                                                   args.turbo_background))
     p_ref = die_power_of_trace(base, flp, args.tech_node, num_cores=args.cores)
     fp = Floorplan.from_file(flp)
     geom = {e.name: {'area_mm2': (e.width * e.height) / 1.0e6,
@@ -309,6 +337,12 @@ def main():
         p_ref, TRACE_REFERENCE_GHZ, p_ref / (area_m2 * 1e6)))
     print('  limit    : peak block <= {:.0f} C, damping-verified solves only'.format(
         args.thermal_limit_C))
+    if args.emphasise:
+        print('  design   : {!r} x{:.2f} at constant core power'.format(
+            args.emphasise, args.emphasis_factor))
+    if args.turbo_core is not None:
+        print('  turbo    : core {} clocked alone, others at {:.2f} activity'.format(
+            args.turbo_core, args.turbo_background))
     print('  leakage  : {}, +V^{:.2g} with clock (assumption)'.format(
         leak_src, args.leak_v_exponent))
     if args.mr:
@@ -396,6 +430,8 @@ def main():
                    'p_ref_W': p_ref, 'trace_GHz': TRACE_REFERENCE_GHZ,
                    'thermal_limit_C': args.thermal_limit_C,
                    'leak_v_exponent': args.leak_v_exponent,
+                   'turbo_core': args.turbo_core, 'turbo_background': args.turbo_background,
+                   'emphasise': args.emphasise, 'emphasis_factor': args.emphasis_factor,
                    'mr_target_C': args.mr_target_K - 273.15,
                    'mr_target_margin_K': args.mr_target_margin_K,
                    'rated_GHz': node_obj.f_nominal_GHz if node_obj else None,
