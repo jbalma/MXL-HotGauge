@@ -127,7 +127,16 @@ by lowering `relax` — that is what made this class of error possible in the fi
 | 1.00 | 89.19 °C | 89.19 °C (MR idle) |
 | 1.05 | 93.08 °C | 92.34 °C |
 | 1.15 | **no steady state** | **96.83 °C, 4.013 GHz, not throttling** |
-| 1.20–1.45 | no steady state | no steady state |
+| 1.18–1.45 | no steady state | no steady state |
+
+So the no-MR cliff is between 1.05 and 1.15 W/mm², MR moves it to between 1.15 and 1.18, and
+the rescue band is **narrow** — a few percent of density, not a regime.
+
+An independent cross-check falls out of the clock study (`examples/clock_headroom.py`), which
+holds density free and searches the clock instead. The 88 CFM baffled-fin sink presents ~0.076
+K/W of convective resistance; the clock search finds the same die holding 1.070 W/mm² at
+R_th = 0.1 K/W and 1.163 W/mm² at 0.05 K/W. Two studies that share no operating point put the
+failure of this die in the same 1.05–1.16 W/mm² band.
 
 The 1.15 row is a **verified MR rescue**: 1.98 W of heat removed from 42 blocks, 3.43 W net
 electrical, converting a die with no thermal solution into one holding full clock. No percentage
