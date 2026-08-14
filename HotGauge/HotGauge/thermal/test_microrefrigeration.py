@@ -543,3 +543,30 @@ def test_descent_stops_at_the_target_not_at_the_stability_boundary():
         'should stop at the target-holding plan, not walk on to the stability boundary'
     peak = max(float(np.ravel(t)[-1]) for t in res['temp_trace'].values())
     assert peak <= p.target_K + 1.0
+
+
+def test_hot_branch_solutions_are_rejected_when_bisecting():
+    """A leakage-limited die is BISTABLE, and the cheap solution is the useless one.
+
+    Measured at 1.15 W/mm^2: 42.05 W of cooling holds 90.6 C, and 0.71 W also converges -- at
+    133.2 C. Both are steady states. Accepting any convergence during the bisection reported
+    the second as a rescue, so the search must reject the hot branch explicitly.
+    """
+    trace = BasicPowerTrace({'hot/a': [5.0]}, 1.0)
+    geom = {'hot': {'area_mm2': 1.0, 'min_dim_um': 500.0}}
+    p = MRParams(target_K=350.0, h_max=4.0, dt_max_K=1e6, cop=0.1)
+
+    def bistable(tr):
+        """Cool branch above 2.5 W of cooling; below it the die settles on a hot branch."""
+        removed = 5.0 - float(np.sum(tr.powers['hot/a']))
+        t = 360.0 - 4.0 * removed if removed >= 2.5 else 420.0
+        return {'hot': np.array([t])}
+
+    res = run_mr_clipping(trace, bistable, geom, p, _name_map, max_iter=20, tol_K=1.0,
+                          status_fn=lambda: {'diverged': False}, plan_mode='envelope')
+    peak = max(float(np.ravel(t)[-1]) for t in res['temp_trace'].values())
+    if res['plan_holds_target']:
+        assert peak <= p.target_K + 1.0, 'claimed to hold the target on the hot branch'
+        assert res['plan']['hot'] >= 2.4, 'hot-branch plan reported as the minimum'
+    else:
+        assert peak > p.target_K + 1.0        # correctly flagged as not holding the target

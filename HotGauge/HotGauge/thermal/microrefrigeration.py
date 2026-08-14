@@ -679,24 +679,36 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                                 'heat_removed_W': float(sum(trial.values())),
                                 'max_plan_change_W': float('nan'),
                                 'stage': 'boundary bisection'})
-                if st_trial.get('diverged'):
+                # A trial "fails" if it diverges OR if it lands on the HOT BRANCH. This
+                # system is bistable: a leakage-limited die has a cool solution near the target
+                # and a second stable solution far above it, with an unstable region between,
+                # so reducing MR does not slide the peak up smoothly -- it snaps. Measured at
+                # 1.15 W/mm^2: 42.05 W of cooling holds 90.6 C, while 0.71 W also "converges",
+                # at 133.2 C. Accepting any convergence made the cheap hot-branch solution look
+                # like the answer, which is how a 133 C die got reported as a rescue.
+                if st_trial.get('diverged') or pk > params.target_K + tol_K:
                     bad = trial
                 else:
                     plan, temps = trial, t_trial
                 lo, hi = float(sum(plan.values())), float(sum(bad.values()))
                 if lo <= 0 or (lo - hi) <= 0.01 * lo:
                     break
+            final_peak = max((float(np.ravel(t)[-1]) for t in (temps or {}).values()
+                              if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+            on_cool_branch = bool(final_peak <= params.target_K + tol_K)
             return {'plan': plan, 'detail': detail, 'temp_trace': temps,
                     'sensitivity': sens, 'converged': True,
                     'iterations': it + 1, 'history': history, 'temp_trace_diverged': False,
                     'accounting': mr_accounting(plan, params, detail=detail),
-                    'plan_is_minimum': True, 'plan_holds_target': False,
+                    'plan_is_minimum': True, 'plan_holds_target': on_cool_branch,
                     'minimum_plan_W': float(sum(plan.values())),
                     'largest_failing_plan_W': float(sum(bad.values())),
-                    'reason': 'minimum plan for a steady state to EXIST, bracketed by '
-                              'bisection. The target was NOT reachable on the way down, so the '
-                              'die is stable but hot -- read the peak before calling this a '
-                              'rescue'}
+                    'reason': ('minimum plan that keeps the die on the cool branch, bracketed '
+                               'by bisection' if on_cool_branch else
+                               'no plan in the bracket keeps the die on the cool branch: this '
+                               'system is BISTABLE and the hot-branch solution is what is '
+                               'reported. Stable, but read the peak before calling it a '
+                               'rescue')}
 
         # Crossing the TARGET on the way down is the product-relevant answer, and it has to be
         # caught here rather than waiting for the plan to go stationary too: descending from the
