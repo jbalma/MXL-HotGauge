@@ -90,11 +90,21 @@ def test_finds_the_clock_where_the_limit_bites():
     assert lo <= 4.37 <= hi
 
 
-def test_reports_the_search_ceiling_rather_than_inventing_a_limit():
-    """If the part never hits a limit in range, the number is OUR bound, not the silicon's."""
+def test_stopping_at_the_vf_table_top_is_a_device_limit_not_a_search_limit():
+    """Two different reasons to stop short, and only one of them is a measurement.
+
+    At the V/F table top the part is VOLTAGE-limited: the next clock step needs a voltage the
+    device cannot take (5.5 GHz -> 1.82 V against a 1.4 V maximum), so no amount of cooling
+    buys more clock. A caller-chosen range running out is our bound, not the silicon's.
+    """
     res = find_max_sustainable_clock(_thermal_stand_in(9.0), 3.5, 5.0, tol_GHz=0.02)
-    assert res['at_ceiling'] and res['limited_by'] == 'search_ceiling'
+    assert res['at_ceiling'] and res['limited_by'] == 'vf_envelope'
+    assert res['voltage_limited'] is True
     assert res['f_sustainable_GHz'] == pytest.approx(5.0)
+
+    # A range the caller picked below the envelope is a search ceiling, and must say so.
+    res = find_max_sustainable_clock(_thermal_stand_in(9.0), 3.0, 4.5, tol_GHz=0.02)
+    assert res['limited_by'] == 'search_ceiling' and res['voltage_limited'] is False
 
 
 def test_no_sustainable_clock_returns_none_not_the_floor():

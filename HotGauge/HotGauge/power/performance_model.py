@@ -205,3 +205,59 @@ def performance_summary(block_temps_K, model, f_nominal_GHz=4.0, compute_power_W
         out['total_power_W'] = total
         out['perf_per_W'] = (f_eff / total) if total > 0 else float('nan')
     return out
+
+
+# ---------------------------------------------------------------------------
+# The V/F envelope: why the table ends where it does
+# ---------------------------------------------------------------------------
+#: Maximum operating voltage in the shipped V/F table (``configuration.performance.VF_PAIRS``).
+#: This is a **device** limit, not a table limit, and the distinction matters for any study that
+#: searches the clock: past it a part does not run slower, it fails.
+VF_MAX_VOLTAGE = 1.4
+
+#: Alpha-power-law fit to the shipped table, ``f = k (V - Vth)^alpha / V``, which is the
+#: standard velocity-saturated delay model -- Chandrakasan, Bowhill & Fox, *Design of
+#: High-Performance Microprocessor Circuits*, eq. (4.2):
+#:
+#:     tau_d = beta * C_L * V_DD / (V_DD - V_TH)^alpha
+#:
+#: Fitted to all eight shipped pairs with **max error 0.57%, RMS 0.30%**, so the table really is
+#: one alpha-power curve rather than a set of unrelated operating points. The book quotes alpha
+#: ~1.4 as typical; the fit gives 0.949, i.e. more strongly velocity-saturated, which is the
+#: direction modern short-channel devices move in.
+VF_ALPHA_POWER_FIT = {'k': 7.5810, 'Vth': 0.4795, 'alpha': 0.9490,
+                      'rms_error_frac': 0.0030, 'max_error_frac': 0.0057,
+                      'source': 'fit to configuration.performance.VF_PAIRS; model from '
+                                'Chandrakasan/Bowhill/Fox eq. 4.2'}
+
+
+def frequency_for_voltage(V, fit=None):
+    """Clock the alpha-power fit predicts at supply voltage ``V`` [GHz]."""
+    f = fit or VF_ALPHA_POWER_FIT
+    v = float(V)
+    return f['k'] * max(v - f['Vth'], 0.0) ** f['alpha'] / v if v > 0 else 0.0
+
+
+def voltage_for_frequency_extrapolated(f_GHz, fit=None):
+    """Voltage the alpha-power fit says ``f_GHz`` needs, **including above the table**.
+
+    Provided for one purpose: to show how fast the cost of clock rises past the table's top, so
+    that "the search stopped at 5.0 GHz" can be reported as a device limit rather than as an
+    artefact of our lookup. On the shipped curve
+
+        5.00 GHz -> 1.40 V     5.50 GHz -> 1.82 V     6.00 GHz -> 2.74 V
+
+    and a 7 nm part does not operate at 1.8 V, let alone 2.7 V -- that is oxide-breakdown
+    territory, not a slower chip. **Do not use this to extend a clock search.** The table ends
+    where the device does; a search that runs past it is not measuring silicon.
+    """
+    from scipy.optimize import brentq
+    fit = fit or VF_ALPHA_POWER_FIT
+    target = float(f_GHz)
+    hi = 1.0
+    while frequency_for_voltage(hi, fit) < target:
+        hi *= 1.5
+        if hi > 100.0:
+            raise ValueError('{} GHz is unreachable under the alpha-power fit'.format(f_GHz))
+    return float(brentq(lambda v: frequency_for_voltage(v, fit) - target,
+                        fit['Vth'] + 1e-6, hi))

@@ -54,6 +54,13 @@ LOGGER = logging.getLogger(__name__)
 
 #: Top of the shipped V/F table (``configuration.performance.VF_PAIRS``). Above this the
 #: voltage -- and therefore the dynamic-power cost of the clock -- is clamped.
+#:
+#: This is a **device** limit, not a lookup limit, and a clock search that stops here is
+#: reporting the silicon rather than our data. The table is one alpha-power curve to 0.3% RMS
+#: (``performance_model.VF_ALPHA_POWER_FIT``), and continuing it says 5.5 GHz needs 1.82 V and
+#: 6.0 GHz needs 2.74 V against a 1.4 V maximum -- oxide breakdown, not a slower chip. So a
+#: point that ends at this ceiling is **voltage-limited, not thermally limited**: no amount of
+#: cooling buys it more clock, which is a meaningful result rather than a missing measurement.
 VF_TABLE_MAX_GHZ = 5.0
 
 
@@ -191,6 +198,7 @@ def find_max_sustainable_clock(evaluate, f_lo, f_hi, tol_GHz=0.05, max_evals=14,
         return ok, res
 
     out = {'evaluations': evals, 'vf_clamped': False, 'at_ceiling': False,
+           'voltage_limited': False,
            'search_capped_at_vf_table': capped, 'thermal_limit_K': float(thermal_limit_K)}
 
     ok_lo, _ = _try(f_lo)
@@ -201,11 +209,15 @@ def find_max_sustainable_clock(evaluate, f_lo, f_hi, tol_GHz=0.05, max_evals=14,
 
     ok_hi, _ = _try(f_hi)
     if ok_hi:
-        # The part never hit a limit inside the range: the number is bounded by the SEARCH,
-        # not by the silicon. Saying so matters -- quoting f_hi as "the maximum" would be
-        # reporting our own upper bound back as a measurement.
+        # The part never hit a thermal limit inside the range. Distinguish two very different
+        # reasons, because one is a measurement and the other is our own bound handed back:
+        #   * we stopped at the V/F table top -> the part is VOLTAGE-limited. More cooling buys
+        #     nothing, because the next clock step needs a voltage the device cannot take.
+        #   * we stopped at a range the caller chose -> widen the range and measure again.
+        at_vf_top = abs(f_hi - VF_TABLE_MAX_GHZ) < 1e-9 and cap_at_vf_table
         out.update({'f_sustainable_GHz': f_hi, 'bracket_GHz': (f_hi, None),
-                    'limited_by': 'search_ceiling', 'at_ceiling': True,
+                    'limited_by': 'vf_envelope' if at_vf_top else 'search_ceiling',
+                    'at_ceiling': True, 'voltage_limited': at_vf_top,
                     'vf_clamped': vf_clamped})
         return out
 
