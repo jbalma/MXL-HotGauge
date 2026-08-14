@@ -329,3 +329,77 @@ def test_extrapolated_rejects_bad_activation_energy():
     with pytest.raises(ValueError):
         LeakageModel.from_table_extrapolated([330., 400.], [1.0, 36.1], activation_eV=-1)
 
+
+
+# ----------------------------------------------------------------------------
+# Convergence verification: the fixed point must not depend on the damping
+# ----------------------------------------------------------------------------
+def _nonlinear_solver(theta_K_per_W, t_ambient_K, doubling_K=10.0):
+    """Lumped solve whose loop gain RISES with temperature, like real leakage.
+
+    This is the shape that makes damping matter: a step that overshoots lands where the local
+    gain is much higher, so a loose relaxation can run away numerically even though a stable
+    fixed point exists below.
+    """
+    def solve(trace):
+        return {u: [t_ambient_K + theta_K_per_W * max(float(p), 0.0) for p in series]
+                for u, series in trace.powers.items()}
+    return solve
+
+
+def test_residual_criterion_is_not_fooled_by_tight_damping():
+    """The old test compared successive solves, which scales with relax -- so tightening the
+    damping for safety made the tolerance ~1/relax weaker and could 'converge' far from the
+    fixed point. The residual criterion must not do that."""
+    model = LeakageModel.exponential(10.0)
+    total = BasicPowerTrace({'hot': [1.0]}, time_step=1.0)
+    leak = {'hot': 0.4}
+    solver = _nonlinear_solver(theta_K_per_W=11.0, t_ambient_K=TREF - 60)
+
+    tight = converge_power_temperature(total, leak, solver, model, T_ref=TREF, tol_K=0.5,
+                                       max_iter=6, relax=0.01, adaptive_relax=False)
+    # Six tiny steps cannot have reached the fixed point; the legacy measure says otherwise.
+    assert tight['max_delta_K'] < 0.5      # the old criterion would have declared success
+    assert not tight['converged']          # the residual criterion does not
+    assert tight['residual_K'] > 0.5
+
+
+def test_adaptive_damping_finds_the_fixed_point_regardless_of_starting_relax():
+    """The point of P0.1: the answer must not depend on a hand-chosen knob."""
+    model = LeakageModel.exponential(12.0)
+    total = BasicPowerTrace({'hot': [1.0], 'warm': [0.6]}, time_step=1.0)
+    leak = {'hot': 0.4, 'warm': 0.2}
+    solver = _nonlinear_solver(theta_K_per_W=14.0, t_ambient_K=TREF - 60)
+
+    peaks = []
+    for relax in (1.0, 0.5, 0.1):
+        res = converge_power_temperature(total, leak, solver, model, T_ref=TREF, tol_K=0.05,
+                                         max_iter=200, relax=relax, adaptive_relax=True)
+        assert res['converged'], 'relax={} failed to converge'.format(relax)
+        peaks.append(max(float(np.max(v)) for v in res['temp_trace'].values()))
+    assert max(peaks) - min(peaks) < 0.2, 'fixed point moved with the damping: {}'.format(peaks)
+
+
+def test_adaptive_damping_still_calls_a_real_runaway_diverged():
+    """Adaptivity must not turn a physically divergent case into a plausible number."""
+    model = LeakageModel.exponential(10.0)
+    total = BasicPowerTrace({'hot': [1.0]}, time_step=1.0)
+    leak = {'hot': 0.4}
+    res = converge_power_temperature(total, leak, _nonlinear_solver(60.0, TREF), model,
+                                     T_ref=TREF, tol_K=0.1, max_iter=200, relax=1.0,
+                                     adaptive_relax=True, max_power_growth=10.0,
+                                     max_temp_K=1000.0)
+    assert res['diverged'] and not res['converged']
+    assert res['diverged_reason']
+
+
+def test_history_records_residual_and_the_damping_actually_used():
+    model = LeakageModel.exponential(10.0)
+    total = BasicPowerTrace({'hot': [1.0]}, time_step=1.0)
+    leak = {'hot': 0.4}
+    res = converge_power_temperature(total, leak, _nonlinear_solver(11.0, TREF - 60), model,
+                                     T_ref=TREF, tol_K=0.05, max_iter=100, relax=1.0,
+                                     adaptive_relax=True)
+    assert res['converged']
+    assert all('residual_K' in h and 'relax' in h for h in res['history'])
+    assert res['relax_final'] <= 1.0

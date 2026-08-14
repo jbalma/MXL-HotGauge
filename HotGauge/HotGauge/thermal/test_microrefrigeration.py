@@ -5,7 +5,8 @@ import pytest
 from HotGauge.power import BasicPowerTrace
 from HotGauge.thermal.microrefrigeration import (MRParams, clipping_plan, apply_cooling_to_trace,
                                                  mr_accounting, estimate_sensitivity,
-                                                 run_mr_clipping)
+                                                 run_mr_clipping, DEFAULT_SPOT_MIN_UM,
+                                                 DEFAULT_SPOT_POLICY)
 
 GEOM = {'hot': {'area_mm2': 0.02, 'min_dim_um': 140.0},
         'small': {'area_mm2': 0.002, 'min_dim_um': 13.0},
@@ -70,12 +71,31 @@ def test_temperature_lift_ceiling_binds_and_is_reported():
 
 
 def test_spot_limited_blocks_are_flagged_not_silently_cooled():
-    """Most units are narrower than the ~100 um targeting limit; that must be visible."""
+    """A block narrower than the spot cannot be targeted, and that must stay visible.
+
+    The limit is passed explicitly so this tests the mechanism, not the default.
+    """
     p = MRParams(target_K=350.0, h_max=1e6, dt_max_K=1e6, spot_min_um=100.0)
     _, detail = clipping_plan({'hot': 370.0, 'small': 370.0}, GEOM, p,
                               {'hot': 1.0, 'small': 1.0})
     assert detail['small']['spot_limited'] is True
     assert detail['hot']['spot_limited'] is False
+
+
+def test_default_spot_size_is_the_realistic_one():
+    """1-10 um is achievable; the old 100 um default understated MR reach by 10-100x.
+
+    At 100 um it excluded 37 of the 57 above-target blocks on the 34-core die, including the
+    two highest power densities on the chip -- RBB at 13.4 um and iBuf at 1.3 um.
+    """
+    assert 1.0 <= DEFAULT_SPOT_MIN_UM <= 10.0
+
+
+def test_a_13um_block_is_reachable_at_the_default():
+    """RBB is 13.4 um across and is the highest power density on the die."""
+    p = MRParams(target_K=350.0, h_max=1e6, dt_max_K=1e6)
+    _, detail = clipping_plan({'small': 370.0}, GEOM, p, {'small': 1.0})
+    assert detail['small']['spot_limited'] is False
 
 
 def test_budget_goes_to_the_hottest_block_first():
@@ -289,3 +309,60 @@ def test_loop_reports_failure_when_envelope_is_too_small():
                           max_iter=3, tol_K=0.5)
     assert res['converged'] is False
     assert res['accounting']['heat_removed_W'] > 0
+
+
+# ---------------------------------------------------------------------------
+# spot_policy -- these pin the bug where spot_limited was computed and never used,
+# so changing spot_min_um produced bit-identical results.
+# ---------------------------------------------------------------------------
+class TestSpotPolicy:
+    HOT = {'hot': 370.0, 'small': 370.0}
+    SENS = {'hot': 1.0, 'small': 1.0}
+
+    def _plan(self, policy, spot=100.0):
+        p = MRParams(target_K=350.0, h_max=1e6, dt_max_K=1e6,
+                     spot_min_um=spot, spot_policy=policy)
+        return clipping_plan(self.HOT, GEOM, p, self.SENS) + (p,)
+
+    def test_spot_size_actually_changes_the_plan(self):
+        """The regression: at 100 um vs 1 um the plan must differ for a 13 um block."""
+        coarse, _, _ = self._plan('exclude', spot=100.0)
+        fine, _, _ = self._plan('exclude', spot=1.0)
+        assert 'small' not in coarse
+        assert 'small' in fine
+
+    def test_exclude_drops_the_block_entirely(self):
+        plan, detail, _ = self._plan('exclude')
+        assert 'small' not in plan
+        assert detail['small']['limit'] == 'spot_limited'
+        assert detail['small']['q_W'] == 0.0
+
+    def test_dilute_keeps_the_block_but_bills_for_the_pixel(self):
+        plan, detail, params = self._plan('dilute')
+        assert 'small' in plan                      # still cooled
+        # GEOM['small'] is 0.002 mm^2; a 100 um pixel is 0.01 mm^2 -> 5x the bill.
+        assert detail['small']['cost_multiplier'] == pytest.approx(0.01 / 0.002)
+        assert detail['hot']['cost_multiplier'] == pytest.approx(1.0)
+
+    def test_dilution_is_charged_in_the_accounting(self):
+        """A cost multiplier that nothing reads is the bug this whole class exists for."""
+        plan, detail, params = self._plan('dilute')
+        cheap = mr_accounting(plan, params)
+        billed = mr_accounting(plan, params, detail=detail)
+        assert billed['heat_billed_W'] > billed['heat_removed_W']
+        assert billed['electrical_gross_W'] > cheap['electrical_gross_W']
+        assert billed['spot_dilution_overhead'] > 1.0
+
+    def test_ideal_reproduces_the_old_behaviour(self):
+        plan, detail, params = self._plan('ideal')
+        assert 'small' in plan
+        assert detail['small']['cost_multiplier'] == pytest.approx(1.0)
+        assert mr_accounting(plan, params, detail=detail)['spot_dilution_overhead'] == \
+            pytest.approx(1.0)
+
+    def test_default_policy_is_the_physical_one(self):
+        assert DEFAULT_SPOT_POLICY == 'dilute'
+
+    def test_bad_policy_rejected(self):
+        with pytest.raises(ValueError):
+            MRParams(target_K=350.0, spot_policy='nonsense')

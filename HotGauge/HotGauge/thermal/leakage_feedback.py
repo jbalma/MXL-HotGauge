@@ -508,7 +508,7 @@ class ICEThermalSolver(object):
     def __init__(self, stack_template, flp_template, tech_node, run_base_dir,
                  initial_temp=DEFAULT_TREF_K, plugin_args=None, num_cores=8,
                  core_sources=None, single_thread=True, steps_per_slot=None,
-                 mode='transient', steady_reduce='mean'):
+                 mode='transient', steady_reduce='mean', session_cache=None):
         if mode not in self.SIM_MODES:
             raise ValueError('mode must be one of {}, got {!r}'.format(self.SIM_MODES, mode))
         if steady_reduce not in STEADY_REDUCERS:
@@ -526,6 +526,14 @@ class ICEThermalSolver(object):
         self.steps_per_slot = steps_per_slot
         self.mode = mode
         self.steady_reduce = steady_reduce
+        # Optional ICESessionCache. When set (steady mode only), solves go through a persistent
+        # 3D-ICE server that factorises once -- ~0.4 s per solve instead of ~85 s. The cache
+        # guarantees correctness by hashing the system matrix inputs, so it is safe to share one
+        # across a whole sweep; it rebuilds automatically when the sink or floorplan changes.
+        if session_cache is not None and mode != 'steady':
+            raise ValueError('session_cache requires mode="steady"; the transient path does '
+                             'its own multi-step solve')
+        self.session_cache = session_cache
         self._iter = 0
 
     def __call__(self, power_trace):
@@ -577,6 +585,20 @@ class ICEThermalSolver(object):
         config = ICESimConfig(initial_temp=self.initial_temp, plugin_args=self.plugin_args,
                               output_list=outputs)
         sim = ICESteadySim(self.stack_template, self.flp_template, steady_trace, config, run_dir)
+
+        if self.session_cache is not None:
+            # Persistent path: render IC.stk/IC.flp but do not spawn the Emulator. The session
+            # holds the factorisation, so this solve costs ~0.4 s instead of ~85 s. The cache
+            # keys on a hash of everything the system matrix is built from, so it silently
+            # reuses across a power sweep and rebuilds when the sink or floorplan changes --
+            # see ICESessionCache.
+            sim.prep_for_run()
+            session = self.session_cache.session(sim.stack_file)
+            powers = {b: float(np.ravel(v)[-1]) for b, v in steady_trace.powers.items()}
+            named = session.solve_named(powers)
+            steady = {b: np.array([t]) for b, t in named.items()}
+            return broadcast_steady_temps(steady, n_steps)
+
         if self.single_thread:
             ICESteadySim.run([sim])
         else:
@@ -591,10 +613,31 @@ class ICEThermalSolver(object):
 # ---------------------------------------------------------------------------
 # High-level entry point
 # ---------------------------------------------------------------------------
+def peak_temp_K(temps, t_floor_K=200.0):
+    """Hottest real block temperature in a solved field, or None if there is none.
+
+    Sub-floor readings are excluded: 3D-ICE emits 0 K for floorplan elements outside the die
+    layer, and ``Time`` is not a temperature (see ``die_block_temps``).
+    """
+    if not temps:
+        return None
+    peak = -np.inf
+    for v in temps.values():
+        v = np.asarray(v, dtype=float)
+        if t_floor_K is not None:
+            v = v[v >= t_floor_K]
+        if v.size:
+            peak = max(peak, float(np.max(v)))
+    return None if peak == -np.inf else peak
+
+
 def run_leakage_feedback(baseline_trace, leakage_ref, thermal_solve_fn, model=None,
                          T_ref=DEFAULT_TREF_K, num_cores=8, tol_K=0.1, max_iter=10,
                          relax=0.5, max_power_growth=10.0, t_floor_K=200.0,
-                         max_temp_K=1000.0, bridge_aggregates=False):
+                         max_temp_K=1000.0, bridge_aggregates=False,
+                         verify=True, verify_tol_K=1.0, verify_factor=0.5,
+                         verify_max_levels=2, min_relax=0.025, adaptive_relax=True,
+                         residual_convergence=True):
     """Run the fixed-point leakage feedback given a baseline trace and a thermal solver.
 
     baseline_trace   : McPAT-named PowerTrace (leakage extracted at ``T_ref``).
@@ -615,8 +658,37 @@ def run_leakage_feedback(baseline_trace, leakage_ref, thermal_solve_fn, model=No
                        (default 1000 K) -- names the offending block, catching a localized
                        single-block runaway at the first unphysical solve.
 
+    Damping verification (``verify``, default **on**)
+    ------------------------------------------------
+    The leakage fixed point needs damping that cannot be predicted in advance, and getting it
+    wrong is silent in both directions: an under-damped run can diverge where a perfectly good
+    steady state exists, and it can also satisfy the tolerance at a partially-converged field.
+    The true cliff on the 34-core die was only found by tightening ``relax`` by hand four times
+    (0.5 -> 0.1 -> 0.05 -> 0.025 -> 0.0125) and watching the answer move ~100 K. Two of the
+    three largest errors in this project were exactly that, so it is now checked automatically
+    instead of being left to the caller's judgement.
+
+    The run is repeated at ``relax * verify_factor`` and the two **peak temperatures** must
+    agree within ``verify_tol_K``. If they do not, damping is tightened again, up to
+    ``verify_max_levels`` extra levels. The result reported is always the finest damping level
+    that participated in an agreeing pair.
+
+    This also makes ``diverged`` mean *diverged at every damping tried* rather than "diverged
+    at the one damping I happened to pick": if a level diverges and a tighter one converges,
+    the converged answer wins and the divergence is recorded as a numerical artefact.
+
+    Cost is ~2x a single run (a converged point is 2-3 solves at ~0.6 s each with a persistent
+    session), which is cheap next to re-doing a study.
+
     Returns the dict from ``converge_power_temperature`` ('power_trace', 'temp_trace',
-    'iterations', 'converged', 'diverged', 'max_delta_K', 'history').
+    'iterations', 'converged', 'diverged', 'max_delta_K', 'residual_K', 'history') plus, when
+    ``verify`` is on:
+        'verified'      : bool -- two damping levels agreed on the peak (or all levels agreed
+                          it diverges),
+        'unconverged'   : bool -- the opposite; the number is NOT safe to quote,
+        'peak_spread_K' : peak-temperature disagreement between the two finest levels,
+        'verification'  : list of per-level dicts {relax, peak_K, converged, diverged,
+                          iterations, residual_K}.
     """
     if model is None:
         model = LeakageModel.exponential()
@@ -632,8 +704,78 @@ def run_leakage_feedback(baseline_trace, leakage_ref, thermal_solve_fn, model=No
             return augment_temps_with_aggregates(_f(trace), num_cores=num_cores)
     else:
         name_map = mcpat_flp_name_map(include_core_idx=(num_cores > 1))
-    return converge_power_temperature(baseline_trace, leakage_ref, thermal_solve_fn, model,
-                                      T_ref=T_ref, temp_units='K', name_map=name_map,
-                                      tol_K=tol_K, max_iter=max_iter, relax=relax,
-                                      max_power_growth=max_power_growth, t_floor_K=t_floor_K,
-                                      max_temp_K=max_temp_K)
+
+    def _solve_at(relax_level):
+        # Tighter damping needs proportionally more iterations to reach the same residual, so
+        # the budget scales with it (capped). Without this, a verification level would report
+        # "hit max_iter" and the point would be flagged unconverged purely for lack of budget.
+        level_iter = int(min(max_iter * (relax / relax_level), 4 * max_iter))
+        return converge_power_temperature(
+            baseline_trace, leakage_ref, thermal_solve_fn, model,
+            T_ref=T_ref, temp_units='K', name_map=name_map,
+            tol_K=tol_K, max_iter=max(max_iter, level_iter), relax=relax_level,
+            max_power_growth=max_power_growth, t_floor_K=t_floor_K,
+            max_temp_K=max_temp_K, residual_convergence=residual_convergence,
+            adaptive_relax=adaptive_relax, min_relax=min(min_relax, relax_level))
+
+    result = _solve_at(relax)
+    if not verify:
+        return result
+
+    def _level(res, relax_level):
+        return {'relax': relax_level,
+                'peak_K': peak_temp_K(res.get('temp_trace') or {}, t_floor_K),
+                'converged': bool(res.get('converged')),
+                'diverged': bool(res.get('diverged')),
+                'diverged_reason': res.get('diverged_reason'),
+                'iterations': res.get('iterations'),
+                'residual_K': res.get('residual_K'),
+                'relax_final': res.get('relax_final')}
+
+    levels = [_level(result, relax)]
+    prev_res, prev_relax = result, relax
+    verified, spread = False, None
+    for _ in range(max(1, verify_max_levels)):
+        this_relax = prev_relax * verify_factor
+        res = _solve_at(this_relax)
+        levels.append(_level(res, this_relax))
+        a, b = levels[-2], levels[-1]
+
+        if a['diverged'] and b['diverged']:
+            # Divergent at both damping levels: as close to "no steady state exists" as this
+            # method can get. Report the coarser (cheaper) run, which is equivalent.
+            verified, spread, result = True, None, prev_res
+            break
+        if a['diverged'] != b['diverged']:
+            # One of them is a numerical artefact. Keep tightening; the finer level is the
+            # candidate answer, and it must still agree with a finer one before we trust it.
+            LOGGER.warning('convergence verification: relax=%g %s but relax=%g %s -- damping '
+                           'artefact, tightening further', a['relax'],
+                           'diverged' if a['diverged'] else 'converged', b['relax'],
+                           'diverged' if b['diverged'] else 'converged')
+            prev_res, prev_relax, result = res, this_relax, res
+            continue
+        if a['peak_K'] is not None and b['peak_K'] is not None:
+            spread = abs(a['peak_K'] - b['peak_K'])
+            if spread <= verify_tol_K and a['converged'] and b['converged']:
+                verified, result = True, res     # the finer level is the reported answer
+                break
+            LOGGER.warning('convergence verification: peak differs by %.2f K between relax=%g '
+                           '(%.2f K) and relax=%g (%.2f K) -- tightening damping further',
+                           spread, a['relax'], a['peak_K'], b['relax'], b['peak_K'])
+        prev_res, prev_relax, result = res, this_relax, res
+
+    if not verified:
+        LOGGER.error('convergence verification FAILED after %d damping levels (%s). The peak '
+                     'temperature still depends on the damping, so this point is NOT a '
+                     'converged answer -- do not quote it.', len(levels),
+                     ', '.join('relax={g[relax]:g}:{peak}'.format(
+                         g=lv, peak=('{:.1f} K'.format(lv['peak_K']) if lv['peak_K'] is not None
+                                     else 'diverged')) for lv in levels))
+    # Note ``result`` is always the finest damping level that is still a candidate, so a
+    # divergence that a tighter damping resolved has already been replaced by the converged
+    # answer -- ``diverged`` here means "diverged at every damping tried", as intended.
+    result = dict(result)
+    result.update({'verified': verified, 'unconverged': not verified,
+                   'peak_spread_K': spread, 'verification': levels})
+    return result

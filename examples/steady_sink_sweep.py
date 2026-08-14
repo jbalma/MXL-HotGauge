@@ -112,8 +112,15 @@ def main():
     ap.add_argument('--t-ref', type=float, default=360.0)
     ap.add_argument('--doubling', type=float, default=15.0)
     ap.add_argument('--tol', type=float, default=0.5)
-    ap.add_argument('--max-iter', type=int, default=15)
+    # See docs/GAMEPLAN.md P0.1: relax is a STARTING point (the loop backtracks and tightens
+    # it per point), convergence is tested on the fixed-point residual, and every solve is
+    # repeated at half the damping to prove the answer does not depend on the knob.
+    ap.add_argument('--max-iter', type=int, default=60)
     ap.add_argument('--relax', type=float, default=0.5)
+    ap.add_argument('--no-verify', action='store_true',
+                    help='skip the half-damping verification solve; faster, unsafe to quote')
+    ap.add_argument('--verify-tol', type=float, default=1.0,
+                    help='peak-temperature agreement [K] required between damping levels')
     ap.add_argument('--leak-fraction', type=float, default=0.2,
                     help='fallback leakage fraction if no split files are present')
     ap.add_argument('--leakage-cal', default=None,
@@ -204,13 +211,18 @@ def main():
                                        num_cores=args.num_cores, tol_K=args.tol,
                                        max_iter=args.max_iter, relax=args.relax,
                                        t_floor_K=T_FLOOR_K,
-                                       bridge_aggregates=True)
+                                       bridge_aggregates=True,
+                                       verify=not args.no_verify,
+                                       verify_tol_K=args.verify_tol)
             stats = die_stats(res['temp_trace'])
             # die_power_of_trace, not a raw sum -- the aggregates double-count (~2.36x).
             p_out = die_power_of_trace(res['power_trace'], args.flp_template, args.tech_node,
                                        num_cores=args.num_cores)
             diverged = bool(res.get('diverged'))
-            status = 'DIVERGED' if diverged else ('conv' if res['converged'] else 'maxit')
+            unconverged = bool(res.get('unconverged'))
+            status = ('DIVERGED' if diverged else
+                      'UNVERIFIED' if unconverged else
+                      'conv' if res['converged'] else 'maxit')
             density = p_w / (area_m2 * 1e6)
             if diverged:
                 # The last state before a runaway guard fires is mid-divergence: its
@@ -237,7 +249,10 @@ def main():
                          'power_out_W': None if diverged else p_out,
                          'performance': perf,
                          'iterations': res['iterations'],
-                         'converged': bool(res['converged']), 'diverged': diverged})
+                         'converged': bool(res['converged']), 'diverged': diverged,
+                         'unconverged': unconverged,
+                         'peak_spread_K': res.get('peak_spread_K'),
+                         'relax_final': res.get('relax_final')})
 
     out = os.path.join(args.out_dir, 'sweep.json')
     with open(out, 'w') as f:

@@ -113,10 +113,14 @@ def test_orchestration_on_real_trace_converges_and_bridges_names():
     baseline = BasicPowerTrace({u: [float(v)] for u, v in block.items()}, time_step=1.0)
     leak = {u: np.array([0.3 * max(float(v), 0.0)]) for u, v in block.items()}
 
+    # max_iter is 60, not 25: convergence is now tested on the fixed-point RESIDUAL rather
+    # than the change between successive solves, and the residual is ~1/relax times larger,
+    # so the same tolerance is a genuinely stricter demand.
     res = run_leakage_feedback(baseline, leak, _mock_solver(theta_K_per_W=1.0),
                                model=LeakageModel.exponential(10.0), T_ref=TREF,
-                               num_cores=8, tol_K=1e-3, max_iter=25)
+                               num_cores=8, tol_K=1e-3, max_iter=60)
     assert res['converged']
+    assert res['verified'] and not res['unconverged']
     # A mappable, high-power unit should have had its leakage scaled (power changed from
     # baseline); an unmappable aggregate (IMC) should be untouched.
     conv = res['power_trace']
@@ -137,9 +141,9 @@ def test_orchestration_cooling_lowers_power():
     model = LeakageModel.exponential(10.0)
 
     hot = run_leakage_feedback(baseline, leak, _mock_solver(1.0, ambient_K=TREF),
-                               model=model, T_ref=TREF, num_cores=8, tol_K=1e-4, max_iter=25)
+                               model=model, T_ref=TREF, num_cores=8, tol_K=1e-4, max_iter=80)
     cool = run_leakage_feedback(baseline, leak, _mock_solver(1.0, ambient_K=TREF - 25),
-                                model=model, T_ref=TREF, num_cores=8, tol_K=1e-4, max_iter=25)
+                                model=model, T_ref=TREF, num_cores=8, tol_K=1e-4, max_iter=80)
     hot_unit = 'Core0/Execution Unit/Integer ALUs'
     assert cool['power_trace'][hot_unit][0] < hot['power_trace'][hot_unit][0]
 
@@ -378,6 +382,89 @@ def test_solver_defaults_to_transient():
     solver = ICEThermalSolver('s.stk', 'f.flp', 7, '/tmp/x')
     assert solver.mode == 'transient'
     assert solver.steady_reduce == 'mean'
+
+
+# ---------------------------------------------------------------------------
+# P0.1 -- automatic convergence verification
+# ---------------------------------------------------------------------------
+def _one_block_case():
+    trace = BasicPowerTrace({'Core0/Execution Unit/Integer ALUs': np.array([1.0])}, 1.0)
+    return trace, {'Core0/Execution Unit/Integer ALUs': np.array([0.4])}
+
+
+def _lumped_flp_solver(theta, ambient_K=TREF):
+    def solve(tr):
+        return {'iALU_0': [ambient_K + theta * max(float(np.ravel(v)[0]), 0.0)]
+                for v in [next(iter(tr.powers.values()))]}
+    return solve
+
+
+def test_verification_runs_two_damping_levels_and_reports_them():
+    trace, leak = _one_block_case()
+    res = run_leakage_feedback(trace, leak, _lumped_flp_solver(8.0, TREF - 60),
+                               model=LeakageModel.exponential(12.0), T_ref=TREF, num_cores=8,
+                               tol_K=0.05, max_iter=100, relax=0.5)
+    assert res['verified'] and not res['unconverged']
+    assert len(res['verification']) >= 2
+    assert res['verification'][0]['relax'] == 0.5
+    assert res['verification'][1]['relax'] == 0.25
+    assert res['peak_spread_K'] is not None and res['peak_spread_K'] <= 1.0
+
+
+def test_verification_can_be_switched_off():
+    trace, leak = _one_block_case()
+    res = run_leakage_feedback(trace, leak, _lumped_flp_solver(8.0, TREF - 60),
+                               model=LeakageModel.exponential(12.0), T_ref=TREF, num_cores=8,
+                               tol_K=0.05, max_iter=100, relax=0.5, verify=False)
+    assert 'verification' not in res
+
+
+def _run_counting_solver(temp_fn):
+    """Mock solver that knows which VERIFICATION LEVEL it is in.
+
+    Each damping level starts by solving the untouched baseline trace, so seeing the baseline
+    power again means a new level began. That lets a mock behave differently per level, which
+    is the only way to exercise the wrapper's cross-level decision logic deterministically.
+    """
+    state = {'run': -1}
+
+    def solve(tr):
+        p = float(np.ravel(next(iter(tr.powers.values())))[0])
+        if abs(p - 1.0) < 1e-12:
+            state['run'] += 1
+        return {'iALU_0': [temp_fn(p, state['run'])]}
+    return solve
+
+
+def test_divergence_at_one_damping_is_not_reported_as_runaway_if_another_converges():
+    """`diverged` must mean 'diverged at every damping tried', not 'diverged at the one
+    damping I happened to pick' -- the rule that voids the old 'MR rescue' results."""
+    trace, leak = _one_block_case()
+
+    def temps(p, run):
+        if run == 0 and p > 1.02:      # the coarse level blows up; the finer one does not
+            raise RuntimeError('3D-ICE crashed on runaway power')
+        return TREF + 3.0 * p
+
+    res = run_leakage_feedback(trace, leak, _run_counting_solver(temps),
+                               model=LeakageModel.exponential(12.0), T_ref=TREF, num_cores=8,
+                               tol_K=0.05, max_iter=60, relax=0.5)
+    assert not res['diverged']         # resolved by tighter damping -> numerical artefact
+    assert res['converged']
+    assert res['verification'][0]['diverged'] and not res['verification'][-1]['diverged']
+
+
+def test_unconverged_is_flagged_when_the_peak_moves_with_damping():
+    """The core P0.1 guarantee: an answer that depends on the damping is never reported as a
+    converged number, it is flagged."""
+    trace, leak = _one_block_case()
+    # Each level converges cleanly, but to a peak 3 K away from the previous level's.
+    res = run_leakage_feedback(trace, leak,
+                               _run_counting_solver(lambda p, run: TREF + 3.0 * p + 3.0 * run),
+                               model=LeakageModel.exponential(12.0), T_ref=TREF, num_cores=8,
+                               tol_K=0.05, max_iter=60, relax=0.5, verify_tol_K=1.0)
+    assert res['unconverged'] and not res['verified']
+    assert res['peak_spread_K'] > 1.0
 
 
 if __name__ == '__main__':

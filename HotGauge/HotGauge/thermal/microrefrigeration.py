@@ -59,7 +59,32 @@ DEFAULT_ETA_ASF = 0.20
 #: Optical-path collection loss between the cooling element and the LPC. 1.0 reproduces the
 #: MXL-Photonic-Cooling-Power-Analysis.xlsx model exactly (it assumes perfect routing).
 DEFAULT_COLLECTION_EFFICIENCY = 1.0
-DEFAULT_SPOT_MIN_UM = 100.0
+
+#: Smallest feature the cooling stage can be focused onto [um]. The realistic range is
+#: **1-10 um**: ~1 um is roughly the diffraction limit at the pump wavelength, ~10 um a
+#: conservative practical delivery limit. The default is the cautious end of that range.
+#:
+#: This was previously 100 um, which is wrong by 10-100x and materially understated what MR can
+#: reach. On the 34-core die that excluded 37 of the 57 above-target blocks -- including the two
+#: highest power densities on the chip, ``RBB`` (13.4 um) and ``iBuf`` (1.3 um). At 10 um the
+#: reachable set is 44 of 57 hot blocks and 99.4% of die power; at 1 um it is all of it.
+#:
+#: Consequence worth stating plainly: spot size is **not** the binding constraint on photonic
+#: cooling here. The block *selection policy* is -- ``run_mr_clipping`` cools only blocks above
+#: ``target_K``, and on that die they carry ~10% of total power while 65% sits in a band 10-20 K
+#: below the target, untouched.
+DEFAULT_SPOT_MIN_UM = 10.0
+
+#: What to do with a block narrower than ``spot_min_um``:
+#:
+#: * ``'dilute'``  -- illuminate the whole pixel: the block still gets the cooling it needs, but
+#:   you pay for the pixel, so the laser cost rises by ``pixel_area / block_area``. This is what
+#:   a real tile array does and is the default.
+#: * ``'exclude'`` -- the block cannot be targeted at all. A conservative bound.
+#: * ``'ideal'``   -- cool it in full at no penalty. This was the *de facto* behaviour before
+#:   the policy existed, because ``spot_limited`` was computed and never acted on -- so every
+#:   result predating this assumed perfect targeting at any feature size.
+DEFAULT_SPOT_POLICY = 'dilute'
 #: Maxwell Labs working assumption (2026-08-11): 20% MR efficiency, i.e. 5 W electrical per
 #: watt of heat removed. The literature range for thin-film uTEC practical COP is ~0.1-0.3.
 DEFAULT_COP = 0.2
@@ -77,7 +102,8 @@ class MRParams(object):
     """
 
     def __init__(self, target_K, h_max=DEFAULT_H_MAX_W_PER_MM2, dt_max_K=DEFAULT_DT_MAX_K,
-                 eta_asf=DEFAULT_ETA_ASF, spot_min_um=DEFAULT_SPOT_MIN_UM, max_total_W=None,
+                 eta_asf=DEFAULT_ETA_ASF, spot_min_um=DEFAULT_SPOT_MIN_UM,
+                 spot_policy=DEFAULT_SPOT_POLICY, max_total_W=None,
                  laser_wallplug=DEFAULT_LASER_WALLPLUG, lpc_efficiency=DEFAULT_LPC_EFFICIENCY,
                  collection_efficiency=DEFAULT_COLLECTION_EFFICIENCY, recover=True, cop=None):
         if target_K <= 0:
@@ -94,6 +120,10 @@ class MRParams(object):
         self.h_max = float(h_max)
         self.dt_max_K = float(dt_max_K)
         self.spot_min_um = float(spot_min_um)
+        if spot_policy not in ('ideal', 'exclude', 'dilute'):
+            raise ValueError("spot_policy must be 'ideal', 'exclude' or 'dilute', got {!r}"
+                             .format(spot_policy))
+        self.spot_policy = spot_policy
         self.max_total_W = None if max_total_W is None else float(max_total_W)
         self.laser_wallplug = float(laser_wallplug)
         self.lpc_efficiency = float(lpc_efficiency)
@@ -190,10 +220,31 @@ def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floo
         limit = ('need' if q == q_need else ('h_max' if q == q_H else 'dt_max'))
         if q <= 0:
             continue
+
+        # A block narrower than the pixel pitch cannot be illuminated on its own. What happens
+        # then is set by spot_policy -- see MRParams. Until this was added the flag below was
+        # computed and never read, so every result silently assumed ideal targeting at any
+        # feature size (i.e. the 1 um array), and changing spot_min_um did nothing at all.
+        spot_limited = geom['min_dim_um'] < params.spot_min_um
+        cost_mult = 1.0
+        if spot_limited:
+            if params.spot_policy == 'exclude':
+                detail[blk] = {'limit': 'spot_limited', 'q_W': 0.0, 'excess_K': excess,
+                               'q_need_W': q_need, 'q_h_max_W': q_H, 'q_dt_max_W': q_dT,
+                               'spot_limited': True, 'achievable_dT_K': 0.0,
+                               'cost_multiplier': float('inf')}
+                continue
+            if params.spot_policy == 'dilute':
+                # The pixel is illuminated in full but only the block's area fraction of the
+                # cooling lands on the block. Delivered q is unchanged; the laser bill is not.
+                pixel_mm2 = (params.spot_min_um ** 2) / 1.0e6
+                cost_mult = pixel_mm2 / max(geom['area_mm2'], 1e-12)
+                limit = limit + '+spot_dilute'
+
         plan[blk] = q
         detail[blk] = {'limit': limit, 'q_W': q, 'excess_K': excess,
                        'q_need_W': q_need, 'q_h_max_W': q_H, 'q_dt_max_W': q_dT,
-                       'spot_limited': geom['min_dim_um'] < params.spot_min_um,
+                       'spot_limited': spot_limited, 'cost_multiplier': cost_mult,
                        'achievable_dT_K': q * s}
 
     # A laser budget is spent on the blocks with the largest excess first: the hottest block
@@ -245,7 +296,7 @@ def apply_cooling_to_trace(trace, plan, name_map):
     return BasicPowerTrace(powers, trace.time_step)
 
 
-def mr_accounting(plan, params, compute_power_W=None):
+def mr_accounting(plan, params, compute_power_W=None, detail=None):
     """Laser power, LPC recovery, and net cost -- the MXL-Photonic-Cooling-Power-Analysis model.
 
     Implements the spreadsheet's formulation exactly (validated against its MVP-1/2/3 cases)::
@@ -277,12 +328,23 @@ def mr_accounting(plan, params, compute_power_W=None):
     """
     q_total = float(sum(plan.values())) if plan else 0.0
     cop_elec = params.cop
-    gross = (q_total / cop_elec) if cop_elec > 0 else 0.0
+
+    # Blocks narrower than the pixel are illuminated pixel-wide, so the laser is billed for the
+    # whole pixel while only the block's share does useful work. ``detail`` carries that
+    # multiplier from clipping_plan; without it we would silently price a diluted spot as if it
+    # were perfectly focused -- which is exactly the bug the spot_policy work fixed.
+    if detail:
+        q_billed = float(sum(q * float(detail.get(b, {}).get('cost_multiplier', 1.0))
+                             for b, q in plan.items()))
+    else:
+        q_billed = q_total
+    gross = (q_billed / cop_elec) if cop_elec > 0 else 0.0
 
     if params.recover:
         ratio = params.breakeven_ratio
         recovered = ratio * gross
         optical_in = params.laser_wallplug * gross
+        # Heat carried out is what was actually removed from the die, not what was billed.
         optical_out = optical_in + q_total
     else:
         ratio = 0.0
@@ -296,7 +358,9 @@ def mr_accounting(plan, params, compute_power_W=None):
             'MR accounting violates energy conservation: recovered %.4f W > laser %.4f W + '
             'heat %.4f W. Check eta_LPC/collection/eta_laser/eta_ASF.', recovered, gross, q_total)
 
-    out = {'heat_removed_W': q_total, 'cop': cop_elec, 'eta_asf': params.eta_asf,
+    out = {'heat_removed_W': q_total, 'heat_billed_W': q_billed,
+           'spot_dilution_overhead': (q_billed / q_total) if q_total > 0 else 1.0,
+           'cop': cop_elec, 'eta_asf': params.eta_asf,
            'n_blocks_cooled': len(plan),
            'electrical_gross_W': gross, 'optical_in_W': optical_in,
            'optical_to_lpc_W': optical_out, 'recovered_W': recovered,
@@ -378,7 +442,7 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
         if not new_plan:
             return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
                     'converged': False, 'iterations': it, 'history': history,
-                    'accounting': mr_accounting(plan, params),
+                    'accounting': mr_accounting(plan, params, detail=detail),
                     'reason': 'envelope allows no further cooling'}
 
         blended = ({b: relax * new_plan[b] + (1 - relax) * plan.get(b, 0.0) for b in new_plan}
@@ -402,9 +466,9 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
         if delta_plan <= max(1e-3, 0.01 * total) and abs(peak - params.target_K) <= tol_K:
             return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
                     'converged': True, 'iterations': it + 1, 'history': history,
-                    'accounting': mr_accounting(plan, params)}
+                    'accounting': mr_accounting(plan, params, detail=detail)}
 
     return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
             'converged': False, 'iterations': max_iter, 'history': history,
-            'accounting': mr_accounting(plan, params),
+            'accounting': mr_accounting(plan, params, detail=detail),
             'reason': 'max_iter reached'}

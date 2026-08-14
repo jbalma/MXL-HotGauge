@@ -45,8 +45,19 @@ for _d in "$MXL_PREFIX/lib64" /mnt/nfs01/scratch/jbalma/mxl-nodelibs/lib64; do
 done
 unset _d
 
-# 3D-ICE links an OpenMP BLAS that otherwise grabs every core on the box -- under Slurm that
-# means oversubscribing your allocation and slowing everything down, including other users.
+# 1 is not a compromise -- it is the fastest setting. MEASURED on node-03 (34-core die, 691k
+# unknowns, steady solve):
+#
+#     threads   1      2      4      8     16
+#     seconds  93.1  127.5  128.5  194.0  327.1     <- 3.5x SLOWER at 16
+#
+# 3D-ICE's steady solve is a sparse direct factorisation through SuperLU 4.3, which is
+# *sequential* (no MT sources in its SRC/). The only threaded work is BLAS inside supernodes,
+# and those are small enough that thread launch and sync overhead dominates. Raising this is a
+# pessimisation, and it also oversubscribes the node against other users.
+#
+# The parallelism that does pay is ACROSS solves: each one is single-threaded, so run many
+# independent sweep points concurrently instead. See docs/PERFORMANCE.md.
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
 
 # --- report ---

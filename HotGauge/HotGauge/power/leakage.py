@@ -347,10 +347,27 @@ def rescale_trace(total_trace, leakage_ref, temp_trace, model,
     return BasicPowerTrace(new_powers, total_trace.time_step)
 
 
+def _field_max_abs_diff(a, b):
+    """max |a[k] - b[k]| over the keys they share; None if they share none."""
+    diffs = [float(np.max(np.abs(np.asarray(v, float) - np.asarray(b[k], float))))
+             for k, v in a.items() if k in b]
+    return max(diffs) if diffs else None
+
+
+def _blend_fields(old, new, relax):
+    """(1-relax)*old + relax*new, keyed by ``new`` (falling back to ``new`` where old lacks a key)."""
+    if relax >= 1.0:
+        return dict(new)
+    return {k: (1.0 - relax) * np.asarray(old.get(k, v), float) + relax * np.asarray(v, float)
+            for k, v in new.items()}
+
+
 def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model,
                                T_ref=DEFAULT_TREF_K, temp_units='K', name_map=None,
                                tol_K=0.1, max_iter=10, relax=1.0, max_power_growth=None,
-                               t_floor_K=None, max_temp_K=None):
+                               t_floor_K=None, max_temp_K=None, residual_convergence=True,
+                               adaptive_relax=True, min_relax=0.025, relax_shrink=0.5,
+                               stall_patience=3, growth_factor=1.05):
     """Fixed-point power<->temperature<->leakage iteration.
 
     total_trace       : baseline PowerTrace (leakage extracted at ``T_ref``).
@@ -359,14 +376,48 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
                         In production this wraps a 3D-ICE run (e.g. ICETransientSim +
                         load_3DICE_block_file). In tests it can be any deterministic map.
     model             : a ``LeakageModel``.
-    tol_K             : convergence threshold on the max per-cell temperature change between
-                        successive iterations.
+    tol_K             : convergence threshold, applied to the **fixed-point residual**
+                        (see ``residual_convergence``).
     max_iter          : safety cap on iterations.
     relax             : under-relaxation factor in (0, 1] for the temperature field that
                         drives the leakage update: T_drive = (1-relax)*T_prev + relax*T_solved.
                         1.0 is plain Gauss-Seidel (fastest when it converges); <1 damps
                         oscillation/overshoot near the stability boundary. Does not move the
                         fixed point, only the path to it.
+    residual_convergence : test convergence on ``max |T_solved - T_driving|`` -- the true
+                        fixed-point residual -- instead of the change between successive
+                        solves. **This matters, and defaults to on.** Under relaxation the
+                        driving field moves by only ``relax`` times the residual each
+                        iteration, so successive *solved* fields differ by roughly
+                        ``relax * residual``: at ``relax=0.0125`` a residual of 8 K passes a
+                        0.1 K tolerance. The successive-difference test therefore gets
+                        *weaker* exactly as damping is tightened for safety, which is how a
+                        partially-converged field can satisfy the tolerance and be reported as
+                        a converged answer. The residual is relax-independent. Set False only
+                        to reproduce pre-fix numbers.
+    adaptive_relax    : shrink ``relax`` by ``relax_shrink`` (down to ``min_relax``) whenever
+                        the residual fails to decrease, and restart from the best field seen.
+                        The leakage map is strongly convex, so a step that overshoots lands
+                        where the local loop gain is much higher and the iteration then runs
+                        away *numerically* even though a stable fixed point exists below --
+                        this is the failure that required hand-tightening ``relax`` four times.
+                        Shrinking on overshoot removes the guesswork: damping is discovered,
+                        not guessed.
+    min_relax         : floor for the adaptive shrink. Once here, a residual that still grows
+                        for ``stall_patience`` consecutive iterations is reported as genuine
+                        divergence rather than a damping artefact. **Measured**: on a lumped
+                        model driven by the real 7nm leakage curve the floor does not move the
+                        cliff at all (identical to 4 decimals from 0.005 to 0.1) -- backtracking
+                        finds the fixed point without needing tiny steps -- but it sets how long
+                        a genuine runaway takes to declare (125 solves at 0.005, 48 at 0.025,
+                        11 at 0.05). 0.025 keeps a safety margin at a bearable cost.
+    stall_patience    : consecutive growing-residual iterations tolerated at ``min_relax``
+                        before declaring divergence.
+    growth_factor     : how much residual growth counts as an overshoot rather than noise.
+                        The residual is a max over blocks, and which block is worst can change
+                        between iterations, so a strictly-monotone test rejects harmless steps
+                        and halves the damping for nothing. 1.05 tolerates that; a real
+                        overshoot grows the residual by tens of percent per iteration.
     max_power_growth  : if set, stop and flag runaway once the total power of the rescaled
                         trace exceeds this multiple of the baseline total -- caught *before*
                         the next thermal solve, so we never hand a downstream solver (3D-ICE)
@@ -382,31 +433,52 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
         'power_trace'  : latest PowerTrace,
         'temp_trace'   : latest temperature field,
         'iterations'   : number of thermal solves performed,
-        'converged'    : bool -- reached tol_K,
+        'converged'    : bool -- residual (or delta) reached tol_K,
         'diverged'     : bool -- runaway/solver-failure detected (mutually exclusive with
                          'converged'),
-        'max_delta_K'  : final max temperature change (inf if diverged),
+        'diverged_reason' : short string naming which guard fired, or None,
+        'max_delta_K'  : final max change between successive solves (inf if diverged),
+        'residual_K'   : final fixed-point residual (inf if diverged/unknown),
+        'relax_final'  : the damping in force when the loop stopped (< ``relax`` if the
+                         adaptive scheme had to tighten it),
         'history'      : list of per-iteration dicts {iter, max_T_K, max_T_key, total_W,
-                         max_delta_K} recording the hottest block and its temperature at each
-                         thermal solve -- the primary diagnostic for localized runaway.
+                         max_delta_K, residual_K, relax} recording the hottest block and its
+                         temperature at each thermal solve -- the primary diagnostic for
+                         localized runaway.
 
     Convergence: with a monotonically-increasing leakage(T) and a passive thermal path this
     is a contraction while d(leakage)/dT * (thermal resistance) < 1. If that product exceeds
     1 the physical device is in thermal runaway and no stable fixed point exists; this is
     surfaced as 'diverged': True (via non-finite temps, the power-growth guard, or a solver
-    failure) rather than hidden or raised.
+    failure) rather than hidden or raised. Because the gain is evaluated at the *current*
+    temperature and grows with it, the distinction between "no fixed point" and "damping too
+    loose to find the fixed point" cannot be made from one damping level alone -- see
+    ``HotGauge.thermal.leakage_feedback.run_leakage_feedback(verify=True)``, which is the
+    supported way to answer it.
     """
     def _total(trace):
         return sum(float(np.sum(np.asarray(s, float))) for s in trace.powers.values())
 
+    if not 0 < relax <= 1.0:
+        raise ValueError('relax must be in (0, 1], got {!r}'.format(relax))
+    min_relax = min(float(min_relax), float(relax))
+
     baseline_total = _total(total_trace)
     current = total_trace
-    prev_temps = None      # last raw solved field, for the residual convergence check
+    prev_temps = None      # last raw solved field, for the successive-difference diagnostic
     driving = None         # under-relaxed field that actually drives the leakage update
+    # Backtracking anchor: the last ACCEPTED (driving field, its solved field, its residual).
+    # A rejected step is retaken from here with tighter damping, never from the overshoot.
+    anchor_driving, anchor_temps = None, None
+    anchor_residual = float('inf')
     max_delta = float('inf')
+    residual = float('inf')
+    relax_now = float(relax)
+    grow_streak = 0
     iterations = 0
     converged = False
     diverged = False
+    diverged_reason = None
     solver_error = None
     history = []
     for i in range(max_iter):
@@ -426,6 +498,7 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
             LOGGER.error('leakage feedback iter %d: thermal solve failed (%s) -> treating as '
                          'divergence/runaway; stopping', i, e)
             diverged = True
+            diverged_reason = 'solver_error'
             solver_error = str(e)
             break
         iterations += 1
@@ -435,7 +508,9 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
             LOGGER.warning('leakage feedback iter %d: non-finite temperature -> thermal '
                            'runaway; stopping', i)
             diverged = True
+            diverged_reason = 'non_finite_temperature'
             max_delta = float('inf')
+            residual = float('inf')
             break
 
         # Record the hottest block this iteration (ignoring sub-floor/unphysical readings)
@@ -447,8 +522,23 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
                 v = v[v >= t_floor_K]
             if v.size and float(np.max(v)) > max_T:
                 max_T, max_T_key = float(np.max(v)), k
+        # --- the two convergence measures ------------------------------------------------
+        # residual  : |T_solved - T_driving|, the distance from the fixed point. Independent
+        #             of the damping, so it means the same thing at every relax.
+        # max_delta : |T_solved - T_solved_prev|, the legacy measure. Scales with relax, so it
+        #             is kept as a diagnostic only (see `residual_convergence`).
+        if driving is not None:
+            residual = _field_max_abs_diff(temps, driving)
+            residual = float('inf') if residual is None else residual
+        if prev_temps is not None:
+            delta = _field_max_abs_diff(temps, prev_temps)
+            max_delta = 0.0 if delta is None else delta
+        LOGGER.info('leakage feedback iter %d: residual = %.4f K, max dT = %.4f K, relax = %g',
+                    i, residual, max_delta, relax_now)
+
         history.append({'iter': i, 'max_T_K': max_T, 'max_T_key': max_T_key,
-                        'total_W': _total(current), 'max_delta_K': max_delta})
+                        'total_W': _total(current), 'max_delta_K': max_delta,
+                        'residual_K': residual, 'relax': relax_now})
 
         # Per-block temperature sanity guard: a single dense block ratcheting into runaway is
         # caught (and NAMED) at the first unphysical solve, long before total power overflows.
@@ -457,29 +547,64 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
                            'limit) -> localized runaway; stopping', i, max_T_key, max_T,
                            max_temp_K)
             diverged = True
+            diverged_reason = 'max_temp_K ({} at {:.1f} K)'.format(max_T_key, max_T)
             max_delta = float('inf')
             prev_temps = temps
             break
 
-        # Residual convergence check on the raw solved field.
-        if prev_temps is not None:
-            deltas = [np.max(np.abs(np.asarray(v, float) - np.asarray(prev_temps[k], float)))
-                      for k, v in temps.items() if k in prev_temps]
-            max_delta = max(deltas) if deltas else 0.0
-            LOGGER.info('leakage feedback iter %d: max dT = %.4f K', i, max_delta)
-            if max_delta <= tol_K:
-                converged = True
-                prev_temps = temps
-                break
+        criterion = residual if residual_convergence else max_delta
+        if criterion <= tol_K:
+            converged = True
+            prev_temps = temps
+            break
         prev_temps = temps
 
-        # Under-relax the field that drives the leakage update.
-        if driving is None or relax >= 1.0:
+        # --- take the next step ------------------------------------------------------------
+        # The iteration is damped Picard: d_{n+1} = (1-r) d_n + r F(d_n), where d is the field
+        # driving the leakage update and F is one thermal solve. With `adaptive_relax` it also
+        # BACKTRACKS: a step that increases the residual is rejected and retaken from the same
+        # anchor with half the step. The leakage map is strongly convex, so an overshoot lands
+        # where the local loop gain is much higher and the iteration then runs away
+        # *numerically* even though a stable fixed point exists below -- the failure that
+        # previously required hand-tightening `relax` four times. Retaking the step smaller
+        # makes the residual monotone by construction, so damping is discovered, not guessed.
+        if driving is None:
+            # First solve: nothing to blend against (the implicit prior field is the uniform
+            # T_ref the baseline leakage was extracted at, and blending against it would drag
+            # in the 0 K readings 3D-ICE emits for off-die floorplan elements). Adopt the
+            # solved field, exactly as before.
             driving = temps
+        elif not adaptive_relax:
+            driving = _blend_fields(driving, temps, relax_now)
+        elif residual <= anchor_residual * growth_factor:
+            anchor_driving, anchor_temps, anchor_residual = driving, temps, residual
+            grow_streak = 0
+            driving = _blend_fields(anchor_driving, anchor_temps, relax_now)
+        elif relax_now > min_relax:
+            # Reject: retake the SAME step from the anchor with tighter damping. The wasted
+            # solve is the price of not having to guess `relax` in advance.
+            relax_now = max(min_relax, relax_now * relax_shrink)
+            LOGGER.info('leakage feedback iter %d: residual grew %.4f -> %.4f K; rejecting the '
+                        'step and retaking it at relax = %g', i, anchor_residual, residual,
+                        relax_now)
+            driving = _blend_fields(anchor_driving, anchor_temps, relax_now)
         else:
-            driving = {k: (1.0 - relax) * np.asarray(driving.get(k, v), float)
-                            + relax * np.asarray(v, float)
-                       for k, v in temps.items()}
+            # Already at the damping floor and still moving away from the fixed point. No
+            # amount of further damping will help: this is a real runaway, not a step-size
+            # artefact. Keep advancing (the temperature/power guards usually fire first) but
+            # give up after `stall_patience` consecutive growing residuals.
+            grow_streak += 1
+            if grow_streak >= stall_patience:
+                LOGGER.warning('leakage feedback iter %d: residual still growing (%.4f -> '
+                               '%.4f K) at the minimum damping %g for %d iterations -> '
+                               'genuine runaway; stopping', i, anchor_residual, residual,
+                               min_relax, grow_streak)
+                diverged = True
+                diverged_reason = 'residual_growing_at_min_relax'
+                max_delta = float('inf')
+                break
+            anchor_driving, anchor_temps, anchor_residual = driving, temps, residual
+            driving = _blend_fields(driving, temps, relax_now)
 
         # Always rescale from the BASELINE trace: dynamic = baseline_total - leakage_ref is
         # temperature-independent, so re-deriving it from an already-rescaled trace would make
@@ -496,16 +621,24 @@ def converge_power_temperature(total_trace, leakage_ref, thermal_solve_fn, model
                            'baseline) -> runaway; stopping', i, cur_total,
                            (cur_total / baseline_total) if baseline_total else float('inf'))
             diverged = True
+            diverged_reason = 'max_power_growth'
             max_delta = float('inf')
             break
 
+    if not converged and not diverged:
+        LOGGER.warning('leakage feedback: hit max_iter=%d without converging (residual %.3f K '
+                       'vs tol %.3f K, relax %g). This is neither a converged answer nor a '
+                       'demonstrated runaway.', max_iter, residual, tol_K, relax_now)
     return {
         'power_trace': current,
         'temp_trace': prev_temps,
         'iterations': iterations,
         'converged': converged,
         'diverged': diverged,
+        'diverged_reason': diverged_reason,
         'solver_error': solver_error,
         'max_delta_K': max_delta,
+        'residual_K': residual,
+        'relax_final': relax_now,
         'history': history,
     }

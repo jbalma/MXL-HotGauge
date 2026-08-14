@@ -71,6 +71,7 @@ from HotGauge.thermal.sink_models import (BaffledFinSink, render_stack_with_sink
                                           chip_area_m2_from_floorplan, simscale_alpha,
                                           simscale_beta, simscale_fan_power, SIMSCALE_T0_K,
                                           SIMSCALE_ALPHA_FIT)
+from HotGauge.thermal.ice_server import ICESessionCache
 from HotGauge.power.performance_model import FMaxModel, performance_summary
 from HotGauge.thermal.utils import K_to_C
 
@@ -96,18 +97,23 @@ def evaluate(args, base, flp_area, leak_model, t_ref, fmax, power_W, cfm, tag):
         return ICEThermalSolver(stack, args.flp_template, args.tech_node,
                                 run_base_dir=os.path.join(args.out_dir, tag, sub),
                                 initial_temp=args.ambient_K, num_cores=args.num_cores,
-                                single_thread=True, mode='steady')
+                                single_thread=True, mode='steady',
+                                session_cache=args.session_cache)
 
     res = run_leakage_feedback(trace, leak_ref, solver_factory('it'), model=leak_model,
                                T_ref=t_ref, num_cores=args.num_cores, tol_K=args.tol,
-                               max_iter=args.max_iter, relax=0.5, t_floor_K=T_FLOOR_K,
-                               bridge_aggregates=True)
+                               max_iter=args.max_iter, relax=args.relax, t_floor_K=T_FLOOR_K,
+                               bridge_aggregates=True, verify=not args.no_verify,
+                               verify_tol_K=args.verify_tol)
 
     # The CFD's own prediction for the same injected power, with no leakage feedback.
     t_lin_C = K_to_C(SIMSCALE_T0_K + simscale_alpha(cfm) * power_W)
     row = {'tag': tag, 'power_W': power_W, 'cfm': cfm, 'alpha': simscale_alpha(cfm),
            'beta': simscale_beta(cfm), 'fan_W': sink.parasitic_power_W(),
-           'r_th': sink.r_th_K_per_W, 't_lin_C': t_lin_C}
+           'r_th': sink.r_th_K_per_W, 't_lin_C': t_lin_C,
+           'unconverged': bool(res.get('unconverged')),
+           'peak_spread_K': res.get('peak_spread_K'),
+           'relax_final': res.get('relax_final')}
 
     if res.get('diverged'):
         row['diverged'] = True
@@ -162,7 +168,24 @@ def main():
     ap.add_argument('--throttle-C', type=float, default=100.0)
     ap.add_argument('--flops-per-cycle', type=float, default=DEFAULT_FLOPS_PER_CYCLE)
     ap.add_argument('--tol', type=float, default=0.5)
-    ap.add_argument('--max-iter', type=int, default=12)
+    # 60, not 30 or 12. Convergent cases still settle in 2-3 iterations, but convergence is
+    # now tested on the fixed-point RESIDUAL (stricter than the old change-between-solves by
+    # roughly 1/relax), and declaring a genuine runaway means the adaptive scheme walks the
+    # damping down to its floor first -- measured at ~48 solves. ~0.6 s each, so this is cheap.
+    ap.add_argument('--max-iter', type=int, default=60)
+    # 0.5 is a STARTING point, not a fixed choice: the loop rejects any step that increases the
+    # residual and retakes it with half the damping, so damping is discovered per point. The
+    # apparent cliff moved 23% across fixed relax 1.0 -> 0.0125; with backtracking it lands in
+    # a 0.01% band from starting relax 1.0, 0.5 or 0.1. See docs/GAMEPLAN.md P0.1.
+    ap.add_argument('--relax', type=float, default=0.5,
+                    help='STARTING under-relaxation; the loop tightens it automatically')
+    ap.add_argument('--no-verify', action='store_true',
+                    help='skip the half-damping verification solve; faster, unsafe to quote')
+    ap.add_argument('--verify-tol', type=float, default=1.0,
+                    help='peak-temperature agreement [K] required between damping levels')
+    ap.add_argument('--no-server', action='store_true',
+                    help='use the one-shot Emulator instead of a persistent '
+                         '3D-ICE session (~150x slower; for cross-checking)')
     ap.add_argument('--out-dir', default=None)
     args = ap.parse_args()
 
@@ -172,6 +195,13 @@ def main():
     args.leakage_cal = os.path.abspath(args.leakage_cal)
     args.out_dir = os.path.abspath(args.out_dir or os.path.join(os.getcwd(), 'simscale_hpc'))
     os.makedirs(args.out_dir, exist_ok=True)
+
+    # One persistent 3D-ICE session, shared across every point in the sweep. It factorises the
+    # system matrix once (~88 s on the 34-core die) and each later solve costs ~0.6 s instead
+    # of ~88 s. Safe to share: the cache hashes everything the matrix is built from and rebuilds
+    # automatically when the sink or floorplan changes, and a session refuses to solve against a
+    # stack it did not factorise.
+    args.session_cache = None if args.no_server else ICESessionCache()
     powers = [float(x) for x in args.powers.split(',') if x.strip()]
     cfms = [float(x) for x in args.cfms.split(',') if x.strip()]
 
@@ -235,10 +265,25 @@ def main():
                           r['power_W'], r['cfm'], r['r_th'], r['fan_W'], r['t_lin_C'],
                           r['t_fb_C'], r['gap_K'], r['r_die_K_per_W'],
                           r['alpha'] - r['r_th'], r['leakage_growth_W'], r['f_GHz'],
-                          r['gflops'], '  THROTTLED' if r['throttling'] else ''))
+                          r['gflops'],
+                          ('  THROTTLED' if r['throttling'] else '')
+                          + ('  ** UNCONVERGED **' if r.get('unconverged') else '')))
         print()
 
-    ok = [r for r in rows if not r['diverged']]
+    # An unverified point is not a result: its peak still depends on the damping, which is the
+    # exact failure that voided the earlier headline numbers. Keep them out of the summary.
+    bad = [r for r in rows if r.get('unconverged')]
+    if bad:
+        print('  {} of {} points FAILED convergence verification and are excluded from the '
+              'summary below:'.format(len(bad), len(rows)))
+        for r in bad:
+            print('    {:.0f} W at {:.0f} CFM: peak moves {} K between damping levels'.format(
+                r['power_W'], r['cfm'],
+                '{:.1f}'.format(r['peak_spread_K']) if r.get('peak_spread_K') else '?'))
+        print()
+    # NB: they stay in the JSON (flagged) so the failure is auditable; only the summary
+    # statistics below drop them.
+    ok = [r for r in rows if not r['diverged'] and not r.get('unconverged')]
     runaway = [r for r in rows if r['diverged']]
     print('summary')
     if ok:

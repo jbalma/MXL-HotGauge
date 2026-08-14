@@ -44,6 +44,31 @@ plain `skylake` stack works without it, so this failure only appears on plugin s
 ## What we've added (keep these conventions)
 - `HotGauge/HotGauge/power/leakage.py` — temperature-dependent leakage models +
   `converge_power_temperature` fixed-point loop (relaxation, runaway guards, history).
+- **Convergence is verified automatically — do not switch it off for anything quotable.**
+  `converge_power_temperature` now (a) tests the **fixed-point residual** `|T_solved - T_driving|`
+  rather than the change between successive solves (the old measure scales with `relax`, so
+  tightening the damping for safety made the tolerance ~1/relax *weaker* — that is how a
+  partially-converged field passed as an answer), and (b) **backtracks**: a step that grows the
+  residual is rejected and retaken at half the damping, down to `min_relax=0.025`. `relax` is
+  therefore a starting point, not a choice to get right. `run_leakage_feedback(verify=True)`
+  (default) re-solves at half the damping and requires the peaks to agree within
+  `verify_tol_K=1.0`, else the result carries `unconverged=True` and must not be quoted;
+  `diverged` now means "diverged at every damping tried". Measured on a lumped model driven by
+  the real 7nm leakage curve: the apparent cliff moved 23% across fixed `relax` 1.0→0.0125 and
+  lands in a 0.01% band with backtracking. Study drivers default to `--relax 0.5 --max-iter 60`
+  and print `** UNCONVERGED **` per row.
+- `HotGauge/HotGauge/power/clock_search.py` — **clock as a free variable** (`f_nominal` used to
+  be a hard cap and the model only derated downward, which is what made Study A's "+3.5%
+  ceiling" an artefact of the input). Bisects the highest clock whose coupled solve holds the
+  thermal limit; dynamic power scales as `V^2 f` through the shipped V/F table and leakage as
+  `V**leak_v_exponent` (an assumption, default 1.0, not silently omitted). The V/F table stops at
+  **5.0 GHz** — past it voltage clamps and the power cost is understated, so searches cap there
+  and set `vf_clamped`. Driver: `examples/clock_headroom.py` (cooling sweep × MR on/off →
+  sustainable clock). Because the criterion is a temperature limit, the answer does **not**
+  inherit the uncalibrated `derate_per_K`.
+- `examples/trajectory_probe.py` — prints the per-iteration residual/peak trajectory for one
+  operating point, and where the *old* criterion would have stopped. This is the tool for
+  telling "converging" from "being truncated".
 - `HotGauge/HotGauge/thermal/leakage_feedback.py` — wires the loop to real 3D-ICE
   (`ICEThermalSolver`, `run_leakage_feedback`, McPAT↔floorplan name bridge). Supports
   `mode='transient'` (default) and `mode='steady'` (`--steady`); steady is the mode for
