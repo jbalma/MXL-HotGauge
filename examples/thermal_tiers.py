@@ -46,7 +46,7 @@ from HotGauge.configuration import load_block_powers
 from HotGauge.thermal import get_stack_template, ICEThermalSolver, run_leakage_feedback
 from HotGauge.thermal.ICE import Floorplan
 from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power, replicate_trace_cores,
-                                               load_calibrated_leakage_model,
+                                               load_calibrated_leakage_model, die_power_of_trace,
                                                mcpat_tref_from_trace_dir, peak_temp_K)
 from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           render_stack_with_sink,
@@ -117,6 +117,20 @@ def main():
                     help='activity of the non-saturated cores')
     ap.add_argument('--active-fraction', type=float, default=0.5,
                     help='for --activity mixed')
+    # How a non-uniform activity map is normalised, and it changes the question being asked:
+    #
+    #   iso-per-core (default) -- each core keeps the absolute power it had when saturated, so
+    #     quiet cores simply dissipate less and TOTAL die power falls. This is what a real part
+    #     does when it boosts one core and idles the rest, and it is the right comparison for
+    #     an activity study.
+    #   iso-density -- renormalise so die-average density is held at --density. Right for
+    #     comparing FLOORPLANS at a fixed power budget, wrong for activity: concentrating the
+    #     same total power into one core of 34 puts ~3.7x the average density on it and the die
+    #     runs away, which says nothing about turbo and everything about the normalisation.
+    ap.add_argument('--activity-scope', default='iso-per-core',
+                    choices=('iso-per-core', 'iso-density'),
+                    help='whether a quiet die keeps its per-core power (default) or is '
+                         'renormalised back up to --density')
     ap.add_argument('--tol', type=float, default=0.5)
     ap.add_argument('--max-iter', type=int, default=60)
     ap.add_argument('--relax', type=float, default=0.5)
@@ -147,17 +161,24 @@ def main():
     base0 = BasicPowerTrace({u: np.array([p]) for u, p in first.items()}, 1.0)
     base = (replicate_trace_cores(base0, args.cores, n_src=args.trace_cores)
             if args.cores > args.trace_cores else base0)
-    # Apply the activity map BEFORE normalising to the target die power, so every design is
-    # compared at the same die-average density and the only thing that changes is where that
-    # power sits. Comparing at equal density is the whole point: otherwise a quiet die would
-    # look cooler simply for dissipating less.
+    activity_map = None
     if args.activity == 'turbo':
-        base = scale_cores(base, single_core_turbo(args.cores, args.hot_core, args.background))
+        activity_map = single_core_turbo(args.cores, args.hot_core, args.background)
     elif args.activity == 'mixed':
-        base = scale_cores(base, mixed_utilisation(args.cores, args.active_fraction,
-                                                   args.background))
-    trace, scale, _ = scale_trace_to_die_power(base, flp, args.tech_node, power_W,
-                                               num_cores=args.cores)
+        activity_map = mixed_utilisation(args.cores, args.active_fraction, args.background)
+
+    if activity_map is not None and args.activity_scope == 'iso-density':
+        base = scale_cores(base, activity_map)
+        trace, scale, _ = scale_trace_to_die_power(base, flp, args.tech_node, power_W,
+                                                   num_cores=args.cores)
+    else:
+        # iso-per-core: normalise the SATURATED die to --density first, then quiet the cores.
+        # Die power ends up below the target, which is the point -- an idle core dissipates less.
+        trace, scale, _ = scale_trace_to_die_power(base, flp, args.tech_node, power_W,
+                                                   num_cores=args.cores)
+        if activity_map is not None:
+            trace = scale_cores(trace, activity_map)
+    actual_W = die_power_of_trace(trace, flp, args.tech_node, num_cores=args.cores)
     split = os.path.join(args.trace_dir, os.path.basename(files[0]).replace(
         'block_powers_', 'block_powers_split_'))
     leak_ref = {}
@@ -189,7 +210,9 @@ def main():
         args.cores, args.node, args.density, power_W,
         'R_th {:.3g} K/W'.format(args.r_th) if args.r_th is not None
         else '{:.0f} CFM'.format(args.cfm)))
-    print('  activity : {}'.format(act))
+    print('  activity : {}  [{}]'.format(act, args.activity_scope))
+    print('  actual   : {:.1f} W on the die ({:.3f} W/mm^2)'.format(
+        actual_W, actual_W / (area_m2 * 1e6)))
     if res.get('diverged'):
         print('  NO STEADY STATE at this operating point -- pick a lower density')
         return 1
@@ -224,7 +247,10 @@ def main():
     with open(out, 'w') as f:
         json.dump({'cores': args.cores, 'node': args.node, 'density': args.density,
                    'power_W': power_W, 'r_th': args.r_th, 'cfm': args.cfm,
-                   'activity': args.activity, 'hot_core': args.hot_core,
+                   'activity': args.activity, 'activity_scope': args.activity_scope,
+                   'actual_power_W': actual_W,
+                   'actual_density_W_per_mm2': actual_W / (area_m2 * 1e6),
+                   'hot_core': args.hot_core,
                    'background': args.background, 'active_fraction': args.active_fraction,
                    'dt_max_K': args.dt_max, 'floorplan': flp,
                    'peak_C': t['peak_C'], 'peak_block': t['ranked'][0][0],
