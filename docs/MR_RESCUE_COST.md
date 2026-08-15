@@ -59,11 +59,31 @@ on this die is the whole chip; holding 98 °C means cooling the four blocks that
 numbers are right and they answer different questions, which is why quoting either alone is
 misleading.
 
-So the honest headline is the one the original intuition reached by the wrong route: **0.29 W of
-net electrical power gives a 113 W die with no steady state a stable operating point at
-99.9 °C** — inside its 100 °C spec, damping-verified, on the cool branch, with the plan
-bracketed as the minimum that holds the target. What was wrong before was never the direction,
-it was three solver defects and then a policy choice that quietly bought 8 K nobody asked for.
+> ### The 98 °C rows are PROVISIONAL — one intermediate solve each failed verification
+>
+> I first wrote this section calling them "damping-verified". They are not, and the check that
+> caught it was `scripts/collect_findings.py`, which harvests the verification status alongside
+> every value rather than trusting a summary:
+>
+> | point | final-solve spread | **worst-solve spread** | solves failing |
+> |---|---|---|---|
+> | 1.10 @ 98 °C | 0.0112 K | **7.32 K** | 1 of 15 |
+> | 1.15 @ 98 °C | 0.0006 K | **19.85 K** | 1 of 13 |
+>
+> The *final* state of each is well converged, which is what I read and reported. But the MR
+> loop makes 13–15 solves and one of them was not, so the plan is sized partly from a
+> trajectory containing an unverified field. By this project's own rule that is not a result.
+>
+> This is the fourth revision of this number and the first where the defect was **mine reading
+> the data carelessly** rather than a solver bug — I checked `holds_target` and `peak_C` and
+> did not check `unconverged`, which is exactly the habit the machinery exists to prevent.
+> Re-runs with a larger verification budget are queued.
+
+Taking them as provisional, the shape of the claim is the one the original intuition reached by
+the wrong route: **order 0.3 W of net electrical power appears to give a 113 W die with no
+steady state a stable operating point just under its 100 °C spec.** What was wrong before was
+never the direction — it was three solver defects, then a policy choice that quietly bought 8 K
+nobody asked for, then a reporting slip.
 
 The engineering consequence is worth stating separately: **MR's cost is extremely sensitive to
 the operating margin demanded of it.** A part specified to run at its limit is cheap to rescue;
