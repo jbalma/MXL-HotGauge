@@ -43,15 +43,23 @@ running() { jobs -rp | wc -l; }
 throttle() { while [ "$(running)" -ge "$MAX_CONC" ]; do sleep 10; done; }
 
 # run <tag> <script> <args...>
+#
+# Arguments are re-quoted with printf %q before being embedded in the `bash -lc` string. Using
+# $* here silently re-splits any argument containing a space: --emphasise 'Floating Point Units'
+# arrived as three words and killed five of twelve runs with "unrecognized arguments: Point
+# Units" -- after they had been queued and waited on.
 run() {
     local tag="$1"; local script="$2"; shift 2
     if [ -f "$OUT/$tag/done" ]; then log "SKIP $tag"; return 0; fi
     throttle
     log "START $tag"
     mkdir -p "$OUT/$tag"
+    local qargs
+    printf -v qargs '%q ' "$@"
     srun --jobid="$JOBID" --overlap bash -lc \
         ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && \
-         python -u $script $* --out-dir $OUT/$tag > $OUT/$tag.log 2>&1 && touch $OUT/$tag/done" &
+         python -u $script $qargs --out-dir $OUT/$tag > $OUT/$tag.log 2>&1 && \
+         touch $OUT/$tag/done" &
 }
 
 log "=== design study batch starting, max concurrency $MAX_CONC ==="

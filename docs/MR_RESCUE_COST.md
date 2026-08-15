@@ -40,7 +40,37 @@ sailed past it to the stability boundary.
 * the minimum plan for a steady state to **exist**
 * the minimum plan that holds a **usable temperature**
 
-## The corrected measurement
+## THIRD REVISION: the cost is a curve in how much margin you demand
+
+The numbers below (26.8 W removed, 46.6 W electrical) were measured with the MR target at
+**92 °C on a die whose limit is 100 °C**. That is not "the cost of a rescue", it is the cost of
+a rescue *plus 8 K of margin*, and the margin is almost all of it. Re-measured with the target
+2 K under the limit, and with the bistability fix in place:
+
+| density | MR target | peak °C | heat removed | MR electrical | blocks | holds target |
+|---|---|---|---|---|---|---|
+| 1.10 | 92 °C | 90.96 | 26.8 W | 46.6 W | 1126 | yes |
+| 1.10 | **98 °C** | 99.94 | **0.169 W** | **0.29 W** | **4** | yes |
+| 1.15 | 92 °C | 90.60 | 42.1 W | 73.0 W | 1126 | yes |
+| 1.15 | **98 °C** | 99.87 | **0.814 W** | **1.42 W** | **13** | yes |
+
+**160× for 6 K of margin.** Holding 92 °C means cooling every block in the 92–100 K band, which
+on this die is the whole chip; holding 98 °C means cooling the four blocks that exceed it. Both
+numbers are right and they answer different questions, which is why quoting either alone is
+misleading.
+
+So the honest headline is the one the original intuition reached by the wrong route: **0.29 W of
+net electrical power gives a 113 W die with no steady state a stable operating point at
+99.9 °C** — inside its 100 °C spec, damping-verified, on the cool branch, with the plan
+bracketed as the minimum that holds the target. What was wrong before was never the direction,
+it was three solver defects and then a policy choice that quietly bought 8 K nobody asked for.
+
+The engineering consequence is worth stating separately: **MR's cost is extremely sensitive to
+the operating margin demanded of it.** A part specified to run at its limit is cheap to rescue;
+one specified to run 8 K cooler is not. That is a system-design lever, not a device parameter,
+and it is bigger than any device parameter measured in this project.
+
+## The earlier measurement (target 92 °C)
 
 34-core 7 nm, 88 CFM, MR target 92 °C, spot ≥ 10 µm, damping-verified, plan bracketed by
 bisection:

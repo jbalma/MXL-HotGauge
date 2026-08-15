@@ -157,6 +157,43 @@ Measuring the real gain needs the V/F table extended past 5.0 GHz, which is a da
 table with the voltage clamped would flatter MR by understating the power its extra clock costs,
 so it is not done here.
 
+### 1e. Design F measured: a better device does NOT fix a degenerate peak
+
+Prediction (written before the runs): raising ``dt_max`` would not help on the balanced die,
+because the constraint is how many blocks must be clipped rather than how deep each clip goes.
+Measured on the 34-core die at 1.00 W/mm^2, 88 CFM:
+
+| dt_max | plateau | clip-one gain | % of device used | blocks needed for full lift |
+|---|---|---|---|---|
+| 10 K | 15 | 1.25 K | 12% | 15 |
+| 20 K | 120 | 1.25 K | 6% | 120 |
+| 30 K | 785 | 1.25 K | 4% | **785** |
+
+Confirmed, and more strongly than predicted. **Clip-one gain is 1.25 K at every ``dt_max``** --
+it is set by the gap to the next block, which is a property of the die, not of the device. So a
+device three times better delivers exactly the same peak reduction from one spot, while the
+number of spots needed to use its full capability rises from 15 to 785.
+
+A better MR device is worth nothing on a degenerate peak. This is the cheapest possible
+falsification of "just improve the device", and it points the roadmap at the die instead.
+
+### 1f. Design D measured: the constraint does not move to the memory
+
+| configuration | binding | logic peak | memory peak | memory margin | memory plateau |
+|---|---|---|---|---|---|
+| air, single memory die | LOGIC | 89.5 °C | 61.0 °C | 34.0 K | 16 of 16 |
+| liquid (R_th 0.05), single die | LOGIC | 86.7 °C | 57.8 °C | 37.2 K | 16 of 16 |
+
+The memory runs ~28 K cooler than the logic and its hot zone is a *complete* plateau. The logic
+peak is a local constriction hotspot on a small block; that heat spreads laterally before it
+crosses into the memory, so the memory layer sees the die-average flux rather than the peak. It
+runs cool **and** averages the hotspots away.
+
+That is one thin die bonded directly to the logic -- the most favourable memory geometry there
+is. HIR 2023 ch.20 s.2.10 attributes HBM's difficulty to "large stack thermal resistance", i.e.
+an 8-high stack with seven more dies and seven more bonds between the hot die and the sink.
+``--mem-dies`` now builds that, and it is the honest test of this design.
+
 ### Caveat on the screening metric itself
 `tier_analysis` assumes clipping one block leaves the others where they are. That is **not**
 true here: the measured lateral coupling on this die is strong (removing 0.5 W at `cALU_0`
