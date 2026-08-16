@@ -1256,9 +1256,362 @@
       "quotable": false
     }
   ],
-  "margin_curve": [],
-  "pitch": [],
-  "core_scaling": [],
+  "margin_curve": [
+    {
+      "source": "results/gapfill/margin_T93_d1.10/mr_comparison.json",
+      "tag": "margin_T93_d1.10",
+      "family": "rescue cost vs margin demanded",
+      "density": 1.1,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 92.98467407226565,
+        "heat_removed_W": 19.83298626781245,
+        "p_mr_net_W": 34.40448651943136,
+        "n_targets": 1126,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that holds the target, bracketed by bisection"
+      },
+      "quotable": true
+    },
+    {
+      "source": "results/gapfill/margin_T94_d1.10/mr_comparison.json",
+      "tag": "margin_T94_d1.10",
+      "family": "rescue cost vs margin demanded",
+      "density": 1.1,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 95.99968872070315,
+        "heat_removed_W": 1.8241314340336232,
+        "p_mr_net_W": 3.175570604811611,
+        "n_targets": 24,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that holds the target, bracketed by bisection"
+      },
+      "quotable": true
+    },
+    {
+      "source": "results/gapfill/margin_T95_d1.10/mr_comparison.json",
+      "tag": "margin_T95_d1.10",
+      "family": "rescue cost vs margin demanded",
+      "density": 1.1,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": true,
+        "peak_C": 96.81917724609377,
+        "heat_removed_W": 0.2537550346202837,
+        "p_mr_net_W": 0.44225877462392305,
+        "n_targets": 5,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that holds the target, bracketed by bisection"
+      },
+      "quotable": false
+    },
+    {
+      "source": "results/gapfill/margin_T96_d1.10/mr_comparison.json",
+      "tag": "margin_T96_d1.10",
+      "family": "rescue cost vs margin demanded",
+      "density": 1.1,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 96.28484497070315,
+        "heat_removed_W": 0.2976921003903558,
+        "p_mr_net_W": 0.5188348035374772,
+        "n_targets": 5,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that holds the target, bracketed by bisection"
+      },
+      "quotable": true
+    },
+    {
+      "source": "results/gapfill/margin_T97_d1.10/mr_comparison.json",
+      "tag": "margin_T97_d1.10",
+      "family": "rescue cost vs margin demanded",
+      "density": 1.1,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 97.02401123046877,
+        "heat_removed_W": 0.2467811081871887,
+        "p_mr_net_W": 0.43010421712624325,
+        "n_targets": 4,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that holds the target, bracketed by bisection"
+      },
+      "quotable": true
+    },
+    {
+      "source": "results/gapfill/margin_T99_d1.10/mr_comparison.json",
+      "tag": "margin_T99_d1.10",
+      "family": "rescue cost vs margin demanded",
+      "density": 1.1,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": true,
+        "peak_C": 100.98040161132815,
+        "heat_removed_W": 0.1452998657536858,
+        "p_mr_net_W": 0.2532369088849953,
+        "n_targets": 4,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "quotable": false
+    }
+  ],
+  "pitch": [
+    {
+      "source": "results/gapfill/spot_s100_dilute/mr_comparison.json",
+      "tag": "spot_s100_dilute",
+      "family": "pixel pitch and policy",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": true,
+        "peak_C": 99.86638793945315,
+        "heat_removed_W": 0.8141911002971134,
+        "p_mr_net_W": 1.4660287773394884,
+        "n_targets": 13,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "quotable": false
+    },
+    {
+      "source": "results/gapfill/spot_s100_exclude/mr_comparison.json",
+      "tag": "spot_s100_exclude",
+      "family": "pixel pitch and policy",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": true,
+        "peak_C": 99.85653076171877,
+        "heat_removed_W": 0.8030763062588216,
+        "p_mr_net_W": 1.3996472766225176,
+        "n_targets": 6,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "quotable": false
+    },
+    {
+      "source": "results/gapfill/spot_s10_dilute/mr_comparison.json",
+      "tag": "spot_s10_dilute",
+      "family": "pixel pitch and policy",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": true,
+        "peak_C": 99.86638793945315,
+        "heat_removed_W": 0.8141911002971135,
+        "p_mr_net_W": 1.4190187748035408,
+        "n_targets": 13,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "quotable": false
+    },
+    {
+      "source": "results/gapfill/spot_s10_exclude/mr_comparison.json",
+      "tag": "spot_s10_exclude",
+      "family": "pixel pitch and policy",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": true,
+        "peak_C": 99.86187133789065,
+        "heat_removed_W": 0.8168699419745085,
+        "p_mr_net_W": 1.4236876131555718,
+        "n_targets": 12,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "quotable": false
+    },
+    {
+      "source": "results/gapfill/spot_s1_dilute/mr_comparison.json",
+      "tag": "spot_s1_dilute",
+      "family": "pixel pitch and policy",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": true,
+        "peak_C": 99.86638793945315,
+        "heat_removed_W": 0.8141911002971134,
+        "p_mr_net_W": 1.4190187748035408,
+        "n_targets": 13,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "quotable": false
+    },
+    {
+      "source": "results/gapfill/spot_s1_exclude/mr_comparison.json",
+      "tag": "spot_s1_exclude",
+      "family": "pixel pitch and policy",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": true,
+        "peak_C": 99.86638793945315,
+        "heat_removed_W": 0.8141911002971133,
+        "p_mr_net_W": 1.4190187748035399,
+        "n_targets": 13,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "quotable": false
+    }
+  ],
+  "core_scaling": [
+    {
+      "source": "results/gapfill/cores128_d0.80/mr_comparison.json",
+      "tag": "cores128_d0.80",
+      "family": "128-core scaling",
+      "density": 0.8,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 88.59829101562502
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 88.59829101562502,
+        "heat_removed_W": 0.0,
+        "p_mr_net_W": 0.0,
+        "n_targets": 0,
+        "holds_target": null,
+        "plan_is_minimum": null,
+        "reason": "nothing above target; no cooling needed"
+      },
+      "quotable": true
+    },
+    {
+      "source": "results/gapfill/cores128_d1.00/mr_comparison.json",
+      "tag": "cores128_d1.00",
+      "family": "128-core scaling",
+      "density": 1.0,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": true,
+        "unconverged": true,
+        "peak_C": null,
+        "heat_removed_W": null,
+        "p_mr_net_W": null,
+        "n_targets": null,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "no cooling needed to hold the target"
+      },
+      "quotable": false
+    }
+  ],
   "tiers": [
     {
       "source": "results/tiers_34c/tiers.json",
@@ -2259,6 +2612,42 @@
       "quotable": true
     },
     {
+      "source": "results/design_batch/D_stacked_concentrated/stacked_memory.json",
+      "tag": "D_stacked_concentrated",
+      "family": "stacked memory",
+      "mem_dies": 1,
+      "mem_density": 0.15,
+      "emphasise": "Floating Point Units",
+      "binding": "LOGIC",
+      "diverged": false,
+      "unconverged": null,
+      "calibrated": false,
+      "logic": {
+        "peak_C": 90.75600000000003,
+        "plateau": 7,
+        "clip_one_gain_K": 5.641999999999996,
+        "peak_block": "FPUs_0"
+      },
+      "memory": {
+        "peak_C": 62.74400000000003,
+        "plateau": 16,
+        "clip_one_gain_K": 1.910000000000025,
+        "peak_block": "MEM0_r0c0"
+      },
+      "logic_margin_K": 9.243999999999971,
+      "mem_margin_K": 32.25599999999997,
+      "dram_report": {
+        "peak_K": 335.894,
+        "peak_block": "MEM0_r0c0",
+        "n_over_break": 0,
+        "n_over_limit": 0,
+        "over_limit": [],
+        "break_K": 358.15,
+        "limit_K": 368.15
+      },
+      "quotable": true
+    },
+    {
       "source": "results/design_batch/D_stacked_liquid/stacked_memory.json",
       "tag": "D_stacked_liquid",
       "family": "stacked memory",
@@ -2293,6 +2682,42 @@
         "limit_K": 368.15
       },
       "quotable": true
+    },
+    {
+      "source": "results/gapfill/D_dies4_air/stacked_memory.json",
+      "tag": "D_dies4_air",
+      "family": "stacked memory, deep",
+      "mem_dies": 4,
+      "mem_density": 0.15,
+      "emphasise": null,
+      "binding": "LOGIC",
+      "diverged": false,
+      "unconverged": null,
+      "calibrated": false,
+      "logic": {
+        "peak_C": 90.67200000000003,
+        "plateau": 16,
+        "clip_one_gain_K": 0.35899999999998045,
+        "peak_block": "RBB_16"
+      },
+      "memory": {
+        "peak_C": 63.043000000000006,
+        "plateau": 64,
+        "clip_one_gain_K": 0.6270000000000095,
+        "peak_block": "MEM3_r0c0"
+      },
+      "logic_margin_K": 9.327999999999975,
+      "mem_margin_K": 31.956999999999994,
+      "dram_report": {
+        "peak_K": 336.193,
+        "peak_block": "MEM3_r0c0",
+        "n_over_break": 0,
+        "n_over_limit": 0,
+        "over_limit": [],
+        "break_K": 358.15,
+        "limit_K": 368.15
+      },
+      "quotable": true
     }
   ],
   "summary": {
@@ -2300,15 +2725,18 @@
       "cliff": 12,
       "overnight3": 36,
       "rescue_target98": 2,
-      "margin_curve": 0,
-      "pitch": 0,
-      "core_scaling": 0,
+      "margin_curve": 6,
+      "pitch": 6,
+      "core_scaling": 2,
       "tiers": 18,
       "clock": 28,
-      "stacked": 3
+      "stacked": 5
     },
-    "n_failed_verification": 10,
+    "n_failed_verification": 19,
     "failed_verification": [
+      "cores128_d1.00",
+      "margin_T95_d1.10",
+      "margin_T99_d1.10",
       "p2_ceiling_d1.17",
       "p3_target_T78_d1.12",
       "p4_spot_s100_dilute",
@@ -2318,7 +2746,13 @@
       "p4_spot_s1_exclude",
       "p5_cores128_d1.00",
       "rescue_d1.10",
-      "rescue_d1.15"
+      "rescue_d1.15",
+      "spot_s100_dilute",
+      "spot_s100_exclude",
+      "spot_s10_dilute",
+      "spot_s10_exclude",
+      "spot_s1_dilute",
+      "spot_s1_exclude"
     ]
   }
 }
