@@ -649,3 +649,73 @@ def test_an_unverified_reported_field_is_still_flagged():
     res = run_mr_clipping(trace, calm, geom, p, _name_map, max_iter=8, tol_K=0.5,
                           status_fn=lambda: {'diverged': False, 'unconverged': True})
     assert res['result_unconverged'] is True
+
+
+# ---------------------------------------------------------------------------
+# Relaxing to zero is a claim that has to be tested, not assumed
+# ---------------------------------------------------------------------------
+def test_relaxation_to_zero_on_a_runaway_die_reports_the_last_holding_plan():
+    """The defect this pins was live and it inverted a finding.
+
+    The envelope planner starts at full device capability and relaxes toward the target. When the
+    relaxation reached zero it returned ``plan_holds_target: True`` and "no cooling needed to hold
+    the target" WITHOUT solving to check -- so a 128-core die at 1.00 W/mm^2, which has no steady
+    state at all uncooled, came back reported as needing no MR. That is the exact opposite of the
+    result.
+
+    Now the zero plan is tested, and if it does not hold the last plan that did is reported
+    instead, flagged non-minimal because the interval down to zero was never bisected.
+    """
+    from HotGauge.thermal.microrefrigeration import run_mr_clipping, MRParams
+
+    target_K = 273.15 + 98.0
+    calls = {'n': 0}
+    state = {'diverged': False}
+
+    def solve(trace):
+        # MR is applied by REDUCING a block's power, so cooling shows up as a total below the
+        # uncooled 20 W rather than as a negative entry.
+        total = sum(float(np.ravel(v)[-1]) for v in trace.powers.values())
+        calls['n'] += 1
+        if total >= 20.0 - 1e-9:
+            # Uncooled: runaway, exactly like the 128-core point.
+            state['diverged'] = True
+            return {'B0': np.array([float('nan')])}
+        state['diverged'] = False
+        # Any cooling at all holds it comfortably, so the relaxation will march to zero.
+        return {'B0': np.array([target_K - 5.0])}
+
+    geom = {'B0': {'area_mm2': 4.0, 'min_dim_um': 2000.0}}
+    params = MRParams(target_K=target_K, h_max=10.0, dt_max_K=10.0)
+    trace = BasicPowerTrace({'B0': np.array([20.0])}, 1.0)
+
+    res = run_mr_clipping(trace, solve, geom, params, name_map=lambda u: u,
+                          status_fn=lambda: dict(state), plan_mode='envelope', max_iter=12)
+
+    assert res['plan_holds_target'] is True
+    assert res['plan'], 'must not report an empty plan for a die that runs away uncooled'
+    assert sum(res['plan'].values()) > 0
+    assert res['plan_is_minimum'] is False      # the interval down to zero was never bisected
+    assert 'no steady state' in res['reason']
+    assert 'no cooling needed' not in res['reason']
+
+
+def test_relaxation_to_zero_is_still_believed_when_the_die_really_does_hold():
+    """The fix must not turn a genuine "MR idle" answer into a phantom plan."""
+    from HotGauge.thermal.microrefrigeration import run_mr_clipping, MRParams
+
+    target_K = 273.15 + 98.0
+
+    def solve(trace):
+        return {'B0': np.array([target_K - 20.0])}      # cool with or without cooling
+
+    geom = {'B0': {'area_mm2': 4.0, 'min_dim_um': 2000.0}}
+    params = MRParams(target_K=target_K, h_max=10.0, dt_max_K=10.0)
+    trace = BasicPowerTrace({'B0': np.array([20.0])}, 1.0)
+
+    res = run_mr_clipping(trace, solve, geom, params, name_map=lambda u: u,
+                          status_fn=lambda: {'diverged': False}, plan_mode='envelope',
+                          max_iter=12)
+    assert res['plan_holds_target'] is True
+    assert not res['plan']
+    assert res['plan_is_minimum'] is True

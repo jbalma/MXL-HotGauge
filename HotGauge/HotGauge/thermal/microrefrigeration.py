@@ -648,21 +648,49 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
         prev_status = dict(result_status)
         plan = _relax_plan_toward_target(plan, envelope, temps, params, sens, relax, t_floor_K)
         if not plan:
+            # The relaxation has taken the plan to zero. That is only the answer if the die
+            # actually holds with no cooling, so it has to be TESTED -- and on a die that has no
+            # steady state uncooled, it does not.
             temps = thermal_solve_fn(trace)
             st = status_fn()
-            result_status = dict(st)
             peak = max((float(np.ravel(t)[-1]) for t in temps.values()
                         if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
             history.append({'iter': it, 'peak_K': peak, 'heat_removed_W': 0.0,
                             'max_plan_change_W': float(sum(prev_plan.values())),
                             'stage': 'relaxed to zero'})
-            return {'plan': {}, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+            zero_holds = (not st.get('diverged')
+                          and not (peak == peak and peak > params.target_K + tol_K))
+            if zero_holds:
+                result_status = dict(st)
+                return {'plan': {}, 'detail': detail, 'temp_trace': temps,
+                        'sensitivity': sens,
+                        'result_unconverged': bool(result_status.get('unconverged')),
+                        'converged': True, 'iterations': it + 1,
+                        'history': history, 'temp_trace_diverged': False,
+                        'plan_is_minimum': True, 'plan_holds_target': True,
+                        'accounting': mr_accounting({}, params),
+                        'reason': 'no cooling needed to hold the target'}
+            # It does not hold. The relaxation overshot, so the answer is the last plan that DID
+            # hold -- reporting the zero plan here claimed "MR not needed" on a die with no
+            # steady state at all, which is the exact opposite of the finding.
+            result_status = dict(prev_status)
+            history.append({'iter': it, 'peak_K': prev_peak,
+                            'heat_removed_W': float(sum(prev_plan.values())),
+                            'max_plan_change_W': 0.0,
+                            'stage': 'relaxation overshot to zero; restored last holding plan'})
+            return {'plan': prev_plan, 'detail': detail, 'temp_trace': prev_temps,
+                    'sensitivity': sens,
                     'result_unconverged': bool(result_status.get('unconverged')),
-                    'converged': not st.get('diverged'), 'iterations': it + 1,
-                    'history': history, 'temp_trace_diverged': bool(st.get('diverged')),
-                    'plan_is_minimum': True, 'plan_holds_target': True,
-                    'accounting': mr_accounting({}, params),
-                    'reason': 'no cooling needed to hold the target'}
+                    'converged': True, 'iterations': it + 1, 'history': history,
+                    'temp_trace_diverged': False,
+                    # NOT minimal: the interval between prev_plan and zero was never bisected,
+                    # so the true minimum lies somewhere inside it.
+                    'plan_is_minimum': False, 'plan_holds_target': True,
+                    'accounting': mr_accounting(prev_plan, params, detail=detail),
+                    'reason': ('relaxation reached zero but the die has no steady state '
+                               'uncooled ({}); reporting the last plan that held'
+                               .format('runaway' if st.get('diverged')
+                                       else 'peak {:.1f} C over target'.format(peak - 273.15)))}
 
         temps = thermal_solve_fn(apply_cooling_to_trace(trace, plan, name_map))
         st = status_fn()
