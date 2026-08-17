@@ -59,18 +59,52 @@ def test_the_arrangement_leaves_a_plausible_remainder():
     assert 0.25 < c['lumped_frac'] < 0.40      # PHY, MC, NVLINK, routing, control
 
 
+def test_every_block_edge_lands_on_the_thermal_grid():
+    """The bug this pins actually happened. 3D-ICE quantises every block edge to its own grid, so
+    two blocks exactly adjacent in floating point can come back OVERLAPPING after quantisation --
+    it reports "Intersection between ..." and aborts. A non-overlap check on the unquantised
+    geometry passes happily and catches none of it, which is what it did."""
+    import os
+    import tempfile
+    for cell in (50.0, 100.0):
+        path = os.path.join(tempfile.mkdtemp(), 'ga100.flp')
+        ga100_floorplan(path, cell_um=cell)
+        for name, x, y, w, h in _blocks(path):
+            for label, v in (('x', x), ('y', y), ('x+w', x + w), ('y+h', y + h)):
+                # values are in mm here, the grid in um
+                assert abs((v * 1000.0 / cell) - round(v * 1000.0 / cell)) < 1e-6, \
+                    '{} {} off the {:g} um grid'.format(name, label, cell)
+
+
+def test_coarse_grid_that_would_distort_the_areas_is_rejected():
+    """Snapping a 667 um L2 tile to a 1 mm grid would silently rewrite the density accounting the
+    whole study reads off. Better to refuse than to return a plausible wrong number."""
+    import os
+    import tempfile
+    path = os.path.join(tempfile.mkdtemp(), 'ga100.flp')
+    with pytest.raises(ValueError):
+        ga100_floorplan(path, cell_um=1000.0)
+
+
 def test_blocks_tile_the_die_without_overlapping():
     """3D-ICE will not complain about overlapping blocks; it will just double-count their power."""
     import os
     import tempfile
     path = os.path.join(tempfile.mkdtemp(), 'ga100.flp')
-    ga100_floorplan(path)
+    ga100_floorplan(path, cell_um=100.0)
     g = ga100_geometry()
     blocks = _blocks(path)
+    # The die 3D-ICE sees is the floorplan's own bounding box, so bounds are checked against that
+    # rather than the pre-snap outline; that it stays within a cell of the measured die is the
+    # separate area check.
+    w_box = max(x + w for _, x, _, w, _ in blocks)
+    h_box = max(y + h for _, _, y, _, h in blocks)
+    assert w_box == pytest.approx(g['w_die'], abs=0.11)
+    assert h_box == pytest.approx(g['h_die'], abs=0.11)
     for name, x, y, w, h in blocks:
         assert x >= -1e-6 and y >= -1e-6, name
-        assert x + w <= g['w_die'] + 1e-6, name
-        assert y + h <= g['h_die'] + 1e-6, name
+        assert x + w <= w_box + 1e-6, name
+        assert y + h <= h_box + 1e-6, name
         assert w > 0 and h > 0, name
     # Pairwise overlap on a sample grid of probe points: an exact O(n^2) rectangle intersection
     # over 367 blocks, which is cheap enough to just do properly.
@@ -90,7 +124,8 @@ def test_written_block_areas_sum_to_the_die():
     path = os.path.join(tempfile.mkdtemp(), 'ga100.flp')
     ga100_floorplan(path)
     total = sum(block_areas_mm2(path).values())
-    assert total == pytest.approx(GA100_AREAS['die_mm2'], rel=1e-6)
+    # Snapping moves the outer edges by up to a cell, so this is a close-not-exact check.
+    assert total == pytest.approx(GA100_AREAS['die_mm2'], rel=2e-3)
 
 
 def test_block_counts_match_the_die_shot():
@@ -128,8 +163,10 @@ def test_split_tile_uses_the_measured_sram_fraction():
     ga100_floorplan(path, split_sm=True)
     areas = block_areas_mm2(path)
     dp, l1 = areas['SM0_DP'], areas['SM0_L1']
-    assert l1 / (dp + l1) == pytest.approx(SM_SRAM_FRACTION, rel=1e-6)
-    assert dp + l1 == pytest.approx(GA100_AREAS['sm_mm2'], rel=1e-6)
+    # Grid snapping perturbs a single tile by up to a cell on each edge; the class TOTAL is what
+    # ga100_floorplan itself checks against the measurement.
+    assert l1 / (dp + l1) == pytest.approx(SM_SRAM_FRACTION, rel=0.10)
+    assert dp + l1 == pytest.approx(GA100_AREAS['sm_mm2'], rel=0.10)
 
 
 # ---------------------------------------------------------------------------

@@ -366,14 +366,23 @@ def find_split_files(trace_dir):
 # ---------------------------------------------------------------------------
 # Convert a McPAT-named power trace into the 3D-ICE (floorplan-named) trace
 # ---------------------------------------------------------------------------
-def prepare_dice_trace(trace, floorplan, tech_node, num_cores=8, core_sources=None):
+def prepare_dice_trace(trace, floorplan, tech_node, num_cores=8, core_sources=None,
+                       already_dice_named=False):
     """McPAT-named block-power trace -> 3D-ICE-ready (floorplan-named) trace.
 
     Mirrors ``examples/ICE_simulation_from_MCPAT.prepare_trace`` but with ``num_cores``
     parameterized (the shipped helper hardcodes 8). Renames McPAT units to floorplan names,
     splits L3 across cores, and adds the HotGauge-modeled IMC/IO/SoC units (whose power is
     split by floorplan block area).
+
+    ``already_dice_named=True`` skips the whole translation: the trace's keys are taken to be
+    floorplan element names as they stand. That is what a floorplan McPAT knows nothing about
+    needs -- the GA100 accelerator die in ``thermal.accelerator_floorplan`` has no cores, no L3
+    to split across them and no IMC/IO model, so every step of the McPAT path either fails or
+    invents power that is not in the budget. Nothing on the McPAT path changes.
     """
+    if already_dice_named:
+        return trace
     from HotGauge.power.mcpat import swap_cores, mcpat_block_powers_to_DICE
     from HotGauge.power.hotgauge_models import add_extra_DICE_units
     if core_sources:
@@ -509,7 +518,7 @@ class ICEThermalSolver(object):
                  initial_temp=DEFAULT_TREF_K, plugin_args=None, num_cores=8,
                  core_sources=None, single_thread=True, steps_per_slot=None,
                  mode='transient', steady_reduce='mean', session_cache=None,
-                 extra_die_outputs=None):
+                 extra_die_outputs=None, already_dice_named=False):
         if mode not in self.SIM_MODES:
             raise ValueError('mode must be one of {}, got {!r}'.format(self.SIM_MODES, mode))
         if steady_reduce not in STEADY_REDUCERS:
@@ -540,11 +549,15 @@ class ICEThermalSolver(object):
         # silently return only the logic layer -- and a memory layer that is never read cannot
         # be shown to be the binding constraint.
         self.extra_die_outputs = list(extra_die_outputs or [])
+        # Set when the incoming trace is already keyed by floorplan element name, which is the
+        # case for a floorplan built outside the McPAT pipeline. See prepare_dice_trace.
+        self.already_dice_named = bool(already_dice_named)
         self._iter = 0
 
     def __call__(self, power_trace):
         dice_trace = prepare_dice_trace(power_trace, self.flp_template, self.tech_node,
-                                        num_cores=self.num_cores, core_sources=self.core_sources)
+                                        num_cores=self.num_cores, core_sources=self.core_sources,
+                                        already_dice_named=self.already_dice_named)
         run_dir = os.path.join(self.run_base_dir, 'iter_{:03d}'.format(self._iter))
         self._iter += 1
         if self.mode == 'steady':

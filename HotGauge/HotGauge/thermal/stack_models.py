@@ -264,3 +264,35 @@ def split_layer_temps(temps, mem_prefix='MEM'):
     logic = {k: v for k, v in temps.items() if not k.startswith(mem_prefix)}
     memory = {k: v for k, v in temps.items() if k.startswith(mem_prefix)}
     return logic, memory
+
+
+def coarsen_stack_grid(stack_path, cell_um):
+    """Rewrite a rendered ``.stk``'s grid cell size in place and return the number of edits.
+
+    Factored out of ``render_stacked_memory_template`` because the need is not specific to deep
+    stacks: a large single die hits the same solver capacity wall. The GA100 floorplan is 826 mm^2,
+    eight times the CPU die's footprint, which at the template's 50 um cells is ~330k cells per
+    layer before any stacking.
+
+    The cost is the same wherever it is used, and it is not free: a coarser grid smooths lateral
+    gradients, so absolute peak temperatures on small blocks are understated and a coarsened run
+    must not be compared against a 50 um run's peak. Degeneracy questions -- plateau width, what
+    clipping the top block buys -- are far less sensitive to it than a peak temperature is.
+    """
+    with open(stack_path) as f:
+        stack = f.read()
+    n, out = 0, []
+    for line in stack.split('\n'):
+        if line.strip().startswith('cell length'):
+            indent = line[:len(line) - len(line.lstrip())]
+            out.append('{}cell length {:g}, width {:g}; // COARSENED, see coarsen_stack_grid'
+                       .format(indent, cell_um, cell_um))
+            n += 1
+        else:
+            out.append(line)
+    if n == 0:
+        raise ValueError('{} has no "cell length" line to coarsen'.format(stack_path))
+    with open(stack_path, 'w') as f:
+        f.write('\n'.join(out))
+    LOGGER.info('coarsened %d grid spec(s) in %s to %g um cells', n, stack_path, cell_um)
+    return n

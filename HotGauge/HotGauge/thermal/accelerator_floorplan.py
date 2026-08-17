@@ -121,6 +121,23 @@ def _fmt_block(name, x_um, y_um, w_um, h_um):
             '\tpower values 0.0;'.format(name, x_um, y_um, w_um, h_um))
 
 
+def _snap(v_um, cell_um):
+    """Snap a coordinate to the thermal grid.
+
+    This is not cosmetic. 3D-ICE quantises every block edge to its own grid, so two blocks that
+    are exactly adjacent in floating point can come back OVERLAPPING after quantisation -- which
+    it reports as "Intersection between ..." and then dies. Checking non-overlap on the
+    unquantised geometry passes happily and tells you nothing.
+
+    Snapping **boundaries** rather than positions-and-widths is what makes it safe: adjacent
+    blocks are generated from the same shared boundary value, so they snap to the same grid line
+    and the tiling survives exactly, with no cumulative drift and no slivers.
+    """
+    if not cell_um:
+        return v_um
+    return round(v_um / cell_um) * cell_um
+
+
 def ga100_geometry(areas=None, counts=None, sm_rows=16, l2_cols=4, mem_band_mm=1.6,
                    nvlink_band_mm=1.5):
     """Solve the GA100 floorplan's dimensions from the measured areas.
@@ -216,7 +233,8 @@ def ga100_consistency(geom=None, counts=None, areas=None):
             'closure_err_mm2': (sm + l2 + bands + nvlink + pcie) - total}
 
 
-def ga100_floorplan(out_path, split_sm=True, geom=None, counts=None):
+def ga100_floorplan(out_path, split_sm=True, geom=None, counts=None, cell_um=100.0,
+                    max_area_error=0.25):
     """Write a 3D-ICE floorplan for GA100 and return ``(path, block_classes)``.
 
     ``split_sm`` splits every compute tile into ``SM<i>_DP`` (datapath) and ``SM<i>_L1`` (the
@@ -227,6 +245,13 @@ def ga100_floorplan(out_path, split_sm=True, geom=None, counts=None):
 
     ``block_classes`` maps each block name to one of the ``GA100_POWER_SPLIT`` keys (plus
     ``'sm_dp'``/``'sm_l1'`` when split), which is what ``ga100_block_powers`` consumes.
+
+    ``cell_um`` must match the grid the stack will be solved on, because every block boundary is
+    snapped to it -- see ``_snap``. Pass ``None`` only to inspect the unquantised geometry; a
+    floorplan written that way will make 3D-ICE report intersections and abort. ``max_area_error``
+    is the fraction by which a snapped block may differ from its measured area before this raises:
+    on a coarse grid a narrow block (an L2 tile is 667 um) is distorted, and silently accepting
+    that would corrupt the density accounting the whole study reads.
 
     Interior arrangement, left to right, from the die shot:
     ``[SM cluster] [L2 spine] [SM cluster] [SM cluster] [L2 spine] [SM cluster]``
@@ -239,9 +264,20 @@ def ga100_floorplan(out_path, split_sm=True, geom=None, counts=None):
 
     lines, classes = [], {}
 
+    snapped_area = {}
+
     def add(name, x, y, w, h, cls):
-        lines.append(_fmt_block(name, x * MM, y * MM, w * MM, h * MM))
+        # Snap the BOUNDARIES, then derive the dimension from them, so blocks sharing an edge
+        # stay exactly adjacent after quantisation.
+        x0, y0 = _snap(x * MM, cell_um), _snap(y * MM, cell_um)
+        x1, y1 = _snap((x + w) * MM, cell_um), _snap((y + h) * MM, cell_um)
+        if x1 <= x0 or y1 <= y0:
+            raise ValueError('{} collapses to zero on a {:g} um grid ({:.1f} x {:.1f} um). Use a '
+                             'finer --cell-um or fewer blocks.'
+                             .format(name, cell_um, w * MM, h * MM))
+        lines.append(_fmt_block(name, x0, y0, x1 - x0, y1 - y0))
         classes[name] = cls
+        snapped_area[name] = (x1 - x0) * (y1 - y0) / 1e6
 
     y0 = g['mem_band']              # interior sits above the bottom memory band
     x = g['w_nvlink']
@@ -309,10 +345,31 @@ def ga100_floorplan(out_path, split_sm=True, geom=None, counts=None):
         add('NVLINK_{}'.format(i), 0.0, y0 + i * h_nv, g['w_nvlink'], h_nv, 'nvlink')
     add('PCIE_MISC', g['w_nvlink'] + g['w_int'], y0, g['w_pcie'], g['h_int'], 'pcie_misc')
 
+    # Grid distortion check, per class rather than per block: what matters downstream is that a
+    # class's TOTAL area still matches the measurement, since that is what sets its W/mm^2.
+    A = dict(GA100_AREAS)
+    want = {'sm_dp': N['n_sm'] * A['sm_mm2'] * (1.0 - SM_SRAM_FRACTION),
+            'sm_l1': N['n_sm'] * A['sm_mm2'] * SM_SRAM_FRACTION,
+            'sm': N['n_sm'] * A['sm_mm2'],
+            'l2': N['n_l2_tiles'] * A['l2_tile_mm2']}
+    got = {}
+    for name, cls in classes.items():
+        got[cls] = got.get(cls, 0.0) + snapped_area[name]
+    for cls, target in want.items():
+        if cls in got and abs(got[cls] - target) / target > max_area_error:
+            raise ValueError('on a {:g} um grid the {} blocks total {:.1f} mm^2 against a '
+                             'measured {:.1f} mm^2 ({:+.0%}); that distorts the density '
+                             'accounting -- use a finer cell_um or raise max_area_error '
+                             'deliberately'.format(cell_um, cls, got[cls], target,
+                                                   got[cls] / target - 1.0))
+
     with open(out_path, 'w') as f:
         f.write('\n'.join(lines) + '\n')
-    LOGGER.info('wrote GA100 floorplan: %d blocks, %.2f x %.2f mm (%.1f mm^2) to %s',
-                len(classes), g['w_die'], g['h_die'], g['w_die'] * g['h_die'], out_path)
+    total = sum(snapped_area.values())
+    LOGGER.info('wrote GA100 floorplan: %d blocks on a %s um grid, %.2f x %.2f mm, '
+                '%.1f mm^2 of blocks (die %.1f mm^2) -> %s',
+                len(classes), cell_um, g['w_die'], g['h_die'], total,
+                g['w_die'] * g['h_die'], out_path)
     return out_path, classes
 
 
@@ -418,3 +475,72 @@ def power_split_sensitivity(total_W, classes, areas, vary='hbm_phy', factors=(0.
         powers, _ = ga100_block_powers(total_W, classes, split=split)
         out[fac] = power_density_by_class(classes, powers, areas)
     return out
+
+
+def tier_analysis(temps_C, dt_max_K, top=25):
+    """Rank blocks by temperature and work out what clipping the top N actually buys.
+
+    Lifted from ``examples/thermal_tiers.py`` into the library unchanged, because the accelerator
+    study needs exactly the same three numbers -- plateau width, blocks needed for the full
+    ``dt_max``, and what clipping one block gains -- and a second copy of this arithmetic is
+    precisely how two studies come to disagree about a definition.
+
+    Returns ``{'ranked', 'peak_C', 'n_needed_for_full_dt_max', 'plateau_within_dt_max', 'rows'}``.
+    """
+    ranked = sorted(temps_C.items(), key=lambda kv: -kv[1])
+    if not ranked:
+        raise ValueError('no blocks to rank')
+    peak = ranked[0][1]
+    floor_after_full_clip = peak - dt_max_K
+
+    n_needed = len(ranked)
+    for i, (_, t) in enumerate(ranked):
+        if t <= floor_after_full_clip:
+            n_needed = i
+            break
+
+    rows = []
+    for n in range(1, min(top, len(ranked)) + 1):
+        # Clip the top n blocks as far as the device allows; the new peak is whichever is hotter,
+        # a clipped block at its floor or the first un-clipped block.
+        nxt = ranked[n][1] if n < len(ranked) else float('-inf')
+        new_peak = max(floor_after_full_clip, nxt)
+        rows.append({'n_clipped': n, 'new_peak_C': new_peak, 'gain_K': peak - new_peak})
+    return {'ranked': ranked, 'peak_C': peak, 'n_needed_for_full_dt_max': n_needed,
+            'plateau_within_dt_max': sum(1 for _, t in ranked if t > floor_after_full_clip),
+            'rows': rows}
+
+
+def class_of(block_name, classes):
+    """Class of a block, tolerant of the aggregate names the solver bridges in."""
+    return classes.get(block_name)
+
+
+def tier_analysis_by_class(temps_C, classes, dt_max_K):
+    """Where the hot blocks actually are, grouped by class.
+
+    On a die of 128 near-identical tiles "the peak block is SM73_DP" carries almost no
+    information; "every one of the top 128 blocks is an SM datapath, and they span 0.4 K" carries
+    all of it. This is the form the accelerator result has to be read in.
+    """
+    t = tier_analysis(temps_C, dt_max_K)
+    peak = t['peak_C']
+    agg = {}
+    for name, temp in t['ranked']:
+        cls = classes.get(name) or 'unmapped'
+        a = agg.setdefault(cls, {'n': 0, 'max_C': float('-inf'), 'min_C': float('inf'),
+                                 'n_in_plateau': 0})
+        a['n'] += 1
+        a['max_C'] = max(a['max_C'], temp)
+        a['min_C'] = min(a['min_C'], temp)
+        if temp > peak - dt_max_K:
+            a['n_in_plateau'] += 1
+    for cls, a in agg.items():
+        a['spread_K'] = a['max_C'] - a['min_C']
+        a['margin_below_peak_K'] = peak - a['max_C']
+    return {'peak_C': peak, 'peak_block': t['ranked'][0][0],
+            'peak_class': classes.get(t['ranked'][0][0]) or 'unmapped',
+            'plateau_within_dt_max': t['plateau_within_dt_max'],
+            'n_needed_for_full_dt_max': t['n_needed_for_full_dt_max'],
+            'clip_one_gain_K': t['rows'][0]['gain_K'] if t['rows'] else None,
+            'by_class': agg, 'rows': t['rows']}
