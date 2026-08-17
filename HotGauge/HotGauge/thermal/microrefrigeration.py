@@ -642,6 +642,21 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
     if base_temps is not None:
         sens.update(estimate_sensitivity(base_temps, temps, plan))
 
+    # The last plan whose solve BOTH converged and held the target. "The previous iterate" is not
+    # the same thing: the descent deliberately walks past the feasible boundary to bracket the
+    # minimum, so the previous iterate can be a diverged field full of NaN. Restoring that as an
+    # answer produced "No block temperatures above the 200 K floor" downstream.
+    last_holding = None
+
+    def _remember(pl, tp, stt, pk):
+        if stt.get('diverged'):
+            return
+        if not (pk == pk) or pk > params.target_K + tol_K:
+            return
+        return {'plan': dict(pl), 'temps': tp, 'status': dict(stt), 'peak_K': pk}
+
+    last_holding = _remember(plan, temps, st, peak) or last_holding
+
     # Descend: reduce cooling where blocks sit below target, restore it where they sit above.
     for it in range(1, max_iter):
         prev_temps, prev_plan, prev_peak = temps, plan, peak
@@ -670,27 +685,39 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                         'plan_is_minimum': True, 'plan_holds_target': True,
                         'accounting': mr_accounting({}, params),
                         'reason': 'no cooling needed to hold the target'}
-            # It does not hold. The relaxation overshot, so the answer is the last plan that DID
-            # hold -- reporting the zero plan here claimed "MR not needed" on a die with no
-            # steady state at all, which is the exact opposite of the finding.
-            result_status = dict(prev_status)
-            history.append({'iter': it, 'peak_K': prev_peak,
-                            'heat_removed_W': float(sum(prev_plan.values())),
+            # It does not hold. The relaxation overshot, so the answer is the last plan whose
+            # solve actually held -- reporting the zero plan here claimed "MR not needed" on a die
+            # with no steady state at all, which is the exact opposite of the finding.
+            why = ('runaway' if st.get('diverged')
+                   else 'peak {:.1f} C over target'.format(peak - 273.15))
+            if last_holding is None:
+                # Nothing in this descent ever held. That is a real answer and a strong one, but
+                # it is NOT a plan.
+                return {'plan': {}, 'detail': detail, 'temp_trace': temps,
+                        'sensitivity': sens,
+                        'result_unconverged': bool(dict(st).get('unconverged')),
+                        'converged': False, 'iterations': it + 1, 'history': history,
+                        'temp_trace_diverged': bool(st.get('diverged')),
+                        'plan_is_minimum': False, 'plan_holds_target': False,
+                        'accounting': mr_accounting({}, params),
+                        'reason': ('relaxation reached zero and no plan in the descent held the '
+                                   'target ({})'.format(why))}
+            result_status = dict(last_holding['status'])
+            history.append({'iter': it, 'peak_K': last_holding['peak_K'],
+                            'heat_removed_W': float(sum(last_holding['plan'].values())),
                             'max_plan_change_W': 0.0,
                             'stage': 'relaxation overshot to zero; restored last holding plan'})
-            return {'plan': prev_plan, 'detail': detail, 'temp_trace': prev_temps,
-                    'sensitivity': sens,
+            return {'plan': last_holding['plan'], 'detail': detail,
+                    'temp_trace': last_holding['temps'], 'sensitivity': sens,
                     'result_unconverged': bool(result_status.get('unconverged')),
                     'converged': True, 'iterations': it + 1, 'history': history,
                     'temp_trace_diverged': False,
-                    # NOT minimal: the interval between prev_plan and zero was never bisected,
-                    # so the true minimum lies somewhere inside it.
+                    # NOT minimal: the interval between that plan and zero was never bisected, so
+                    # the true minimum lies somewhere inside it.
                     'plan_is_minimum': False, 'plan_holds_target': True,
-                    'accounting': mr_accounting(prev_plan, params, detail=detail),
+                    'accounting': mr_accounting(last_holding['plan'], params, detail=detail),
                     'reason': ('relaxation reached zero but the die has no steady state '
-                               'uncooled ({}); reporting the last plan that held'
-                               .format('runaway' if st.get('diverged')
-                                       else 'peak {:.1f} C over target'.format(peak - 273.15)))}
+                               'uncooled ({}); reporting the last plan that held'.format(why))}
 
         temps = thermal_solve_fn(apply_cooling_to_trace(trace, plan, name_map))
         st = status_fn()
@@ -705,6 +732,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                           for b in set(plan) | set(prev_plan)), default=0.0)
         history.append({'iter': it, 'peak_K': peak, 'heat_removed_W': total,
                         'max_plan_change_W': delta_plan, 'stage': 'descent'})
+        last_holding = _remember(plan, temps, st, peak) or last_holding
 
         if st.get('diverged'):
             # Walked past the feasible boundary. Do NOT stop here: "the last plan that held"

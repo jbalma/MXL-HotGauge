@@ -719,3 +719,48 @@ def test_relaxation_to_zero_is_still_believed_when_the_die_really_does_hold():
     assert res['plan_holds_target'] is True
     assert not res['plan']
     assert res['plan_is_minimum'] is True
+
+
+def test_the_restored_plan_is_a_solve_that_HELD_not_merely_the_previous_iterate():
+    """Second half of the same bug. The first fix restored ``prev_temps`` -- the previous iterate --
+    but the descent deliberately walks past the feasible boundary to bracket the minimum, so that
+    iterate can be a diverged field of NaN. Handing it back produced "No block temperatures above
+    the 200.0 K floor" from core_fmax two layers downstream.
+
+    The answer has to be the last solve that both converged AND held the target.
+    """
+    from HotGauge.thermal.microrefrigeration import run_mr_clipping, MRParams
+
+    target_K = 273.15 + 98.0
+    state = {'diverged': False}
+    seen = []
+
+    def solve(trace):
+        total = sum(float(np.ravel(v)[-1]) for v in trace.powers.values())
+        removed = 20.0 - total
+        seen.append(removed)
+        if removed <= 1e-9:                       # uncooled: runaway
+            state['diverged'] = True
+            return {'B0': np.array([float('nan')])}
+        if removed < 4.0:                         # too little: also runaway
+            state['diverged'] = True
+            return {'B0': np.array([float('nan')])}
+        state['diverged'] = False
+        return {'B0': np.array([target_K - 5.0])}
+
+    geom = {'B0': {'area_mm2': 4.0, 'min_dim_um': 2000.0}}
+    params = MRParams(target_K=target_K, h_max=10.0, dt_max_K=10.0)
+    trace = BasicPowerTrace({'B0': np.array([20.0])}, 1.0)
+
+    res = run_mr_clipping(trace, solve, geom, params, name_map=lambda u: u,
+                          status_fn=lambda: dict(state), plan_mode='envelope', max_iter=20)
+
+    # Whatever is returned must be a usable field, which is the thing that actually broke.
+    temps = res['temp_trace']
+    assert any(float(np.ravel(v)[-1]) > 200.0 for v in temps.values())
+    assert all(float(np.ravel(v)[-1]) == float(np.ravel(v)[-1]) for v in temps.values())
+    if res['plan']:
+        assert res['plan_holds_target'] is True
+        assert sum(res['plan'].values()) >= 4.0    # a plan that actually held
+    else:
+        assert res['plan_holds_target'] is False   # and it must say so rather than imply success
