@@ -143,3 +143,57 @@ from the wrong place.
   is not the binding constraint anyway.
 * **`--r-th` points do not model pump or chiller power**, so their cooling power counts MR only.
   Airflow points (`--cfm`) do model fan power.
+
+---
+
+## The IRDS replacement, and what it does and does not fix (17 August)
+
+`HotGauge/HotGauge/power/irds_vf.py` anchors the same alpha-power delay law on each IRDS 2024
+node's own **(Vdd, Vt, frequency)** triple, so the curve passes through the roadmap's operating
+point and uses the roadmap's threshold voltage instead of one fitted to the wrong table. Every
+value in `IRDS_NODES` was extracted programmatically from `2024IRDS_MM_Tables.xlsx`, sheet
+`MM01 - LOGIC`.
+
+For the 2024 `"3nm" Enhanced` node: Vdd 0.70 V, Vt 0.156 V, 3.855 GHz wireloaded, and with 10%
+overdrive a ceiling of **4.15 GHz at 0.77 V**.
+
+| clock | shipped table | IRDS model | dynamic-power overstatement |
+|---|---|---|---|
+| 3.85 GHz | 0.944 V | 0.699 V | 1.8× |
+| 4.36 GHz | 1.099 V | 0.770 V (clamped) | 2.0× |
+| 5.19 GHz | 1.400 V | 0.770 V (clamped) | 3.3× |
+
+### What this fixes
+
+Absolute dynamic power at a given clock, which the shipped table overstated by 1.8–3.3× over the
+range we ran, growing with clock. Every "W at this clock" figure inherits that.
+
+### What it does not settle, and this matters
+
+**IRDS's loaded-path frequency is not a product clock.** Its `f_wireloaded` is a
+standard-logic-path metric for the technology; its `f_unloaded` (7.23 GHz on the same node) is a
+ring-oscillator-style ceiling. Real products reach 5 GHz and beyond through deep pipelining and
+custom circuits, so the achievable product clock sits *between* those two figures and the
+roadmap does not say where.
+
+Our clock searches ran to 4.7–5.0 GHz, which is above this node's `f_wireloaded` ceiling of
+4.15 GHz and far below its unloaded 7.23 GHz. So:
+
+* the searches were **not** exploring an impossible frequency range — a real product does clock
+  there — but the *voltage* the old table charged for it was roughly twice what it should be;
+* the "voltage-limited at 5.0 GHz" ceiling was an artefact of the table's top, and the honest
+  replacement is not "4.15 GHz" either. It is that **this model cannot state a product clock
+  ceiling** without a product V/F curve, and the anchor choice (`wireloaded` / `cpu` /
+  `unloaded`) moves it by nearly 2×.
+
+`alpha` is not in the roadmap either — one operating point cannot determine a slope. Across
+alpha 1.0–1.6 the 2024 ceiling moves 3.96–4.25 GHz, about 7%, and `alpha_sensitivity()` exists so
+any result leaning on it can be checked. The anchor choice is the larger uncertainty by far.
+
+### Consequence for the MR results
+
+The comparative results are unaffected: MR-on against MR-off at the same clock through the same
+curve cancels the voltage level entirely, and that is what the degeneracy, plateau, margin-curve
+and cliff findings rest on. What changes is that **absolute power at high clock comes down**, so
+MR's measured clock benefit was understated — and the clock *ceiling* should not be quoted from
+either curve until a product V/F relation is available.

@@ -126,7 +126,7 @@ def memory_floorplan(logic_flp, out_path, n_x=4, n_y=4, name_prefix='MEM'):
 def render_stacked_memory_template(base_template, out_path, mem_flp_file,
                                    mem_die_um=DEFAULT_MEM_DIE_UM, bond_um=DEFAULT_BOND_UM,
                                    bond_conductivity=DEFAULT_BOND_CONDUCTIVITY,
-                                   n_dies=1):
+                                   n_dies=1, cell_um=None):
     """Insert a memory die above the logic die and return a stack template.
 
     The memory floorplan path is baked in as an absolute path while the logic placeholders
@@ -190,10 +190,38 @@ def render_stacked_memory_template(base_template, out_path, mem_flp_file,
                     '   layer BOND{} BOND_LAYER ;\n'.format(i, os.path.abspath(flp), i))
     stack = stack.replace(old, ''.join(dies) + old, 1)
 
+    if cell_um is not None:
+        # Grid coarsening, needed for deep stacks and not free.
+        #
+        # A 9-die stack at the template's 50 um cells is ~1.7M unknowns and SuperLU 4.3 cannot
+        # factorise it: "Can't expand MemType 0: jcol 1710392 / SuperLu factorization error".
+        # Unknowns scale as 1/cell^2, so 100 um cells cut the problem 4x and it fits. This is a
+        # capacity limit of the solver, not of the model -- it is the case the deferred cuDSS
+        # work in docs/GAMEPLAN.md exists for.
+        #
+        # What it costs: a coarser grid smooths lateral gradients, so ABSOLUTE peak temperatures
+        # on small blocks are understated. The questions a deep-stack screen asks -- which layer
+        # binds, and how wide the memory plateau is -- are far less sensitive to that than a peak
+        # temperature is, but a coarsened run must not be compared against a 50 um run's peak.
+        n = 0
+        out_lines = []
+        for line in stack.split('\n'):
+            if line.strip().startswith('cell length'):
+                indent = line[:len(line) - len(line.lstrip())]
+                out_lines.append('{}cell length {:g}, width {:g}; // COARSENED for a deep stack'
+                                 .format(indent, cell_um, cell_um))
+                n += 1
+            else:
+                out_lines.append(line)
+        if not n:
+            raise ValueError('{} has no "cell length" line to coarsen'.format(base_template))
+        stack = '\n'.join(out_lines)
+
     with open(out_path, 'w') as f:
         f.write(stack)
-    LOGGER.info('wrote stacked-memory template to %s (memory %g um above %g um bond)',
-                out_path, mem_die_um, bond_um)
+    LOGGER.info('wrote stacked-memory template to %s (%d memory die(s) of %g um above %g um '
+                'bond%s)', out_path, n_dies, mem_die_um, bond_um,
+                '' if cell_um is None else ', {:g} um cells'.format(cell_um))
     return out_path
 
 

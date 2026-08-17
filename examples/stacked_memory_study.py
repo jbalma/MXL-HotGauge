@@ -116,6 +116,10 @@ def main():
                     help='memory-die power density at the refresh breakpoint [W/mm^2] '
                          '(ASSUMPTION -- see HotGauge.power.dram)')
     ap.add_argument('--mem-die-um', type=float, default=50.0)
+    # Deep stacks exceed SuperLU's factorisation capacity at the template's 50 um cells; see
+    # stack_models.render_stacked_memory_template. Coarsening is a documented accuracy trade.
+    ap.add_argument('--cell-um', type=float, default=None,
+                    help='override the thermal grid cell size [um]; needed above ~5 dies')
     ap.add_argument('--bond-um', type=float, default=5.0)
     ap.add_argument('--dram-break-C', type=float, default=DEFAULT_REFRESH_BREAK_K - 273.15)
     ap.add_argument('--dram-limit-C', type=float, default=DEFAULT_DRAM_LIMIT_K - 273.15)
@@ -155,7 +159,8 @@ def main():
     mem_outputs = memory_output_instructions(args.mem_dies)
     stacked_template = render_stacked_memory_template(
         get_stack_template(args.stack), os.path.join(args.out_dir, 'stacked_template.stk'),
-        mem_flps, mem_die_um=args.mem_die_um, bond_um=args.bond_um, n_dies=args.mem_dies)
+        mem_flps, mem_die_um=args.mem_die_um, bond_um=args.bond_um, n_dies=args.mem_dies,
+        cell_um=args.cell_um)
     sink = (ThermalResistanceSink(args.r_th, area_m2, ambient_K=args.ambient_K)
             if args.r_th is not None
             else BaffledFinSink(args.cfm, area_m2, ambient_K=args.ambient_K))
@@ -263,7 +268,7 @@ def main():
     out = {'cores': args.cores, 'node': args.node, 'area_mm2': area_mm2,
            'logic_density': args.density, 'logic_power_W': power_W,
            'mem_density': args.mem_density, 'mem_banks': len(mem_blocks),
-           'mem_dies': args.mem_dies,
+           'mem_dies': args.mem_dies, 'cell_um': args.cell_um,
            'dram_break_C': args.dram_break_C, 'dram_limit_C': args.dram_limit_C,
            'logic_limit_C': args.logic_limit_C, 'calibrated': False,
            'emphasise': args.emphasise, 'history': history}

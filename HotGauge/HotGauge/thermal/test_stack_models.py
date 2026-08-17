@@ -115,3 +115,30 @@ def test_floorplan_count_must_match_die_count(tmp_path):
     with pytest.raises(ValueError):
         render_stacked_memory_template(get_stack_template('skylake'),
                                        str(tmp_path / 'x.stk'), paths, n_dies=4)
+
+
+def test_cell_coarsening_rewrites_the_grid_and_is_labelled(tmp_path):
+    """Deep stacks need a coarser grid than the template's 50 um -- SuperLU cannot factorise a
+    9-die stack at 50 um. The override must be visible in the .stk, because a coarsened run's
+    peak temperature is not comparable with a fine one's."""
+    from HotGauge.thermal.stack_models import memory_stack_floorplans
+    paths, _, _ = memory_stack_floorplans(_write_logic_flp(tmp_path), str(tmp_path),
+                                          n_dies=2, n_x=2, n_y=2)
+    out = render_stacked_memory_template(get_stack_template('skylake'),
+                                         str(tmp_path / 'coarse.stk'), paths,
+                                         n_dies=2, cell_um=100.0)
+    text = open(out).read()
+    assert 'cell length 100, width 100;' in text
+    assert 'COARSENED' in text
+    assert 'cell length 50' not in text
+
+
+def test_coarsening_a_template_without_a_cell_line_is_an_error(tmp_path):
+    bad = tmp_path / 'nocell.stk'
+    bad.write_text('die PROCESSOR_DIE IC floorplan "{flp_file}";\n'
+                   '/*********************** Heat Sink ***********************/\n'
+                   '/*********************** Dies ***********************/\n'
+                   '/*********************** Stack ***********************/\n')
+    with pytest.raises(ValueError):
+        render_stacked_memory_template(str(bad), str(tmp_path / 'x.stk'),
+                                       [str(tmp_path / 'm.flp')], n_dies=1, cell_um=100.0)
