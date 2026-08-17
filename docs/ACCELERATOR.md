@@ -120,25 +120,65 @@ plateau fraction falls from 97.5% to 90.5% and the clip-one gain roughly halves 
 the split matters and that the plateau is not merely an artefact of coarse blocks. But both sit
 under 1% of device capability, so the conclusion does not move.
 
+## Pushing the density: degeneracy weakens, but nowhere near enough
+
+400 W is only 0.484 W/mm². The CPU die's stability cliff is at 1.05–1.17 W/mm², so the obvious
+question is whether an accelerator driven into that band starts to look like a CPU. It does not.
+
+| point | W | W/mm² | cooling | peak °C | plateau | clip-one | % of capability |
+|---|---|---|---|---|---|---|---|
+| A100 class | 400 | 0.484 | 88 CFM air | 88.06 | 332 | 0.040 K | 0.4% |
+| H100 class | 700 | 0.847 | 88 CFM air | 127.85 | 170 | 0.070 K | 0.7% |
+| H100 class | 700 | 0.847 | liquid, 0.05 K/W | 108.91 | 178 | 0.173 K | 1.7% |
+| matched to CPU | 826 | 1.000 | liquid, 0.05 K/W | 122.21 | 127 | 0.204 K | 2.0% |
+| matched to CPU | 950 | 1.150 | liquid, 0.05 K/W | 135.29 | 104 | 0.235 K | **2.3%** |
+
+Every point above is damping-verified (`unconverged: False`).
+
+The trend is real and in MR's favour: 2.4× the density narrows the plateau from 332 blocks to 104
+and raises the clip-one gain ~6×. But it rises **from 0.4% to 2.3%** of device capability. At the
+density where the CPU die sits on the edge of runaway, the accelerator's best single-block clip is
+still worth a quarter of a kelvin, and **five times worse than the *balanced* CPU die's 12.5%** —
+which was itself the case where the conclusion was "MR is weak as a clock enabler".
+
+### The structural result: this die does not run away
+
+The more important number in that table is the one that is missing. **Nothing diverged.** At
+1.15 W/mm² the 34-core CPU die has *no steady state at all* — that is the entire basis of the
+rescue result, 0.81 W removed to stabilise a die that otherwise runs away. The accelerator at the
+same density reaches 135 °C and **converges**.
+
+So the accelerator fails a different way. It fails by **exceeding its temperature limit**, not by
+losing its steady state. 826 mm² spreads laterally far better than 101 mm², and the leakage
+feedback is diluted across eight times the area, so the local positive feedback that drives the CPU
+die unstable never closes.
+
+That matters because MR's one demonstrated strength in this whole project is *arresting the leakage
+instability* — 290 W of die stabilised per watt removed. On this die there is no instability to
+arrest. **The same geometry that makes an accelerator degenerate also makes it stable**, so both of
+MR's routes to value close at once, for the same reason.
+
 ## What this means for microrefrigeration
 
-**Hotspot MR is structurally the wrong tool for an accelerator.** Not marginal — wrong by 250×
-against the device's own capability. The technology's mechanism is to clip a localised peak, and an
-accelerator built from a uniform tile array has no localised peak to clip. On this die MR must be
-**distributed** or it does nothing at all, which makes the user's original instinct about
-"localized cooling across the die average path" the only version of the idea with a route here.
+**Hotspot MR is structurally the wrong tool for an accelerator**, and the two independent arguments
+land on the same side:
 
-That is a harder sell than hotspot clipping, because distributed cooling competes directly against
-the heatsink on cost per watt and does so at an electrical COP of 0.14. The CPU-side margin curves
-(`docs/MR_RESCUE_COST.md`) already showed what happens when MR has to cool the whole plateau: 27–34 W
-removed and 48–60 W electrical, against 0.17–0.81 W when it only has to clip the top few blocks.
-There is no reason to expect the accelerator to be kinder, and it has 332 blocks in its plateau
-against the CPU's 1126 only because it has fewer blocks in total.
+1. **No hotspot to clip.** 332 of 367 blocks within dt_max of the peak; clipping one buys 0.4% of
+   the device's capability, rising only to 2.3% when driven to 1.15 W/mm². The mechanism needs a
+   localised peak and a uniform tile array does not have one.
+2. **No instability to rescue.** The die converges at densities where the CPU die does not, so the
+   one application where MR was measured to be strongly worth buying does not arise.
 
-**The one genuinely encouraging reading** is that the accelerator's density is *low* — 0.484 W/mm²
-against a stability cliff at 1.05–1.17. It is nowhere near the runaway regime where MR's rescue
-value was demonstrated. Whether it gets there is a question about future parts, and the pending
-higher-power points (700 W, and matched to CPU density) are what test it.
+On this die MR must be **distributed** or it does nothing at all, which makes the original instinct
+about "localized cooling across the die average path" the only version of the idea with a route
+here. That is a harder sell: distributed cooling competes directly against the heatsink on cost per
+watt, at an electrical COP of 0.14. The CPU-side margin curves (`docs/MR_RESCUE_COST.md`) show what
+happens when MR has to cool a whole plateau — 27–34 W removed and 48–60 W electrical, against
+0.17–0.81 W when it only clips the top few blocks.
+
+The honest summary is that the accelerator is a *worse* MR target than the CPU on every axis
+measured, and for a reason that is intrinsic to what an accelerator is rather than incidental to
+this particular part.
 
 ## Open, and what would change the picture
 
