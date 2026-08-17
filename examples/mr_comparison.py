@@ -163,7 +163,20 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
         mr_field_diverged = bool(res.get('temp_trace_diverged'))
     else:
         mr_field_diverged = bool((last or {}).get('diverged'))
+
+    # Verification applies to the solve that produced the REPORTED field, not to every solve the
+    # search made. The envelope descent and both bisections deliberately visit unstable states to
+    # bracket an answer, and those probes are the ones that fail verification -- flagging the
+    # whole point for that conflates "we tested a state that turned out unstable" with "the
+    # answer is unverified". It hid roughly fifteen good measurements, including every
+    # pixel-pitch point. The reported-field check itself is unchanged and just as strict.
+    if use_mr and res is not None and 'result_unconverged' in res:
+        unconverged = bool(res['result_unconverged'])
+    else:
+        unconverged = bool(ver['n_unconverged'])
     row = {'tag': tag, 'cores': n_cores, 'mr': use_mr, 'fan_W': sink.parasitic_power_W(),
+           # probe failures are diagnostics, kept so a suspicious point can still be audited
+           'n_probe_solves_unconverged': ver['n_unconverged'],
            'mr_reason': (res or {}).get('reason') if use_mr else None,
            'mr_loop_converged': bool((res or {}).get('converged')) if use_mr else None,
            # Whether the reported plan is the MINIMUM MR that keeps a steady state, or merely
@@ -175,7 +188,7 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
            'mr_minimum_plan_W': (res or {}).get('minimum_plan_W') if use_mr else None,
            'mr_largest_failing_plan_W': (res or {}).get('largest_failing_plan_W') if use_mr
                                         else None,
-           'unconverged': bool(ver['n_unconverged']),
+           'unconverged': unconverged,
            'n_solves': ver['n_solves'], 'n_unconverged_solves': ver['n_unconverged'],
            # worst_ is the one that decides whether this row is quotable; peak_spread_K is the
            # final solve's, kept because it is what the reported temperatures came from.

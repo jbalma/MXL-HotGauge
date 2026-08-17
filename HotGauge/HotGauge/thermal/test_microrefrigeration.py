@@ -604,3 +604,48 @@ def test_distributed_plan_rejects_a_nonpositive_budget():
     p = MRParams(target_K=350.0, h_max=1.0, dt_max_K=1e6, cop=0.1)
     with pytest.raises(ValueError):
         distributed_plan(geom, p, total_W=0.0)
+
+
+def test_probe_failures_do_not_flag_a_verified_result():
+    """The searches deliberately visit unstable states to bracket an answer, and those probes are
+    exactly the solves that fail damping verification. Flagging the whole point for that hid
+    roughly fifteen good measurements -- including every pixel-pitch run -- so verification
+    applies to the solve that produced the REPORTED field, not to every solve made.
+    """
+    trace = BasicPowerTrace({'hot/a': [5.0]}, 1.0)
+    geom = {'hot': {'area_mm2': 1.0, 'min_dim_um': 500.0}}
+    p = MRParams(target_K=350.0, h_max=4.0, dt_max_K=1e6, cop=0.1)
+
+    # Unverified ONLY while cooling is thin -- i.e. on the boundary probes, never on the state
+    # the loop settles on.
+    state = {'diverged': True, 'unconverged': False}
+
+    def solver(tr):
+        removed = 5.0 - float(np.sum(tr.powers['hot/a']))
+        state['diverged'] = removed < 1.0
+        state['unconverged'] = removed < 1.2 and not state['diverged']
+        t = 360.0 + 60.0 if state['diverged'] else 360.0 - 4.0 * removed
+        return {'hot': np.array([t])}
+
+    res = run_mr_clipping(trace, solver, geom, p, _name_map, max_iter=20, tol_K=1.0,
+                          status_fn=lambda: dict(state), plan_mode='envelope')
+    assert res['converged'] is True
+    # The reported field came from a well-cooled, verified solve.
+    assert res['result_unconverged'] is False
+
+
+def test_an_unverified_reported_field_is_still_flagged():
+    """The other half of the same rule: if the state actually reported was not verified, the
+    point is not a result. This is the check that caught three real errors."""
+    trace = BasicPowerTrace({'hot/a': [5.0]}, 1.0)
+    geom = {'hot': {'area_mm2': 1.0, 'min_dim_um': 500.0}}
+    p = MRParams(target_K=350.0, h_max=1e6, dt_max_K=1e6, cop=0.1)
+    base = {'hot': 380.0}
+
+    def calm(tr):
+        removed = 5.0 - float(np.sum(tr.powers['hot/a']))
+        return {'hot': np.array([base['hot'] - 4.0 * removed])}
+
+    res = run_mr_clipping(trace, calm, geom, p, _name_map, max_iter=8, tol_K=0.5,
+                          status_fn=lambda: {'diverged': False, 'unconverged': True})
+    assert res['result_unconverged'] is True

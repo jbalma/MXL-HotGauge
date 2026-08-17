@@ -53,6 +53,12 @@ def collect_mr_comparison(pattern, label):
                         'holds_target': b.get('mr_plan_holds_target'),
                         'plan_is_minimum': b.get('mr_plan_is_minimum'),
                         'reason': b.get('mr_reason')}}
+        # Verification applies to the solve that produced the reported field. Older runs only
+        # recorded "some solve failed", so fall back to that for them and say so in the entry --
+        # a legacy flag must not be silently upgraded to a clean bill of health.
+        legacy = ('n_probe_solves_unconverged' not in b)
+        entry['verification_scope'] = 'any-solve (legacy)' if legacy else 'reported-field'
+        entry['n_probe_solves_unconverged'] = b.get('n_probe_solves_unconverged')
         entry['quotable'] = bool(not a.get('unconverged') and not b.get('unconverged'))
         out.append(entry)
     return out

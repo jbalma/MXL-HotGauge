@@ -507,6 +507,10 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
     # not just under-spending.
     base_temps = thermal_solve_fn(trace)
     base_status = _status()
+    # Status of the solve that produced the field we would REPORT, as distinct from "any solve
+    # in this loop". The searches deliberately visit unstable states to bracket an answer, so
+    # conflating the two flags a good result because an exploratory probe behaved as intended.
+    result_status = dict(base_status)
     history = []
 
     mode = plan_mode
@@ -523,6 +527,7 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
 
     if not base_hot:
         return {'plan': {}, 'detail': {}, 'temp_trace': base_temps, 'sensitivity': sens,
+                'result_unconverged': bool(result_status.get('unconverged')),
                 'converged': True, 'iterations': 0, 'history': history,
                 'accounting': mr_accounting({}, params),
                 'reason': 'nothing above target; no cooling needed'}
@@ -536,6 +541,7 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
                                          t_floor_K=t_floor_K)
         if not new_plan:
             return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+                    'result_unconverged': bool(result_status.get('unconverged')),
                     'converged': False, 'iterations': it, 'history': history,
                     'accounting': mr_accounting(plan, params, detail=detail),
                     'reason': 'envelope allows no further cooling'}
@@ -544,6 +550,7 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
                    if plan else dict(new_plan))
         cooled_trace = apply_cooling_to_trace(trace, blended, name_map)
         temps = thermal_solve_fn(cooled_trace)
+        result_status = _status()
 
         # Refine dT/dq against the baseline, which is what the plan is sized from.
         sens.update(estimate_sensitivity(base_temps, temps, blended))
@@ -560,6 +567,7 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
         # Requiring both is what distinguishes "clipped efficiently" from "overcooled".
         if delta_plan <= max(1e-3, 0.01 * total) and abs(peak - params.target_K) <= tol_K:
             return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+                    'result_unconverged': bool(result_status.get('unconverged')),
                     'converged': True, 'iterations': it + 1, 'history': history,
                     'temp_trace_diverged': False, 'plan_is_minimum': False,
                     'accounting': mr_accounting(plan, params, detail=detail),
@@ -568,6 +576,7 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
                               'be the smallest plan that keeps a steady state'}
 
     return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+            'result_unconverged': bool(result_status.get('unconverged')),
             'converged': False, 'iterations': max_iter, 'history': history,
             'accounting': mr_accounting(plan, params, detail=detail),
             'reason': 'max_iter reached'}
@@ -598,6 +607,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
     envelope, detail = envelope_plan(block_geom, params, sens, t_floor_K=t_floor_K)
     if not envelope:
         return {'plan': {}, 'detail': detail, 'temp_trace': base_temps, 'sensitivity': sens,
+                'result_unconverged': bool(result_status.get('unconverged')),
                 'converged': False, 'iterations': 0, 'history': history,
                 'plan_is_minimum': False, 'plan_holds_target': False,
                 'temp_trace_diverged': bool((base_status or {}).get('diverged')),
@@ -606,8 +616,13 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
 
     plan = dict(envelope)
     prev_peak = None
+    result_status, prev_status = {}, {}
     temps = thermal_solve_fn(apply_cooling_to_trace(trace, plan, name_map))
     st = status_fn()
+    # The status of the solve that produced the field we would REPORT. Exploratory probes below
+    # deliberately visit unstable states, so "some solve was unverified" is not a statement about
+    # the answer; this is.
+    result_status = dict(st)
     peak = max((float(np.ravel(t)[-1]) for t in temps.values()
                 if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
     history.append({'iter': 0, 'peak_K': peak, 'heat_removed_W': float(sum(plan.values())),
@@ -617,6 +632,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
         # The strongest statement this model can make about MR at an operating point: even at
         # full device capability the coupled system has no steady state.
         return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+                'result_unconverged': bool(result_status.get('unconverged')),
                 'converged': False, 'iterations': 1, 'history': history,
                 'temp_trace_diverged': True,
                 'plan_is_minimum': False, 'plan_holds_target': False,
@@ -629,16 +645,19 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
     # Descend: reduce cooling where blocks sit below target, restore it where they sit above.
     for it in range(1, max_iter):
         prev_temps, prev_plan, prev_peak = temps, plan, peak
+        prev_status = dict(result_status)
         plan = _relax_plan_toward_target(plan, envelope, temps, params, sens, relax, t_floor_K)
         if not plan:
             temps = thermal_solve_fn(trace)
             st = status_fn()
+            result_status = dict(st)
             peak = max((float(np.ravel(t)[-1]) for t in temps.values()
                         if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
             history.append({'iter': it, 'peak_K': peak, 'heat_removed_W': 0.0,
                             'max_plan_change_W': float(sum(prev_plan.values())),
                             'stage': 'relaxed to zero'})
             return {'plan': {}, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+                    'result_unconverged': bool(result_status.get('unconverged')),
                     'converged': not st.get('diverged'), 'iterations': it + 1,
                     'history': history, 'temp_trace_diverged': bool(st.get('diverged')),
                     'plan_is_minimum': True, 'plan_holds_target': True,
@@ -647,6 +666,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
 
         temps = thermal_solve_fn(apply_cooling_to_trace(trace, plan, name_map))
         st = status_fn()
+        result_status = dict(st)
         sens.update(estimate_sensitivity(prev_temps, temps,
                                          {b: plan.get(b, 0.0) - prev_plan.get(b, 0.0)
                                           for b in set(plan) | set(prev_plan)}))
@@ -667,6 +687,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
             # true minimum instead of wherever the descent happened to overshoot.
             bad = plan
             plan, temps = prev_plan, prev_temps
+            result_status = dict(prev_status or {})
             for _ in range(bisect_iters):
                 trial = {b: 0.5 * (plan.get(b, 0.0) + bad.get(b, 0.0))
                          for b in set(plan) | set(bad)}
@@ -690,6 +711,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                     bad = trial
                 else:
                     plan, temps = trial, t_trial
+                    result_status = dict(st_trial)
                 lo, hi = float(sum(plan.values())), float(sum(bad.values()))
                 if lo <= 0 or (lo - hi) <= 0.01 * lo:
                     break
@@ -697,6 +719,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                               if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
             on_cool_branch = bool(final_peak <= params.target_K + tol_K)
             return {'plan': plan, 'detail': detail, 'temp_trace': temps,
+                    'result_unconverged': bool(result_status.get('unconverged')),
                     'sensitivity': sens, 'converged': True,
                     'iterations': it + 1, 'history': history, 'temp_trace_diverged': False,
                     'accounting': mr_accounting(plan, params, detail=detail),
@@ -719,6 +742,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
         if peak > params.target_K + tol_K and prev_peak is not None \
                 and prev_peak <= params.target_K + tol_K:
             too_little, enough, temps_ok = plan, prev_plan, prev_temps
+            result_status = dict(prev_status or {})
             for _ in range(bisect_iters):
                 trial = {b: 0.5 * (enough.get(b, 0.0) + too_little.get(b, 0.0))
                          for b in set(enough) | set(too_little)}
@@ -735,9 +759,11 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                     too_little = trial
                 else:
                     enough, temps_ok = trial, t_trial
+                    result_status = dict(st_trial)
                     if abs(pk - params.target_K) <= tol_K:
                         break
             return {'plan': enough, 'detail': detail, 'temp_trace': temps_ok,
+                    'result_unconverged': bool(result_status.get('unconverged')),
                     'sensitivity': sens, 'converged': True, 'iterations': it + 1,
                     'history': history, 'temp_trace_diverged': False,
                     'plan_is_minimum': True, 'plan_holds_target': True,
@@ -747,6 +773,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
 
         if delta_plan <= max(1e-3, 0.01 * total) and abs(peak - params.target_K) <= tol_K:
             return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+                    'result_unconverged': bool(result_status.get('unconverged')),
                     'converged': True, 'iterations': it + 1, 'history': history,
                     'temp_trace_diverged': False,
                     # Landed on the target smoothly. It holds the target; whether it is also the
@@ -756,6 +783,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                     'accounting': mr_accounting(plan, params, detail=detail)}
 
     return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
+            'result_unconverged': bool(result_status.get('unconverged')),
             'converged': not st.get('diverged'), 'iterations': max_iter, 'history': history,
             'temp_trace_diverged': bool(st.get('diverged')), 'plan_is_minimum': False,
             'plan_holds_target': bool(peak <= params.target_K + tol_K),
