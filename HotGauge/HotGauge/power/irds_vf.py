@@ -5,13 +5,20 @@ Why this exists
 ``configuration.performance.VF_PAIRS`` is one alpha-power curve to 0.30% RMS -- it is
 internally consistent -- but it is not a curve for any modern node. It asks **1.19 V for
 4.6 GHz and 1.4 V for 5.0 GHz**, while IRDS 2024 More Moore (MM01 - LOGIC) puts a
-high-performance logic node at **Vdd 0.6-0.7 V** reaching 3.9-5.2 GHz wireloaded. That is about
-twice the supply voltage for the same clock, and since dynamic power goes as V^2*f it overstates
-the power cost of clock by roughly 6.5x at 5 GHz.
+high-performance logic node at **Vdd 0.6-0.7 V** reaching 3.9-5.2 GHz wireloaded -- about twice
+the supply voltage for the same clock.
 
-The consequences were not academic. Every clock search that stopped at "5.0 GHz, voltage-limited"
-was reporting the top of that table, not a property of silicon; and because the model overcharged
-for voltage, the clock gain microrefrigeration was measured to deliver came out understated.
+What that does and does not break is worth being precise about, because the obvious answer is
+wrong. Dynamic power goes as V^2*f, so it looks as though the table overstates the power cost of
+clock by ~6.5x at 5 GHz. It does not: ``clock_search`` only ever uses the *ratio*
+``(V(f)/V(f_ref))^2 (f/f_ref)`` against the trace's own clock, and a common factor on the curve
+cancels in a ratio. Measured against this module, the two curves agree to within 6% below the
+2024 node's ceiling, with IRDS slightly the *more* expensive.
+
+Where the table is genuinely wrong is the **ceiling**. No part runs at twice its nominal Vdd --
+reliability caps overdrive near 10% -- so its 5.0 GHz top is not a device limit, and every clock
+search that stopped there reporting "voltage-limited" was measured against a ceiling about 20%
+too high. That is the error this module exists to fix, and it is a smaller one than it looked.
 
 What this module does instead
 -----------------------------

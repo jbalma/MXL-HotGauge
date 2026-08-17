@@ -38,6 +38,14 @@ Honest limits
   clamps, so dynamic power stops rising with voltage and the model *understates* the cost of
   the clock. Searches are capped at the table's top by default; going past it sets
   ``vf_clamped`` and the result must be read as an upper bound.
+* That table is also **not a curve for a modern node**: it asks about twice the IRDS 2024 supply
+  voltage for the same clock. That error does *not* reach the power numbers, because only the
+  ratio ``(V/V_ref)^2 (f/f_ref)`` is ever used and a common factor cancels in it -- measured, the
+  two curves agree within 6% below 4.15 GHz. Where it does bite is the **ceiling**: no part runs
+  at twice nominal Vdd, so the table's 5.0 GHz top is not a device limit and every
+  ``vf_envelope`` verdict against it was ~20% too generous. Pass
+  ``vf_model=irds_vf.IRDSVFModel(year)`` for a roadmap-anchored curve and that node's overdrive
+  ceiling instead.
 * Leakage grows with voltage as well as temperature. That dependence is not in McPAT's output
   here, so it is applied as an explicit power law (``leakage_voltage_exponent``, default 1.0)
   rather than ignored -- ignoring it would flatter every high-clock result.
@@ -64,7 +72,7 @@ LOGGER = logging.getLogger(__name__)
 VF_TABLE_MAX_GHZ = 5.0
 
 
-def clock_power_factors(f_GHz, f_ref_GHz, leakage_voltage_exponent=1.0):
+def clock_power_factors(f_GHz, f_ref_GHz, leakage_voltage_exponent=1.0, vf_model=None):
     """Multipliers ``(dynamic, leakage)`` for running at ``f_GHz`` instead of ``f_ref_GHz``.
 
     Dynamic follows ``P ~ C V^2 f`` exactly as ``dynamic_power_scale`` defines it. Leakage is
@@ -73,30 +81,52 @@ def clock_power_factors(f_GHz, f_ref_GHz, leakage_voltage_exponent=1.0):
     single voltage so the exponent is an assumption, stated here rather than buried. 1.0 is a
     deliberately mild choice; 0.0 reproduces the older behaviour of ignoring it entirely.
 
+    ``vf_model`` chooses where the voltages come from. The default (None) is the shipped
+    ``VF_PAIRS`` table, which demands roughly **twice** the IRDS 2024 supply voltage for the same
+    clock; passing an ``irds_vf.IRDSVFModel`` uses a roadmap-anchored curve instead.
+
+    Note what that does and does not change. Only the RATIO is used here, and a common factor on
+    the curve cancels in it, so the absolute error does NOT reach the multipliers: inside the 2024
+    node's valid range the two curves agree to within 6%, with IRDS slightly the more expensive.
+    What the roadmap curve genuinely fixes is the **ceiling** -- 4.15 GHz at 0.77 V rather than
+    5.0 GHz at 1.4 V -- so it matters for ``find_max_sustainable_clock``'s 'vf_envelope' verdict
+    and barely at all for power. Still not the default, so that one series is measured one way.
+
     Returns ``(dyn_scale, leak_scale, info)`` where ``info['vf_clamped']`` is True if either
-    frequency fell outside the V/F table.
+    frequency fell outside the curve's valid range and ``info['vf_source']`` names the curve.
     """
-    v, clamp_a = voltage_for_frequency(f_GHz)
-    v_ref, clamp_b = voltage_for_frequency(f_ref_GHz)
-    dyn = dynamic_power_scale(f_GHz, f_ref_GHz)
+    if vf_model is None:
+        v, clamp_a = voltage_for_frequency(f_GHz)
+        v_ref, clamp_b = voltage_for_frequency(f_ref_GHz)
+        dyn = dynamic_power_scale(f_GHz, f_ref_GHz)
+        source = 'VF_PAIRS'
+    else:
+        v, clamp_a = vf_model.voltage(f_GHz)
+        v_ref, clamp_b = vf_model.voltage(f_ref_GHz)
+        dyn = ((v / v_ref) ** 2 * (float(f_GHz) / float(f_ref_GHz))) if v_ref > 0 else 1.0
+        source = 'irds:{}:{}'.format(vf_model.year, vf_model.anchor)
     leak = (v / v_ref) ** float(leakage_voltage_exponent) if v_ref > 0 else 1.0
-    return dyn, leak, {'V': v, 'V_ref': v_ref, 'vf_clamped': bool(clamp_a or clamp_b)}
+    return dyn, leak, {'V': v, 'V_ref': v_ref, 'vf_clamped': bool(clamp_a or clamp_b),
+                       'vf_source': source}
 
 
 def scale_trace_for_clock(trace, leakage_ref, f_GHz, f_ref_GHz,
-                          leakage_voltage_exponent=1.0):
+                          leakage_voltage_exponent=1.0, vf_model=None):
     """Rescale a power trace and its leakage split from ``f_ref_GHz`` to ``f_GHz``.
 
     The two components move differently -- dynamic with ``V^2 f``, leakage with ``V^n`` -- so
     they must be scaled separately and recombined, which is why this takes the split rather
     than the total. Units absent from ``leakage_ref`` are treated as purely dynamic.
 
+    ``vf_model`` is passed to ``clock_power_factors``; see its note.
+
     Returns ``(scaled_trace, scaled_leakage_ref, info)``.
     """
     from HotGauge.power.traces import BasicPowerTrace
 
     dyn_scale, leak_scale, info = clock_power_factors(
-        f_GHz, f_ref_GHz, leakage_voltage_exponent=leakage_voltage_exponent)
+        f_GHz, f_ref_GHz, leakage_voltage_exponent=leakage_voltage_exponent,
+        vf_model=vf_model)
 
     powers, new_leak = {}, {}
     for unit, series in trace.powers.items():
@@ -147,7 +177,7 @@ def reason_unsustainable(result, thermal_limit_K=DEFAULT_THROTTLE_K):
 
 def find_max_sustainable_clock(evaluate, f_lo, f_hi, tol_GHz=0.05, max_evals=14,
                                thermal_limit_K=DEFAULT_THROTTLE_K,
-                               cap_at_vf_table=True):
+                               cap_at_vf_table=True, vf_model=None):
     """Largest clock the part can hold, by bisection on ``evaluate``.
 
     evaluate : callable(f_GHz) -> dict with 'peak_K' and the run_leakage_feedback flags. It is
@@ -155,9 +185,12 @@ def find_max_sustainable_clock(evaluate, f_lo, f_hi, tol_GHz=0.05, max_evals=14,
                coupled solve.
     f_lo     : a clock believed sustainable. It IS tested -- if the part cannot hold even this,
                the answer is "no sustainable clock in range", not a number.
-    f_hi     : upper end of the search. Capped at the V/F table's top unless
+    f_hi     : upper end of the search. Capped at the V/F curve's ceiling unless
                ``cap_at_vf_table=False``, because past it the voltage clamps and the model
                understates the power cost of the clock.
+    vf_model : optional ``irds_vf.IRDSVFModel``. Replaces the shipped table AND its ceiling --
+               on the 2024 node the ceiling falls from 5.0 GHz to ~4.15 GHz, so a
+               'vf_envelope' verdict means a different thing between the two curves.
     tol_GHz  : bracket width to stop at.
 
     Peak temperature is monotone in clock (more dynamic power, more leakage, hotter), so the
@@ -177,13 +210,17 @@ def find_max_sustainable_clock(evaluate, f_lo, f_hi, tol_GHz=0.05, max_evals=14,
     f_lo, f_hi = float(f_lo), float(f_hi)
     if f_hi <= f_lo:
         raise ValueError('f_hi ({}) must exceed f_lo ({})'.format(f_hi, f_lo))
+    # The electrical ceiling belongs to whichever curve is in use. With an IRDS model it is that
+    # node's maximum operating voltage -- a reliability limit, and a much lower clock than the
+    # shipped table's top. See the ``vf_model`` note in clock_power_factors.
+    v_ceiling = VF_TABLE_MAX_GHZ if vf_model is None else vf_model.f_max
     capped = False
-    if cap_at_vf_table and f_hi > VF_TABLE_MAX_GHZ:
-        f_hi, capped = VF_TABLE_MAX_GHZ, True
+    if cap_at_vf_table and f_hi > v_ceiling:
+        f_hi, capped = v_ceiling, True
         if f_hi <= f_lo:
-            raise ValueError('f_lo ({}) is already above the V/F table top ({} GHz); pass '
+            raise ValueError('f_lo ({}) is already above the V/F ceiling ({:.3f} GHz); pass '
                              'cap_at_vf_table=False and treat the result as an upper bound'
-                             .format(f_lo, VF_TABLE_MAX_GHZ))
+                             .format(f_lo, v_ceiling))
 
     evals, vf_clamped = [], False
 
@@ -199,7 +236,9 @@ def find_max_sustainable_clock(evaluate, f_lo, f_hi, tol_GHz=0.05, max_evals=14,
 
     out = {'evaluations': evals, 'vf_clamped': False, 'at_ceiling': False,
            'voltage_limited': False,
-           'search_capped_at_vf_table': capped, 'thermal_limit_K': float(thermal_limit_K)}
+           'search_capped_at_vf_table': capped, 'thermal_limit_K': float(thermal_limit_K),
+           'vf_ceiling_GHz': float(v_ceiling),
+           'vf_source': 'VF_PAIRS' if vf_model is None else repr(vf_model)}
 
     ok_lo, _ = _try(f_lo)
     if not ok_lo:
@@ -214,7 +253,7 @@ def find_max_sustainable_clock(evaluate, f_lo, f_hi, tol_GHz=0.05, max_evals=14,
         #   * we stopped at the V/F table top -> the part is VOLTAGE-limited. More cooling buys
         #     nothing, because the next clock step needs a voltage the device cannot take.
         #   * we stopped at a range the caller chose -> widen the range and measure again.
-        at_vf_top = abs(f_hi - VF_TABLE_MAX_GHZ) < 1e-9 and cap_at_vf_table
+        at_vf_top = abs(f_hi - v_ceiling) < 1e-9 and cap_at_vf_table
         out.update({'f_sustainable_GHz': f_hi, 'bracket_GHz': (f_hi, None),
                     'limited_by': 'vf_envelope' if at_vf_top else 'search_ceiling',
                     'at_ceiling': True, 'voltage_limited': at_vf_top,
@@ -386,7 +425,8 @@ def emphasise_units(trace, patterns, factor, keep_core_power=True):
 
 
 def scale_trace_for_clock_per_core(trace, leakage_ref, core_clocks, f_ref_GHz,
-                                   default_f_GHz=None, leakage_voltage_exponent=1.0):
+                                   default_f_GHz=None, leakage_voltage_exponent=1.0,
+                                   vf_model=None):
     """Rescale a trace when cores run at DIFFERENT clocks.
 
     ``scale_trace_for_clock`` moves the whole die together, which is right for an all-core
@@ -419,7 +459,8 @@ def scale_trace_for_clock_per_core(trace, leakage_ref, core_clocks, f_ref_GHz,
         nonlocal vf_clamped
         key = round(float(f), 6)
         if key not in factors:
-            dyn, leak, info = clock_power_factors(f, f_ref_GHz, leakage_voltage_exponent)
+            dyn, leak, info = clock_power_factors(f, f_ref_GHz, leakage_voltage_exponent,
+                                                  vf_model=vf_model)
             vf_clamped = vf_clamped or info['vf_clamped']
             factors[key] = (dyn, leak)
         return factors[key]

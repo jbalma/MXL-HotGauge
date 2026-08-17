@@ -111,15 +111,17 @@ its CPU-frequency row is 3.1–4.2 GHz). The shipped table needs **1.19 V for 4.
 for 5.0 GHz** — roughly twice the supply voltage for the same clock. It is not a 7 nm-class
 curve.
 
-**What that invalidates.** Dynamic power goes as V²f, so at 5.19 GHz our model charges about
-**6.5×** the dynamic power the roadmap implies. Consequences, in order of how much they matter:
+**What that invalidates.** *(Superseded — see the next section. The second and third bullets
+below are wrong: the pipeline uses only voltage RATIOS, in which a common factor cancels, so the
+absolute error does not reach the power numbers. Only the ceiling bullet survives. Left in place
+because the reasoning that produced it is the kind worth being able to re-read.)*
 
 * the "voltage-limited at 5.0 GHz" ceiling in design A is a property of **this table**, not of
-  7 nm silicon — IRDS reaches 5.19 GHz at 0.6 V;
-* every absolute power number at high clock is overstated, and the overstatement grows with
-  clock, so the *shape* of the clock/power trade is wrong too, not just its scale;
-* MR's measured clock benefit is therefore **understated**: the model charges too much voltage
-  for the extra clock MR enables.
+  7 nm silicon — IRDS reaches 5.19 GHz at 0.6 V; ✅ this one holds
+* ~~every absolute power number at high clock is overstated, and the overstatement grows with
+  clock, so the *shape* of the clock/power trade is wrong too, not just its scale;~~ ❌
+* ~~MR's measured clock benefit is therefore **understated**: the model charges too much voltage
+  for the extra clock MR enables.~~ ❌
 
 **What it does not invalidate.** Everything that compares two configurations at the same clock
 through the same table — the degeneracy results, the plateau widths, the design comparisons,
@@ -163,37 +165,50 @@ overdrive a ceiling of **4.15 GHz at 0.77 V**.
 | 4.36 GHz | 1.099 V | 0.770 V (clamped) | 2.0× |
 | 5.19 GHz | 1.400 V | 0.770 V (clamped) | 3.3× |
 
-### What this fixes
+### What it fixes, which is less than I claimed a few hours ago
 
-Absolute dynamic power at a given clock, which the shipped table overstated by 1.8–3.3× over the
-range we ran, growing with clock. Every "W at this clock" figure inherits that.
+**The power numbers do not move.** I wrote above that this corrects a 1.8–3.3× dynamic-power
+overstatement. That is the ratio of *absolute* V², and **this pipeline never uses an absolute
+voltage.** `scale_trace_for_clock` scales a McPAT trace by the *ratio*
+`(V(f)/V(f_ref))² · (f/f_ref)` against the trace's own 3.8 GHz clock, and leakage by
+`(V/V_ref)^n`. A common factor on the whole curve cancels in both. `voltage_for_frequency` is
+reachable from nowhere else in the model — grep confirms `clock_search` is its only consumer.
 
-### What it does not settle, and this matters
+Measured over the range, with 3.8 GHz as the reference the pipeline actually uses:
 
-**IRDS's loaded-path frequency is not a product clock.** Its `f_wireloaded` is a
-standard-logic-path metric for the technology; its `f_unloaded` (7.23 GHz on the same node) is a
-ring-oscillator-style ceiling. Real products reach 5 GHz and beyond through deep pipelining and
-custom circuits, so the achievable product clock sits *between* those two figures and the
-roadmap does not say where.
+| clock | shipped multiplier | IRDS multiplier | difference |
+|---|---|---|---|
+| 3.00 GHz | 0.542 | 0.464 | −14% |
+| 3.40 GHz | 0.732 | 0.688 | −6% |
+| 4.00 GHz | 1.155 | 1.198 | **+4%** |
+| 4.10 GHz | 1.239 | 1.309 | **+6%** |
+| 4.15 GHz (node f_max) | 1.302 | 1.369 | +5% |
+| 4.36 GHz | 1.590 | 1.438 | *clamped — not a cost, a part that does not run* |
 
-Our clock searches ran to 4.7–5.0 GHz, which is above this node's `f_wireloaded` ceiling of
-4.15 GHz and far below its unloaded 7.23 GHz. So:
+Inside the node's valid range the two curves agree to within 6%, and **IRDS is the slightly more
+expensive one** near the top. So every power figure in this study stands, and the direction of my
+earlier caveat was wrong: MR's clock benefit was not being understated by the V/F table.
 
-* the searches were **not** exploring an impossible frequency range — a real product does clock
-  there — but the *voltage* the old table charged for it was roughly twice what it should be;
-* the "voltage-limited at 5.0 GHz" ceiling was an artefact of the table's top, and the honest
-  replacement is not "4.15 GHz" either. It is that **this model cannot state a product clock
-  ceiling** without a product V/F curve, and the anchor choice (`wireloaded` / `cpu` /
-  `unloaded`) moves it by nearly 2×.
+### What it does fix: the ceiling, which is where the error actually bit
 
-`alpha` is not in the roadmap either — one operating point cannot determine a slope. Across
-alpha 1.0–1.6 the 2024 ceiling moves 3.96–4.25 GHz, about 7%, and `alpha_sensitivity()` exists so
-any result leaning on it can be checked. The anchor choice is the larger uncertainty by far.
+The shipped table's top is 5.0 GHz at 1.4 V. No part runs at twice its nominal Vdd — reliability
+caps overdrive near 10% — so **4.15 GHz at 0.77 V** is the 2024 node's ceiling, and every
+`limited_by: vf_envelope` verdict in this study was measured against a ceiling ~20% too high.
+That is a real correction and it is the only one.
+
+### What is still open, and it is the bigger uncertainty
+
+**IRDS's loaded-path frequency is not a product clock.** `f_wireloaded` is a
+standard-logic-path metric for the technology; `f_unloaded` on the same node is 7.23 GHz, a
+ring-oscillator-style figure. Real products reach 5 GHz through deep pipelining and custom
+circuits, so an achievable product clock sits between the two and the roadmap does not say where.
+The honest replacement for "voltage-limited at 5.0 GHz" is therefore not "4.15 GHz" — it is that
+**this model cannot state a product clock ceiling**, and the anchor choice (`wireloaded` / `cpu` /
+`unloaded`) moves it by nearly 2×. `alpha` adds a further 7% (ceiling 3.96–4.25 GHz across
+1.0–1.6), checkable via `alpha_sensitivity()`.
 
 ### Consequence for the MR results
 
-The comparative results are unaffected: MR-on against MR-off at the same clock through the same
-curve cancels the voltage level entirely, and that is what the degeneracy, plateau, margin-curve
-and cliff findings rest on. What changes is that **absolute power at high clock comes down**, so
-MR's measured clock benefit was understated — and the clock *ceiling* should not be quoted from
-either curve until a product V/F relation is available.
+None. Every MR finding is a comparison at fixed clock through one curve, where the curve cancels
+entirely, and the degeneracy, plateau, margin-curve and cliff results use density rather than
+clock. The one thing to stop quoting is an absolute clock *ceiling* from either curve.

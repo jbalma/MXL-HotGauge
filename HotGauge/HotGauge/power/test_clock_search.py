@@ -259,3 +259,77 @@ def test_per_core_clock_matches_the_global_one_when_every_core_is_boosted():
     p, _, _ = scale_trace_for_clock_per_core(trace, leak, {0: 4.6, 1: 4.6}, 3.8)
     for k in ('Core0/a', 'Core1/a'):
         assert p[k][0] == pytest.approx(g[k][0])
+
+
+# ---------------------------------------------------------------------------
+# Selectable V/F source (IRDS 2024) -- the shipped table is wrong in absolute terms
+# ---------------------------------------------------------------------------
+def test_irds_and_shipped_curves_agree_on_the_COST_of_clock():
+    """The surprise, and the reason the V/F error did less damage than it looked like it would.
+
+    The pipeline never uses an absolute voltage -- it scales a McPAT trace by the RATIO
+    ``(V/V_ref)^2 (f/f_ref)`` against the trace's own clock -- so the shipped table's ~2x supply
+    voltage error CANCELS. Inside the 2024 node's valid range the two curves give dynamic
+    multipliers within 6% of each other, and IRDS is the slightly more expensive of the two.
+    So the power numbers in this study do not move; only the ceiling does.
+    """
+    from HotGauge.power.clock_search import clock_power_factors
+    from HotGauge.power.irds_vf import IRDSVFModel
+    m = IRDSVFModel(2024)
+    for f in (3.0, 3.4, 4.0, 4.1):
+        dyn_old, _, info_old = clock_power_factors(f, 3.8)
+        dyn_new, _, info_new = clock_power_factors(f, 3.8, vf_model=m)
+        assert not info_new['vf_clamped'], f
+        assert dyn_new == pytest.approx(dyn_old, rel=0.15), f
+    assert info_old['vf_source'] == 'VF_PAIRS'
+    assert info_new['vf_source'] == 'irds:2024:wireloaded'
+
+
+def test_above_the_node_ceiling_the_irds_multiplier_is_clamped_and_flagged():
+    """Past f_max the voltage cannot rise, so the multiplier stops growing and is NOT a cost --
+    it is a part that does not run. The flag is the only thing that makes it readable."""
+    from HotGauge.power.clock_search import clock_power_factors
+    from HotGauge.power.irds_vf import IRDSVFModel
+    m = IRDSVFModel(2024)
+    dyn_old, _, _ = clock_power_factors(5.0, 3.8)
+    dyn_new, _, info = clock_power_factors(5.0, 3.8, vf_model=m)
+    assert info['vf_clamped'] is True
+    assert dyn_new < dyn_old          # clamped, hence understating -- which is why it is flagged
+
+
+def test_vf_model_replaces_the_search_ceiling_too():
+    """A 'voltage-limited' verdict is only meaningful against the right ceiling. The 2024 node
+    tops out near 4.15 GHz, not the shipped table's 5.0 -- this is where the table error bit."""
+    from HotGauge.power.clock_search import find_max_sustainable_clock, VF_TABLE_MAX_GHZ
+    from HotGauge.power.irds_vf import IRDSVFModel
+    m = IRDSVFModel(2024)
+    assert m.f_max < VF_TABLE_MAX_GHZ
+    res = find_max_sustainable_clock(lambda f: {'peak_K': 300.0}, 3.0, 6.0, vf_model=m)
+    assert res['limited_by'] == 'vf_envelope'
+    assert res['voltage_limited'] is True
+    assert res['f_sustainable_GHz'] == pytest.approx(m.f_max)
+    assert res['vf_ceiling_GHz'] == pytest.approx(m.f_max)
+    assert 'IRDSVFModel' in res['vf_source']
+
+
+def test_default_vf_source_is_unchanged():
+    """Every existing result was measured through VF_PAIRS. The new option must not move them."""
+    from HotGauge.power.clock_search import find_max_sustainable_clock
+    res = find_max_sustainable_clock(lambda f: {'peak_K': 300.0}, 3.0, 6.0)
+    assert res['f_sustainable_GHz'] == pytest.approx(VF_TABLE_MAX_GHZ)
+    assert res['vf_source'] == 'VF_PAIRS'
+
+
+def test_per_core_scaler_honours_the_vf_model():
+    from HotGauge.power.clock_search import (scale_trace_for_clock_per_core,
+                                             scale_trace_for_clock)
+    from HotGauge.power.irds_vf import IRDSVFModel
+    m = IRDSVFModel(2024)
+    trace = BasicPowerTrace({'Core0/a': np.array([2.0]), 'Core1/a': np.array([2.0])}, 1.0)
+    leak = {'Core0/a': np.array([0.5]), 'Core1/a': np.array([0.5])}
+    p, _, _ = scale_trace_for_clock_per_core(trace, leak, {0: 3.2, 1: 3.2}, 3.8, vf_model=m)
+    g, _, _ = scale_trace_for_clock(trace, leak, 3.2, 3.8, vf_model=m)
+    plain, _, _ = scale_trace_for_clock(trace, leak, 3.2, 3.8)
+    for k in ('Core0/a', 'Core1/a'):
+        assert p[k][0] == pytest.approx(g[k][0])
+        assert g[k][0] != pytest.approx(plain[k][0])   # the model was used, not silently dropped

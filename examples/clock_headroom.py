@@ -99,11 +99,11 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
         # global clock.
         trace, leak_ref, scale_info = scale_trace_for_clock_per_core(
             base_trace, leak_ref_base, {args.turbo_core: f_GHz}, TRACE_REFERENCE_GHZ,
-            leakage_voltage_exponent=args.leak_v_exponent)
+            leakage_voltage_exponent=args.leak_v_exponent, vf_model=args._vf_model)
     else:
         trace, leak_ref, scale_info = scale_trace_for_clock(
             base_trace, leak_ref_base, f_GHz, TRACE_REFERENCE_GHZ,
-            leakage_voltage_exponent=args.leak_v_exponent)
+            leakage_voltage_exponent=args.leak_v_exponent, vf_model=args._vf_model)
 
     counter = {'n': 0}
     # Accumulated over every solve the MR loop makes, not just the last one -- see the same
@@ -193,6 +193,27 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
     return out
 
 
+def _parse_vf_source(spec):
+    """``'table'`` -> None (shipped VF_PAIRS); ``'irds:<year>[:<anchor>]'`` -> an IRDSVFModel.
+
+    Returning None for the default keeps the shipped curve as the literal default rather than a
+    re-implementation of it, so existing results stay bit-identical.
+    """
+    spec = (spec or 'table').strip()
+    if spec == 'table':
+        return None
+    if not spec.startswith('irds'):
+        raise SystemExit("--vf-source must be 'table' or 'irds:<year>[:<anchor>]', got %r" % spec)
+    from HotGauge.power.irds_vf import IRDSVFModel
+    parts = spec.split(':')
+    year = int(parts[1]) if len(parts) > 1 and parts[1] else 2024
+    anchor = parts[2] if len(parts) > 2 and parts[2] else 'wireloaded'
+    try:
+        return IRDSVFModel(year, anchor=anchor)
+    except ValueError as e:
+        raise SystemExit('--vf-source: {}'.format(e))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -232,6 +253,16 @@ def main():
                     help="concentrate each core's power into units matching this substring, "
                          "e.g. 'Floating Point Units' (accelerator-style core)")
     ap.add_argument('--emphasis-factor', type=float, default=4.0)
+    # The shipped table is not a curve for a modern node. Its error does NOT reach the power
+    # numbers -- only voltage ratios are used and a common factor cancels -- but its 5.0 GHz top
+    # is not a device limit, so a 'voltage-limited' verdict against it is ~20% too generous.
+    # Selecting a roadmap node replaces both the curve and the ceiling. Off by default: two
+    # curves inside one series is worse than either one alone.
+    ap.add_argument('--vf-source', default='table',
+                    help="V/F curve: 'table' (shipped VF_PAIRS, the default and what every "
+                         "existing result used) or 'irds:<year>[:<anchor>]', e.g. irds:2024 or "
+                         "irds:2031:cpu. The IRDS curve also caps the search at that node's "
+                         "overdrive limit (~4.15 GHz for 2024) instead of 5.0 GHz")
     ap.add_argument('--above-vf-table', action='store_true',
                     help='allow searching past %.1f GHz, where the V/F table clamps the voltage '
                          'and the power cost of the clock is UNDERSTATED' % VF_TABLE_MAX_GHZ)
@@ -294,6 +325,11 @@ def main():
     args.out_dir = os.path.abspath(args.out_dir or os.path.join(os.getcwd(), 'clock_headroom'))
     os.makedirs(args.out_dir, exist_ok=True)
     args.session_cache = None if args.no_server else ICESessionCache()
+    args._vf_model = _parse_vf_source(args.vf_source)
+    # An explicit --f-hi is the caller's; the DEFAULT is the shipped table's top and would be a
+    # silent 5.0 GHz ceiling on a node whose real ceiling is lower. Let the model set it.
+    if args._vf_model is not None and args.f_hi == VF_TABLE_MAX_GHZ:
+        args.f_hi = args._vf_model.f_max
 
     node_obj = NODES[args.node_model] if args.node_model else None
     if node_obj is not None:
@@ -355,6 +391,15 @@ def main():
         p_ref, TRACE_REFERENCE_GHZ, p_ref / (area_m2 * 1e6)))
     print('  limit    : peak block <= {:.0f} C, damping-verified solves only'.format(
         args.thermal_limit_C))
+    if args._vf_model is None:
+        print('  V/F      : shipped VF_PAIRS, ceiling {:.2f} GHz  (NOT a modern-node curve: it '
+              'asks ~2x the IRDS 2024 Vdd, so this ceiling is ~20% too generous)'
+              .format(VF_TABLE_MAX_GHZ))
+    else:
+        print('  V/F      : {}'.format(args._vf_model))
+        print('             ceiling {:.3f} GHz at {:.3f} V; power multipliers agree with the '
+              'shipped table to ~6% (only ratios are used, so the level cancels)'
+              .format(args._vf_model.f_max, args._vf_model.v_max))
     if args.emphasise:
         print('  design   : {!r} x{:.2f} at constant core power'.format(
             args.emphasise, args.emphasis_factor))
@@ -397,7 +442,7 @@ def main():
 
             search = find_max_sustainable_clock(
                 evaluate, args.f_lo, args.f_hi, tol_GHz=args.f_tol,
-                thermal_limit_K=thermal_limit_K,
+                thermal_limit_K=thermal_limit_K, vf_model=args._vf_model,
                 cap_at_vf_table=not args.above_vf_table)
 
             f_s = search['f_sustainable_GHz']
@@ -448,6 +493,10 @@ def main():
                    'p_ref_W': p_ref, 'trace_GHz': TRACE_REFERENCE_GHZ,
                    'thermal_limit_C': args.thermal_limit_C,
                    'leak_v_exponent': args.leak_v_exponent,
+                   'vf_source': args.vf_source,
+                   'vf_model': None if args._vf_model is None else repr(args._vf_model),
+                   'vf_ceiling_GHz': (VF_TABLE_MAX_GHZ if args._vf_model is None
+                                      else args._vf_model.f_max),
                    'turbo_core': args.turbo_core, 'turbo_background': args.turbo_background,
                    'emphasise': args.emphasise, 'emphasis_factor': args.emphasis_factor,
                    'mr_mode': args.mr_mode, 'mr_budget_W': args.mr_budget_W,
