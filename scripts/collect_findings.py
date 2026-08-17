@@ -139,6 +139,44 @@ def collect_stacked(pattern, label):
     return out
 
 
+def collect_accelerator(pattern, label):
+    """accelerator_study.py output: the GA100 die-shot floorplan.
+
+    Kept separate from the CPU families because its power split is an ASSUMPTION rather than a
+    McPAT extraction, and mixing it into a table of measured points is exactly how that
+    distinction gets lost.
+    """
+    out = []
+    for path in sorted(glob.glob(pattern)):
+        d = _load(path)
+        if not d:
+            continue
+        t = d.get('tiers') or {}
+        entry = {'source': os.path.relpath(path, REPO),
+                 'tag': os.path.basename(os.path.dirname(path)), 'family': label,
+                 'die_mm2': d.get('die_mm2'), 'n_blocks': d.get('n_blocks'),
+                 'die_power_W': d.get('die_power_W'),
+                 'density_W_per_mm2': d.get('density_W_per_mm2'),
+                 'cell_um': d.get('cell_um'), 'split_sm': d.get('split_sm'),
+                 'leak_fraction': d.get('leak_fraction'), 'leak_basis': d.get('leak_basis'),
+                 'cfm': d.get('cfm'), 'r_th': d.get('r_th'),
+                 'peak_C': t.get('peak_C'), 'peak_block': t.get('peak_block'),
+                 'peak_class': t.get('peak_class'),
+                 'plateau_within_dt_max': t.get('plateau_within_dt_max'),
+                 'clip_one_gain_K': t.get('clip_one_gain_K'),
+                 'n_needed_for_full_dt_max': t.get('n_needed_for_full_dt_max'),
+                 'diverged': d.get('diverged'), 'unconverged': d.get('unconverged'),
+                 # Loud, because this is the one family where it is true of the INPUT.
+                 'calibrated': False,
+                 'power_split_is_assumed': True,
+                 'caveat': 'areas measured from die shots; the per-class POWER split is assumed '
+                           '(GA100_POWER_SPLIT). The plateau result does not depend on it -- the '
+                           'tiles are uniform under any split -- but WHICH block is the peak does'}
+        entry['quotable'] = bool(not d.get('unconverged') and not d.get('diverged'))
+        out.append(entry)
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -157,12 +195,32 @@ def main():
         'rescue_target98': collect_mr_comparison(R('design_batch', 'rescue_*',
                                                    'mr_comparison.json'),
                                                  'rescue at target 98 C'),
-        'margin_curve': collect_mr_comparison(R('gapfill', 'margin_*', 'mr_comparison.json'),
-                                             'rescue cost vs margin demanded'),
-        'pitch': collect_mr_comparison(R('gapfill', 'spot_*', 'mr_comparison.json'),
-                                       'pixel pitch and policy'),
-        'core_scaling': collect_mr_comparison(R('gapfill', 'cores128_*',
-                                                'mr_comparison.json'), '128-core scaling'),
+        # The nextsteps re-runs supersede the gapfill copies of the same points: those were
+        # decided by the any-solve rule, which condemned them for probe failures rather than for
+        # the field they reported. Both are collected -- the tag says which -- so a reader can see
+        # that the re-measurement agreed rather than taking it on trust.
+        'margin_curve': (collect_mr_comparison(R('gapfill', 'margin_*', 'mr_comparison.json'),
+                                               'rescue cost vs margin demanded (legacy rule)')
+                         + collect_mr_comparison(R('nextsteps', 'margin_*',
+                                                   'mr_comparison.json'),
+                                                 'margin curve 1, 1.10 W/mm^2 air')
+                         + collect_mr_comparison(R('nextsteps', 'margin2_*',
+                                                   'mr_comparison.json'),
+                                                 'margin curve 2, 1.15 W/mm^2 air')
+                         + collect_mr_comparison(R('nextsteps', 'margin3_*',
+                                                   'mr_comparison.json'),
+                                                 'margin curve 3, 1.10 W/mm^2 liquid')),
+        'pitch': (collect_mr_comparison(R('gapfill', 'spot_*', 'mr_comparison.json'),
+                                        'pixel pitch and policy (legacy rule)')
+                  + collect_mr_comparison(R('nextsteps', 'pitch_*', 'mr_comparison.json'),
+                                          'pixel pitch and policy, re-verified')),
+        'core_scaling': (collect_mr_comparison(R('gapfill', 'cores128_*',
+                                                 'mr_comparison.json'), '128-core scaling')
+                         + collect_mr_comparison(R('nextsteps', 'cores128_*',
+                                                   'mr_comparison.json'),
+                                                 '128-core scaling, re-verified')),
+        'ceiling': collect_mr_comparison(R('nextsteps', 'ceiling_*', 'mr_comparison.json'),
+                                         'above the cliff'),
         'tiers': (collect_tiers(R('tiers_*', 'tiers.json'), 'tier screens')
                   + collect_tiers(R('design_batch', 'F_*', 'tiers.json'), 'dt_max roadmap')),
         'clock': (collect_clock(R('cooling_for_clock', '*', 'clock_headroom.json'),
@@ -176,14 +234,24 @@ def main():
                     + collect_stacked(R('design_batch', 'D_*', 'stacked_memory.json'),
                                       'stacked memory')
                     + collect_stacked(R('gapfill', 'D_*', 'stacked_memory.json'),
-                                      'stacked memory, deep')),
+                                      'stacked memory, deep')
+                    + collect_stacked(R('nextsteps', 'D_*', 'stacked_memory.json'),
+                                      'stacked memory, deep (coarse grid)')),
+        'accelerator': collect_accelerator(R('accel*', '*', 'accelerator_study.json'),
+                                           'GA100 floorplan')
+                       + collect_accelerator(R('accel_smoke', 'accelerator_study.json'),
+                                             'GA100 floorplan'),
     }
 
     counts, unquotable = {}, []
     for k, v in findings.items():
         if isinstance(v, list):
             counts[k] = len(v)
-            unquotable += [e.get('tag') for e in v if e.get('quotable') is False]
+            # Qualified by source, not by tag: re-runs deliberately reuse a tag so the old and new
+            # measurements of a point can be compared, so a bare tag no longer identifies a run
+            # and "margin_T95_d1.10 failed" would not say WHICH one.
+            unquotable += ['{} [{}]'.format(e.get('tag'), e.get('source'))
+                           for e in v if e.get('quotable') is False]
     findings['summary'] = {'counts': counts, 'n_failed_verification': len(unquotable),
                            'failed_verification': sorted(set(unquotable))}
 

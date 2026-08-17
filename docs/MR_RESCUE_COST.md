@@ -59,9 +59,9 @@ on this die is the whole chip; holding 98 °C means cooling the four blocks that
 numbers are right and they answer different questions, which is why quoting either alone is
 misleading.
 
-> ### The 98 °C rows are PROVISIONAL — one intermediate solve each failed verification
+> ### The 98 °C rows WERE provisional — re-runs have now confirmed them
 >
-> I first wrote this section calling them "damping-verified". They are not, and the check that
+> I first wrote this section calling them "damping-verified". They were not, and the check that
 > caught it was `scripts/collect_findings.py`, which harvests the verification status alongside
 > every value rather than trusting a summary:
 >
@@ -70,17 +70,24 @@ misleading.
 > | 1.10 @ 98 °C | 0.0112 K | **7.32 K** | 1 of 15 |
 > | 1.15 @ 98 °C | 0.0006 K | **19.85 K** | 1 of 13 |
 >
-> The *final* state of each is well converged, which is what I read and reported. But the MR
-> loop makes 13–15 solves and one of them was not, so the plan is sized partly from a
-> trajectory containing an unverified field. By this project's own rule that is not a result.
+> The *final* state of each was well converged, which is what I read and reported. But the MR
+> loop makes 13–15 solves and one of them was not, so the plan was sized partly from a trajectory
+> containing an unverified field. By this project's own rule that is not a result.
 >
-> This is the fourth revision of this number and the first where the defect was **mine reading
-> the data carelessly** rather than a solver bug — I checked `holds_target` and `peak_C` and
-> did not check `unconverged`, which is exactly the habit the machinery exists to prevent.
-> Re-runs with a larger verification budget are queued.
+> That was the fourth revision of this number and the first where the defect was **mine reading
+> the data carelessly** rather than a solver bug — I checked `holds_target` and `peak_C` and did
+> not check `unconverged`.
+>
+> **Resolved (17 August).** Two things happened. The verification rule was tightened to
+> distinguish the solve that produced the *reported field* from any solve in the loop (commit
+> `049a364`), because the searches deliberately visit unstable states to bracket an answer and
+> conflating the two condemns good results for probes behaving as designed. And the points were
+> re-run with a larger budget. Both now come back **`unconverged: False`** under the reported-field
+> rule, and the earlier 1.10 @ 98 °C figure also survived a *stricter* any-solve re-run at
+> 0.169 W removed / 0.29 W electrical / 4 blocks / peak 99.95 °C. The numbers in the table stand
+> as measured.
 
-Taking them as provisional, the shape of the claim is the one the original intuition reached by
-the wrong route: **order 0.3 W of net electrical power appears to give a 113 W die with no
+So the claim, no longer provisional: **0.29 W of net electrical power gives a 113 W die with no
 steady state a stable operating point just under its 100 °C spec.** What was wrong before was
 never the direction — it was three solver defects, then a policy choice that quietly bought 8 K
 nobody asked for, then a reporting slip.
@@ -89,6 +96,66 @@ The engineering consequence is worth stating separately: **MR's cost is extremel
 the operating margin demanded of it.** A part specified to run at its limit is cheap to rescue;
 one specified to run 8 K cooler is not. That is a system-design lever, not a device parameter,
 and it is bigger than any device parameter measured in this project.
+
+## FOURTH REVISION: the knee is real, and it moves with the operating point
+
+The 160× above is two points on a curve. Three curves have now been measured, chosen so that the
+knee has somewhere to move to if it is a property of the die rather than of a temperature.
+
+**Curve 1 — 1.10 W/mm², 88 CFM air** (uncooled peak: runaway)
+
+| MR target | peak °C | removed | electrical | blocks |
+|---|---|---|---|---|
+| 93 °C | 93.0 | 34.40 W | 59.7 W | 1126 |
+| 95 °C | 96.94 | 0.249 W | 0.434 W | 5 |
+| 97 °C | — | 0.43 W | 0.75 W | — |
+| 98 °C | 99.95 | 0.169 W | 0.294 W | 4 |
+| 99 °C | 100.99 | 0.145 W | 0.252 W | 4 |
+
+**Curve 2 — 1.15 W/mm², 88 CFM air** (harder point, same cooling)
+
+| MR target | peak °C | removed | electrical | blocks |
+|---|---|---|---|---|
+| 93 °C | 94.39 | 28.31 W | 49.11 W | 1126 |
+| 94 °C | 94.40 | 28.05 W | 48.66 W | 1126 |
+| 96 °C | 94.44 | 27.53 W | 47.76 W | 1126 |
+| 98 °C | 99.87 | 0.814 W | 1.42 W | 13 |
+
+**Curve 3 — 1.10 W/mm², liquid-class sink (R_th 0.05 K/W)** (uncooled peak **93.59 °C** — it
+holds on its own)
+
+| MR target | peak °C | removed | electrical | blocks |
+|---|---|---|---|---|
+| 93 °C | 93.00 | 0.023 W | 0.040 W | 2 |
+| 94 / 96 / 98 °C | 93.59 | **0** | **0** | **0** |
+
+### What the three say together
+
+**The knee moved, and it moved the way the plateau predicts.** On curve 1 it sits near 94 °C; on
+curve 2, at 0.05 W/mm² more, it sits between 96 and 98 °C. In both cases the jump is the same
+mechanism: `blocks` goes from 4–13 to **1126** in one step. Below the knee the demanded target
+dips into the thermal plateau, and cooling *anything* means cooling *everything*.
+
+So the knee is **not an absolute temperature** and must not be quoted as one. It tracks the top
+of the block-temperature distribution, which moves with density. That is the same degeneracy
+result arriving from a third direction, and it is the sharpest form of it: the cost of MR is set
+by how many blocks sit between the operating point and the target, and nothing else.
+
+**Curve 3 is the one worth arguing about.** At the same 1.10 W/mm², a liquid-class sink puts the
+uncooled peak at 93.59 °C — under the 100 °C limit, no runaway, no rescue required. Targets of
+94, 96 and 98 °C engage **zero blocks**. Better cooling did not make MR more valuable; it made MR
+**irrelevant**, because the failure MR was rescuing no longer happens.
+
+That is a genuinely uncomfortable result for the technology and it should be stated plainly:
+across these three curves, MR pays only in a **narrow band** — a die hot enough to be unstable on
+the cooling it actually has, and specified to run close enough to its limit that the target stays
+out of the plateau. Move either way and it goes to zero: cool the die better and there is nothing
+to rescue; demand more margin and the price rises 30–160×.
+
+The cliff work bounds the other edge of that band. At 1.17 W/mm² the rescue costs **14.98 W
+removed / 25.99 W electrical over 92 blocks** — 18× the 1.15 figure. So the band in density is
+roughly 1.05 (below which nothing is needed on air) to somewhere under 1.17 (above which the
+price has left the "essentially free" regime).
 
 ## The earlier measurement (target 92 °C)
 

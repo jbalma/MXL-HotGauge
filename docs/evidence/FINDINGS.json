@@ -24,6 +24,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -49,6 +51,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -74,6 +78,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -99,6 +105,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -124,6 +132,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -149,6 +159,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -174,6 +186,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -199,6 +213,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -224,6 +240,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -249,6 +267,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -274,6 +294,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -299,6 +321,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     }
   ],
@@ -326,6 +350,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -351,6 +377,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -376,6 +404,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -401,6 +431,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -426,6 +458,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -451,6 +485,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -476,6 +512,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -501,6 +539,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -526,6 +566,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -551,6 +593,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -576,6 +620,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -601,6 +647,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
@@ -626,6 +674,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -651,6 +701,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -676,6 +728,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -701,6 +755,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -726,6 +782,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -751,6 +809,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
@@ -776,6 +836,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -801,6 +863,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -826,6 +890,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -851,6 +917,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -876,6 +944,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -901,6 +971,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
@@ -926,6 +998,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -951,6 +1025,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
@@ -976,6 +1052,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
@@ -1001,6 +1079,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
@@ -1026,6 +1106,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
@@ -1051,6 +1133,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -1076,6 +1160,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -1101,6 +1187,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -1126,6 +1214,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -1151,6 +1241,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
@@ -1176,6 +1268,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -1201,6 +1295,8 @@
         "plan_is_minimum": null,
         "reason": null
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     }
   ],
@@ -1228,6 +1324,8 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
@@ -1253,6 +1351,8 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     }
   ],
@@ -1260,7 +1360,7 @@
     {
       "source": "results/gapfill/margin_T93_d1.10/mr_comparison.json",
       "tag": "margin_T93_d1.10",
-      "family": "rescue cost vs margin demanded",
+      "family": "rescue cost vs margin demanded (legacy rule)",
       "density": 1.1,
       "cfm": 88.0,
       "r_th": null,
@@ -1280,12 +1380,14 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that holds the target, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
       "source": "results/gapfill/margin_T94_d1.10/mr_comparison.json",
       "tag": "margin_T94_d1.10",
-      "family": "rescue cost vs margin demanded",
+      "family": "rescue cost vs margin demanded (legacy rule)",
       "density": 1.1,
       "cfm": 88.0,
       "r_th": null,
@@ -1305,12 +1407,14 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that holds the target, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
       "source": "results/gapfill/margin_T95_d1.10/mr_comparison.json",
       "tag": "margin_T95_d1.10",
-      "family": "rescue cost vs margin demanded",
+      "family": "rescue cost vs margin demanded (legacy rule)",
       "density": 1.1,
       "cfm": 88.0,
       "r_th": null,
@@ -1330,12 +1434,14 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that holds the target, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
       "source": "results/gapfill/margin_T96_d1.10/mr_comparison.json",
       "tag": "margin_T96_d1.10",
-      "family": "rescue cost vs margin demanded",
+      "family": "rescue cost vs margin demanded (legacy rule)",
       "density": 1.1,
       "cfm": 88.0,
       "r_th": null,
@@ -1355,12 +1461,14 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that holds the target, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
       "source": "results/gapfill/margin_T97_d1.10/mr_comparison.json",
       "tag": "margin_T97_d1.10",
-      "family": "rescue cost vs margin demanded",
+      "family": "rescue cost vs margin demanded (legacy rule)",
       "density": 1.1,
       "cfm": 88.0,
       "r_th": null,
@@ -1380,12 +1488,14 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that holds the target, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
       "source": "results/gapfill/margin_T99_d1.10/mr_comparison.json",
       "tag": "margin_T99_d1.10",
-      "family": "rescue cost vs margin demanded",
+      "family": "rescue cost vs margin demanded (legacy rule)",
       "density": 1.1,
       "cfm": 88.0,
       "r_th": null,
@@ -1405,14 +1515,313 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
+    },
+    {
+      "source": "results/nextsteps/margin_T95_d1.10/mr_comparison.json",
+      "tag": "margin_T95_d1.10",
+      "family": "margin curve 1, 1.10 W/mm^2 air",
+      "density": 1.1,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 96.9396911621094,
+        "heat_removed_W": 0.249071544450423,
+        "p_mr_net_W": 0.43409612032788014,
+        "n_targets": 5,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/margin_T98_d1.10/mr_comparison.json",
+      "tag": "margin_T98_d1.10",
+      "family": "margin curve 1, 1.10 W/mm^2 air",
+      "density": 1.1,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 99.94808349609377,
+        "heat_removed_W": 0.1685567478492534,
+        "p_mr_net_W": 0.2937703319658417,
+        "n_targets": 4,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/margin_T99_d1.10/mr_comparison.json",
+      "tag": "margin_T99_d1.10",
+      "family": "margin curve 1, 1.10 W/mm^2 air",
+      "density": 1.1,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 100.99447021484377,
+        "heat_removed_W": 0.14480500345936956,
+        "p_mr_net_W": 0.2523744346006156,
+        "n_targets": 4,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/margin2_T93_d1.15/mr_comparison.json",
+      "tag": "margin2_T93_d1.15",
+      "family": "margin curve 2, 1.15 W/mm^2 air",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 94.3874450683594,
+        "heat_removed_W": 28.308746199229567,
+        "p_mr_net_W": 49.10699623167878,
+        "n_targets": 1126,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that holds the target, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/margin2_T94_d1.15/mr_comparison.json",
+      "tag": "margin2_T94_d1.15",
+      "family": "margin curve 2, 1.15 W/mm^2 air",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 94.40334472656252,
+        "heat_removed_W": 28.049228745325824,
+        "p_mr_net_W": 48.657161305537585,
+        "n_targets": 1126,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that holds the target, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/margin2_T96_d1.15/mr_comparison.json",
+      "tag": "margin2_T96_d1.15",
+      "family": "margin curve 2, 1.15 W/mm^2 air",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 94.43520507812502,
+        "heat_removed_W": 27.530193837518276,
+        "p_mr_net_W": 47.7574914532552,
+        "n_targets": 1126,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that holds the target, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/margin2_T98_d1.15/mr_comparison.json",
+      "tag": "margin2_T98_d1.15",
+      "family": "margin curve 2, 1.15 W/mm^2 air",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 99.86638793945315,
+        "heat_removed_W": 0.8141911002971134,
+        "p_mr_net_W": 1.4190187748035408,
+        "n_targets": 13,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/margin3_T93_liquid/mr_comparison.json",
+      "tag": "margin3_T93_liquid",
+      "family": "margin curve 3, 1.10 W/mm^2 liquid",
+      "density": 1.1,
+      "cfm": 88.0,
+      "r_th": 0.05,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 93.58748779296877
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 92.99724731445315,
+        "heat_removed_W": 0.023027117965169205,
+        "p_mr_net_W": 0.04013297702500919,
+        "n_targets": 2,
+        "holds_target": null,
+        "plan_is_minimum": false,
+        "reason": "descent converged on the target; this plan holds the target but the stability boundary was never probed, so it is not known to be the smallest plan that keeps a steady state"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/margin3_T94_liquid/mr_comparison.json",
+      "tag": "margin3_T94_liquid",
+      "family": "margin curve 3, 1.10 W/mm^2 liquid",
+      "density": 1.1,
+      "cfm": 88.0,
+      "r_th": 0.05,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 93.58748779296877
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 93.58748779296877,
+        "heat_removed_W": 0.0,
+        "p_mr_net_W": 0.0,
+        "n_targets": 0,
+        "holds_target": null,
+        "plan_is_minimum": null,
+        "reason": "nothing above target; no cooling needed"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/margin3_T96_liquid/mr_comparison.json",
+      "tag": "margin3_T96_liquid",
+      "family": "margin curve 3, 1.10 W/mm^2 liquid",
+      "density": 1.1,
+      "cfm": 88.0,
+      "r_th": 0.05,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 93.58748779296877
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 93.58748779296877,
+        "heat_removed_W": 0.0,
+        "p_mr_net_W": 0.0,
+        "n_targets": 0,
+        "holds_target": null,
+        "plan_is_minimum": null,
+        "reason": "nothing above target; no cooling needed"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/margin3_T98_liquid/mr_comparison.json",
+      "tag": "margin3_T98_liquid",
+      "family": "margin curve 3, 1.10 W/mm^2 liquid",
+      "density": 1.1,
+      "cfm": 88.0,
+      "r_th": 0.05,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 93.58748779296877
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 93.58748779296877,
+        "heat_removed_W": 0.0,
+        "p_mr_net_W": 0.0,
+        "n_targets": 0,
+        "holds_target": null,
+        "plan_is_minimum": null,
+        "reason": "nothing above target; no cooling needed"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
     }
   ],
   "pitch": [
     {
       "source": "results/gapfill/spot_s100_dilute/mr_comparison.json",
       "tag": "spot_s100_dilute",
-      "family": "pixel pitch and policy",
+      "family": "pixel pitch and policy (legacy rule)",
       "density": 1.15,
       "cfm": 88.0,
       "r_th": null,
@@ -1432,12 +1841,14 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
       "source": "results/gapfill/spot_s100_exclude/mr_comparison.json",
       "tag": "spot_s100_exclude",
-      "family": "pixel pitch and policy",
+      "family": "pixel pitch and policy (legacy rule)",
       "density": 1.15,
       "cfm": 88.0,
       "r_th": null,
@@ -1457,12 +1868,14 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
       "source": "results/gapfill/spot_s10_dilute/mr_comparison.json",
       "tag": "spot_s10_dilute",
-      "family": "pixel pitch and policy",
+      "family": "pixel pitch and policy (legacy rule)",
       "density": 1.15,
       "cfm": 88.0,
       "r_th": null,
@@ -1482,12 +1895,14 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
       "source": "results/gapfill/spot_s10_exclude/mr_comparison.json",
       "tag": "spot_s10_exclude",
-      "family": "pixel pitch and policy",
+      "family": "pixel pitch and policy (legacy rule)",
       "density": 1.15,
       "cfm": 88.0,
       "r_th": null,
@@ -1507,12 +1922,14 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
       "source": "results/gapfill/spot_s1_dilute/mr_comparison.json",
       "tag": "spot_s1_dilute",
-      "family": "pixel pitch and policy",
+      "family": "pixel pitch and policy (legacy rule)",
       "density": 1.15,
       "cfm": 88.0,
       "r_th": null,
@@ -1532,12 +1949,14 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
     },
     {
       "source": "results/gapfill/spot_s1_exclude/mr_comparison.json",
       "tag": "spot_s1_exclude",
-      "family": "pixel pitch and policy",
+      "family": "pixel pitch and policy (legacy rule)",
       "density": 1.15,
       "cfm": 88.0,
       "r_th": null,
@@ -1557,7 +1976,171 @@
         "plan_is_minimum": true,
         "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
+    },
+    {
+      "source": "results/nextsteps/pitch_s100_dilute/mr_comparison.json",
+      "tag": "pitch_s100_dilute",
+      "family": "pixel pitch and policy, re-verified",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 99.86638793945315,
+        "heat_removed_W": 0.8141911002971134,
+        "p_mr_net_W": 1.4660287773394884,
+        "n_targets": 13,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/pitch_s100_exclude/mr_comparison.json",
+      "tag": "pitch_s100_exclude",
+      "family": "pixel pitch and policy, re-verified",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 99.85653076171877,
+        "heat_removed_W": 0.8030763062588216,
+        "p_mr_net_W": 1.3996472766225176,
+        "n_targets": 6,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/pitch_s10_dilute/mr_comparison.json",
+      "tag": "pitch_s10_dilute",
+      "family": "pixel pitch and policy, re-verified",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 99.86638793945315,
+        "heat_removed_W": 0.8141911002971134,
+        "p_mr_net_W": 1.4190187748035408,
+        "n_targets": 13,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/pitch_s10_exclude/mr_comparison.json",
+      "tag": "pitch_s10_exclude",
+      "family": "pixel pitch and policy, re-verified",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 99.86187133789065,
+        "heat_removed_W": 0.8168699419745085,
+        "p_mr_net_W": 1.4236876131555718,
+        "n_targets": 12,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/pitch_s1_dilute/mr_comparison.json",
+      "tag": "pitch_s1_dilute",
+      "family": "pixel pitch and policy, re-verified",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 99.86638793945315,
+        "heat_removed_W": 0.8141911002971134,
+        "p_mr_net_W": 1.4190187748035408,
+        "n_targets": 13,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/nextsteps/pitch_s1_exclude/mr_comparison.json",
+      "tag": "pitch_s1_exclude",
+      "family": "pixel pitch and policy, re-verified",
+      "density": 1.15,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 99.86638793945315,
+        "heat_removed_W": 0.8141911002971134,
+        "p_mr_net_W": 1.4190187748035408,
+        "n_targets": 13,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
     }
   ],
   "core_scaling": [
@@ -1584,6 +2167,8 @@
         "plan_is_minimum": null,
         "reason": "nothing above target; no cooling needed"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": true
     },
     {
@@ -1609,7 +2194,65 @@
         "plan_is_minimum": true,
         "reason": "no cooling needed to hold the target"
       },
+      "verification_scope": "any-solve (legacy)",
+      "n_probe_solves_unconverged": null,
       "quotable": false
+    },
+    {
+      "source": "results/nextsteps/cores128_d1.00/mr_comparison.json",
+      "tag": "cores128_d1.00",
+      "family": "128-core scaling, re-verified",
+      "density": 1.0,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null,
+        "heat_removed_W": null,
+        "p_mr_net_W": null,
+        "n_targets": null,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "no cooling needed to hold the target"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 1,
+      "quotable": true
+    }
+  ],
+  "ceiling": [
+    {
+      "source": "results/nextsteps/ceiling_d1.17/mr_comparison.json",
+      "tag": "ceiling_d1.17",
+      "family": "above the cliff",
+      "density": 1.17,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": true,
+        "unconverged": false,
+        "peak_C": null
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 99.9769226074219,
+        "heat_removed_W": 14.976706948406104,
+        "p_mr_net_W": 25.994179018444115,
+        "n_targets": 92,
+        "holds_target": true,
+        "plan_is_minimum": true,
+        "reason": "minimum plan that holds the target, bracketed by bisection"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
     }
   ],
   "tiers": [
@@ -2720,39 +3363,70 @@
       "quotable": true
     }
   ],
+  "accelerator": [
+    {
+      "source": "results/accel_smoke/accelerator_study.json",
+      "tag": "accel_smoke",
+      "family": "GA100 floorplan",
+      "die_mm2": 826.0,
+      "n_blocks": 367,
+      "die_power_W": 400.0,
+      "density_W_per_mm2": 0.48426150121065376,
+      "cell_um": 100.0,
+      "split_sm": true,
+      "leak_fraction": 0.25,
+      "leak_basis": "by power",
+      "cfm": 88.0,
+      "r_th": null,
+      "peak_C": 88.05632934570315,
+      "peak_block": "HBM_PHY_B0",
+      "peak_class": "hbm_phy",
+      "plateau_within_dt_max": 332,
+      "clip_one_gain_K": 0.039947509765625,
+      "n_needed_for_full_dt_max": 332,
+      "diverged": false,
+      "unconverged": false,
+      "calibrated": false,
+      "power_split_is_assumed": true,
+      "caveat": "areas measured from die shots; the per-class POWER split is assumed (GA100_POWER_SPLIT). The plateau result does not depend on it -- the tiles are uniform under any split -- but WHICH block is the peak does",
+      "quotable": true
+    }
+  ],
   "summary": {
     "counts": {
       "cliff": 12,
       "overnight3": 36,
       "rescue_target98": 2,
-      "margin_curve": 6,
-      "pitch": 6,
-      "core_scaling": 2,
+      "margin_curve": 17,
+      "pitch": 12,
+      "core_scaling": 3,
+      "ceiling": 1,
       "tiers": 18,
       "clock": 28,
-      "stacked": 5
+      "stacked": 5,
+      "accelerator": 1
     },
     "n_failed_verification": 19,
     "failed_verification": [
-      "cores128_d1.00",
-      "margin_T95_d1.10",
-      "margin_T99_d1.10",
-      "p2_ceiling_d1.17",
-      "p3_target_T78_d1.12",
-      "p4_spot_s100_dilute",
-      "p4_spot_s10_dilute",
-      "p4_spot_s10_exclude",
-      "p4_spot_s1_dilute",
-      "p4_spot_s1_exclude",
-      "p5_cores128_d1.00",
-      "rescue_d1.10",
-      "rescue_d1.15",
-      "spot_s100_dilute",
-      "spot_s100_exclude",
-      "spot_s10_dilute",
-      "spot_s10_exclude",
-      "spot_s1_dilute",
-      "spot_s1_exclude"
+      "cores128_d1.00 [results/gapfill/cores128_d1.00/mr_comparison.json]",
+      "margin_T95_d1.10 [results/gapfill/margin_T95_d1.10/mr_comparison.json]",
+      "margin_T99_d1.10 [results/gapfill/margin_T99_d1.10/mr_comparison.json]",
+      "p2_ceiling_d1.17 [results/overnight3/p2_ceiling_d1.17/mr_comparison.json]",
+      "p3_target_T78_d1.12 [results/overnight3/p3_target_T78_d1.12/mr_comparison.json]",
+      "p4_spot_s100_dilute [results/overnight3/p4_spot_s100_dilute/mr_comparison.json]",
+      "p4_spot_s10_dilute [results/overnight3/p4_spot_s10_dilute/mr_comparison.json]",
+      "p4_spot_s10_exclude [results/overnight3/p4_spot_s10_exclude/mr_comparison.json]",
+      "p4_spot_s1_dilute [results/overnight3/p4_spot_s1_dilute/mr_comparison.json]",
+      "p4_spot_s1_exclude [results/overnight3/p4_spot_s1_exclude/mr_comparison.json]",
+      "p5_cores128_d1.00 [results/overnight3/p5_cores128_d1.00/mr_comparison.json]",
+      "rescue_d1.10 [results/design_batch/rescue_d1.10/mr_comparison.json]",
+      "rescue_d1.15 [results/design_batch/rescue_d1.15/mr_comparison.json]",
+      "spot_s100_dilute [results/gapfill/spot_s100_dilute/mr_comparison.json]",
+      "spot_s100_exclude [results/gapfill/spot_s100_exclude/mr_comparison.json]",
+      "spot_s10_dilute [results/gapfill/spot_s10_dilute/mr_comparison.json]",
+      "spot_s10_exclude [results/gapfill/spot_s10_exclude/mr_comparison.json]",
+      "spot_s1_dilute [results/gapfill/spot_s1_dilute/mr_comparison.json]",
+      "spot_s1_exclude [results/gapfill/spot_s1_exclude/mr_comparison.json]"
     ]
   }
 }
