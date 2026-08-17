@@ -764,3 +764,35 @@ def test_the_restored_plan_is_a_solve_that_HELD_not_merely_the_previous_iterate(
         assert sum(res['plan'].values()) >= 4.0    # a plan that actually held
     else:
         assert res['plan_holds_target'] is False   # and it must say so rather than imply success
+
+
+def test_an_unusable_field_is_a_failed_solve_not_a_cool_die():
+    """Third layer of the same bug family, and the subtlest.
+
+    ``_relax_plan_toward_target`` skips any block whose temperature it cannot read -- NaN, or at
+    the floor. If the solve returns a field like that for EVERY block the relaxation returns an
+    empty plan, and the descent used to read the empty plan as "nothing wants cooling". On the
+    128-core / 1.00 W/mm^2 point that produced a confident "no plan held the target" after only
+    three solves, which is a claim about microrefrigeration derived from a field that did not
+    exist.
+
+    An unusable field must be treated as a failed solve, exactly like divergence.
+    """
+    from HotGauge.thermal.microrefrigeration import run_mr_clipping, MRParams
+
+    target_K = 273.15 + 98.0
+
+    def solve(trace):
+        # Converged as far as the status is concerned, but nothing above the floor.
+        return {'B0': np.array([float('nan')])}
+
+    geom = {'B0': {'area_mm2': 4.0, 'min_dim_um': 2000.0}}
+    params = MRParams(target_K=target_K, h_max=10.0, dt_max_K=10.0)
+    trace = BasicPowerTrace({'B0': np.array([20.0])}, 1.0)
+
+    res = run_mr_clipping(trace, solve, geom, params, name_map=lambda u: u,
+                          status_fn=lambda: {'diverged': False}, plan_mode='envelope',
+                          max_iter=12)
+    assert res['plan_holds_target'] is False
+    assert 'no usable temperature field' in res['reason']
+    assert 'no cooling needed' not in res['reason']

@@ -628,7 +628,11 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
     history.append({'iter': 0, 'peak_K': peak, 'heat_removed_W': float(sum(plan.values())),
                     'max_plan_change_W': float('inf'), 'stage': 'full envelope'})
 
-    if st.get('diverged'):
+    # ``peak != peak`` is a NaN test: the solve returned no block above the floor, so the field is
+    # unusable. That is a FAILED solve, not a cool die -- and it must be caught here, because
+    # _relax_plan_toward_target skips every block it cannot read a temperature for and so returns
+    # an empty plan, which the descent would then interpret as "no cooling wanted".
+    if st.get('diverged') or peak != peak:
         # The strongest statement this model can make about MR at an operating point: even at
         # full device capability the coupled system has no steady state.
         return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
@@ -637,7 +641,10 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                 'temp_trace_diverged': True,
                 'plan_is_minimum': False, 'plan_holds_target': False,
                 'accounting': mr_accounting(plan, params, detail=detail),
-                'reason': 'envelope insufficient: no steady state even at full MR capability'}
+                'reason': ('envelope insufficient: no steady state even at full MR capability'
+                           if st.get('diverged') else
+                           'envelope insufficient: the solve at full MR capability returned no '
+                           'usable temperature field')}
 
     if base_temps is not None:
         sens.update(estimate_sensitivity(base_temps, temps, plan))
@@ -734,7 +741,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                         'max_plan_change_W': delta_plan, 'stage': 'descent'})
         last_holding = _remember(plan, temps, st, peak) or last_holding
 
-        if st.get('diverged'):
+        if st.get('diverged') or peak != peak:
             # Walked past the feasible boundary. Do NOT stop here: "the last plan that held"
             # depends on the step size that got us here, which is exactly the iteration-count
             # dependence this rewrite exists to remove (the plan drifted 0.615 -> 0.335 W at
