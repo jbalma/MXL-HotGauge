@@ -158,10 +158,113 @@ instability* — 290 W of die stabilised per watt removed. On this die there is 
 arrest. **The same geometry that makes an accelerator degenerate also makes it stable**, so both of
 MR's routes to value close at once, for the same reason.
 
+## CORRECTION (18 August): a realistic kernel falsifies the headline above
+
+Everything above was measured with activity **uniform within each block class**. That was a
+deliberate control — it means any hotspot came from geometry rather than from an imbalance assumed
+into the input — and it is also the *least* favourable input microrefrigeration could be given. So
+the next step was to attack the conclusion with the shapes most likely to break it. One of them
+does.
+
+### I was measuring the wrong thing
+
+Clip-one gain — what clipping the single hottest block buys — stays small under every kernel
+tried, and I read that as "no hotspot". It is the wrong metric on this die. It stays small because
+the **active tiles are mutually degenerate with each other**: they are identical, so clipping one
+leaves its twins at the same temperature. What a rescue actually has to pay for is the *number of
+blocks in the plateau*.
+
+| | peak °C | plateau | blocks for full 10 K | gain from clipping 10 |
+|---|---|---|---|---|
+| uniform, 400 W (the control) | 88.06 | 332 | 332 | 1.43 K |
+| uniform, 700 W | 127.85 | 170 | 170 | 2.50 K |
+| **8 of 128 SMs active, 700 W** | **110.61** | **9** | **9** | **10.00 K — the full device** |
+
+Under a concentrated kernel on a 700 W part the die is **over its limit** *and* **ten blocks
+realise the entire device capability**, against 332 blocks for 1.43 K on the uniform die. That is
+a **37× reduction in what a full rescue must cover**, at an operating point that genuinely needs
+one. The claim that hotspot MR is structurally wrong for accelerators does not survive it.
+
+### The occupancy ladder
+
+400 W, 88 CFM air, contiguous placement. Every point damping-verified.
+
+| active SMs | die W | peak °C | plateau | clip-one | clip-10 |
+|---|---|---|---|---|---|
+| 1 | 187 | 68.78 | 29 | 1.595 K | 5.42 K |
+| 2 | 191 | 72.41 | 16 | **2.244 K (22%)** | 8.30 K |
+| 4 | 198 | 75.13 | 10 | 0.027 K | 10.00 K |
+| 8 | 211 | 78.21 | 18 | 0.238 K | 6.02 K |
+| 16 | 238 | 81.02 | 38 | 0.028 K | 0.45 K |
+| 32 | 292 | 92.64 | 55 | 0.432 K | 0.69 K |
+| 64 | 400 | **104.56** | 86 | 0.441 K | 0.87 K |
+| 128 (uniform) | 400 | 88.06 | 332 | 0.040 K | 1.43 K |
+
+Note the 64-SM row: **the same 400 W as the uniform case produces a 16.5 K hotter die** (104.56 vs
+88.06 °C) purely because the power is concentrated into half the die. Concentration alone takes an
+in-spec part out of spec.
+
+### The trade that limits it, stated before the runs and confirmed by them
+
+**MR's leverage peaks where the die is cold.** Clip-one is best at 2 active SMs — 2.244 K, 22% of
+the device — and the die is at 72.4 °C there, nearly thirty kelvin below its limit. The mechanism
+is not subtle: idling tiles is what creates the concentration, and idling tiles is also what takes
+the power out. You cannot have both from occupancy alone.
+
+Only raising total power gets both, which is what the 700 W points do: 110.61 °C *and* a 9-block
+plateau. So the operating point where MR matters on an accelerator is **a high-TDP part running a
+low-occupancy kernel** — not an exotic case, and exactly the tail-effect and small-grid regime real
+GPUs spend real time in.
+
+### The two shapes that stayed negative
+
+* **memory_bound** — 64.65 °C, 171-block plateau, clip-one 0.188 K. The interface classes are hot
+  *together*, not one of them alone, and stalling the SMs takes so much power out that the die is
+  cold. No.
+* **tensor** (power moved from each L1 array into its own datapath at constant die power) — plateau
+  332 → 320, clip-one 0.040 → 0.089 K. Pure intra-tile concentration moves almost nothing. No.
+
+### Robustness
+
+The result is not an artefact of the assumptions that could most easily have manufactured it:
+
+| variant | plateau | clip-one | clip-10 |
+|---|---|---|---|
+| 8 active, boost ×1.9 (default) | 18 | 0.238 K | 6.02 K |
+| boost ×1.3 | 37 | 0.511 K | 4.41 K |
+| boost ×2.5 | 15 | 0.232 K | 8.72 K |
+| idle fraction 0.0 (vs 0.10) | 18 | 0.202 K | 6.39 K |
+| scattered placement | 40 | 0.671 K | 2.50 K |
+
+Scattered placement is the informative control: spreading the same 8 active tiles across the die
+widens the plateau 18 → 40 and halves clip-10, which separates *concentration* from *occupancy* —
+it is the tiles being adjacent that matters, not merely that few of them run.
+
+The boost cap deserves its own note because it is load-bearing. I tried to derive it from the IRDS
+V/F curve and **it does not transfer**: that curve is anchored on the node's 3.86 GHz wireloaded
+logic path, and asked for a 1.4 GHz GPU clock it extrapolates to 0.264 V against a 0.70 V nominal,
+which real A100 silicon does not do. A GPU's low clock is a wide, wire-dominated design choice, not
+a logic path coasting near threshold. `sm_boost_power_ratio` still computes it and returns
+`extrapolated`/`usable` flags saying not to use it. The cap is a stated assumption of 1.9, swept
+above.
+
+### What is still open on this
+
+The plateau being 9 blocks says a rescue is *cheap to cover*; it does not say how many **watts** it
+costs. That needs the real MR loop rather than the tier proxy, and those runs are in flight
+(`scripts/accel_mr_batch.sh`), priced against uniform controls at matched power so the kernel is
+the only difference. Until they land, the corrected claim is bounded:
+
+> **Hotspot MR is structurally wrong for a *uniformly loaded* accelerator, and that is most of what
+> an accelerator does.** Under a low-occupancy kernel on a high-TDP part it has a real target — a
+> 9-block plateau on a die 10 K over its limit — and whether it is worth buying there is a question
+> about watts that is not yet answered.
+
 ## What this means for microrefrigeration
 
-**Hotspot MR is structurally the wrong tool for an accelerator**, and the two independent arguments
-land on the same side:
+**Hotspot MR is structurally the wrong tool for a *uniformly loaded* accelerator** — the two
+arguments below land on the same side, and both were measured on the uniform control. See the
+correction above: neither survives a low-occupancy kernel on a high-TDP part.
 
 1. **No hotspot to clip.** 332 of 367 blocks within dt_max of the peak; clipping one buys 0.4% of
    the device's capability, rising only to 2.3% when driven to 1.15 W/mm². The mechanism needs a
