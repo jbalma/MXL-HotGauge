@@ -178,7 +178,7 @@ def die_block_temps(tflp_path_or_dict, t_floor_K=200.0):
 
 
 def die_power_of_trace(trace, floorplan, tech_node, num_cores=8, core_sources=None,
-                       detail=False):
+                       detail=False, already_dice_named=False):
     """Power [W] that 3D-ICE actually simulates -- i.e. that lands on a real floorplan block.
 
     Neither the raw McPAT sum nor the raw ``prepare_dice_trace`` sum is correct:
@@ -201,6 +201,7 @@ def die_power_of_trace(trace, floorplan, tech_node, num_cores=8, core_sources=No
     """
     from HotGauge.thermal.ICE import Floorplan
     dice = prepare_dice_trace(trace, floorplan, tech_node, num_cores=num_cores,
+                              already_dice_named=already_dice_named,
                               core_sources=core_sources)
     flp = floorplan if hasattr(floorplan, 'elements') else Floorplan.from_file(floorplan)
     blocks = {e.name for e in flp.elements}

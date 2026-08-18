@@ -163,8 +163,12 @@ class Point(object):
         last = getattr(solve, 'last', None) or {}
         p_die = None
         if last.get('power_trace') is not None and not diverged:
+            # already_dice_named has to travel here too: this is a SECOND route into
+            # prepare_dice_trace, and it crashed on 'Processor/Total L3s' long after the solve
+            # itself had succeeded -- a die with no cores has no L3 to split across them.
             p_die = die_power_of_trace(last['power_trace'], self.flp, a.tech_node,
-                                       num_cores=self.n_cores)
+                                       num_cores=self.n_cores,
+                                       already_dice_named=self.already_dice_named)
 
         return {'cfm': float(cfm), 'mr': bool(use_mr),
                 'peak_C': None if peak_K is None else peak_K - 273.15,
