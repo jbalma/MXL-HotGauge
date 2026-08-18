@@ -61,6 +61,7 @@ import logging
 import numpy as np
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
+_REPO = os.path.dirname(_HERE)
 sys.path.insert(0, os.path.join(_HERE, '..', 'HotGauge'))
 
 from HotGauge.power import BasicPowerTrace, LeakageModel
@@ -73,8 +74,12 @@ from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power, replica
 from HotGauge.thermal.sink_models import (BaffledFinSink, render_stack_with_sink,
                                           chip_area_m2_from_floorplan, simscale_fan_power,
                                           simscale_beta, simscale_alpha)
-from HotGauge.thermal.ice_server import ICESessionCache
+from HotGauge.thermal.ice_server import ICESessionCache, shared_cache
 from HotGauge.thermal.microrefrigeration import MRParams, run_mr_clipping, mr_accounting
+from HotGauge.thermal.stack_models import coarsen_stack_grid
+from HotGauge.thermal.accelerator_floorplan import (ga100_geometry, ga100_floorplan,
+                                                    ga100_block_powers, block_areas_mm2,
+                                                    kernel_activity, KERNELS)
 
 LOGGER = logging.getLogger('cop_breakeven')
 T_FLOOR_K = 273.15
@@ -88,7 +93,7 @@ class Point(object):
     """One coupled solve at a given airflow, with or without MR."""
 
     def __init__(self, args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref,
-                 area_m2, n_cores):
+                 area_m2, n_cores, already_dice_named=False, cell_um=None):
         self.__dict__.update(locals())
         del self.self
 
@@ -97,6 +102,8 @@ class Point(object):
         sink = BaffledFinSink(cfm, self.area_m2, ambient_K=a.ambient_K)
         stack = render_stack_with_sink(get_stack_template(a.stack), sink,
                                        os.path.join(a.out_dir, 'stacks', tag + '.stk'))
+        if self.cell_um:
+            coarsen_stack_grid(stack, self.cell_um)
         counter = {'n': 0}
         ver = {'n_solves': 0, 'n_unconverged': 0}
 
@@ -109,7 +116,8 @@ class Point(object):
                                                            'it{:02d}'.format(counter['n'])),
                                  initial_temp=a.ambient_K, num_cores=self.n_cores,
                                  single_thread=True, mode='steady',
-                                 session_cache=a.session_cache),
+                                 session_cache=a.session_cache,
+                                 already_dice_named=self.already_dice_named),
                 model=self.leak_model, T_ref=self.t_ref, num_cores=self.n_cores,
                 tol_K=a.tol, max_iter=a.max_iter, relax=a.relax, t_floor_K=T_FLOOR_K,
                 bridge_aggregates=True, verify=True)
@@ -136,11 +144,15 @@ class Point(object):
             unconv = bool(res.get('result_unconverged'))
             diverged = bool(res.get('temp_trace_diverged'))
             holds = res.get('plan_holds_target')
+            minimal = res.get('plan_is_minimum')
+            mr_reason = res.get('reason')
+            dt_bound = res.get('dt_max_bound')
         else:
             temps = solve(self.trace)
             acc = mr_accounting({}, mr)
             last = getattr(solve, 'last', None) or {}
-            unconv, diverged, holds = bool(last.get('unconverged')), bool(last.get('diverged')), None
+            unconv, diverged = bool(last.get('unconverged')), bool(last.get('diverged'))
+            holds = minimal = mr_reason = dt_bound = None
 
         peak_K = None
         if temps and not diverged:
@@ -168,15 +180,73 @@ class Point(object):
                 'net_generating': bool(acc.get('net_generating', False)),
                 'n_targets': len(res['plan']) if res and res.get('plan') else 0,
                 'diverged': diverged, 'unconverged': unconv, 'holds_target': holds,
+                # Direction of error matters and it is NOT the same on both paths. A truncated
+                # BASELINE descent is still building the plan, so it understates cost. A truncated
+                # ENVELOPE descent starts at full device capability and relaxes down, so it
+                # OVERSTATES it -- which is how a target-98 rescue that the margin curve prices at
+                # 0.29 W over 4 blocks came back at 131 W over 1126.
+                'plan_is_minimum': minimal, 'mr_reason': mr_reason, 'dt_max_bound': dt_bound,
                 'n_solves': ver['n_solves'], 'n_unconverged_solves': ver['n_unconverged']}
+
+
+
+def _setup_ga100(args, leak_model, t_ref):
+    """Build the accelerator die as a Point, in the same shape the CPU path produces.
+
+    The GA100 floorplan has no cores, no McPAT names and no L3, so the trace is keyed by floorplan
+    element name directly and the solver is told ``already_dice_named``. Everything downstream --
+    the airflow bisection, the MR arm, the accounting -- is identical, which is the point: the two
+    dies must be priced by the same procedure or the comparison means nothing.
+    """
+    g = ga100_geometry()
+    flp = os.path.join(args.out_dir, 'ga100.flp')
+    flp, classes = ga100_floorplan(flp, split_sm=True, geom=g, cell_um=args.cell_um)
+    areas = block_areas_mm2(flp)
+    area_mm2 = g['w_die'] * g['h_die']
+    power_W = (args.density * area_mm2) if args.density is not None else args.die_power_W
+
+    activity, kmeta = kernel_activity(classes, kernel=args.kernel, n_active=args.n_active,
+                                      placement=args.placement)
+    powers, pmeta = ga100_block_powers(power_W, classes, activity=activity)
+    realised = pmeta['realised_W']
+    trace = BasicPowerTrace({u: np.array([p]) for u, p in powers.items()}, 1.0)
+    leak_ref = {u: p * 0.25 for u, p in powers.items()}
+
+    mins = {}
+    cur = None
+    with open(flp) as f:
+        for line in f:
+            t = line.strip()
+            if t.endswith(':'):
+                cur = t[:-1].strip()
+            elif t.startswith('dimension') and cur:
+                w, h = [float(v) for v in t[len('dimension'):].strip(' ;').split(',')]
+                mins[cur] = min(w, h)
+    geom = {n: {'area_mm2': a_mm2, 'min_dim_um': mins.get(n, 1e9)} for n, a_mm2 in areas.items()}
+
+    P = Point(args, flp, trace, leak_ref, geom, (lambda u: u), leak_model, t_ref,
+              area_mm2 / 1e6, 1, already_dice_named=True, cell_um=args.cell_um)
+    extra = {'kernel': kmeta, 'n_blocks': len(classes), 'nominal_W': power_W,
+             'realised_W': realised, 'grid_um': args.cell_um}
+    return P, area_mm2 / 1e6, realised, extra
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--out-dir', default=None)
+    ap.add_argument('--die', default='cpu', choices=('cpu', 'ga100'),
+                    help="which die. 'cpu' is the 34-core Skylake-derived floorplan; 'ga100' is "
+                         "the die-shot-derived accelerator (826 mm^2, 367 blocks). The COP "
+                         "break-even is the first MATRIX-DIVERSE study in this project -- each "
+                         "airflow trial is a new system matrix -- so on ga100 it is also the "
+                         "workload that decides whether the GPU solver port pays "
+                         "(docs/SOLVER_ROADMAP.md)")
     ap.add_argument('--cores', type=int, default=34)
-    ap.add_argument('--density', type=float, default=1.10)
+    ap.add_argument('--density', type=float, default=None,
+                    help='W/mm^2. Defaults to 1.10 for --die cpu; for --die ga100 leave unset and '
+                         'use --die-power-W instead, since an accelerator is TDP-limited rather '
+                         'than density-limited')
     ap.add_argument('--cfm', type=float, default=88.0, help='baseline airflow')
     ap.add_argument('--cfm-max', type=float, default=600.0,
                     help='most airflow the air arm may buy. Beta saturates near 250 CFM, so '
@@ -186,12 +256,14 @@ def main():
     ap.add_argument('--cfm-tol', type=float, default=4.0)
     ap.add_argument('--node', default='7nm')
     ap.add_argument('--tech-node', type=int, default=7)
-    ap.add_argument('--trace-dir', default=os.path.join(_HERE, 'traces', 'blackscholes'))
+    ap.add_argument('--trace-dir', default=os.path.join(_REPO, 'mcpat_runs', '7nm',
+                                                        'linpack_3.8GHz'))
     ap.add_argument('--trace-cores', type=int, default=8)
     ap.add_argument('--flp-dir', default=os.path.join(_HERE, 'floorplans', 'outputs'))
+    ap.add_argument('--leakage-cal-default-note', default=None, help=argparse.SUPPRESS)
     ap.add_argument('--stack', default='skylake')
     ap.add_argument('--ambient-K', type=float, default=308.15)
-    ap.add_argument('--leakage-cal', default=os.path.join(_HERE, '..', 'docs', 'evidence',
+    ap.add_argument('--leakage-cal', default=os.path.join(_REPO, 'docs', 'evidence',
                                                           'leakage_calibration.json'))
     ap.add_argument('--tol', type=float, default=0.05)
     ap.add_argument('--max-iter', type=int, default=120)
@@ -204,48 +276,86 @@ def main():
     ap.add_argument('--eta-lpc', type=float, default=0.90)
     ap.add_argument('--spot-min-um', type=float, default=10.0)
     ap.add_argument('--spot-policy', default='dilute')
+    # --- ga100 only ---
+    ap.add_argument('--die-power-W', type=float, default=700.0,
+                    help='accelerator die power [W] (--die ga100). 700 is H100 class, and is '
+                         'where the accelerator actually needs cooling')
+    ap.add_argument('--cell-um', type=float, default=100.0,
+                    help='thermal grid for --die ga100; 100 is validated against 50 to 0.01 K')
+    ap.add_argument('--kernel', default='uniform', choices=list(KERNELS))
+    ap.add_argument('--n-active', type=int, default=None)
+    ap.add_argument('--placement', default='contiguous',
+                    choices=('contiguous', 'scattered', 'cluster'))
+    ap.add_argument('--dt-max-K', type=float, default=10.0,
+                    help='MR temperature lift. On the accelerator at 700 W this BINDS -- the die '
+                         'needs 12.6-30 K -- so a break-even priced at 10 K is a break-even on a '
+                         'target MR cannot reach. See docs/ACCELERATOR.md')
     ap.add_argument('--no-server', action='store_true')
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
     args.out_dir = os.path.abspath(args.out_dir or os.path.join(os.getcwd(), 'cop_breakeven'))
     os.makedirs(args.out_dir, exist_ok=True)
-    args.session_cache = None if args.no_server else ICESessionCache()
-
-    flp = floorplan_path(args.flp_dir, args.node, args.cores)
-    if not os.path.isfile(flp):
-        raise SystemExit('no floorplan at {}'.format(flp))
-    area_m2 = chip_area_m2_from_floorplan(flp)
-    power_W = args.density * area_m2 * 1e6
+    args.session_cache = None if args.no_server else shared_cache()
+    if args.density is None and args.die == 'cpu':
+        args.density = 1.10
 
     leak_model, t_ref = (load_calibrated_leakage_model(args.leakage_cal, extrapolate=True)
                          if os.path.isfile(args.leakage_cal)
                          else (LeakageModel.exponential(15.0),
                                mcpat_tref_from_trace_dir(args.trace_dir) or 330.0))
-    files = load_block_powers(args.trace_dir)
-    with open(files[0]) as f:
-        first = {u: float(np.ravel(v)[0]) for u, v in json.load(f).items()}
-    base0 = BasicPowerTrace({u: np.array([p]) for u, p in first.items()}, 1.0)
-    base = (replicate_trace_cores(base0, args.cores, n_src=args.trace_cores)
-            if args.cores > args.trace_cores else base0)
-    trace, scale, _ = scale_trace_to_die_power(base, flp, args.tech_node, power_W,
-                                               num_cores=args.cores)
-    split = os.path.join(args.trace_dir,
-                         os.path.basename(files[0]).replace('block_powers_',
-                                                            'block_powers_split_'))
-    leak_ref = {}
-    if os.path.isfile(split):
-        with open(split) as f:
-            leak_ref = {u: float(v[1]) * scale for u, v in json.load(f).items()}
-    fp = Floorplan.from_file(flp)
-    geom = {e.name: {'area_mm2': (e.width * e.height) / 1.0e6,
-                     'min_dim_um': float(min(e.width, e.height))} for e in fp.elements}
-    name_map = mcpat_flp_name_map(include_core_idx=(args.cores > 1))
-    P = Point(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, area_m2, args.cores)
+
+    extra = None
+    if args.die == 'ga100':
+        P, area_m2, power_W, extra = _setup_ga100(args, leak_model, t_ref)
+        args.mr_dt_max = args.dt_max_K          # the accelerator's binding parameter
+        flp = P.flp
+    else:
+
+        flp = floorplan_path(args.flp_dir, args.node, args.cores)
+        if not os.path.isfile(flp):
+            raise SystemExit('no floorplan at {}'.format(flp))
+        area_m2 = chip_area_m2_from_floorplan(flp)
+        power_W = args.density * area_m2 * 1e6
+
+        files = load_block_powers(args.trace_dir)
+        with open(files[0]) as f:
+            first = {u: float(np.ravel(v)[0]) for u, v in json.load(f).items()}
+        base0 = BasicPowerTrace({u: np.array([p]) for u, p in first.items()}, 1.0)
+        base = (replicate_trace_cores(base0, args.cores, n_src=args.trace_cores)
+                if args.cores > args.trace_cores else base0)
+        trace, scale, _ = scale_trace_to_die_power(base, flp, args.tech_node, power_W,
+                                                   num_cores=args.cores)
+        split = os.path.join(args.trace_dir,
+                             os.path.basename(files[0]).replace('block_powers_',
+                                                                'block_powers_split_'))
+        leak_ref = {}
+        if os.path.isfile(split):
+            with open(split) as f:
+                leak_ref = {u: float(v[1]) * scale for u, v in json.load(f).items()}
+        fp = Floorplan.from_file(flp)
+        geom = {e.name: {'area_mm2': (e.width * e.height) / 1.0e6,
+                         'min_dim_um': float(min(e.width, e.height))} for e in fp.elements}
+        name_map = mcpat_flp_name_map(include_core_idx=(args.cores > 1))
+        P = Point(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, area_m2, args.cores)
 
     print('COP break-even: microrefrigeration against more airflow')
-    print('  die      : {}-core {}, {:.1f} mm^2, {:.1f} W ({:.3f} W/mm^2)'.format(
-        args.cores, args.node, area_m2 * 1e6, power_W, args.density))
+    if args.die == 'ga100':
+        print('  die      : GA100 accelerator, {:.0f} mm^2, {} blocks, {:g} um grid'.format(
+            area_m2 * 1e6, extra['n_blocks'], extra['grid_um']))
+        print('  workload : kernel {!r}{}, {:.0f} W nominal -> {:.0f} W realised '
+              '({:.3f} W/mm^2)'.format(
+                  args.kernel,
+                  '' if args.kernel != 'occupancy' else
+                  ' ({} of {} SMs, {})'.format(extra['kernel'].get('n_active'),
+                                               extra['kernel'].get('n_sm'), args.placement),
+                  extra['nominal_W'], power_W, power_W / (area_m2 * 1e6)))
+        print('  MR lift  : dt_max {:.0f} K  -- on this die at 700 W the lift BINDS, so a '
+              'break-even\n             priced here may be for a target MR cannot reach'
+              .format(args.mr_dt_max))
+    else:
+        print('  die      : {}-core {}, {:.1f} mm^2, {:.1f} W ({:.3f} W/mm^2)'.format(
+            args.cores, args.node, area_m2 * 1e6, power_W, args.density))
     print('  target   : both arms must hold a peak of {:.1f} C'.format(args.target_C))
     print('  baseline : {:g} CFM, fan {:.1f} W'.format(args.cfm, simscale_fan_power(args.cfm)))
     print('  air arm  : may buy up to {:g} CFM ({:.1f} W of fan). beta {:.3f} -> {:.3f} K/W '
@@ -292,9 +402,15 @@ def main():
 
     mr_ok = (mr['peak_C'] is not None and not mr['diverged']
              and mr['peak_C'] <= args.target_C + 1.0)
+    if mr_ok and mr.get('plan_is_minimum') is False:
+        print('       NOTE: the plan is not known to be minimal ({}), so this cost is an UPPER '
+              'bound\n             and the break-even COP derived from it is correspondingly '
+              'generous to MR.'.format(mr.get('mr_reason') or 'descent did not bracket the '
+                                       'stability boundary'))
 
     # --- the comparison ------------------------------------------------------------------
-    out = {'cores': args.cores, 'density': args.density, 'target_C': args.target_C,
+    out = {'die': args.die, 'cores': args.cores, 'density': args.density,
+           'ga100': extra, 'target_C': args.target_C,
            'cfm_base': args.cfm, 'cfm_max': args.cfm_max, 'area_mm2': area_m2 * 1e6,
            'nominal_die_W': power_W, 'rows': rows, 'calibrated': False,
            'air_feasible': bool(air_ok), 'mr_feasible': bool(mr_ok),
