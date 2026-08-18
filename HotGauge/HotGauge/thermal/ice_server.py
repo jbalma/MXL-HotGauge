@@ -554,3 +554,42 @@ class ICESessionCache(object):
     def __exit__(self, *exc):
         self.close()
         return False
+
+
+#: Process-wide cache, lazily built by :func:`shared_cache`.
+_SHARED_CACHE = None
+
+
+def shared_cache(**kwargs):
+    """One :class:`ICESessionCache` per PROCESS, surviving re-execution of a study script.
+
+    A cache held at module level inside a study script does not survive ``runpy.run_path``, which
+    re-executes the file and resets its globals -- so a sweep driver that ran three points in one
+    process still factorised three times, which is exactly the cost it was written to avoid. This
+    module is imported normally and therefore lives in ``sys.modules`` for the life of the process,
+    so a singleton parked here does survive.
+
+    Worth being concrete about the size of the prize, because it is larger than the GPU port's:
+    the system matrix depends on the stack and the floorplan GEOMETRY, not on power values, so
+    sweeping die power, the kernel, the MR target or dt_max reuses one factorisation for the whole
+    sweep. An audit of the accelerator study found 42 runs sharing 4 distinct matrices -- 38
+    redundant factorisations at ~430 s each, 4.6 hours, paid purely for process isolation.
+
+    ``kwargs`` are used only when the singleton is first built.
+    """
+    global _SHARED_CACHE
+    if _SHARED_CACHE is None:
+        _SHARED_CACHE = ICESessionCache(**kwargs)
+    return _SHARED_CACHE
+
+
+def reset_shared_cache():
+    """Drop the process-wide cache, closing its sessions. For tests, and for a driver that wants
+    to reclaim the memory a factorisation pins between unrelated sweeps."""
+    global _SHARED_CACHE
+    if _SHARED_CACHE is not None:
+        try:
+            _SHARED_CACHE.close()
+        except Exception:
+            LOGGER.warning('shared cache did not close cleanly', exc_info=True)
+        _SHARED_CACHE = None

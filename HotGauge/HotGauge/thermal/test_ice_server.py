@@ -269,3 +269,56 @@ def test_startup_timeout_is_configurable_because_startup_is_the_factorisation():
             os.environ['MXL_ICE_STARTUP_TIMEOUT_S'] = old
         importlib.reload(mod)
     assert mod.ICEServerSession.DEFAULT_STARTUP_TIMEOUT_S == 1800.0
+
+
+def test_shared_cache_is_one_object_per_process():
+    """A sweep driver runs many study points in one process precisely so they share a
+    factorisation. The first attempt kept the cache at module level inside the study script, and
+    runpy.run_path re-executes that file per point -- so the globals reset and three points
+    factorised three times, silently paying the exact cost the driver existed to avoid. Parking the
+    singleton in this module, which lives in sys.modules, is what makes the sharing real."""
+    import HotGauge.thermal.ice_server as mod
+
+    mod.reset_shared_cache()
+    try:
+        a = mod.shared_cache()
+        b = mod.shared_cache()
+        assert a is b
+        assert isinstance(a, mod.ICESessionCache)
+    finally:
+        mod.reset_shared_cache()
+
+
+def test_resetting_the_shared_cache_yields_a_fresh_one():
+    import HotGauge.thermal.ice_server as mod
+
+    mod.reset_shared_cache()
+    try:
+        a = mod.shared_cache()
+        mod.reset_shared_cache()
+        b = mod.shared_cache()
+        assert a is not b
+    finally:
+        mod.reset_shared_cache()
+
+
+def test_shared_cache_survives_module_re_execution_the_way_a_study_global_does_not():
+    """The precise failure mode, pinned. Re-executing a file resets ITS globals; it does not touch
+    an already-imported module's."""
+    import runpy
+    import tempfile
+    import os
+    import HotGauge.thermal.ice_server as mod
+
+    mod.reset_shared_cache()
+    try:
+        first = mod.shared_cache()
+        script = os.path.join(tempfile.mkdtemp(), 'point.py')
+        with open(script, 'w') as f:
+            f.write('MY_GLOBAL = None\n'
+                    'from HotGauge.thermal.ice_server import shared_cache\n'
+                    'CACHE_ID = id(shared_cache())\n')
+        seen = [runpy.run_path(script, run_name='__main__')['CACHE_ID'] for _ in range(3)]
+        assert seen == [id(first)] * 3
+    finally:
+        mod.reset_shared_cache()

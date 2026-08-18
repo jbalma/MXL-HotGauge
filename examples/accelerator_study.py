@@ -54,7 +54,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 from HotGauge.power import BasicPowerTrace, LeakageModel
 from HotGauge.thermal.leakage_feedback import load_calibrated_leakage_model
 from HotGauge.thermal import get_stack_template, ICEThermalSolver, run_leakage_feedback
-from HotGauge.thermal.ice_server import ICESessionCache
+from HotGauge.thermal.ice_server import ICESessionCache, shared_cache
 from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           render_stack_with_sink)
 from HotGauge.thermal.stack_models import coarsen_stack_grid
@@ -67,6 +67,15 @@ from HotGauge.thermal.accelerator_floorplan import (
 
 LOGGER = logging.getLogger('accelerator_study')
 T_FLOOR_K = 273.15
+
+def _session(no_server):
+    """The process-wide session cache, or None when running without the server.
+
+    Deliberately NOT a module-level global here: ``runpy.run_path`` re-executes this file for each
+    point of a sweep and would reset it, so a three-point sweep still factorised three times. The
+    singleton lives in ``ice_server``, which is imported normally and therefore survives.
+    """
+    return None if no_server else shared_cache()
 
 _MIN_DIM_CACHE = {}
 
@@ -272,7 +281,7 @@ def main():
     # an identical system matrix. Constructing a cache per call -- which this file did briefly --
     # starts a fresh server and refactorises each time, multiplying walltime by the solve count.
     # On the GA100 die that is 288 s per iteration instead of 288 s once.
-    session = None if args.no_server else ICESessionCache()
+    session = _session(args.no_server)
 
     solver = ICEThermalSolver(stack, flp_path, args.tech_node,
                               run_base_dir=os.path.join(args.out_dir, 'solve'),
