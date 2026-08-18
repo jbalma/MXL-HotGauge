@@ -58,6 +58,7 @@ from HotGauge.thermal.ice_server import ICESessionCache
 from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           render_stack_with_sink)
 from HotGauge.thermal.stack_models import coarsen_stack_grid
+from HotGauge.thermal.microrefrigeration import MRParams, run_mr_clipping, mr_accounting
 from HotGauge.thermal.accelerator_floorplan import (
     GA100_AREAS, GA100_POWER_SPLIT, DEFAULT_BOOST_POWER_RATIO, ga100_geometry,
     ga100_consistency, ga100_floorplan, ga100_block_powers, block_areas_mm2,
@@ -66,6 +67,25 @@ from HotGauge.thermal.accelerator_floorplan import (
 
 LOGGER = logging.getLogger('accelerator_study')
 T_FLOOR_K = 273.15
+
+_MIN_DIM_CACHE = {}
+
+
+def _min_dim_um(flp_path, name):
+    """Narrowest side of a block [um] -- the MR spot policy needs it to know whether the pixel
+    can be focused onto the block or has to be billed pixel-wide."""
+    if flp_path not in _MIN_DIM_CACHE:
+        d, cur = {}, None
+        with open(flp_path) as f:
+            for line in f:
+                t = line.strip()
+                if t.endswith(':'):
+                    cur = t[:-1].strip()
+                elif t.startswith('dimension') and cur:
+                    w, h = [float(v) for v in t[len('dimension'):].strip(' ;').split(',')]
+                    d[cur] = min(w, h)
+        _MIN_DIM_CACHE[flp_path] = d
+    return _MIN_DIM_CACHE[flp_path].get(name, 1e9)
 
 
 def build_trace(powers, leak_fraction):
@@ -130,6 +150,19 @@ def main():
                          'for the occupancy result -- sweep it' % DEFAULT_BOOST_POWER_RATIO)
     ap.add_argument('--dt-max-K', type=float, default=10.0,
                     help='MR device capability, for the plateau and clip-one figures')
+    # --- MR: what a rescue actually costs on this die ---
+    ap.add_argument('--mr', action='store_true',
+                    help='also run the microrefrigeration clipping loop and price it. Only worth '
+                         'doing where the die is actually over its limit -- a plateau that is '
+                         'cheap to clip on a 78 C die is a solution to no problem')
+    ap.add_argument('--mr-target-C', type=float, default=98.0)
+    ap.add_argument('--mr-iter', type=int, default=25)
+    ap.add_argument('--mr-h-max', type=float, default=10.0)
+    ap.add_argument('--eta-asf', type=float, default=0.20)
+    ap.add_argument('--eta-laser', type=float, default=0.70)
+    ap.add_argument('--eta-lpc', type=float, default=0.90)
+    ap.add_argument('--spot-min-um', type=float, default=10.0)
+    ap.add_argument('--spot-policy', default='dilute')
     ap.add_argument('--split-sensitivity', default=None,
                     help='also report density accounting with this class share scaled 0.5-1.5x, '
                          'e.g. hbm_phy')
@@ -247,10 +280,69 @@ def main():
     print('  cooling  : {}'.format('R_th {:g} K/W'.format(args.r_th) if args.r_th is not None
                                    else '{:g} CFM baffled fin'.format(args.cfm)))
     print('\n  solving the leakage fixed point over {} blocks ...'.format(len(classes)))
-    res = run_leakage_feedback(trace, leak_ref, solver, model=leak_model, T_ref=t_ref,
-                               num_cores=1, tol_K=args.tol, max_iter=args.max_iter,
-                               relax=args.relax, t_floor_K=T_FLOOR_K, bridge_aggregates=True,
-                               verify=True)
+
+    if args.mr:
+        # Same scaffolding mr_comparison.py uses: the MR loop drives the coupled solve, and the
+        # verification verdict belongs to the solve that produced the REPORTED field rather than
+        # to every probe the descent made.
+        geom = {}
+        for name, a_mm2 in areas.items():
+            geom[name] = {'area_mm2': a_mm2, 'min_dim_um': _min_dim_um(flp_path, name)}
+        counter = {'n': 0}
+        holder = {}
+
+        def solve_fn(tr):
+            counter['n'] += 1
+            r = run_leakage_feedback(tr, leak_ref, ICEThermalSolver(
+                stack, flp_path, args.tech_node,
+                run_base_dir=os.path.join(args.out_dir, 'solve',
+                                          'mr{:02d}'.format(counter['n'])),
+                initial_temp=args.ambient_K, num_cores=1, single_thread=True, mode='steady',
+                session_cache=None if args.no_server else ICESessionCache(),
+                already_dice_named=True),
+                model=leak_model, T_ref=t_ref, num_cores=1, tol_K=args.tol,
+                max_iter=args.max_iter, relax=args.relax, t_floor_K=T_FLOOR_K,
+                bridge_aggregates=True, verify=True)
+            holder['last'] = r
+            return r['temp_trace']
+
+        mrp = MRParams(target_K=args.mr_target_C + 273.15, h_max=args.mr_h_max,
+                       dt_max_K=args.dt_max_K, eta_asf=args.eta_asf,
+                       laser_wallplug=args.eta_laser, lpc_efficiency=args.eta_lpc,
+                       spot_min_um=args.spot_min_um, spot_policy=args.spot_policy)
+        mres = run_mr_clipping(trace, solve_fn, geom, mrp, name_map=lambda u: u,
+                               max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
+                               status_fn=lambda: {
+                                   'diverged': bool((holder.get('last') or {}).get('diverged')),
+                                   'unconverged': bool(
+                                       (holder.get('last') or {}).get('unconverged'))},
+                               plan_mode='auto')
+        acc = mres['accounting']
+        res = dict(holder.get('last') or {})
+        res['temp_trace'] = mres['temp_trace']
+        res['diverged'] = bool(mres.get('temp_trace_diverged'))
+        res['unconverged'] = bool(mres.get('result_unconverged'))
+        out_mr = {'target_C': args.mr_target_C, 'n_targets': len(mres.get('plan') or {}),
+                  'heat_removed_W': acc.get('heat_removed_W'),
+                  'heat_billed_W': acc.get('heat_billed_W'),
+                  'electrical_W': acc.get('electrical_power_W'),
+                  'effective_cop': acc.get('effective_cop'),
+                  'net_generating': acc.get('net_generating'),
+                  'holds_target': mres.get('plan_holds_target'),
+                  'plan_is_minimum': mres.get('plan_is_minimum'),
+                  'reason': mres.get('reason')}
+        print('  [MR] target {:.0f} C -> {} blocks, {:.4f} W removed, {:.3f} W net electrical'
+              '  (holds={}, minimal={})'.format(
+                  args.mr_target_C, out_mr['n_targets'], out_mr['heat_removed_W'] or 0.0,
+                  out_mr['electrical_W'] or 0.0, out_mr['holds_target'],
+                  out_mr['plan_is_minimum']))
+        print('       reason: {}'.format(out_mr['reason']))
+    else:
+        out_mr = None
+        res = run_leakage_feedback(trace, leak_ref, solver, model=leak_model, T_ref=t_ref,
+                                   num_cores=1, tol_K=args.tol, max_iter=args.max_iter,
+                                   relax=args.relax, t_floor_K=T_FLOOR_K,
+                                   bridge_aggregates=True, verify=True)
 
     if res.get('diverged'):
         print('\n  NO STEADY STATE: thermal runaway at {:.3f} W/mm^2. That is a result, not a '
@@ -264,7 +356,7 @@ def main():
            'die_power_W': power_W, 'realised_W': realised_W,
            'density_W_per_mm2': realised_W / area_mm2,
            'nominal_density_W_per_mm2': power_W / area_mm2,
-           'kernel': args.kernel, 'kernel_meta': kmeta,
+           'kernel': args.kernel, 'kernel_meta': kmeta, 'mr': out_mr,
            'cell_um': args.cell_um, 'split_sm': not args.no_split_sm,
            'leak_fraction': args.leak_fraction, 'leak_basis': leak_basis,
            'cfm': args.cfm, 'r_th': args.r_th, 'dt_max_K': args.dt_max_K,
