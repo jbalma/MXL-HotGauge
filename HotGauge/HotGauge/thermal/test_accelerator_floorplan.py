@@ -242,3 +242,143 @@ def test_density_spread_is_narrow_which_is_the_whole_point():
     d = power_density_by_class(classes, powers, block_areas_mm2(path))
     dens = [v['W_per_mm2'] for v in d.values()]
     assert max(dens) / min(dens) < 6.0
+
+
+# ---------------------------------------------------------------------------
+# Kernel activity -- the falsification test for the uniform result
+# ---------------------------------------------------------------------------
+def _classes():
+    import os
+    import tempfile
+    path = os.path.join(tempfile.mkdtemp(), 'ga100.flp')
+    return ga100_floorplan(path)[1]
+
+
+def test_the_irds_curve_refuses_to_supply_the_boost_ratio():
+    """The obvious move -- read the boost cost off the IRDS V/F curve -- is wrong here, and the
+    code has to say so rather than quietly returning the number.
+
+    That curve is anchored on the node's 3.86 GHz wireloaded logic path. Asked for a 1.4 GHz GPU
+    clock it extrapolates to about 0.30 V against a 0.70 V nominal, which is not what A100 silicon
+    does: a GPU's low clock is a wide, wire-dominated design choice, not a logic path coasting near
+    threshold. Same limitation as docs/CLOCK_HEADROOM.md records, in a new place.
+    """
+    from HotGauge.thermal.accelerator_floorplan import sm_boost_power_ratio
+    ratio, meta = sm_boost_power_ratio()
+    assert meta['extrapolated'] is True
+    assert meta['usable'] is False
+    assert meta['V_base'] < 0.6 * meta['vdd']
+    assert 'extrapolat' in meta['why'] or 'anchored' in meta['why']
+    assert ratio > 1.0                       # it does return a number; it just cannot be trusted
+
+
+def test_occupancy_uses_the_stated_assumption_not_the_extrapolation():
+    from HotGauge.thermal.accelerator_floorplan import (kernel_activity,
+                                                        DEFAULT_BOOST_POWER_RATIO)
+    _, meta = kernel_activity(_classes(), kernel='occupancy', n_active=8)
+    assert meta['boost_ratio'] == pytest.approx(DEFAULT_BOOST_POWER_RATIO)
+    assert 'ASSUMED' in meta['boost']['source']
+    assert meta['boost']['irds_diagnostic']['usable'] is False
+
+
+def test_uniform_kernel_is_the_identity():
+    from HotGauge.thermal.accelerator_floorplan import kernel_activity
+    classes = _classes()
+    act, _ = kernel_activity(classes, kernel='uniform')
+    assert set(act) == set(classes)
+    assert all(v == 1.0 for v in act.values())
+
+
+def test_occupancy_boosts_the_active_tiles_and_idles_the_rest():
+    from HotGauge.thermal.accelerator_floorplan import kernel_activity
+    classes = _classes()
+    act, meta = kernel_activity(classes, kernel='occupancy', n_active=8,
+                                placement='contiguous', idle_fraction=0.1, boost_ratio=1.9)
+    assert act['SM0_DP'] == pytest.approx(1.9)
+    assert act['SM7_DP'] == pytest.approx(1.9)
+    assert act['SM8_DP'] == pytest.approx(0.1)
+    assert act['SM127_DP'] == pytest.approx(0.1)
+    # non-SM classes are untouched: the uncore does not idle because the SMs did
+    assert act['L2_0'] == pytest.approx(1.0)
+    assert act['HBM_PHY_B0'] == pytest.approx(1.0)
+    assert meta['n_active'] == 8
+
+
+def test_placement_changes_which_tiles_run_and_is_recorded():
+    """A hotspot from 8 adjacent tiles and a non-hotspot from 8 scattered ones are different
+    results, so the placement has to travel with the number."""
+    from HotGauge.thermal.accelerator_floorplan import active_sm_set
+    contig = active_sm_set(8, 128, 'contiguous')
+    scatter = active_sm_set(8, 128, 'scattered')
+    assert contig == set(range(8))
+    assert len(scatter) == 8
+    assert max(scatter) - min(scatter) > 100        # spread across the die, not bunched
+    assert contig != scatter
+
+
+def test_cluster_placement_fills_whole_groups_before_the_next():
+    from HotGauge.thermal.accelerator_floorplan import active_sm_set
+    a = active_sm_set(40, 128, 'cluster')
+    assert set(range(32)) <= a                       # first cluster full
+    assert len(a) == 40
+    assert max(a) < 32 + 32                          # spilled into the second only
+
+
+def test_low_occupancy_lowers_die_power_rather_than_concentrating_a_fixed_budget():
+    """The physically honest choice, and it cuts AGAINST finding a hotspot. A real part cannot
+    exceed its own V/F envelope however much thermal headroom the idle tiles free up, so the die
+    total falls. Renormalising back to the TDP would turn a low-occupancy kernel into a power
+    virus and manufacture the very hotspot this study is testing for."""
+    from HotGauge.thermal.accelerator_floorplan import kernel_activity
+    classes = _classes()
+    act, _ = kernel_activity(classes, kernel='occupancy', n_active=8, boost_ratio=1.9)
+    _, meta = ga100_block_powers(400.0, classes, activity=act)
+    assert meta['realised_W'] < 400.0
+    assert meta['activity_applied'] is True
+
+
+def test_tensor_kernel_moves_power_without_adding_any():
+    from HotGauge.thermal.accelerator_floorplan import kernel_activity
+    classes = _classes()
+    act, meta = kernel_activity(classes, kernel='tensor')
+    base, _ = ga100_block_powers(400.0, classes)
+    hot, m2 = ga100_block_powers(400.0, classes, activity=act)
+    assert m2['realised_W'] == pytest.approx(400.0, rel=1e-9)      # pure redistribution
+    assert hot['SM0_DP'] > base['SM0_DP']
+    assert hot['SM0_L1'] < base['SM0_L1']
+    assert hot['L2_0'] == pytest.approx(base['L2_0'])
+
+
+def test_memory_bound_kernel_idles_compute_and_keeps_the_interface_hot():
+    from HotGauge.thermal.accelerator_floorplan import kernel_activity
+    classes = _classes()
+    act, _ = kernel_activity(classes, kernel='memory_bound', idle_fraction=0.1)
+    assert act['SM0_DP'] == pytest.approx(0.1)
+    assert act['HBM_PHY_B0'] == pytest.approx(1.0)
+    assert act['MEMCTRL_B0'] == pytest.approx(1.0)
+    _, meta = ga100_block_powers(400.0, classes, activity=act)
+    assert meta['realised_W'] < 400.0      # a memory-bound kernel is not a power virus
+
+
+def test_tensor_kernel_needs_split_tiles():
+    from HotGauge.thermal.accelerator_floorplan import kernel_activity
+    import os
+    import tempfile
+    _, classes = ga100_floorplan(os.path.join(tempfile.mkdtemp(), 'a.flp'), split_sm=False)
+    with pytest.raises(ValueError):
+        kernel_activity(classes, kernel='tensor')
+
+
+def test_bad_kernel_inputs_are_rejected():
+    from HotGauge.thermal.accelerator_floorplan import kernel_activity, active_sm_set
+    classes = _classes()
+    with pytest.raises(ValueError):
+        kernel_activity(classes, kernel='not_a_kernel')
+    with pytest.raises(ValueError):
+        kernel_activity(classes, kernel='occupancy')          # n_active missing
+    with pytest.raises(ValueError):
+        active_sm_set(0, 128, 'contiguous')
+    with pytest.raises(ValueError):
+        active_sm_set(200, 128, 'contiguous')
+    with pytest.raises(ValueError):
+        active_sm_set(8, 128, 'diagonally')

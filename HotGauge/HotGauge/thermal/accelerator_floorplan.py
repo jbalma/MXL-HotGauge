@@ -374,7 +374,7 @@ def ga100_floorplan(out_path, split_sm=True, geom=None, counts=None, cell_um=100
 
 
 def ga100_block_powers(total_W, classes, split=None,
-                       datapath_fraction=SM_DATAPATH_POWER_FRACTION):
+                       datapath_fraction=SM_DATAPATH_POWER_FRACTION, activity=None):
     """Divide ``total_W`` across the floorplan's blocks by class.
 
     Within a class, power is shared **equally** between blocks. That is deliberate and it is the
@@ -413,8 +413,18 @@ def ga100_block_powers(total_W, classes, split=None,
     for name, cls in classes.items():
         powers[name] = total_W * by_class[cls] / counts[cls]
 
-    meta = {'total_W': total_W, 'split': split, 'datapath_fraction': datapath_fraction,
-            'counts': counts, 'calibrated': False,
+    # Activity multiplies the uniform power and is deliberately NOT renormalised back to total_W:
+    # an idle SM really does dissipate less, and hiding that behind a renormalisation would turn a
+    # low-occupancy kernel into a power virus. The realised total is reported instead.
+    realised = float(sum(powers.values()))
+    if activity:
+        for name in powers:
+            powers[name] *= float(activity.get(name, 1.0))
+        realised = float(sum(powers.values()))
+
+    meta = {'total_W': total_W, 'realised_W': realised, 'split': split,
+            'datapath_fraction': datapath_fraction,
+            'counts': counts, 'calibrated': False, 'activity_applied': bool(activity),
             'per_class_W': {c: total_W * by_class[c] for c in by_class},
             'note': 'areas measured from die shots; the class power split is ASSUMED -- see '
                     'GA100_POWER_SPLIT and power_split_sensitivity()'}
@@ -544,3 +554,203 @@ def tier_analysis_by_class(temps_C, classes, dt_max_K):
             'n_needed_for_full_dt_max': t['n_needed_for_full_dt_max'],
             'clip_one_gain_K': t['rows'][0]['gain_K'] if t['rows'] else None,
             'by_class': agg, 'rows': t['rows']}
+
+
+# ---------------------------------------------------------------------------
+# Kernel activity: the one input that could still produce a real hotspot
+# ---------------------------------------------------------------------------
+#: Published A100 SXM4 clocks [GHz].
+GA100_CLOCKS = {'base_GHz': 1.065, 'boost_GHz': 1.410}
+
+#: Power multiplier for an SM running at boost rather than base clock. This is the cap on how
+#: concentrated a partially-occupied die may become, so it is load-bearing for the whole
+#: occupancy result and is stated as an assumption rather than derived.
+#:
+#: Why it is not derived: the obvious move is to read it off the IRDS V/F curve, and that is
+#: wrong here. That curve is anchored on the node's 3.86 GHz *wireloaded logic path*, and asking
+#: it for 1.4 GHz extrapolates to about 0.30 V -- barely above the 0.156 V threshold, and far
+#: below the ~0.7-0.9 V real GPU silicon uses at that clock. A GPU's low clock is a design choice
+#: (wide, wire-dominated, deeply banked), not a lightly-loaded logic path coasting near threshold,
+#: so the anchor does not transfer. ``sm_boost_power_ratio`` computes it anyway and flags the
+#: extrapolation, because seeing how badly it misses is worth keeping.
+#:
+#: What this is instead: the clock ratio 1.410/1.065 = 1.324, times a voltage term for a supply
+#: moving roughly 0.75 -> 0.90 V across a GPU's own V/F range, giving (0.90/0.75)^2 * 1.324 = 1.9.
+#: Plausible range 1.5-2.2; ``--boost-power-ratio`` sweeps it and the occupancy conclusion has to
+#: survive the sweep to be worth anything.
+DEFAULT_BOOST_POWER_RATIO = 1.9
+
+#: Power an idle (clock-gated but powered) SM still draws, as a fraction of an active one.
+#: Leakage plus un-gated static draw. An assumption, and a consequential one -- setting it to 0
+#: would make a partially-occupied die look far more concentrated than any real part.
+IDLE_SM_FRACTION = 0.10
+
+KERNELS = ('uniform', 'occupancy', 'memory_bound', 'tensor')
+
+
+def sm_boost_power_ratio(vf_model=None, base_GHz=None, boost_GHz=None,
+                         min_valid_v_fraction=0.6):
+    """What the IRDS V/F curve says a boost costs -- and whether it can be believed here.
+
+    Kept as a DIAGNOSTIC, not as the source of ``DEFAULT_BOOST_POWER_RATIO``. Asking a curve
+    anchored on the node's 3.86 GHz wireloaded logic path for a 1.4 GHz GPU clock extrapolates
+    far below the anchor: the resolved supply lands near 0.30 V against a 0.70 V nominal, which is
+    not what A100 silicon does. ``extrapolated`` is True whenever either voltage falls below
+    ``min_valid_v_fraction`` of Vdd, and callers must not use the ratio when it is set.
+
+    This exists because the miss is informative: it is the same limitation recorded in
+    ``docs/CLOCK_HEADROOM.md`` -- one operating point does not determine a curve, and IRDS's
+    loaded-path figure is a technology metric rather than a product clock -- showing up again in a
+    different place.
+
+    Returns ``(ratio, meta)``.
+    """
+    from HotGauge.power.irds_vf import IRDSVFModel
+    m = vf_model or IRDSVFModel(2024)
+    base = float(base_GHz if base_GHz is not None else GA100_CLOCKS['base_GHz'])
+    boost = float(boost_GHz if boost_GHz is not None else GA100_CLOCKS['boost_GHz'])
+    v_b, clamp_b = m.voltage(base)
+    v_t, clamp_t = m.voltage(boost)
+    ratio = (v_t / v_b) ** 2 * (boost / base)
+    extrapolated = (v_b < min_valid_v_fraction * m.vdd or v_t < min_valid_v_fraction * m.vdd)
+    return ratio, {'base_GHz': base, 'boost_GHz': boost, 'V_base': v_b, 'V_boost': v_t,
+                   'vdd': m.vdd, 'clamped': bool(clamp_b or clamp_t),
+                   'extrapolated': bool(extrapolated),
+                   'usable': not extrapolated,
+                   'why': ('the curve is anchored on a 3.86 GHz wireloaded logic path; at GPU '
+                           'clocks it resolves to {:.3f} V against a {:.2f} V nominal, which real '
+                           'silicon does not do -- use DEFAULT_BOOST_POWER_RATIO instead'
+                           .format(min(v_b, v_t), m.vdd) if extrapolated else 'within anchor'),
+                   'vf_source': repr(m)}
+
+
+def _sm_index(name):
+    """SM ordinal from a block name, or None if the block is not part of a compute tile."""
+    if not name.startswith('SM'):
+        return None
+    core = name[2:].split('_')[0]
+    return int(core) if core.isdigit() else None
+
+
+def active_sm_set(n_active, n_sm=None, placement='contiguous', counts=None):
+    """Which SM ordinals a partially-occupied kernel runs on.
+
+    ``placement`` is not a detail -- it is most of the answer, and it is the axis the uniform study
+    could not vary:
+
+    * ``'contiguous'`` fills SM 0,1,2,... in floorplan order, so the active tiles are physically
+      adjacent and their heat piles up. This is the WORST case for the die and the BEST case for
+      microrefrigeration, and it is not unrealistic: work is dispatched by SM id.
+    * ``'scattered'`` spreads them as evenly as the count allows, so each active tile is surrounded
+      by idle silicon that spreads its heat. Best case for the die.
+    * ``'cluster'`` fills whole 32-SM clusters before starting the next, which is the coarser real
+      pattern when a kernel is given a GPC-aligned partition (and what MIG partitioning does).
+
+    Reporting a hotspot without saying which of these produced it would be meaningless.
+    """
+    N = dict(GA100_COUNTS if counts is None else counts)
+    n_sm = int(n_sm if n_sm is not None else N['n_sm'])
+    n_active = int(n_active)
+    if not 1 <= n_active <= n_sm:
+        raise ValueError('n_active must be in 1..{}, got {}'.format(n_sm, n_active))
+    if placement == 'contiguous':
+        return set(range(n_active))
+    if placement == 'cluster':
+        per = n_sm // N['n_sm_clusters']
+        out, i = set(), 0
+        while len(out) < n_active:
+            take = min(per, n_active - len(out))
+            out |= set(range(i, i + take))
+            i += per
+        return out
+    if placement == 'scattered':
+        step = n_sm / float(n_active)
+        return set(int(round(k * step)) % n_sm for k in range(n_active)) or {0}
+    raise ValueError("placement must be 'contiguous', 'scattered' or 'cluster', got {!r}"
+                     .format(placement))
+
+
+def kernel_activity(classes, kernel='uniform', n_active=None, placement='contiguous',
+                    idle_fraction=IDLE_SM_FRACTION, boost_ratio=None, counts=None):
+    """Per-block activity multipliers for a kernel shape, plus what it assumed.
+
+    The uniform study deliberately gave every block in a class the same power, so that any hotspot
+    came from geometry rather than from an imbalance assumed into the input. That is the right
+    control and it is also the least favourable input for microrefrigeration. This provides the
+    other end: three kernel shapes that are real GPU behaviour rather than contrivances.
+
+    * ``'occupancy'`` -- ``n_active`` of the SMs run, the rest idle at ``idle_fraction``, and the
+      active ones boost. The accelerator's analogue of single-core turbo, which on the CPU die took
+      the plateau from 15 blocks to 2. The boost is capped by ``boost_ratio``
+      (``DEFAULT_BOOST_POWER_RATIO``, an assumption -- see its note) so the concentration cannot
+      exceed what a real part's own V/F allows however much thermal headroom idle tiles free up.
+    * ``'memory_bound'`` -- SMs stalled on memory at ``idle_fraction``, while the HBM PHY, memory
+      controllers and L2 run flat out. Interesting because the memory interface is ALREADY the
+      hottest class and sits on the die perimeter.
+    * ``'tensor'`` -- the SM datapath saturated while its L1 array idles, i.e. concentration
+      *within* each tile rather than across the die. Only visible because the tiles are split.
+
+    Multipliers are relative to the uniform case and are NOT renormalised: die power moves, which
+    is the physical truth (an idle SM dissipates less) and is reported rather than hidden.
+
+    Returns ``(activity, meta)``.
+    """
+    if kernel not in KERNELS:
+        raise ValueError('kernel must be one of {}, got {!r}'.format(KERNELS, kernel))
+    N = dict(GA100_COUNTS if counts is None else counts)
+    meta = {'kernel': kernel, 'idle_fraction': float(idle_fraction), 'calibrated': False}
+    activity = {b: 1.0 for b in classes}
+
+    if kernel == 'uniform':
+        return activity, meta
+
+    if kernel == 'tensor':
+        # Constant SM power, moved from the array into the datapath. The die total is unchanged,
+        # so anything this produces is concentration and not extra heat.
+        n_dp = sum(1 for c in classes.values() if c == 'sm_dp')
+        n_l1 = sum(1 for c in classes.values() if c == 'sm_l1')
+        if not n_dp or not n_l1:
+            raise ValueError("kernel 'tensor' needs split tiles; re-run without --no-split-sm")
+        moved = 0.6                      # fraction of the L1 array's share handed to the datapath
+        dp_share, l1_share = SM_DATAPATH_POWER_FRACTION, 1.0 - SM_DATAPATH_POWER_FRACTION
+        take = l1_share * moved
+        for b, c in classes.items():
+            if c == 'sm_l1':
+                activity[b] = (l1_share - take) / l1_share
+            elif c == 'sm_dp':
+                activity[b] = (dp_share + take) / dp_share
+        meta.update({'moved_fraction_of_L1_power': moved,
+                     'note': 'die power unchanged; this is pure intra-tile concentration'})
+        return activity, meta
+
+    if kernel == 'memory_bound':
+        for b, c in classes.items():
+            if c in ('sm_dp', 'sm_l1'):
+                activity[b] = float(idle_fraction)
+        meta['note'] = ('SMs stalled on memory; the interface classes are left at full, so die '
+                        'power FALLS -- a memory-bound kernel is not a power virus')
+        return activity, meta
+
+    # occupancy
+    if n_active is None:
+        raise ValueError("kernel 'occupancy' needs n_active")
+    if boost_ratio is None:
+        boost_ratio = DEFAULT_BOOST_POWER_RATIO
+        diag, bmeta = sm_boost_power_ratio()
+        meta['boost'] = {'ratio': boost_ratio, 'source': 'DEFAULT_BOOST_POWER_RATIO (ASSUMED)',
+                         'irds_curve_says': diag, 'irds_diagnostic': bmeta}
+    boost_ratio = float(boost_ratio)
+    active = active_sm_set(n_active, N['n_sm'], placement, counts=counts)
+    for b, c in classes.items():
+        if c not in ('sm_dp', 'sm_l1', 'sm'):
+            continue
+        i = _sm_index(b)
+        if i is None:
+            continue
+        activity[b] = boost_ratio if i in active else float(idle_fraction)
+    meta.update({'n_active': int(n_active), 'n_sm': N['n_sm'], 'placement': placement,
+                 'boost_ratio': boost_ratio, 'active_sms': sorted(active)[:16],
+                 'note': ('active SMs boost by the base->boost V/F power ratio; the budget is NOT '
+                          'redistributed beyond that, because a real part cannot exceed its own '
+                          'V/F envelope however much thermal headroom the idle tiles free up')})
+    return activity, meta

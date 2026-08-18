@@ -59,9 +59,10 @@ from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           render_stack_with_sink)
 from HotGauge.thermal.stack_models import coarsen_stack_grid
 from HotGauge.thermal.accelerator_floorplan import (
-    GA100_AREAS, GA100_POWER_SPLIT, ga100_geometry, ga100_consistency, ga100_floorplan,
-    ga100_block_powers, block_areas_mm2, power_density_by_class, power_split_sensitivity,
-    tier_analysis_by_class)
+    GA100_AREAS, GA100_POWER_SPLIT, DEFAULT_BOOST_POWER_RATIO, ga100_geometry,
+    ga100_consistency, ga100_floorplan, ga100_block_powers, block_areas_mm2,
+    power_density_by_class, power_split_sensitivity, tier_analysis_by_class,
+    kernel_activity, KERNELS)
 
 LOGGER = logging.getLogger('accelerator_study')
 T_FLOOR_K = 273.15
@@ -104,6 +105,29 @@ def main():
     ap.add_argument('--leak-by-area', action='store_true',
                     help='distribute reference leakage by AREA rather than by power -- the other '
                          'end of the bracket; leakage then favours the SRAM over the datapath')
+    # --- kernel shape: the one input that could still produce a real hotspot ---
+    ap.add_argument('--kernel', default='uniform', choices=list(KERNELS),
+                    help="activity shape. 'uniform' (default) is the CONTROL -- every block in a "
+                         "class equal, so any hotspot comes from geometry rather than from an "
+                         "imbalance assumed into the input. The others are real GPU behaviour: "
+                         "'occupancy' runs --n-active SMs boosted and idles the rest, "
+                         "'memory_bound' stalls the SMs and runs the interface flat out, "
+                         "'tensor' moves power from each L1 array into its own datapath")
+    ap.add_argument('--n-active', type=int, default=None,
+                    help='SMs running, for --kernel occupancy (1..128)')
+    ap.add_argument('--placement', default='contiguous',
+                    choices=('contiguous', 'scattered', 'cluster'),
+                    help='where the active SMs sit. This is most of the answer, not a detail: '
+                         'contiguous piles their heat together (worst for the die, best for MR), '
+                         'scattered surrounds each with idle silicon, cluster fills whole '
+                         '32-SM groups as a GPC-aligned or MIG partition would')
+    ap.add_argument('--idle-fraction', type=float, default=None,
+                    help='power an idle SM still draws, as a fraction of an active one (ASSUMED; '
+                         'default 0.10). Setting it to 0 would make any partial-occupancy die look '
+                         'far more concentrated than a real part')
+    ap.add_argument('--boost-power-ratio', type=float, default=None,
+                    help='power multiplier for a boosted SM (ASSUMED; default %.2f). Load-bearing '
+                         'for the occupancy result -- sweep it' % DEFAULT_BOOST_POWER_RATIO)
     ap.add_argument('--dt-max-K', type=float, default=10.0,
                     help='MR device capability, for the plateau and clip-one figures')
     ap.add_argument('--split-sensitivity', default=None,
@@ -140,7 +164,15 @@ def main():
     area_m2 = area_mm2 / 1e6
 
     power_W = args.density * area_mm2 if args.density is not None else args.die_power_W
-    powers, pmeta = ga100_block_powers(power_W, classes)
+    kw = {}
+    if args.idle_fraction is not None:
+        kw['idle_fraction'] = args.idle_fraction
+    if args.boost_power_ratio is not None:
+        kw['boost_ratio'] = args.boost_power_ratio
+    activity, kmeta = kernel_activity(classes, kernel=args.kernel, n_active=args.n_active,
+                                      placement=args.placement, **kw)
+    powers, pmeta = ga100_block_powers(power_W, classes, activity=activity)
+    realised_W = pmeta['realised_W']
     dens = power_density_by_class(classes, powers, areas)
 
     print('GA100 accelerator floorplan  (measured from die shots -- see '
@@ -152,8 +184,17 @@ def main():
                   96, 6, 4, 4))
     print('  accounts : {:.0%} SM, {:.0%} L2, {:.0%} lumped (PHY, MC, routing, control)'.format(
         cons['sm_frac'], cons['l2_frac'], cons['lumped_frac']))
-    print('  power    : {:.1f} W = {:.3f} W/mm^2 die average   [class split ASSUMED]'.format(
-        power_W, power_W / area_mm2))
+    print('  power    : {:.1f} W nominal -> {:.1f} W realised = {:.3f} W/mm^2 die average   '
+          '[class split ASSUMED]'.format(power_W, realised_W, realised_W / area_mm2))
+    if args.kernel == 'uniform':
+        print('  kernel   : uniform (CONTROL -- any hotspot is geometric, not assumed in)')
+    else:
+        print('  kernel   : {}{}'.format(
+            args.kernel,
+            '  {} of {} SMs active, {} placement, boost x{:.2f}, idle {:.0%}'.format(
+                kmeta.get('n_active'), kmeta.get('n_sm'), kmeta.get('placement'),
+                kmeta.get('boost_ratio', 1.0), kmeta.get('idle_fraction', 0.0))
+            if args.kernel == 'occupancy' else ''))
     print('  grid     : {:g} um cells'.format(args.cell_um))
     print()
     print('  {:<10s} {:>4s} {:>8s} {:>8s} {:>9s} {:>9s}'.format(
@@ -220,7 +261,10 @@ def main():
 
     out = {'floorplan': 'GA100 (measured die shots)', 'calibrated': False,
            'die_mm2': area_mm2, 'n_blocks': len(classes),
-           'die_power_W': power_W, 'density_W_per_mm2': power_W / area_mm2,
+           'die_power_W': power_W, 'realised_W': realised_W,
+           'density_W_per_mm2': realised_W / area_mm2,
+           'nominal_density_W_per_mm2': power_W / area_mm2,
+           'kernel': args.kernel, 'kernel_meta': kmeta,
            'cell_um': args.cell_um, 'split_sm': not args.no_split_sm,
            'leak_fraction': args.leak_fraction, 'leak_basis': leak_basis,
            'cfm': args.cfm, 'r_th': args.r_th, 'dt_max_K': args.dt_max_K,
