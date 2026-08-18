@@ -575,11 +575,24 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
                               'the stability boundary was never probed, so it is not known to '
                               'be the smallest plan that keeps a steady state'}
 
+    # The baseline path used to return NO verdict here, while the envelope path's equivalent
+    # return sets one. A missing plan_holds_target reads downstream as "unknown" and printed as
+    # None, which is indistinguishable from a key that was never populated -- so a partial descent
+    # looked the same as a converged one that forgot to say so. It gets an explicit verdict now,
+    # and on a truncated descent that verdict is almost always False.
+    peak_now = max((float(np.ravel(t)[-1]) for t in temps.values()
+                    if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
     return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
             'result_unconverged': bool(result_status.get('unconverged')),
             'converged': False, 'iterations': max_iter, 'history': history,
+            'plan_is_minimum': False,
+            'plan_holds_target': bool(peak_now == peak_now
+                                      and peak_now <= params.target_K + tol_K),
             'accounting': mr_accounting(plan, params, detail=detail),
-            'reason': 'max_iter reached'}
+            'reason': ('max_iter reached: the descent was still building the plan, so this cost is '
+                       'a LOWER BOUND on what holding the target actually needs (peak {:.1f} C '
+                       'against a {:.1f} C target)'
+                       .format(peak_now - 273.15, params.target_K - 273.15))}
 
 
 def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_map, sens,

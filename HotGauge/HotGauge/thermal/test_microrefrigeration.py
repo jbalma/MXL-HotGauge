@@ -796,3 +796,34 @@ def test_an_unusable_field_is_a_failed_solve_not_a_cool_die():
     assert res['plan_holds_target'] is False
     assert 'no usable temperature field' in res['reason']
     assert 'no cooling needed' not in res['reason']
+
+
+def test_a_truncated_descent_says_it_did_not_hold_the_target():
+    """The baseline path's max_iter return used to omit plan_holds_target entirely, while the
+    envelope path's equivalent set it. A missing key reads downstream as None, which is
+    indistinguishable from "nobody populated this" -- so six accelerator points that were still
+    mid-descent, sitting 2-49 K above their target, reported the same verdict as a converged run.
+
+    A truncated descent must say so, and its cost must be labelled a lower bound: the loop adds
+    cooling as it goes, so stopping early UNDERSTATES what holding the target needs.
+    """
+    from HotGauge.thermal.microrefrigeration import run_mr_clipping, MRParams
+
+    target_K = 273.15 + 98.0
+
+    def solve(trace):
+        # Always far above target however much cooling is applied, so the descent can never
+        # finish and must exhaust max_iter.
+        return {'B0': np.array([target_K + 40.0])}
+
+    geom = {'B0': {'area_mm2': 4.0, 'min_dim_um': 2000.0}}
+    params = MRParams(target_K=target_K, h_max=10.0, dt_max_K=10.0)
+    trace = BasicPowerTrace({'B0': np.array([50.0])}, 1.0)
+
+    res = run_mr_clipping(trace, solve, geom, params, name_map=lambda u: u,
+                          status_fn=lambda: {'diverged': False}, plan_mode='baseline',
+                          max_iter=4)
+    assert res['reason'].startswith('max_iter reached')
+    assert res['plan_holds_target'] is False
+    assert res['plan_is_minimum'] is False
+    assert 'LOWER BOUND' in res['reason']

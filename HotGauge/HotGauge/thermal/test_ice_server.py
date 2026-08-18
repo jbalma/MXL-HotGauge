@@ -246,3 +246,26 @@ def test_powers_take_effect_on_the_same_solve():
     assert double > base + 10.0, 'doubling power must raise the peak, got {}'.format(peaks)
     assert half < base - 10.0, 'halving power must lower the peak, got {}'.format(peaks)
     assert abs(again - base) < 0.01, 'same powers must give the same answer, got {}'.format(peaks)
+
+
+def test_startup_timeout_is_configurable_because_startup_is_the_factorisation():
+    """The 50 um GA100 run was reported as a hang. It was not: startup IS the factorisation,
+    factorisation scales as N^1.67, and the 87.5 s measured at 691k unknowns projects to ~2900 s at
+    5.6M -- past the old hard-coded 1800 s. A problem-size limit must not masquerade as a timeout,
+    and the projection was already in this module's docstring when I misread the failure."""
+    import os
+    import importlib
+    import HotGauge.thermal.ice_server as mod
+
+    old = os.environ.get('MXL_ICE_STARTUP_TIMEOUT_S')
+    try:
+        os.environ['MXL_ICE_STARTUP_TIMEOUT_S'] = '7200'
+        importlib.reload(mod)
+        assert mod.ICEServerSession.DEFAULT_STARTUP_TIMEOUT_S == 7200.0
+    finally:
+        if old is None:
+            os.environ.pop('MXL_ICE_STARTUP_TIMEOUT_S', None)
+        else:
+            os.environ['MXL_ICE_STARTUP_TIMEOUT_S'] = old
+        importlib.reload(mod)
+    assert mod.ICEServerSession.DEFAULT_STARTUP_TIMEOUT_S == 1800.0

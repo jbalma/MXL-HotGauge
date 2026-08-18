@@ -38,7 +38,7 @@ run() {
          touch $OUT/$tag/done" &
 }
 
-MR="--mr --mr-target-C 98 --mr-iter 15 --max-iter 60"
+MR="--mr --mr-target-C 98 --mr-iter 60 --max-iter 60"
 
 log "=== accelerator MR batch starting ==="
 

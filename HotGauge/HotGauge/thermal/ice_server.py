@@ -149,15 +149,25 @@ class ICEServerSession(object):
     resident and holds its port.
     """
 
+    #: Default startup budget [s]. Startup IS the factorisation, and factorisation time scales as
+    #: ``N^1.67`` (see the module note), so this is a problem-SIZE limit wearing a timeout's
+    #: clothes. Measured 87.5 s at 691k unknowns, which projects to ~290 s for the GA100 die on a
+    #: 100 um grid and ~2900 s on a 50 um grid. The latter exceeded the old hard-coded 1800 s, and
+    #: I reported it as a hang when it was simply a die eight times larger -- the projection had
+    #: been sitting in this module's own docstring the whole time. Override per session or with
+    #: ``MXL_ICE_STARTUP_TIMEOUT_S``.
+    DEFAULT_STARTUP_TIMEOUT_S = float(os.environ.get('MXL_ICE_STARTUP_TIMEOUT_S', 1800.0))
+
     def __init__(self, stack_file, n_elements=None, port=0, host='127.0.0.1',
-                 server_bin=None, startup_timeout_s=1800.0, solve_timeout_s=600.0):
+                 server_bin=None, startup_timeout_s=None, solve_timeout_s=600.0):
         self.stack_file = os.path.abspath(stack_file)
         if not os.path.isfile(self.stack_file):
             raise ICEServerError('no stack file at {}'.format(self.stack_file))
         self.host = host
         self.port = int(port) or self._free_port()
         self.server_bin = server_bin or self._default_bin()
-        self.startup_timeout_s = float(startup_timeout_s)
+        self.startup_timeout_s = float(self.DEFAULT_STARTUP_TIMEOUT_S
+                                       if startup_timeout_s is None else startup_timeout_s)
         self.solve_timeout_s = float(solve_timeout_s)
         self._proc = None
         self._sock = None
@@ -243,7 +253,10 @@ class ICEServerSession(object):
         else:
             self.close()
             raise ICEServerError('server did not become ready within {:.0f} s'
-                                 .format(self.startup_timeout_s))
+                                 .format(self.startup_timeout_s)
+                                 + '. Startup is the FACTORISATION and it scales as '
+                                   'N^1.67, so this is usually a problem-size limit rather '
+                                   'than a hang: raise MXL_ICE_STARTUP_TIMEOUT_S, or coarsen the grid.')
 
         self.factorisation_time_s = time.time() - t0
         self.matrix_fingerprint = matrix_fingerprint(self.stack_file)
