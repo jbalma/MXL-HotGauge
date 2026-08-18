@@ -297,3 +297,69 @@ this particular part.
 * **The die shots are of GA100 specifically.** A tiled accelerator with a different L2 topology, or
   a chiplet part like MI300, could break the symmetry differently — the `die_images` directory has
   MI300 and Navi31 shots, and the module's structure is parameterised enough to take another.
+
+---
+
+## The binding constraint is dt_max, not the plateau and not the COP (18 August)
+
+The MR runs on this die kept exiting `max_iter reached`, so I quadrupled the iteration budget.
+The numbers moved by 1%. They were not truncated — **the stage had run out of lift**. Every one
+had raised the peak by exactly `dt_max` and stopped:
+
+| point | uncooled | with MR | lift |
+|---|---|---|---|
+| uniform, 700 W | 127.85 °C | 117.87 °C | 9.97 K |
+| 8/128 active, 700 W | 110.61 °C | 100.61 °C | 10.00 K |
+
+`run_mr_clipping` now separates the two verdicts (`dt_max_bound`, `lift_achieved_K`,
+`lift_needed_K`), because they arrive at the same exit and mean opposite things: one says buy more
+iterations, the other says the technology cannot do this job at its present capability.
+
+### What lift would it take
+
+Sweeping `dt_max` confirmed it exactly — the prediction was written into
+`scripts/dtmax_batch.sh` before the runs:
+
+| kernel | dt_max | peak °C | lift | blocks | removed | electrical |
+|---|---|---|---|---|---|---|
+| 8/128 @ 700 W | 10 K | 100.61 | 10.00 | 13 | 11.29 W | 19.67 W |
+| | **13 K** | **98.33** | **12.28** | **13** | **12.81 W** | **22.33 W** |
+| | 15 / 20 / 30 K | 98.33 | 12.28 | 13 | 12.81 W | 22.33 W |
+| uniform @ 700 W | 10 K | 117.87 | 9.98 | 367 | 82.60 W | 143.96 W |
+| | 20 K | 107.89 | 19.96 | 367 | 150.98 W | 263.14 W |
+| | **30 K** | **99.81** | **28.04** | **367** | **171.66 W** | **299.18 W** |
+| | 40 K | 99.81 | 28.04 | 367 | 171.66 W | 299.18 W |
+
+The peak tracks `uncooled − dt_max` precisely until the target is reached, then stops — the
+controller does not overcool. Two clean device targets fall out:
+
+* **A low-occupancy kernel on a 700 W part needs `dt_max` ≥ 13 K** — 1.3× the current device — and
+  then costs **22.3 W electrical over 13 blocks, 6.0% of die power.** That is a plausible ask and a
+  defensible price.
+* **A uniformly loaded 700 W part needs `dt_max` ≥ 30 K** — 3× the device — *and* 299 W of
+  electrical power, 43% of the die. Never worth it at any efficiency.
+
+So the three candidate constraints separate cleanly, and only one binds:
+
+* **breadth** (plateau) — a concentrated kernel collapses it 332 → 9 blocks. Not binding.
+* **cost** (COP) — 22 W on a 700 W part. Not binding.
+* **depth** (`dt_max`) — needs 13 K where the device has 10. **Binding.**
+
+This also bounds an earlier finding. "`dt_max` is irrelevant on both dies" was measured through
+clip-one gain on the CPU die at moderate density, where the required lift was small. On a 700 W
+accelerator `dt_max` is *the* parameter. Both are true in their own regime; neither generalises.
+
+## The 100 µm grid was accurate all along
+
+Every accelerator number above carried a caveat that the 100 µm grid understates peaks on small
+blocks. The 50 µm run finally completed (48.0 minutes, of which 47.5 was one factorisation):
+
+| grid | blocks | peak °C | plateau | clip-one |
+|---|---|---|---|---|
+| 100 µm | 367 | 88.06 | 332 | 0.0399 K |
+| 50 µm | 367 | **88.07** | **331** | 0.1004 K |
+
+Peak agrees to **0.01 K** and the plateau to one block. The degeneracy result is not a coarsening
+artefact, and the caveat is retired. Clip-one doubles, which is the expected direction — a finer
+grid resolves a slightly sharper peak — and both figures are under 1% of device capability, so
+nothing built on it moves.
