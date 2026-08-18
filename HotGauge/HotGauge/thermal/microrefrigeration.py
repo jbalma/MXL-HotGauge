@@ -582,17 +582,43 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
     # and on a truncated descent that verdict is almost always False.
     peak_now = max((float(np.ravel(t)[-1]) for t in temps.values()
                     if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+    holds = bool(peak_now == peak_now and peak_now <= params.target_K + tol_K)
+
+    # Distinguish "ran out of iterations" from "ran out of DEVICE", because they are opposite
+    # engineering conclusions and they arrive at the same exit. The stage can lift a block by at
+    # most dt_max_K, so if the achieved peak has come down by dt_max and is still above target,
+    # more iterations cannot help and neither can a better COP -- the device's lift is the binding
+    # constraint. Every truncated accelerator run at 700 W turned out to be this: exactly 10.00 K
+    # of lift against a 12.6-37 K requirement, reported as an iteration budget problem.
+    base_peak = None
+    if base_temps:
+        vals = [float(np.ravel(t)[-1]) for t in base_temps.values()]
+        vals = [v for v in vals if v > t_floor_K]
+        base_peak = max(vals) if vals else None
+    dt_bound = bool(base_peak is not None and peak_now == peak_now and not holds
+                    and peak_now <= base_peak - params.dt_max_K + 0.05)
+
+    if dt_bound:
+        reason = ('envelope insufficient: dt_max binds. The stage lifted the peak the full '
+                  '{:.1f} K it is capable of ({:.1f} -> {:.1f} C) and the target needs {:.1f} K. '
+                  'More iterations cannot help and neither can a better COP -- this is the '
+                  'device\'s temperature lift, not its cost.'
+                  .format(params.dt_max_K, base_peak - 273.15, peak_now - 273.15,
+                          base_peak - params.target_K))
+    else:
+        reason = ('max_iter reached: the descent was still building the plan, so this cost is a '
+                  'LOWER BOUND on what holding the target actually needs (peak {:.1f} C against a '
+                  '{:.1f} C target)'.format(peak_now - 273.15, params.target_K - 273.15))
+
     return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
             'result_unconverged': bool(result_status.get('unconverged')),
             'converged': False, 'iterations': max_iter, 'history': history,
-            'plan_is_minimum': False,
-            'plan_holds_target': bool(peak_now == peak_now
-                                      and peak_now <= params.target_K + tol_K),
+            'plan_is_minimum': False, 'plan_holds_target': holds,
+            'dt_max_bound': dt_bound,
+            'lift_achieved_K': None if base_peak is None else base_peak - peak_now,
+            'lift_needed_K': None if base_peak is None else base_peak - params.target_K,
             'accounting': mr_accounting(plan, params, detail=detail),
-            'reason': ('max_iter reached: the descent was still building the plan, so this cost is '
-                       'a LOWER BOUND on what holding the target actually needs (peak {:.1f} C '
-                       'against a {:.1f} C target)'
-                       .format(peak_now - 273.15, params.target_K - 273.15))}
+            'reason': reason}
 
 
 def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_map, sens,

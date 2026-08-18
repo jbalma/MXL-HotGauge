@@ -827,3 +827,60 @@ def test_a_truncated_descent_says_it_did_not_hold_the_target():
     assert res['plan_holds_target'] is False
     assert res['plan_is_minimum'] is False
     assert 'LOWER BOUND' in res['reason']
+
+
+def test_running_out_of_device_lift_is_not_running_out_of_iterations():
+    """These two arrive at the same exit and mean opposite things.
+
+    The stage lifts a block by at most dt_max_K. If the peak has come down by the full dt_max and
+    is STILL above target, no number of extra iterations helps and neither would a better COP --
+    the binding constraint is the device's temperature lift. Every truncated accelerator run at
+    700 W was this: exactly 10.00 K of lift against a 12.6-37 K requirement, reported as an
+    iteration-budget problem, which pointed at the wrong fix entirely.
+    """
+    from HotGauge.thermal.microrefrigeration import run_mr_clipping, MRParams
+
+    target_K = 273.15 + 98.0
+    uncooled_K = 273.15 + 110.6           # needs 12.6 K; the device has 10
+
+    def solve(trace):
+        removed = 50.0 - sum(float(np.ravel(v)[-1]) for v in trace.powers.values())
+        # Whatever the plan, the peak cannot come down by more than dt_max.
+        lift = min(10.0, max(0.0, removed * 4.0))
+        return {'B0': np.array([uncooled_K - lift])}
+
+    geom = {'B0': {'area_mm2': 4.0, 'min_dim_um': 2000.0}}
+    params = MRParams(target_K=target_K, h_max=10.0, dt_max_K=10.0)
+    trace = BasicPowerTrace({'B0': np.array([50.0])}, 1.0)
+
+    res = run_mr_clipping(trace, solve, geom, params, name_map=lambda u: u,
+                          status_fn=lambda: {'diverged': False}, plan_mode='baseline',
+                          max_iter=30)
+    assert res['plan_holds_target'] is False
+    assert res['dt_max_bound'] is True
+    assert 'dt_max binds' in res['reason']
+    assert 'max_iter reached' not in res['reason']
+    assert res['lift_achieved_K'] == pytest.approx(10.0, abs=0.1)
+    assert res['lift_needed_K'] == pytest.approx(12.6, abs=0.1)
+
+
+def test_a_genuinely_truncated_descent_still_says_max_iter():
+    """The dt_max verdict must not swallow the iteration-budget case: if the peak has NOT come
+    down by dt_max, the descent really was cut short."""
+    from HotGauge.thermal.microrefrigeration import run_mr_clipping, MRParams
+
+    target_K = 273.15 + 98.0
+
+    def solve(trace):
+        return {'B0': np.array([target_K + 40.0])}       # never moves at all
+
+    geom = {'B0': {'area_mm2': 4.0, 'min_dim_um': 2000.0}}
+    params = MRParams(target_K=target_K, h_max=10.0, dt_max_K=10.0)
+    trace = BasicPowerTrace({'B0': np.array([50.0])}, 1.0)
+
+    res = run_mr_clipping(trace, solve, geom, params, name_map=lambda u: u,
+                          status_fn=lambda: {'diverged': False}, plan_mode='baseline',
+                          max_iter=4)
+    assert res['dt_max_bound'] is False
+    assert 'max_iter reached' in res['reason']
+    assert 'LOWER BOUND' in res['reason']

@@ -337,6 +337,11 @@ def main():
                   'net_generating': acc.get('net_generating'),
                   'holds_target': mres.get('plan_holds_target'),
                   'plan_is_minimum': mres.get('plan_is_minimum'),
+                  # Depth versus breadth versus cost: three different verdicts, and on this die
+                  # they do not point at the same fix.
+                  'dt_max_bound': mres.get('dt_max_bound'),
+                  'lift_achieved_K': mres.get('lift_achieved_K'),
+                  'lift_needed_K': mres.get('lift_needed_K'),
                   'reason': mres.get('reason')}
         print('  [MR] target {:.0f} C -> {} blocks, {:.4f} W removed, {:.3f} W net electrical'
               '  (holds={}, minimal={})'.format(
