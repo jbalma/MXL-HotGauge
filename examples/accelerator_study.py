@@ -267,11 +267,18 @@ def main():
     stack = render_stack_with_sink(get_stack_template(args.stack), sink,
                                   os.path.join(args.out_dir, 'ga100.stk'))
     coarsen_stack_grid(stack, args.cell_um)
+    # ONE cache for the whole run. This must be created outside every loop: the cache is what
+    # makes the factorisation a one-time cost, and the MR loop calls the solver 15-25 times with
+    # an identical system matrix. Constructing a cache per call -- which this file did briefly --
+    # starts a fresh server and refactorises each time, multiplying walltime by the solve count.
+    # On the GA100 die that is 288 s per iteration instead of 288 s once.
+    session = None if args.no_server else ICESessionCache()
+
     solver = ICEThermalSolver(stack, flp_path, args.tech_node,
                               run_base_dir=os.path.join(args.out_dir, 'solve'),
                               initial_temp=args.ambient_K, num_cores=1,
                               single_thread=True, mode='steady',
-                              session_cache=None if args.no_server else ICESessionCache(),
+                              session_cache=session,
                               # The trace's keys ARE this floorplan's element names, so the
                               # McPAT rename/L3-split/IMC path must be skipped -- there are no
                               # cores here to split an L3 across.
@@ -298,7 +305,7 @@ def main():
                 run_base_dir=os.path.join(args.out_dir, 'solve',
                                           'mr{:02d}'.format(counter['n'])),
                 initial_temp=args.ambient_K, num_cores=1, single_thread=True, mode='steady',
-                session_cache=None if args.no_server else ICESessionCache(),
+                session_cache=session,
                 already_dice_named=True),
                 model=leak_model, T_ref=t_ref, num_cores=1, tol_K=args.tol,
                 max_iter=args.max_iter, relax=args.relax, t_floor_K=T_FLOOR_K,
