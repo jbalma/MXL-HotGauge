@@ -70,15 +70,16 @@ def test_mover_power_scaling_differs_by_flow_regime():
     the power, exactly.
     Turbulent: f ~ Re^-0.25, so dp ~ v^1.75 and P ~ v^2.75, approaching the cubic law.
     """
-    lam_a = CoolingSpec('air', 826.0, flow_m3s=0.02, inlet_C=35.0)
-    lam_b = CoolingSpec('air', 826.0, flow_m3s=0.04, inlet_C=35.0)
+    lam_a = CoolingSpec('air', 826.0, flow_m3s=0.005, inlet_C=35.0)
+    lam_b = CoolingSpec('air', 826.0, flow_m3s=0.010, inlet_C=35.0)
     assert lam_a.reynolds < 2300 and lam_b.reynolds < 2300
-    assert lam_b.mover_power_W / lam_a.mover_power_W == pytest.approx(4.0, rel=1e-6)
+    assert (lam_b.analytic_mover_power_W / lam_a.analytic_mover_power_W
+            == pytest.approx(4.0, rel=1e-6))
 
     turb_a = CoolingSpec('air', 826.0, flow_m3s=0.4, inlet_C=35.0)
     turb_b = CoolingSpec('air', 826.0, flow_m3s=0.8, inlet_C=35.0)
     assert turb_a.reynolds > 2300
-    ratio = turb_b.mover_power_W / turb_a.mover_power_W
+    ratio = turb_b.analytic_mover_power_W / turb_a.analytic_mover_power_W
     assert 6.0 < ratio < 8.0        # 2^2.75 = 6.73, between quadratic and cubic
 
 
@@ -194,3 +195,89 @@ def test_report_carries_both_halves_of_the_trade():
         assert k in r
     assert r['calibrated'] is False
     assert r['peak_estimate_C'] == pytest.approx(35.0 + 700.0 * s.r_th_K_per_W)
+
+
+# ---------------------------------------------------------------------------
+# Validation against the measured data, inside its range
+# ---------------------------------------------------------------------------
+def test_convective_resistance_matches_the_measured_curve():
+    """An analytic correlation is only worth extrapolating from if it reproduces measurement where
+    measurement exists. base_spread was CALIBRATED against exactly this, so the agreement is a fit
+    rather than a prediction -- but the fit is one number across four flow rates, and the residual
+    shape is what tells you whether the physics is right."""
+    from HotGauge.thermal.cooling_spec import air_spec
+    from HotGauge.thermal.sink_models import simscale_convective_r_th
+    CFM = 1.0 / 2118.88
+    for cfm in (60, 88, 150, 200):
+        s = air_spec(484.0, cfm * CFM, 35.0)          # the CFD's own 22x22 mm die
+        target = simscale_convective_r_th(cfm)
+        assert s.r_conv_K_per_W == pytest.approx(target, rel=0.12), cfm
+
+
+def test_the_analytic_mover_term_misses_the_fixed_overhead():
+    """Where the analytic term fails, and where it does not.
+
+    It models fin friction only, so it misses the mover's fixed overhead -- the measured fan curve
+    has an ~18 W intercept at zero flow. At low flow that dominates and the analytic is useless;
+    once friction takes over it lands within a few percent. I first reported a uniform 2-6x
+    under-prediction, which was an artefact of an over-large default sink, not a property of the
+    correlation.
+    """
+    from HotGauge.thermal.cooling_spec import air_spec
+    CFM = 1.0 / 2118.88
+    low = air_spec(484.0, 20 * CFM, 35.0)
+    assert low.analytic_mover_power_W < 0.1 * low.mover_power_W       # overhead dominates
+
+    high = air_spec(484.0, 88 * CFM, 35.0)
+    ratio = high.analytic_mover_power_W / high.mover_power_W
+    assert 0.8 < ratio < 1.2                                          # friction dominates
+    assert 'fixed overhead' in type(high).analytic_mover_power_W.__doc__
+
+
+def test_air_spec_defaults_to_the_measured_fan_curve():
+    from HotGauge.thermal.cooling_spec import air_spec, measured_air_mover_power
+    from HotGauge.thermal.sink_models import simscale_fan_power
+    CFM = 1.0 / 2118.88
+    s = air_spec(484.0, 88 * CFM, 35.0)
+    assert s.mover_power_W == pytest.approx(simscale_fan_power(88))
+    assert s.report(100.0)['mover_power_source'] == 'measured curve'
+
+
+def test_the_measured_fan_curve_is_discontinuous_and_that_is_physical():
+    """Three fans, handovers at 88 and 133 CFM. No continuous analytic form reproduces it, and the
+    steps are why the source study found best system COP at NONZERO laser power -- cooling the
+    hotspot lets the system stay on the cheaper fan."""
+    from HotGauge.thermal.cooling_spec import measured_air_mover_power
+    CFM = 1.0 / 2118.88
+    below, above = measured_air_mover_power(87.9 * CFM), measured_air_mover_power(88.1 * CFM)
+    assert above > below * 1.5
+
+
+# ---------------------------------------------------------------------------
+# The sink adapter
+# ---------------------------------------------------------------------------
+def test_sink_presents_convective_and_caloric_but_not_conduction():
+    """3D-ICE models the die and base itself. Including R_cond here would double-count them."""
+    from HotGauge.thermal.cooling_spec import air_spec, CoolingSpecSink
+    CFM = 1.0 / 2118.88
+    s = air_spec(826.0, 88 * CFM, 35.0)
+    sink = CoolingSpecSink(s, heat_W=700.0)
+    assert sink.r_th_K_per_W == pytest.approx(s.r_conv_K_per_W + s.r_caloric_K_per_W)
+    assert sink.r_th_K_per_W < s.r_th_K_per_W
+
+
+def test_sink_charges_for_the_chiller_not_just_the_mover():
+    """The gap that let liquid cooling win by construction: --r-th supplied a resistance for free."""
+    from HotGauge.thermal.cooling_spec import CoolingSpec, CoolingSpecSink
+    s = CoolingSpec('water', 826.0, flow_m3s=5e-4, inlet_C=15.0, ambient_C=35.0)
+    sink = CoolingSpecSink(s, heat_W=700.0)
+    assert sink.parasitic_known is True
+    assert sink.parasitic_power_W > s.mover_power_W
+
+
+def test_sink_htc_scales_with_die_area():
+    from HotGauge.thermal.cooling_spec import air_spec, CoolingSpecSink
+    CFM = 1.0 / 2118.88
+    small = CoolingSpecSink(air_spec(101.2, 88 * CFM, 35.0), 111.0)
+    big = CoolingSpecSink(air_spec(826.0, 88 * CFM, 35.0), 700.0)
+    assert small.htc_si() != pytest.approx(big.htc_si(), rel=0.05)

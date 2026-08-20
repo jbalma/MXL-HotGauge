@@ -79,9 +79,16 @@ K_SILICON = 148.0
 K_COPPER = 398.0
 
 #: How much bigger than the die the sink base is, per side. A heatsink base always overhangs the
-#: die -- that overhang is what spreads the heat into the fins. 3x linear (9x area) is typical for
-#: a high-performance air cooler and is the single most consequential geometry default here.
-DEFAULT_BASE_SPREAD = 3.0
+#: die -- that overhang is what spreads the heat into the fins -- and this is the single most
+#: consequential geometry default here.
+#:
+#: **Calibrated, not guessed.** Solving for the value that reproduces the SimScale convective
+#: resistance on that study's own 22x22 mm die gives 1.71-1.94 across the turbulent range
+#: (60, 88, 150, 200 CFM), with a single outlier at 110 CFM where the correlation crosses the
+#: laminar/turbulent transition. 1.85 is the middle of that band and puts a 41 mm base on a
+#: 484 mm^2 die, which is a heatsink somebody would actually build. An earlier invented default of
+#: 3.0 made every sink ~60% too large in linear extent.
+DEFAULT_BASE_SPREAD = 1.85
 
 
 class CoolingSpec(object):
@@ -99,7 +106,7 @@ class CoolingSpec(object):
                  fin_height_mm=None, fin_thickness_mm=0.5, fin_gap_mm=1.5,
                  base_thickness_mm=3.0, die_thickness_mm=0.5,
                  mover_efficiency=None, chiller_gamma=DEFAULT_CHILLER_GAMMA,
-                 k_base=K_COPPER, k_die=K_SILICON):
+                 k_base=K_COPPER, k_die=K_SILICON, mover_power_model=None):
         if fluid not in FLUIDS:
             raise ValueError('fluid must be one of {}, got {!r}'.format(sorted(FLUIDS), fluid))
         if die_area_mm2 <= 0 or flow_m3s <= 0:
@@ -149,6 +156,9 @@ class CoolingSpec(object):
 
         self.k_base = float(k_base)
         self.k_die = float(k_die)
+        # Optional measured mover-power curve, ``f(flow_m3s) -> W``. Strongly preferred for air:
+        # see the note on ``mover_power_W``.
+        self.mover_power_model = mover_power_model
         self.calibrated = False
 
     # -- flow ---------------------------------------------------------------------------
@@ -245,10 +255,39 @@ class CoolingSpec(object):
                 * self.props['rho'] * self.velocity_m_s ** 2 / 2.0)
 
     @property
-    def mover_power_W(self):
-        """Fan or pump. ``P = dp * Vdot / eta`` -- and since ``dp ~ v^2`` at fixed geometry, this
-        is the cubic-in-flow law both the air and liquid literature report."""
+    def analytic_mover_power_W(self):
+        """Fin-stack friction only: ``P = dp * Vdot / eta``.
+
+        **It omits the mover's fixed overhead**, and that is where it goes wrong. Validated
+        against the measured SimScale fan curve on that study's own die and a calibrated sink:
+
+            20 CFM   0.5 W vs  21.9 W   0.02x   <- overhead dominates; analytic is useless here
+            60 CFM  11.5 W vs  29.6 W   0.39x
+            88 CFM  33.0 W vs  35.0 W   0.94x   <- friction dominates; analytic is close
+           133 CFM 102.6 W vs 100.0 W   1.03x
+           200 CFM 315.2 W vs 215.0 W   1.47x   <- and eventually over-predicts
+
+        So it is not a uniform under-estimate: the measured curve has an ~18 W intercept at zero
+        flow that no friction term can produce, and friction only catches up once the flow is high.
+        Use it above roughly 80 CFM-equivalent, or where no measured curve exists at all; below
+        that, supply ``mover_power_model``.
+        """
         return self.pressure_drop_Pa * self.flow_m3s / self.mover_efficiency
+
+    @property
+    def mover_power_W(self):
+        """Wall-plug power for the fan or pump.
+
+        Uses ``mover_power_model`` when one is supplied and the analytic term otherwise. For AIR,
+        supply the measured curve: the real one is *discontinuous* -- three different fans with
+        handovers at 88 and 133 CFM -- and no continuous analytic form can reproduce that. The
+        discontinuity is not noise; it is why the SimScale study found best system COP at NONZERO
+        laser power, since cooling the hotspot optically lets the system stay on the cheaper fan
+        instead of jumping to the next one.
+        """
+        if self.mover_power_model is not None:
+            return float(self.mover_power_model(self.flow_m3s))
+        return self.analytic_mover_power_W
 
     @property
     def chiller_cop(self):
@@ -296,6 +335,9 @@ class CoolingSpec(object):
             'r_th_K_per_W': self.r_th_K_per_W, 'htc_si': self.htc_si(),
             'pressure_drop_Pa': self.pressure_drop_Pa,
             'mover_power_W': self.mover_power_W,
+            'analytic_mover_power_W': self.analytic_mover_power_W,
+            'mover_power_source': ('measured curve' if self.mover_power_model is not None
+                                   else 'analytic (fin friction only -- a LOWER BOUND)'),
             'chiller_cop': self.chiller_cop,
             'chiller_power_W': self.chiller_power_W(float(heat_W) + self.mover_power_W),
             'wall_plug_W': self.wall_plug_W(heat_W),
@@ -381,3 +423,86 @@ def solve_flow_for_peak(fluid, die_area_mm2, heat_W, target_peak_C, inlet_C=35.0
                          .format(target_peak_C, inlet_C))
     return solve_flow_for_r_th(fluid, die_area_mm2, rise / float(heat_W),
                                inlet_C=inlet_C, ambient_C=ambient_C, **kw)
+
+
+def measured_air_mover_power(flow_m3s):
+    """Measured fan power [W] at this airflow, from the SimScale piecewise fan curve.
+
+    Pass as ``mover_power_model`` for any air configuration inside 0-200 CFM. Prefer it to the
+    analytic term, which covers fin friction alone and under-predicts by 2-6x over that range.
+
+    The curve is piecewise because it is three physical fans, each linear over the band where it
+    is the best available choice, and the steps at the handovers are real -- there is no fan to buy
+    between them.
+    """
+    from HotGauge.thermal.sink_models import simscale_fan_power
+    return float(simscale_fan_power(float(flow_m3s) * 2118.88))
+
+
+def air_spec(die_area_mm2, flow_m3s, inlet_C, ambient_C=35.0, **kw):
+    """An air configuration wired to the measured fan curve by default.
+
+    The convenience matters: forgetting ``mover_power_model`` silently under-prices air cooling
+    several-fold, which would flatter every comparison against it -- including the one that
+    matters, microrefrigeration against the alternative.
+    """
+    kw.setdefault('mover_power_model', measured_air_mover_power)
+    return CoolingSpec('air', die_area_mm2, flow_m3s, inlet_C, ambient_C=ambient_C, **kw)
+
+
+class CoolingSpecSink(object):
+    """Adapter presenting a :class:`CoolingSpec` as a stack sink for 3D-ICE.
+
+    Implements the ``SinkModel`` surface -- ``htc_si``, ``htc_3dice``, ``parasitic_power_W``,
+    ``ambient_K`` -- so ``render_stack_with_sink`` and every study accept it unchanged.
+
+    Two things it does that the sinks it replaces do not:
+
+    * its resistance **scales with the die it is cooling**, which is the defect that invalidated
+      every accelerator temperature;
+    * ``parasitic_power_W`` includes the **chiller**, not just the mover, so an inlet held below
+      ambient is charged for. That is what finally makes a liquid loop comparable with an air one
+      rather than free.
+
+    3D-ICE applies a coefficient over the chip footprint and computes the conduction itself, so
+    ``htc_si`` deliberately presents the **convective and caloric** resistance only. Including
+    ``R_cond`` here would double-count the die and base that the stack already models.
+    """
+
+    parasitic_known = True
+    calibrated = False
+
+    def __init__(self, spec, heat_W, label=None):
+        self.spec = spec
+        self.heat_W = float(heat_W)
+        self.ambient_K = spec.inlet_C + 273.15
+        self.label = label or 'CoolingSpec[{}]'.format(spec.fluid)
+
+    @property
+    def r_th_K_per_W(self):
+        """Resistance 3D-ICE is being asked to represent: everything above the silicon."""
+        return self.spec.r_conv_K_per_W + self.spec.r_caloric_K_per_W
+
+    def htc_si(self):
+        return 1.0 / (self.r_th_K_per_W * self.spec.die_area_m2)
+
+    def htc_3dice(self):
+        from HotGauge.thermal.sink_models import htc_si_to_3dice
+        return htc_si_to_3dice(self.htc_si())
+
+    @property
+    def parasitic_power_W(self):
+        """Mover plus chiller. A sink whose inlet is below ambient is not free."""
+        return self.spec.wall_plug_W(self.heat_W)
+
+    def describe(self):
+        ok, msg = velocity_is_plausible(self.spec)
+        return ('{}: h={:.4g} W/(m^2 K) over {:.0f} mm^2, T_in={:.1f} C, '
+                'P_cool={:.1f} W ({:.1f} mover + {:.1f} chiller), {}{}'
+                .format(self.label, self.htc_si(), self.spec.die_area_mm2, self.spec.inlet_C,
+                        self.parasitic_power_W, self.spec.mover_power_W,
+                        self.parasitic_power_W - self.spec.mover_power_W,
+                        msg, '' if ok else '  [IMPLAUSIBLE CONFIGURATION]'))
+
+    def __repr__(self):
+        return '<{}>'.format(self.describe())
