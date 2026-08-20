@@ -58,6 +58,77 @@ PUBLISHED_POINTS = {
     },
 }
 
+#: CPU operating points, from nhsjs.com/2026 "Analysis of Thermodynamics of Air and Liquid
+#: Coolers and Their Impact on Performance of Processors" -- a paired design like the H100 study,
+#: with the same CPUs under four coolers in a 24 C +/- 0.5 C controlled ambient.
+#:
+#: **Only the 7500F points are usable as thermal tests, and the reason matters.** Every 9700X
+#: point sits at 95.2-95.4 C against a 95 C TjMax: those parts are THROTTLING, so the temperature
+#: is pinned by the controller and the power is whatever happens to fit under it. Asking a model
+#: to "predict" a temperature that a control loop is holding constant tests nothing. They are kept
+#: because they test something else -- see ``CPU_CLOCK_POINTS``.
+#:
+#: Die area is the Zen 4 CCD's ~71 mm^2. Our CPU floorplan is 101 mm^2 for 34 cores, so this is a
+#: geometric analogue rather than the same part; what is being tested is whether a die of roughly
+#: this size at this power under this cooler lands anywhere near this temperature.
+CPU_POINTS = {
+    'RYZEN_7500F_AIR': {
+        'label': 'Ryzen 5 7500F, Thermalright Peerless Assassin 120 SE, Prime95',
+        'source': 'nhsjs.com/2026 air-vs-liquid cooler study',
+        'die_area_mm2': 71.0,
+        'power_W': 132.0, 'power_range_W': (130.3, 133.7),
+        'ambient_C': 24.0,
+        'fluid': 'air',
+        'temp_C': (74.9, 76.3),          # 75.6 +/- 0.7
+        'implied_r_th_peak': (75.6 - 24.0) / 132.0,      # 0.391 K/W
+        'note': 'dual 120 mm fans, 6x6 mm heat pipes; NOT at TjMax, so a clean thermal point',
+    },
+    'RYZEN_7500F_LIQUID': {
+        'label': 'Ryzen 5 7500F, Lian Li Galahad II Lite 360 mm AIO, Prime95',
+        'source': 'nhsjs.com/2026 air-vs-liquid cooler study',
+        'die_area_mm2': 71.0,
+        'power_W': 129.0, 'power_range_W': (126.1, 131.9),
+        'ambient_C': 24.0,
+        'fluid': 'water',
+        'temp_C': (69.5, 71.1),          # 70.3 +/- 0.8
+        'implied_r_th_peak': (70.3 - 24.0) / 129.0,      # 0.359 K/W
+        'note': '360 mm radiator, 3x120 mm fans; NOT at TjMax',
+    },
+}
+
+#: Points where the part is TEMPERATURE-LIMITED rather than free-running, and what they test.
+#:
+#: On these the controller pins the junction at TjMax and trades clock for it, so the useful
+#: prediction is not "what temperature" but "how much clock does better cooling buy". That is
+#: precisely what ``examples/clock_headroom.py`` computes, and this project has never checked it
+#: against a real part.
+#:
+#: The 9700X is the sharp case: identical silicon, identical 95 C limit, and 3808 MHz on the stock
+#: cooler against 4966 MHz on a 360 mm AIO -- **+30% clock bought by cooling alone**, at 99 W
+#: against 180 W. Our own cooling sweep claims a 50x better cooler buys +55%, which is the same
+#: order and has never been validated.
+CPU_CLOCK_POINTS = {
+    'RYZEN_9700X_COOLING_VS_CLOCK': {
+        'label': 'Ryzen 7 9700X, four coolers, Prime95, all at TjMax 95 C',
+        'source': 'nhsjs.com/2026 air-vs-liquid cooler study',
+        'die_area_mm2': 71.0, 'ambient_C': 24.0, 'tjmax_C': 95.0,
+        'rows': [
+            {'cooler': 'AMD Wraith Stealth SR1 (stock)', 'fluid': 'air',
+             'power_W': 99.0, 'temp_C': 95.2, 'clock_MHz': 3808},
+            {'cooler': 'Thermalright Peerless Assassin 120 SE', 'fluid': 'air',
+             'power_W': 174.0, 'temp_C': 95.4, 'clock_MHz': 4899},
+            {'cooler': 'Cooler Master ML240L V2 (240 mm AIO)', 'fluid': 'water',
+             'power_W': 163.0, 'temp_C': 90.2, 'clock_MHz': 4840},
+            {'cooler': 'Lian Li Galahad II Lite (360 mm AIO)', 'fluid': 'water',
+             'power_W': 180.0, 'temp_C': 86.3, 'clock_MHz': 4966},
+        ],
+        'clock_gain_stock_to_best': 4966.0 / 3808.0 - 1.0,     # +30.4%
+        'note': 'temperature-limited: the controller holds TjMax and trades clock, so these test '
+                'the clock-vs-cooling relation rather than the thermal solve',
+    },
+}
+
+
 #: How far outside the published range a predicted peak may sit and still pass.
 #:
 #: Generous on purpose, and asymmetric in what it forgives. The reported telemetry is a die sensor
@@ -69,9 +140,16 @@ ACCEPT_ABOVE_MAX_K = 15.0
 ACCEPT_BELOW_MIN_K = 8.0
 
 
+def all_thermal_points():
+    """Every point usable as a thermal acceptance test -- accelerator and CPU."""
+    out = dict(PUBLISHED_POINTS)
+    out.update(CPU_POINTS)
+    return out
+
+
 def check_peak(point_key, peak_C, diverged=False):
     """Does a predicted peak reproduce this published point? Returns ``(ok, verdict)``."""
-    p = PUBLISHED_POINTS[point_key]
+    p = all_thermal_points()[point_key]
     lo, hi = p['temp_C']
     if diverged:
         return False, ('FAIL: model predicts thermal runaway where {} runs stably at {:.0f}-{:.0f} C. '

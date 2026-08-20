@@ -90,6 +90,29 @@ K_COPPER = 398.0
 #: 3.0 made every sink ~60% too large in linear extent.
 DEFAULT_BASE_SPREAD = 1.85
 
+#: Base overhang by COOLER CLASS, because 1.85 is not a universal constant -- it is what the
+#: SimScale CFD's own small sink happened to be, and real coolers are far larger relative to their
+#: die. Validated against published parts, the spread that reproduces them differs by nearly an
+#: order of magnitude:
+#:
+#: * ``cfd_reference`` 1.85 -- the 22x22 mm CFD sink base_spread was calibrated on. Use it only to
+#:   reproduce that study.
+#: * ``datacenter_module`` 3.0 -- an SXM-class GPU module: ~86 mm of heatsink over a 28.7 mm die
+#:   side. This is what reproduces the published H100 air point once the package resistance is
+#:   accounted for, at a plausible 14 m/s and ~193 W of fan -- which matches the study's own
+#:   air-versus-liquid node difference of ~146 W per GPU.
+#: * ``desktop_tower`` 14.0 -- a 120 mm tower cooler over an ~8.4 mm CCD side. At 1.85 the model
+#:   demanded 343 m/s to reach the published Ryzen resistance, which the velocity check caught.
+#: * ``desktop_stock`` 7.0 -- a 92 mm stock cooler on the same die.
+#:
+#: Sizing a cooler from die area alone is the mistake this replaces; the cooler class is an input.
+COOLER_CLASSES = {
+    'cfd_reference': 1.85,
+    'datacenter_module': 3.0,
+    'desktop_stock': 7.0,
+    'desktop_tower': 14.0,
+}
+
 
 class CoolingSpec(object):
     """A cooling configuration, priced.
@@ -472,10 +495,16 @@ class CoolingSpecSink(object):
     parasitic_known = True
     calibrated = False
 
-    def __init__(self, spec, heat_W, label=None):
+    def __init__(self, spec, heat_W, label=None, r_package_K_per_W=0.0):
         self.spec = spec
         self.heat_W = float(heat_W)
         self.ambient_K = spec.inlet_C + 273.15
+        # Resistance the STACK adds above the silicon -- solder TIM, spreader, grease, sink layer.
+        # It is recorded here only so a caller can see what was assumed; the sink still presents
+        # its own resistance, because 3D-ICE adds the package itself. What this exists for is the
+        # inverse problem: given a published junction-to-ambient figure, the external cooling has
+        # to supply that MINUS this. See ``external_r_for_total`` and measure_package_resistance.
+        self.r_package_K_per_W = float(r_package_K_per_W)
         self.label = label or 'CoolingSpec[{}]'.format(spec.fluid)
 
     @property
@@ -506,3 +535,68 @@ class CoolingSpecSink(object):
 
     def __repr__(self):
         return '<{}>'.format(self.describe())
+
+
+def measure_package_resistance(stack_file, flp_file, tech_node, die_area_mm2, sink_r_th,
+                               heat_W, ambient_K, powers, session_cache=None, run_dir=None):
+    """Thermal resistance the STACK adds above the silicon, measured by one solve [K/W].
+
+    Why this is needed. ``CoolingSpecSink`` computes the resistance from the die surface out to
+    the coolant and hands 3D-ICE the equivalent coefficient. But 3D-ICE then puts the *package*
+    in series above the die -- solder TIM, copper heat spreader, grease, sink layer -- and that
+    resistance is nowhere in the sink model. So the total the solve produces is larger than the
+    sink believes, and a configuration built to hit a published junction-to-ambient resistance
+    overshoots it.
+
+    Measured on the GA100 die at 470 W: the sink supplied 0.0942 K/W, the solve returned a
+    **mean** of 84.9 C against a 65.8 C lumped prediction, and the difference is the package --
+    about 0.041 K/W. A 19 K gap in the MEAN cannot be a hotspot, which is what identified it.
+
+    Published figures like ``H100_AIR``'s 0.107 K/W are junction-to-ambient and already include
+    the package. To reproduce one, the external cooling must supply the REMAINDER:
+    ``R_external = R_published - R_package``.
+
+    Returns ``(r_package_mean, r_package_peak, detail)``. The peak figure additionally carries
+    lateral spreading to the hottest block and is not a pure series term; use the mean when
+    subtracting.
+    """
+    import numpy as np
+    from HotGauge.power import BasicPowerTrace
+    from HotGauge.thermal import ICEThermalSolver
+
+    solver = ICEThermalSolver(stack_file, flp_file, tech_node,
+                              run_base_dir=run_dir, initial_temp=ambient_K, num_cores=1,
+                              single_thread=True, mode='steady', session_cache=session_cache,
+                              already_dice_named=True)
+    temps = solver(BasicPowerTrace({u: np.array([v]) for u, v in powers.items()}, 1.0))
+    vals = [float(np.ravel(v)[-1]) for v in temps.values() if float(np.ravel(v)[-1]) > 273.15]
+    if not vals:
+        raise ValueError('the calibration solve returned no usable temperatures')
+    mean_K, peak_K = sum(vals) / len(vals), max(vals)
+    total_mean = (mean_K - ambient_K) / float(heat_W)
+    total_peak = (peak_K - ambient_K) / float(heat_W)
+    detail = {'mean_C': mean_K - 273.15, 'peak_C': peak_K - 273.15,
+              'total_r_mean': total_mean, 'total_r_peak': total_peak,
+              'sink_r_th': float(sink_r_th), 'die_area_mm2': float(die_area_mm2),
+              'heat_W': float(heat_W)}
+    return total_mean - float(sink_r_th), total_peak - float(sink_r_th), detail
+
+
+def external_r_for_total(total_r_K_per_W, r_package_K_per_W):
+    """What the external cooling must supply to hit a published junction-to-ambient figure.
+
+    Published resistances are junction-to-ambient: they already contain the package. Handing one
+    straight to a sink model overshoots, because 3D-ICE then adds the package again. On the GA100
+    die that error is 0.041 K/W of series package -- 0.057 including spreading to the peak --
+    against a 0.107 K/W published total, so more than half the budget.
+
+    Raises when the package alone exceeds the target, which is a real answer: no external cooling,
+    however good, reaches that junction temperature through that package.
+    """
+    ext = float(total_r_K_per_W) - float(r_package_K_per_W)
+    if ext <= 0:
+        raise ValueError(
+            'the package alone is {:.4f} K/W against a {:.4f} K/W target -- no external cooling '
+            'reaches this junction temperature through this package'
+            .format(r_package_K_per_W, total_r_K_per_W))
+    return ext

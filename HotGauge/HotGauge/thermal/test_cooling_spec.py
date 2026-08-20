@@ -281,3 +281,56 @@ def test_sink_htc_scales_with_die_area():
     small = CoolingSpecSink(air_spec(101.2, 88 * CFM, 35.0), 111.0)
     big = CoolingSpecSink(air_spec(826.0, 88 * CFM, 35.0), 700.0)
     assert small.htc_si() != pytest.approx(big.htc_si(), rel=0.05)
+
+
+# ---------------------------------------------------------------------------
+# Cooler class, and the package the stack adds
+# ---------------------------------------------------------------------------
+def test_base_spread_is_a_cooler_property_not_a_universal_constant():
+    """1.85 was calibrated on the SimScale CFD's own small sink and then applied everywhere. Real
+    coolers differ by nearly an order of magnitude in how far they overhang the die, and using the
+    CFD value for a desktop tower demanded 343 m/s of air -- caught by the velocity check, not by
+    the resistance, which matched to 1.4%."""
+    from HotGauge.thermal.cooling_spec import COOLER_CLASSES
+    assert COOLER_CLASSES['cfd_reference'] < COOLER_CLASSES['datacenter_module']
+    assert COOLER_CLASSES['datacenter_module'] < COOLER_CLASSES['desktop_tower']
+    assert COOLER_CLASSES['desktop_tower'] / COOLER_CLASSES['cfd_reference'] > 5
+
+
+def test_a_bigger_cooler_reaches_the_same_resistance_at_a_buildable_velocity():
+    """The point of the class: it is not that a small sink cannot reach the target, but that it
+    can only do so at a face velocity nobody builds."""
+    from HotGauge.thermal.cooling_spec import (solve_flow_for_r_th, air_spec,
+                                               velocity_is_plausible, COOLER_CLASSES)
+    target = 0.0508
+    small = solve_flow_for_r_th('air', 826.0, target, inlet_C=21.5, ambient_C=21.5,
+                                base_spread=COOLER_CLASSES['cfd_reference'])
+    big = solve_flow_for_r_th('air', 826.0, target, inlet_C=21.5, ambient_C=21.5,
+                              base_spread=COOLER_CLASSES['datacenter_module'])
+    assert small is not None and big is not None
+    assert velocity_is_plausible(small)[0] is False
+    assert velocity_is_plausible(big)[0] is True
+
+
+def test_a_published_total_must_have_the_package_subtracted():
+    """Published resistances are junction-to-ambient and already contain the package. Handing one
+    straight to a sink overshoots, because 3D-ICE adds the package again -- on the GA100 die that
+    is more than half the budget."""
+    from HotGauge.thermal.cooling_spec import external_r_for_total
+    assert external_r_for_total(0.1074, 0.0566) == pytest.approx(0.0508, abs=1e-6)
+
+
+def test_a_package_larger_than_the_target_is_reported_as_unreachable():
+    from HotGauge.thermal.cooling_spec import external_r_for_total
+    with pytest.raises(ValueError) as e:
+        external_r_for_total(0.05, 0.09)
+    assert 'no external cooling reaches' in str(e.value)
+
+
+def test_the_sink_records_the_package_it_was_built_against():
+    from HotGauge.thermal.cooling_spec import air_spec, CoolingSpecSink
+    s = air_spec(826.0, 0.03, 21.5)
+    sink = CoolingSpecSink(s, 470.0, r_package_K_per_W=0.0406)
+    assert sink.r_package_K_per_W == pytest.approx(0.0406)
+    # the sink still presents only its OWN resistance -- 3D-ICE models the package itself
+    assert sink.r_th_K_per_W == pytest.approx(s.r_conv_K_per_W + s.r_caloric_K_per_W)
