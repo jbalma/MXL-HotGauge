@@ -58,6 +58,8 @@ from HotGauge.thermal.ice_server import ICESessionCache, shared_cache
 from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           render_stack_with_sink)
 from HotGauge.thermal.stack_models import coarsen_stack_grid
+from HotGauge.thermal.cooling_spec import (CoolingSpec, CoolingSpecSink, air_spec,
+                                           solve_flow_for_peak, velocity_is_plausible)
 from HotGauge.thermal.microrefrigeration import MRParams, run_mr_clipping, mr_accounting
 from HotGauge.thermal.accelerator_floorplan import (
     GA100_AREAS, GA100_POWER_SPLIT, DEFAULT_BOOST_POWER_RATIO, ga100_geometry,
@@ -177,6 +179,21 @@ def main():
                     help='also report density accounting with this class share scaled 0.5-1.5x, '
                          'e.g. hbm_phy')
     # thermal
+    # --- cooling ---
+    # The legacy sinks return the SAME thermal resistance whatever the die is, which is what
+    # invalidated every accelerator temperature this study produced. --cooling-fluid switches to
+    # a sink whose geometry is built for the die and whose parasitic power includes the chiller.
+    ap.add_argument('--cooling-fluid', default=None, choices=('air', 'water'),
+                    help='use a geometry-derived CoolingSpec sink sized for this die, instead of '
+                         'the legacy fixed-resistance sink. STRONGLY preferred for the '
+                         'accelerator: the legacy sink gives an 826 mm^2 die the same 0.0764 K/W '
+                         'as a 101 mm^2 one')
+    ap.add_argument('--cooling-flow-m3s', type=float, default=None,
+                    help='flow rate for --cooling-fluid; omit to solve it from --cooling-target-C')
+    ap.add_argument('--cooling-target-C', type=float, default=90.0,
+                    help='lumped peak the flow is solved to hold, when no flow is given. The real '
+                         'peak comes from the coupled solve; this only CHOOSES the operating point')
+    ap.add_argument('--inlet-C', type=float, default=35.0)
     ap.add_argument('--cfm', type=float, default=88.0)
     ap.add_argument('--r-th', type=float, default=None,
                     help='use a fixed thermal resistance [K/W] instead of an air sink')
@@ -279,9 +296,35 @@ def main():
         args.leak_fraction, t_ref, leak_basis, leak_src))
 
     # --- solve ----------------------------------------------------------------------
-    sink = (ThermalResistanceSink(args.r_th, area_m2, ambient_K=args.ambient_K)
-            if args.r_th is not None
-            else BaffledFinSink(args.cfm, area_m2, ambient_K=args.ambient_K))
+    cooling_note = None
+    if args.cooling_fluid:
+        if args.cooling_flow_m3s is not None:
+            spec = (air_spec(area_mm2, args.cooling_flow_m3s, args.inlet_C,
+                             ambient_C=args.ambient_K - 273.15)
+                    if args.cooling_fluid == 'air' else
+                    CoolingSpec('water', area_mm2, args.cooling_flow_m3s, args.inlet_C,
+                                ambient_C=args.ambient_K - 273.15))
+        else:
+            spec = solve_flow_for_peak(args.cooling_fluid, area_mm2, realised_W,
+                                       args.cooling_target_C, inlet_C=args.inlet_C,
+                                       ambient_C=args.ambient_K - 273.15)
+            if spec is None:
+                raise SystemExit(
+                    'no flow rate holds {:.0f} C at {:.0f} W on a {:.0f} mm^2 die with {} -- '
+                    'that is a real answer, not an error: this cooling class cannot do it.'
+                    .format(args.cooling_target_C, realised_W, area_mm2, args.cooling_fluid))
+            if args.cooling_fluid == 'air':
+                spec = air_spec(area_mm2, spec.flow_m3s, args.inlet_C,
+                                ambient_C=args.ambient_K - 273.15)
+        ok, vmsg = velocity_is_plausible(spec)
+        cooling_note = spec.report(realised_W)
+        cooling_note['velocity_plausible'] = ok
+        cooling_note['velocity_note'] = vmsg
+        sink = CoolingSpecSink(spec, realised_W)
+    else:
+        sink = (ThermalResistanceSink(args.r_th, area_m2, ambient_K=args.ambient_K)
+                if args.r_th is not None
+                else BaffledFinSink(args.cfm, area_m2, ambient_K=args.ambient_K))
     stack = render_stack_with_sink(get_stack_template(args.stack), sink,
                                   os.path.join(args.out_dir, 'ga100.stk'))
     coarsen_stack_grid(stack, args.cell_um)
@@ -302,8 +345,23 @@ def main():
                               # cores here to split an L3 across.
                               already_dice_named=True)
 
-    print('  cooling  : {}'.format('R_th {:g} K/W'.format(args.r_th) if args.r_th is not None
-                                   else '{:g} CFM baffled fin'.format(args.cfm)))
+    if cooling_note:
+        print('  cooling  : {} sized for this die -- base {:.0f} mm, {} fins, {:.4g} m^3/s'.format(
+            args.cooling_fluid, cooling_note['base_side_mm'], cooling_note['n_fins'],
+            cooling_note['flow_m3s']))
+        print('             R_th {:.4f} K/W (conv {:.4f} + caloric {:.4f}), inlet {:.1f} C'.format(
+            cooling_note['r_conv_K_per_W'] + cooling_note['r_caloric_K_per_W'],
+            cooling_note['r_conv_K_per_W'], cooling_note['r_caloric_K_per_W'],
+            cooling_note['inlet_C']))
+        print('             wall plug {:.1f} W = {:.1f} mover + {:.1f} chiller   [{}]'.format(
+            cooling_note['wall_plug_W'], cooling_note['mover_power_W'],
+            cooling_note['chiller_power_W'], cooling_note['velocity_note']))
+        if not cooling_note['velocity_plausible']:
+            print('             WARNING: not a buildable configuration')
+    else:
+        print('  cooling  : {}  [LEGACY sink -- resistance does NOT scale with die area]'.format(
+            'R_th {:g} K/W'.format(args.r_th) if args.r_th is not None
+            else '{:g} CFM baffled fin'.format(args.cfm)))
     print('\n  solving the leakage fixed point over {} blocks ...'.format(len(classes)))
 
     if args.mr:
@@ -392,6 +450,7 @@ def main():
            'cell_um': args.cell_um, 'split_sm': not args.no_split_sm,
            'leak_fraction': args.leak_fraction, 'leak_basis': leak_basis,
            'cfm': args.cfm, 'r_th': args.r_th, 'dt_max_K': args.dt_max_K,
+           'cooling_fluid': args.cooling_fluid, 'cooling': cooling_note,
            'power_split': GA100_POWER_SPLIT, 'power_split_is_assumed': True,
            'geometry': g, 'consistency': cons,
            'density_by_class': dens,
