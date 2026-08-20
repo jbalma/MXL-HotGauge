@@ -118,7 +118,7 @@ def _fmt_block(name, x_um, y_um, w_um, h_um):
     """One 3D-ICE floorplan element. Not the HotSpot tab-separated form -- both are called .flp
     and only one of them parses here."""
     return ('{} :\n\tposition {:.3f}, {:.3f} ;\n\tdimension {:.3f}, {:.3f} ;\n'
-            '\tpower values 0.0;'.format(name, x_um, y_um, w_um, h_um))
+            '\tpower values {{powers[{}]}};'.format(name, x_um, y_um, w_um, h_um, name))
 
 
 def _snap(v_um, cell_um):

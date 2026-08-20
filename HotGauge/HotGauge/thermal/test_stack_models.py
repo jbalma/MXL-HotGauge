@@ -142,3 +142,48 @@ def test_coarsening_a_template_without_a_cell_line_is_an_error(tmp_path):
     with pytest.raises(ValueError):
         render_stacked_memory_template(str(bad), str(tmp_path / 'x.stk'),
                                        [str(tmp_path / 'm.flp')], n_dies=1, cell_um=100.0)
+
+
+def test_generated_floorplans_carry_power_placeholders_not_literal_zeros():
+    """The bug this pins returned a plausible field for an unpowered die.
+
+    A floorplan written with a literal ``power values 0.0;`` passes through ``str.format``
+    untouched, so the emulator solve runs on a die carrying no power and returns the inlet
+    temperature everywhere -- silently. The socket path sends powers separately and was
+    unaffected, which is why it survived for weeks: the two solver paths disagreed by 70 K on the
+    same inputs and neither complained.
+    """
+    import os
+    import tempfile
+    from HotGauge.thermal.accelerator_floorplan import ga100_floorplan
+    from HotGauge.thermal.stack_models import memory_floorplan
+    from HotGauge.thermal.ICE import Floorplan
+
+    d = tempfile.mkdtemp()
+    acc, _ = ga100_floorplan(os.path.join(d, 'ga100.flp'))
+    text = open(acc).read()
+    assert 'power values 0.0;' not in text
+    assert '{powers[SM0_DP]}' in text
+
+    logic = Floorplan.from_file(acc)
+    mem, names = memory_floorplan(logic, os.path.join(d, 'mem.flp'), n_x=2, n_y=2)
+    mtext = open(mem).read()
+    assert 'power values 0.0;' not in mtext
+    assert '{{powers[{}]}}'.format(names[0]) in mtext
+
+
+def test_a_template_that_accepts_no_power_raises():
+    """The systemic guard: a solve whose floorplan came back with zero total power is not a cool
+    die, it is a broken template, and it must say so rather than returning ambient."""
+    import os
+    import tempfile
+    import numpy as np
+    import pytest
+    from HotGauge.power import BasicPowerTrace
+    from HotGauge.thermal.ICE import _flp_total_power
+
+    good = 'A :\n\tposition 0,0 ;\n\tdimension 10,10 ;\n\tpower values 1.5, 2.5;\n'
+    assert sum(_flp_total_power(good)) == pytest.approx(4.0)
+
+    dead = 'A :\n\tposition 0,0 ;\n\tdimension 10,10 ;\n\tpower values 0.0;\n'
+    assert sum(_flp_total_power(dead)) == pytest.approx(0.0)

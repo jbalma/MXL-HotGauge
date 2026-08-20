@@ -26,6 +26,25 @@ PLUGIN_REGEX = re.compile(r'\s*plugin\s*".*"\s*,\s*"(\S+)\s.*"\s*;\s*')
 
 # Methods for selecting and parsing 3D-ICE stack files
 
+_FLP_POWER_LINE = re.compile(r'power\s+values\s+([^;]*);')
+
+
+def _flp_total_power(contents):
+    """Every power value written into a filled floorplan, as floats.
+
+    Used to check that a template actually accepted its powers -- see fill_flp_template.
+    """
+    out = []
+    for m in _FLP_POWER_LINE.finditer(contents):
+        for tok in m.group(1).split(','):
+            tok = tok.strip()
+            try:
+                out.append(float(tok))
+            except ValueError:
+                pass
+    return out
+
+
 def get_stack_template(template_name):
     template_fname = template_name.replace('.stk','') + '.stk'
     stack_file = os.path.join(ICE_STK_DIR, template_fname)
@@ -242,6 +261,23 @@ class ICESim(ExecutableJob):
             power_dict[k] = ', '.join(map(str, v))
 
         contents = populate_template(self.flp_template, powers=power_dict)
+
+        # Verify the power actually LANDED. A floorplan written with a literal "power values 0.0;"
+        # instead of a "{powers[NAME]}" placeholder passes through str.format untouched, so the
+        # solve runs on a die carrying no power and returns the inlet temperature everywhere --
+        # silently, with no error and a plausible-looking field.
+        #
+        # That is exactly what happened: the generated accelerator and memory floorplans both
+        # emitted literal zeros, and this path returned 21.5 C for a 470 W die. The socket path
+        # sends powers separately and was unaffected, which is why it went unnoticed.
+        written = sum(_flp_total_power(contents))
+        expected = sum(float(np.sum(v)) for v in self.power_trace.powers.values())
+        if expected > 0 and written <= 1e-9:
+            raise ValueError(
+                'floorplan template accepted no power: {:.3f} W in the trace, {:.3g} W written to '
+                '{}. The template almost certainly has literal "power values 0.0;" entries rather '
+                'than "{{powers[NAME]}}" placeholders, so this solve would run on an unpowered '
+                'die.'.format(expected, written, self.flp_file))
         return write_or_update_file(self.flp_file, contents)
 
 

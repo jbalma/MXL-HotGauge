@@ -115,7 +115,7 @@ def memory_floorplan(logic_flp, out_path, n_x=4, n_y=4, name_prefix='MEM'):
             # 3D-ICE's own floorplan syntax, NOT the HotSpot tab-separated form: the two are
             # both called .flp and only one of them parses here.
             lines.append('{} :\n\tposition {:.3f}, {:.3f} ;\n\tdimension {:.3f}, {:.3f} ;\n'
-                         '\tpower values 0.0;'.format(name, c * bw, r * bh, bw, bh))
+                         '\tpower values {{powers[{}]}};'.format(name, c * bw, r * bh, bw, bh, name))
     with open(out_path, 'w') as f:
         f.write('\n'.join(lines) + '\n')
     LOGGER.info('wrote %d-bank memory floorplan (%.0f x %.0f um) to %s',

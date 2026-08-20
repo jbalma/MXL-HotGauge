@@ -403,3 +403,59 @@ def test_history_records_residual_and_the_damping_actually_used():
     assert res['converged']
     assert all('residual_K' in h and 'relax' in h for h in res['history'])
     assert res['relax_final'] <= 1.0
+
+
+# ---------------------------------------------------------------------------
+# The inert-feedback guard
+# ---------------------------------------------------------------------------
+def test_a_fully_unmatched_name_map_raises_instead_of_going_quiet():
+    """The guard for the defect that invalidated 43 accelerator studies.
+
+    ``missing='keep'`` is right for a handful of unmatched units -- aggregates, uncore blocks that
+    carry no floorplan element. It is never right for ALL of them: that means every name_map lookup
+    missed, so the coupled solve silently degenerates into a constant-power one. It converges,
+    reports a residual and passes damping verification, and the only symptom is that the answer
+    does not move when the leakage does.
+    """
+    import numpy as np
+    from HotGauge.power.leakage import rescale_trace, LeakageModel
+    from HotGauge.power.traces import BasicPowerTrace
+
+    trace = BasicPowerTrace({'SM0_DP': np.array([2.0]), 'SM1_DP': np.array([2.0])}, 1.0)
+    leak = {'SM0_DP': np.array([0.5]), 'SM1_DP': np.array([0.5])}
+    temps = {'SM0_DP': np.array([380.0]), 'SM1_DP': np.array([380.0])}
+
+    with pytest.raises(ValueError) as e:
+        rescale_trace(trace, leak, temps, LeakageModel.exponential(15.0),
+                                 T_ref=330.0, name_map=lambda u: None)
+    msg = str(e.value)
+    assert 'inert' in msg
+    assert 'name_map' in msg
+
+
+def test_the_identity_map_couples_and_does_not_raise():
+    import numpy as np
+    from HotGauge.power.leakage import rescale_trace, LeakageModel
+    from HotGauge.power.traces import BasicPowerTrace
+
+    trace = BasicPowerTrace({'SM0_DP': np.array([2.0])}, 1.0)
+    leak = {'SM0_DP': np.array([0.5])}
+    temps = {'SM0_DP': np.array([380.0])}
+    out = rescale_trace(trace, leak, temps, LeakageModel.exponential(15.0),
+                                   T_ref=330.0, name_map=lambda u: u)
+    assert float(out['SM0_DP'][0]) > 2.0        # 380 K is above T_ref, so leakage grew
+
+
+def test_a_partial_miss_is_still_allowed():
+    """Aggregates and uncore legitimately have no floorplan block. Only a TOTAL miss is a bug."""
+    import numpy as np
+    from HotGauge.power.leakage import rescale_trace, LeakageModel
+    from HotGauge.power.traces import BasicPowerTrace
+
+    trace = BasicPowerTrace({'A': np.array([2.0]), 'B': np.array([1.0])}, 1.0)
+    leak = {'A': np.array([0.5]), 'B': np.array([0.25])}
+    temps = {'A': np.array([380.0])}             # B has no temperature at all
+    out = rescale_trace(trace, leak, temps, LeakageModel.exponential(15.0),
+                                   T_ref=330.0, name_map=lambda u: u)
+    assert float(out['A'][0]) > 2.0
+    assert float(out['B'][0]) == pytest.approx(1.0)

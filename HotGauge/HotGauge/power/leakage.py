@@ -325,6 +325,7 @@ def rescale_trace(total_trace, leakage_ref, temp_trace, model,
 
     powers = total_trace.powers
     new_powers = {}
+    n_coupled = 0
     for unit, series in powers.items():
         series = np.asarray(series, dtype=float)
         temp_key = name_map(unit) if name_map is not None else unit
@@ -336,6 +337,7 @@ def rescale_trace(total_trace, leakage_ref, temp_trace, model,
                     unit, temp_key))
             new_powers[unit] = series  # unchanged
             continue
+        n_coupled += 1
         temps = np.asarray(temps, dtype=float)
         if t_floor_K is not None:
             temps = np.where(temps < t_floor_K, float(T_ref), temps)
@@ -344,6 +346,25 @@ def rescale_trace(total_trace, leakage_ref, temp_trace, model,
                 temps.shape, series.shape, unit))
         new_powers[unit] = rescale_total_power(series, leak, temps, model,
                                                T_ref=T_ref, temp_units=temp_units)
+    
+    # A leakage reference was supplied and NOT ONE unit of it was used. That is never a valid
+    # state: it means every name_map lookup missed, so the "coupled" solve is a constant-power
+    # solve wearing the name of one. It ran undetected across 43 accelerator studies -- the
+    # solves converged, reported residuals and passed damping verification, and the only visible
+    # symptom was results that did not move when the leakage fraction changed by 60%.
+    #
+    # missing='keep' is the right default for a handful of unmatched units (aggregates, uncore);
+    # it is never right for ALL of them.
+    if leakage_ref and n_coupled == 0:
+        raise ValueError(
+            'leakage feedback is inert: {} units carry a leakage reference and none of them '
+            'resolved to a temperature. The name_map is almost certainly wrong for this trace '
+            '-- pass name_map=lambda u: u if the trace is already keyed by floorplan block '
+            'names. Sample unit {!r} -> temp key {!r}; available temp keys start {}.'.format(
+                len(leakage_ref), next(iter(powers)),
+                (name_map(next(iter(powers))) if name_map is not None else next(iter(powers))),
+                sorted(list(temp_trace or {})[:4])))
+
     return BasicPowerTrace(new_powers, total_trace.time_step)
 
 
