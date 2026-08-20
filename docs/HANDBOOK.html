@@ -127,7 +127,7 @@
 <div class="wrap">
 
 <header class="masthead">
-  <p class="eyebrow">MXL&#8209;HotGauge &middot; Maxwell Labs &middot; living document &middot; revised 19 August 2026</p>
+  <p class="eyebrow">MXL&#8209;HotGauge &middot; Maxwell Labs &middot; living document &middot; revised 20 August 2026</p>
   <h1>Photonic Microrefrigeration Handbook</h1>
   <p class="standfirst">What we are trying to find out, how the simulation works, what every term
   means, which numbers are measured and which are assumed &mdash; and what still has to be built
@@ -137,6 +137,7 @@
 <section>
   <nav class="toc" aria-label="Contents">
     <ol>
+      <li><span class="n">00</span><a href="#status">Status &mdash; what is withdrawn</a></li>
       <li><span class="n">01</span><a href="#question">The question</a></li>
       <li><span class="n">02</span><a href="#physics">The physics, in one page</a></li>
       <li><span class="n">03</span><a href="#glossary">Glossary</a></li>
@@ -149,6 +150,77 @@
       <li><span class="n">10</span><a href="#toolchain">Toolchain work</a></li>
     </ol>
   </nav>
+</section>
+
+
+<section id="status">
+  <div class="col">
+    <p class="kicker">Status &mdash; 20 August</p>
+    <h2>Every accelerator thermal number is currently withdrawn</h2>
+    <div class="note warn">
+      <span class="lbl">Read this before quoting anything below</span>
+      <p>Two defects found on 20 August invalidate the accelerator thermal results. The
+      <strong>geometry</strong> results &mdash; plateau widths, degeneracy, placement sensitivity
+      &mdash; follow from the power map and survive. Everything that depends on a temperature does
+      not.</p>
+    </div>
+
+    <h3>1. The leakage feedback was inert on the accelerator <span class="chip g">fixed, re-run</span></h3>
+    <p><span class="mono">run_leakage_feedback</span> built its own McPAT&rarr;floorplan name map
+    unconditionally. That map returns <span class="mono">None</span> for any name it does not
+    recognise, so on a die-shot-derived floorplan <em>no block ever matched</em> and the leakage
+    update was applied to nothing. All 43 accelerator studies were <strong>constant-power</strong>
+    solves in a project whose entire subject is temperature-dependent leakage.</p>
+    <p>They looked healthy: converged, reported residuals, passed damping verification. Three
+    symptoms were visible and each was explained away &mdash; a residual of 0.0000&nbsp;K at the
+    first iteration, and results identical across a 60% change in leakage fraction and across two
+    different leakage <em>models</em>. The second of those was reported here as a
+    <em>robustness</em> result, which is the exact opposite of what it was.</p>
+    <p>Fixed with an explicit <span class="mono">name_map</span> parameter, plus a guard that now
+    <em>raises</em> when a leakage reference is supplied and not one unit resolves. The CPU path is
+    untouched and no CPU result moves.</p>
+
+    <h3>2. The heatsink does not scale with die area <span class="chip g">open &mdash; blocking</span></h3>
+    <p><span class="mono">BaffledFinSink</span> returns <strong>0.0764&nbsp;K/W at 101&nbsp;mm&sup2;
+    and 0.0764&nbsp;K/W at 826&nbsp;mm&sup2;</strong> &mdash; identical. There is no area term. The
+    accelerator has been cooled by a heatsink sized for a CPU eight times smaller: 400&nbsp;W
+    &times; 0.0764 = 30.6&nbsp;K of rise before leakage even starts.</p>
+    <p>With the leakage feedback now working, the consequence is stark:</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Accelerator point</th><th>as published (feedback inert)</th>
+        <th>with feedback coupled</th></tr></thead>
+      <tbody>
+        <tr><td>400 W uniform, 88 CFM</td><td>peak 88.06 &deg;C, plateau 332</td>
+            <td><strong>runaway &mdash; no steady state</strong></td></tr>
+        <tr><td>700 W uniform, 88 CFM</td><td>peak 127.85 &deg;C, plateau 170</td>
+            <td><strong>runaway</strong></td></tr>
+        <tr><td>700 W, 8/128 SMs active</td><td>peak 110.61 &deg;C, plateau 9</td>
+            <td><strong>runaway</strong></td></tr>
+        <tr><td>&hellip;the same point with MR</td><td>13 blocks, 22.3 W electrical</td>
+            <td>rescued, but by cooling <strong>all 367 blocks</strong> for
+            <strong>687 W</strong> on a 369 W die</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>A 400 W part running away at 0.484&nbsp;W/mm&sup2; &mdash; less than half the CPU&rsquo;s
+    measured stability cliff &mdash; is not a physical result. It is what happens when an
+    826&nbsp;mm&sup2; die is given a CPU&rsquo;s cooling. So <strong>both</strong> versions of the
+    accelerator story are withdrawn: the first was uncoupled, the second is cooled wrongly.</p>
+    <p>The consequence for the headline result is direct. The <strong>34&times; margin by which MR
+    beat &ldquo;more airflow&rdquo; was measured against an unreasonably weak opponent</strong>
+    &mdash; 88&nbsp;CFM of air on a part that would ship on a cold plate. Pricing MR against a
+    properly sized cooling solution is expected to reduce that margin substantially, and it is the
+    comparison that actually decides deployment.</p>
+    <p>The fix in progress is a cooling specification that derives thermal resistance from real
+    heatsink or cold-plate geometry scaled to the die, and returns the wall-plug power that
+    geometry implies as a function of flow rate and inlet temperature &mdash; for air
+    <em>and</em> liquid. See <a href="#toolchain">&sect;10</a>.</p>
+  </div>
 </section>
 
 <section id="question">
@@ -437,6 +509,10 @@
             <em>ceiling</em> should be quoted.</strong></td></tr>
         <tr><td>f<sub>max</sub> derate slope</td><td><span class="chip a">assumed</span></td>
             <td>Absolute GFLOP/s inherit it. Ratios are robust; absolutes are not.</td></tr>
+        <tr><td>Heatsink scaling with die area</td><td><span class="chip g">not modelled</span></td>
+            <td><strong>The blocking gap.</strong> The sink returns the same 0.0764 K/W for a
+            101 mm&sup2; die and an 826 mm&sup2; one. Every accelerator temperature is therefore
+            wrong, and in the pessimistic direction.</td></tr>
         <tr><td>Pump / chiller power for liquid</td><td><span class="chip g">not modelled</span></td>
             <td>Liquid points give a thermal resistance with <em>no</em> power cost, so MR must
             never be priced against liquid cooling in this pipeline as it stands.</td></tr>
@@ -556,12 +632,12 @@
     holds 93.6&nbsp;&deg;C unaided and MR engages <strong>zero blocks</strong>. Better conventional
     cooling did not make MR more valuable &mdash; it made it irrelevant.</p>
 
-    <h3>A uniformly loaded accelerator is the wrong target <span class="chip m">verified</span></h3>
+    <h3>A uniformly loaded accelerator is the wrong target <span class="chip a">geometry stands; temperatures withdrawn</span></h3>
     <p>332 of 367 blocks within the device&rsquo;s reach of the peak; clipping one buys 0.4% of its
     capability. All 128 compute tiles span 8.3&nbsp;K &mdash; the array is effectively one thermal
     object. Unchanged across every leakage assumption we varied.</p>
 
-    <h3>A realistic kernel overturns that <span class="chip a">re-verification in progress</span></h3>
+    <h3>A realistic kernel overturns that <span class="chip a">geometry stands; temperatures withdrawn</span></h3>
     <p>Uniform activity was a deliberate control &mdash; so any hotspot came from geometry rather
     than from an imbalance assumed into the input &mdash; and it is the <em>least</em> favourable
     input MR could be given. Under a low-occupancy kernel (8 of 128 SMs active, contiguous) on a
@@ -571,7 +647,7 @@
     <em>active</em> tiles are mutually degenerate, while the quantity that matters &mdash; how many
     blocks a rescue must cover &mdash; had fallen by 37&times;.</p>
 
-    <h3>The binding constraint is lift, not cost <span class="chip a">re-verification in progress</span></h3>
+    <h3>The binding constraint is lift, not cost <span class="chip g">withdrawn &mdash; see status</span></h3>
     <p>Five accelerator runs exited &ldquo;iteration limit reached&rdquo;. Quadrupling the budget
     moved them 1%. They had not run out of iterations &mdash; each had raised its peak by
     <em>exactly</em> <span class="mono">dt_max</span> and stopped. Sweeping the parameter confirmed
@@ -586,7 +662,7 @@
       <strong>Binding.</strong></li>
     </ul>
 
-    <h3>Priced against airflow, MR wins by 34&times; <span class="chip a">re-verification in progress</span></h3>
+    <h3>Priced against airflow, MR wins by 34&times; <span class="chip g">withdrawn &mdash; weak opponent</span></h3>
   </div>
 
   <div class="scroll">
@@ -731,9 +807,14 @@
 
     <h3>Required to close the gaps above</h3>
     <ul class="plain">
-      <li><strong>A pump-and-chiller power model.</strong> Without it, MR cannot be compared against
-      the cooling a high-TDP part actually ships with, and the project&rsquo;s central commercial
-      claim stays unproven. Smallest change with the largest effect on credibility.</li>
+      <li><strong>A cooling specification &mdash; in progress, and blocking everything else.</strong>
+      One object taking fluid, die footprint, target power, fin or channel geometry, flow rate and
+      inlet temperature, returning the thermal resistance that geometry implies <em>and</em> the
+      wall-plug power it costs. Air and liquid alike, and invertible &mdash; so a sweep can ask
+      &ldquo;what flow and inlet temperature meet this target, and what does that cost?&rdquo;</li>
+      <li><strong>Within it, a pump-and-chiller power model.</strong> Without one, MR cannot be
+      compared against the cooling a high-TDP part actually ships with, and the project&rsquo;s
+      central commercial claim stays unproven.</li>
       <li><strong>A COP&ndash;&Delta;T coupling in the device model.</strong> Currently
       <span class="mono">MRParams</span> takes lift and efficiency as unrelated numbers.</li>
       <li><strong>Chain the clock search into the break-even solve</strong>, so a throughput target
@@ -785,10 +866,10 @@
     parameters, the accelerator power split, and the V/F curve are documented assumptions, not
     datasheet extractions; accelerator block areas are measured from published die analysis.
     Nothing here is a product prediction.</p>
-    <p>Sections marked <span class="chip a">re-verification in progress</span> were measured with an
-    assumed leakage model rather than the calibrated McPAT curve, owing to a wrong default path
-    since corrected. They are being re-run; the mechanisms are not expected to move, but the
-    absolute values may.</p>
+    <p>Accelerator sections are marked for what survives. Their <strong>geometry</strong> &mdash;
+    plateau widths, degeneracy, placement sensitivity &mdash; follows from the power map and stands.
+    Every accelerator <strong>temperature</strong> is withdrawn pending a cooling model that scales
+    with die area; see the status section. CPU results are unaffected throughout.</p>
   </footer>
 </section>
 
