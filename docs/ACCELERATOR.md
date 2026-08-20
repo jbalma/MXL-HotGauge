@@ -363,3 +363,53 @@ Peak agrees to **0.01 K** and the plateau to one block. The degeneracy result is
 artefact, and the caveat is retired. Clip-one doubles, which is the expected direction — a finer
 grid resolves a slightly sharper peak — and both figures are under 1% of device capability, so
 nothing built on it moves.
+
+---
+
+## COP is not the binding constraint. It is oversupplied 34-fold. (19 August)
+
+`examples/cop_breakeven.py --die ga100` prices the two ways to hold a temperature in the same
+currency — watts of system power — and solves for the efficiency at which they cross. Both arms
+are full coupled solves, so each earns the leakage credit it deserves.
+
+**GA100, 700 W, 8 of 128 SMs active (contiguous), `dt_max` 13 K, both arms must hold 98 °C:**
+
+| arm | cooling | die | fan | MR | total |
+|---|---|---|---|---|---|
+| more airflow | 184 CFM | 369.2 W | 205.8 W | — | **575.0 W** |
+| microrefrigeration | 88 CFM | 356.4 W | 35.0 W | 22.3 W | **413.8 W** |
+
+The airflow bisection is the interesting half: holding 98 °C needs **184 CFM**, and the fan bill
+climbs from 35 W to 206 W to get there. Note the die is also *cooler* in the MR arm (356.4 vs
+369.2 W) because clipping the hot blocks suppresses their leakage — a credit the airflow arm earns
+too, just less of it.
+
+> **Break-even COP = 0.0170.** The modelled effective COP at the shipped efficiencies is
+> **0.574** (electrical COP 0.14 lifted by 76% LPC recovery). **MR wins by 33.7×**, saving
+> **161 W — 28% of system power.**
+
+The MR plan here is flagged non-minimal — the descent held the target but never bracketed the
+stability boundary — so 22.3 W is an **upper** bound and the true break-even COP is lower still.
+The error runs in MR's favour, which is the right direction for a claim of this size.
+
+### What this settles, and what it moves
+
+The question "at what COP does MR become the preferred solution?" has an answer at this operating
+point, and the answer is that **the question is not the constraint**. Efficiency is oversupplied by
+a factor of 34. Every earlier "MR costs too much" conclusion in this project was measured against
+a *thermal target MR could not reach*, not against a cost it could not justify.
+
+The binding constraint is the one the `dt_max` sweep found: **temperature lift**. At the shipped
+10 K this operating point is unreachable at any efficiency — the die needs 12.6 K. At 13 K it is
+reachable, and then it is cheap. So the device ask is unambiguous and it is not about COP:
+
+> **Get `dt_max` from 10 K to 13 K.** Everything else is already good enough by a wide margin.
+
+### Caveats that matter
+
+* **Air only.** Pump and chiller power for a liquid loop are not modelled, so this compares MR
+  against *fans*. A liquid-cooled part is a different and unpriced comparison.
+* **Operating power only.** No hardware cost, integration, reliability or capital. This is a lower
+  bound on what MR must beat commercially.
+* **One operating point.** A low-occupancy kernel on a 700 W part. The uniform-kernel case still
+  needs `dt_max` ≥ 30 K and 299 W, and no COP rescues that.
