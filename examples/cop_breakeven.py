@@ -120,7 +120,12 @@ class Point(object):
                                  already_dice_named=self.already_dice_named),
                 model=self.leak_model, T_ref=self.t_ref, num_cores=self.n_cores,
                 tol_K=a.tol, max_iter=a.max_iter, relax=a.relax, t_floor_K=T_FLOOR_K,
-                bridge_aggregates=True, verify=True)
+                # The accelerator trace is keyed by floorplan block name, so it needs the
+                # identity map; the CPU trace is McPAT-named and needs the McPAT bridge. Getting
+                # this wrong does not raise -- it silently disables the leakage feedback.
+                bridge_aggregates=not self.already_dice_named,
+                name_map=((lambda u: u) if self.already_dice_named else None),
+                verify=True)
             solve.last = r
             ver['n_solves'] += 1
             if r.get('unconverged'):

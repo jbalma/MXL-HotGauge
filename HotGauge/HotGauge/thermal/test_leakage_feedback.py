@@ -470,3 +470,49 @@ def test_unconverged_is_flagged_when_the_peak_moves_with_damping():
 if __name__ == '__main__':
     import sys
     sys.exit(pytest.main([__file__, '-v']))
+
+
+def test_an_unrecognised_name_map_silently_disables_the_feedback():
+    """The defect this pins ran for two days and invalidated 43 studies.
+
+    run_leakage_feedback built its own McPAT->floorplan name map unconditionally. That map returns
+    None for any name it does not recognise, so for a floorplan McPAT knows nothing about -- the
+    die-shot-derived accelerator -- NO block ever matched and the leakage update was applied to
+    nothing. The solve looked healthy: it converged, reported a residual, and produced plausible
+    temperatures. It was a constant-power solve wearing the name of a coupled one.
+
+    The tell was that results were bit-identical across a 60% change in leakage fraction. This
+    test asserts the opposite: with a usable name map, changing the leakage reference MUST change
+    the answer.
+    """
+    import numpy as np
+    from HotGauge.power import BasicPowerTrace, LeakageModel
+    from HotGauge.thermal.leakage_feedback import run_leakage_feedback
+
+    # A solver whose temperature rises with applied power, so leakage feedback has something to do.
+    def solve(trace):
+        total = sum(float(np.ravel(v)[-1]) for v in trace.powers.values())
+        return {'BLK0': np.array([300.0 + 4.0 * total])}
+
+    trace = BasicPowerTrace({'BLK0': np.array([10.0])}, 1.0)
+    model = LeakageModel.exponential(15.0)
+
+    peaks = {}
+    for frac in (0.10, 0.40):
+        res = run_leakage_feedback(trace, {'BLK0': np.array([10.0 * frac])}, solve, model=model,
+                                   T_ref=330.0, num_cores=1, tol_K=0.01, max_iter=40, relax=0.5,
+                                   bridge_aggregates=False, name_map=(lambda u: u), verify=False)
+        peaks[frac] = float(np.ravel(res['temp_trace']['BLK0'])[-1])
+
+    assert peaks[0.40] != pytest.approx(peaks[0.10], abs=1e-6), (
+        'leakage fraction changed 4x and the answer did not move -- the feedback is inert')
+    assert peaks[0.40] > peaks[0.10]
+
+
+def test_without_a_usable_name_map_nothing_is_bridged():
+    """The other half: the McPAT map really does return None for a floorplan it does not know, so
+    the failure mode is reachable and worth having pinned rather than assumed away."""
+    from HotGauge.thermal.leakage_feedback import aggregate_aware_name_map
+    nm = aggregate_aware_name_map(include_core_idx=False, num_cores=1)
+    for block in ('SM0_DP', 'HBM_PHY_B0', 'L2_12', 'MEMCTRL_T1'):
+        assert nm(block) is None, block

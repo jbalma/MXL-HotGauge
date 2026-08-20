@@ -667,7 +667,7 @@ def run_leakage_feedback(baseline_trace, leakage_ref, thermal_solve_fn, model=No
                          max_temp_K=1000.0, bridge_aggregates=False,
                          verify=True, verify_tol_K=1.0, verify_factor=0.5,
                          verify_max_levels=2, min_relax=0.025, adaptive_relax=True,
-                         residual_convergence=True):
+                         residual_convergence=True, name_map=None):
     """Run the fixed-point leakage feedback given a baseline trace and a thermal solver.
 
     baseline_trace   : McPAT-named PowerTrace (leakage extracted at ``T_ref``).
@@ -677,6 +677,11 @@ def run_leakage_feedback(baseline_trace, leakage_ref, thermal_solve_fn, model=No
                        in production, or any callable (e.g. a mock) in tests.
     model            : a ``LeakageModel``; defaults to the exponential (doubles per 10 C).
     num_cores        : controls whether floorplan names carry a core index in the name bridge.
+    name_map         : optional callable mapping a trace unit name to a floorplan block name.
+                       Pass ``lambda u: u`` when the trace is already keyed by floorplan block
+                       names -- otherwise the McPAT map is used and returns None for every
+                       unrecognised name, which silently disables the feedback rather than
+                       raising.
     relax            : under-relaxation factor (default 0.5) -- damps overshoot so a real
                        3D-ICE-in-the-loop solve is less likely to spike into runaway.
     max_power_growth : stop and flag runaway if total power exceeds this multiple of baseline
@@ -722,15 +727,34 @@ def run_leakage_feedback(baseline_trace, leakage_ref, thermal_solve_fn, model=No
     """
     if model is None:
         model = LeakageModel.exponential()
-    if bridge_aggregates:
+    # A caller whose trace is ALREADY keyed by floorplan block name must be able to say so.
+    #
+    # This function used to build its own McPAT->floorplan map unconditionally, and that map
+    # returns None for any name it does not recognise -- so for a floorplan McPAT knows nothing
+    # about, NO block ever matched and the leakage update was silently applied to nothing. Every
+    # accelerator run made before this fix was a constant-power solve wearing the name of a
+    # coupled one: residual 0.0000 K at the first iteration, and results bit-identical across a
+    # 60% change in leakage fraction and across two different leakage MODELS. That last symptom
+    # is what finally gave it away, and it should have been obviously wrong the first time.
+    #
+    # An explicit name_map (identity, for such callers) overrides the McPAT machinery entirely.
+    if name_map is not None:
+        supplied_name_map = name_map
+        if bridge_aggregates:
+            _inner_solve = thermal_solve_fn
+
+            def thermal_solve_fn(trace, _f=_inner_solve):
+                return augment_temps_with_aggregates(_f(trace), num_cores=num_cores)
+        name_map = supplied_name_map
+    elif bridge_aggregates:
         # Let aggregates whose power IS on the die (L3) participate in the feedback instead of
         # sitting frozen at T_ref. Wrapping the solver keeps this orthogonal to the solver
         # itself, so steady/transient/mock all get it identically.
         name_map = aggregate_aware_name_map(include_core_idx=(num_cores > 1),
                                             num_cores=num_cores)
-        _inner_solve = thermal_solve_fn
+        _inner_solve2 = thermal_solve_fn
 
-        def thermal_solve_fn(trace, _f=_inner_solve):
+        def thermal_solve_fn(trace, _f=_inner_solve2):
             return augment_temps_with_aggregates(_f(trace), num_cores=num_cores)
     else:
         name_map = mcpat_flp_name_map(include_core_idx=(num_cores > 1))

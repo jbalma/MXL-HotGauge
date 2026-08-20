@@ -327,7 +327,8 @@ def main():
                 already_dice_named=True),
                 model=leak_model, T_ref=t_ref, num_cores=1, tol_K=args.tol,
                 max_iter=args.max_iter, relax=args.relax, t_floor_K=T_FLOOR_K,
-                bridge_aggregates=True, verify=True)
+                bridge_aggregates=False,
+                               name_map=(lambda u: u), verify=True)
             holder['last'] = r
             return r['temp_trace']
 
@@ -372,7 +373,8 @@ def main():
         res = run_leakage_feedback(trace, leak_ref, solver, model=leak_model, T_ref=t_ref,
                                    num_cores=1, tol_K=args.tol, max_iter=args.max_iter,
                                    relax=args.relax, t_floor_K=T_FLOOR_K,
-                                   bridge_aggregates=True, verify=True)
+                                   bridge_aggregates=False,
+                               name_map=(lambda u: u), verify=True)
 
     if res.get('diverged'):
         print('\n  NO STEADY STATE: thermal runaway at {:.3f} W/mm^2. That is a result, not a '
