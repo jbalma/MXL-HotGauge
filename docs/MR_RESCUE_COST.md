@@ -201,3 +201,47 @@ down. It is **not** proven to be the cheapest possible plan: a smarter block-sel
 ranking by leakage contribution rather than by temperature threshold — might hold the same
 target for less. That is now the most valuable open question in the MR model, and it is item 8
 in `docs/GAMEPLAN.md`.
+
+---
+
+## AXIS CORRECTION (19 August): these are rescue costs, not hold-a-temperature costs
+
+Every number in this document answers **"what is the cheapest plan that gives this die a steady
+state?"** — not "what does it cost to hold this temperature?". The two differ by up to **450×** at
+the same density and the same nominal target, and the `--mr-target-C` label made them look like
+one quantity.
+
+The discrepancy surfaced when `examples/cop_breakeven.py` priced 1.10 W/mm² at a 98 °C target and
+got 131 W, against the 0.29 W in the table above. Neither is wrong; the solver said so in its own
+`reason` strings, which I had not been reading:
+
+| | reason returned | achieved peak | blocks | electrical |
+|---|---|---|---|---|
+| this document | *minimum plan that keeps the die on the **cool branch*** | 99.95 °C | 4 | **0.29 W** |
+| `cop_breakeven` | *minimum plan that **holds the target*** | 98.59 °C | 1126 | **131.3 W** |
+
+Both are minimal for their own question and both converged. The rescue lands wherever the cool
+branch happens to sit — here 99.95 °C, just under the 100 °C limit — and costs almost nothing,
+because arresting a runaway needs only the few blocks that drive it. Pinning the peak to 98.0 °C
+instead means cooling everything between 98 and 100 °C, which on this die is the whole plateau.
+
+**A `tol_K` of 2.0 K is what let one pass as the other.** A plan that lands at 99.95 against a
+98 °C target reports `holds_target: True` because it is within tolerance — and the cost difference
+across that 2 K band is 450×. That is the knee of the margin curve, seen at far finer resolution
+than the curve itself resolves.
+
+### What changes and what does not
+
+**Unchanged:** every measured value, the knee at ~94 °C on curve 1 and ~97 °C on curve 2, the
+observation that the knee tracks the top of the block distribution rather than an absolute
+temperature, the three-curve comparison, and the conclusion that MR's cost is dominated by how many
+blocks sit between the operating point and the target. The physics and the mechanism stand.
+
+**Changed:** the axis label and the headline. This is a **rescue-cost curve**. Read
+"MR target 98 °C" as *"consider blocks above 98 °C as candidates"*, not as *"hold the die at
+98 °C"*. The achieved peak is in the tables and is the number to quote alongside the watts.
+
+The rescue result itself is unaffected and remains the strongest MR finding on the CPU die:
+**0.29 W of net electrical power gives a 113 W die with no steady state a stable operating point
+just under its 100 °C spec.** What that sentence does *not* claim, and never did, is that 0.29 W
+holds any particular temperature below it.
