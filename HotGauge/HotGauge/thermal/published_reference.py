@@ -43,6 +43,7 @@ PUBLISHED_POINTS = {
         'temp_C': (54.0, 72.0),
         'implied_r_th_peak': (72.0 - 21.5) / 470.0,     # 0.1074 K/W
         'note': 'traditional air setup, 8 fans per node',
+        'floorplan': 'ga100',
         'cooler_class': 'datacenter_module',
     },
     'H100_LIQUID': {
@@ -56,6 +57,8 @@ PUBLISHED_POINTS = {
         'temp_C': (41.0, 50.0),
         'implied_r_th_peak': (50.0 - 20.0) / 453.0,     # 0.0662 K/W
         'note': 'D2C cooling, 4 fans per node',
+        'floorplan': 'ga100',
+        'package_note': 'direct-to-chip removes the lid and heat spreader, so the lidded\n            skylake package is wrong here -- it consumes 0.055 of the 0.0662 K/W budget\n            and leaves 0.011 that no water flow delivers',
         'cooler_class': 'datacenter_module',
     },
 }
@@ -82,9 +85,14 @@ CPU_POINTS = {
         'ambient_C': 24.0,
         'fluid': 'air',
         'temp_C': (74.9, 76.3),          # 75.6 +/- 0.7
-        'implied_r_th_peak': (75.6 - 24.0) / 132.0,      # 0.391 K/W
+        'implied_r_th_peak': (76.3 - 24.0) / 132.0,      # 0.396 K/W, from the TOP of
+        #                                                 the range, as every other point
         'note': 'dual 120 mm fans, 6x6 mm heat pipes; NOT at TjMax, so a clean thermal point',
         'cooler_class': 'desktop_tower',
+        'floorplan': 'skylake10nm_14core_3',
+        'floorplan_note': 'nearest available CPU floorplan is 90.6 mm^2 against the CCD\'s '
+                          '71 mm^2 -- a 28% area mismatch, so this tests whether the model '
+                          'generalises to a die of ROUGHLY this size, not this exact part',
     },
     'RYZEN_7500F_LIQUID': {
         'label': 'Ryzen 5 7500F, Lian Li Galahad II Lite 360 mm AIO, Prime95',
@@ -94,9 +102,10 @@ CPU_POINTS = {
         'ambient_C': 24.0,
         'fluid': 'water',
         'temp_C': (69.5, 71.1),          # 70.3 +/- 0.8
-        'implied_r_th_peak': (70.3 - 24.0) / 129.0,      # 0.359 K/W
+        'implied_r_th_peak': (71.1 - 24.0) / 129.0,      # 0.365 K/W, top of the range
         'note': '360 mm radiator, 3x120 mm fans; NOT at TjMax',
         'cooler_class': 'desktop_tower',
+        'floorplan': 'skylake10nm_14core_3',
     },
 }
 

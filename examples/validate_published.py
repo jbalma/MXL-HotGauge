@@ -40,7 +40,8 @@ from HotGauge.power import BasicPowerTrace, LeakageModel
 from HotGauge.thermal import get_stack_template, ICEThermalSolver, run_leakage_feedback
 from HotGauge.thermal.ice_server import shared_cache
 from HotGauge.thermal.leakage_feedback import load_calibrated_leakage_model
-from HotGauge.thermal.sink_models import render_stack_with_sink
+from HotGauge.thermal.sink_models import render_stack_with_sink, chip_area_m2_from_floorplan
+from HotGauge.thermal.ICE import Floorplan
 from HotGauge.thermal.stack_models import coarsen_stack_grid
 from HotGauge.thermal.cooling_spec import (CoolingSpec, CoolingSpecSink, air_spec,
                                            solve_flow_for_peak, solve_flow_for_r_th,
@@ -82,23 +83,44 @@ def run_point(args, key, split_mode='assumed', leak_fraction=None, leak_by_class
     p = all_thermal_points()[key]
     leak_fraction = p and (leak_fraction if leak_fraction is not None else args.leak_fraction)
 
-    g = ga100_geometry()
     out_dir = os.path.join(args.out_dir, '{}_{}'.format(key, split_mode))
     os.makedirs(out_dir, exist_ok=True)
-    flp, classes = ga100_floorplan(os.path.join(out_dir, 'ga100.flp'), split_sm=True, geom=g,
-                                   cell_um=args.cell_um)
-    areas = block_areas_mm2(flp)
-    area_mm2 = g['w_die'] * g['h_die']
 
-    split = dict(GA100_POWER_SPLIT)
-    dp_frac = None
-    if split_mode == 'flat':
-        split = flat_split_by_area(classes, areas)
-        # Power follows area inside the tile too, otherwise the datapath concentration survives
-        # a 'flat' split and the test does not test what it claims to.
-        dp_frac = 1.0 - SM_SRAM_FRACTION
-    kw_bp = {} if dp_frac is None else {'datapath_fraction': dp_frac}
-    powers, pmeta = ga100_block_powers(p['power_W'], classes, split=split, **kw_bp)
+    if p.get('floorplan', 'ga100') == 'ga100':
+        g = ga100_geometry()
+        flp, classes = ga100_floorplan(os.path.join(out_dir, 'ga100.flp'), split_sm=True, geom=g,
+                                       cell_um=args.cell_um)
+        areas = block_areas_mm2(flp)
+        area_mm2 = g['w_die'] * g['h_die']
+        is_cpu = False
+    else:
+        # A CPU point: use a shipped McPAT-derived floorplan and spread the published package
+        # power over it by AREA. That is deliberately crude -- a real per-block map would come
+        # from Sniper -- but this test is about whether a die of roughly this size at this power
+        # under this cooler lands near the published temperature, not about the power map.
+        flp = os.path.join(_REPO, 'examples', 'floorplans', 'outputs',
+                           '{}_3D-ICE_template.flp'.format(p['floorplan']))
+        if not os.path.isfile(flp):
+            raise SystemExit('no floorplan at {}'.format(flp))
+        fp = Floorplan.from_file(flp)
+        areas = {e.name: (e.width * e.height) / 1.0e6 for e in fp.elements}
+        area_mm2 = chip_area_m2_from_floorplan(flp) * 1e6
+        classes = {n: 'cpu' for n in areas}
+        is_cpu = True
+
+    if is_cpu:
+        tot = sum(areas.values())
+        powers = {n: p['power_W'] * a / tot for n, a in areas.items()}
+    else:
+        split = dict(GA100_POWER_SPLIT)
+        dp_frac = None
+        if split_mode == 'flat':
+            split = flat_split_by_area(classes, areas)
+            # Power follows area inside the tile too, or the datapath concentration survives a
+            # 'flat' split and the test does not test what it claims to.
+            dp_frac = 1.0 - SM_SRAM_FRACTION
+        kw_bp = {} if dp_frac is None else {'datapath_fraction': dp_frac}
+        powers, pmeta = ga100_block_powers(p['power_W'], classes, split=split, **kw_bp)
 
     # Leakage reference. By class it tracks what actually leaks: logic does, I/O PHYs mostly
     # do not, and SRAM sits between. Uniform is the study's original assumption.
