@@ -43,12 +43,15 @@ from HotGauge.thermal.leakage_feedback import load_calibrated_leakage_model
 from HotGauge.thermal.sink_models import render_stack_with_sink
 from HotGauge.thermal.stack_models import coarsen_stack_grid
 from HotGauge.thermal.cooling_spec import (CoolingSpec, CoolingSpecSink, air_spec,
-                                           solve_flow_for_peak, velocity_is_plausible)
+                                           solve_flow_for_peak, solve_flow_for_r_th,
+                                           velocity_is_plausible, measure_package_resistance,
+                                           external_r_for_total, COOLER_CLASSES)
 from HotGauge.thermal.accelerator_floorplan import (ga100_geometry, ga100_floorplan,
                                                     ga100_block_powers, block_areas_mm2,
                                                     GA100_POWER_SPLIT, SM_SRAM_FRACTION,
                                                     tier_analysis_by_class)
-from HotGauge.thermal.published_reference import PUBLISHED_POINTS, check_peak
+from HotGauge.thermal.published_reference import (PUBLISHED_POINTS, all_thermal_points,
+                                                  check_peak)
 
 T_FLOOR_K = 273.15
 
@@ -76,7 +79,7 @@ def flat_split_by_area(classes, areas):
 
 def run_point(args, key, split_mode='assumed', leak_fraction=None, leak_by_class=False):
     """One coupled solve at a published operating point."""
-    p = PUBLISHED_POINTS[key]
+    p = all_thermal_points()[key]
     leak_fraction = p and (leak_fraction if leak_fraction is not None else args.leak_fraction)
 
     g = ga100_geometry()
@@ -109,14 +112,40 @@ def run_point(args, key, split_mode='assumed', leak_fraction=None, leak_by_class
 
     trace = BasicPowerTrace({u: np.array([v]) for u, v in powers.items()}, 1.0)
 
-    spec = solve_flow_for_peak(p['fluid'], area_mm2, p['power_W'], p['temp_C'][1],
-                               inlet_C=p['ambient_C'], ambient_C=p['ambient_C'])
+    spread = COOLER_CLASSES[p.get('cooler_class', 'cfd_reference')]
+
+    # Two corrections the first attempt lacked, and together they are the whole difference.
+    # 1. The published resistance is junction-to-ambient and ALREADY CONTAINS the package. 3D-ICE
+    #    adds the package itself, so external cooling supplies only the remainder -- and on this
+    #    die the package is more than half the budget.
+    # 2. The sink is sized by COOLER CLASS. base_spread 1.85 is the CFD study's own small sink;
+    #    using it everywhere demanded face velocities nobody builds.
+    r_pkg = args.package_r
+    if r_pkg is None:
+        probe = solve_flow_for_peak(p['fluid'], area_mm2, p['power_W'], p['temp_C'][1],
+                                    inlet_C=p['ambient_C'], ambient_C=p['ambient_C'],
+                                    base_spread=spread)
+        probe_sink = CoolingSpecSink(probe, p['power_W'])
+        probe_stack = render_stack_with_sink(get_stack_template(args.stack), probe_sink,
+                                             os.path.join(out_dir, 'probe.stk'))
+        coarsen_stack_grid(probe_stack, args.cell_um)
+        _, r_pkg, _ = measure_package_resistance(
+            probe_stack, flp, args.tech_node, area_mm2, probe_sink.r_th_K_per_W,
+            p['power_W'], p['ambient_C'] + 273.15, powers,
+            session_cache=shared_cache(), run_dir=os.path.join(out_dir, 'pkg'))
+
+    r_ext = external_r_for_total(p['implied_r_th_peak'], r_pkg)
+    spec = solve_flow_for_r_th(p['fluid'], area_mm2, r_ext, inlet_C=p['ambient_C'],
+                               ambient_C=p['ambient_C'], base_spread=spread)
     if spec is None:
-        raise SystemExit('no flow holds the published temperature -- the cooling model cannot '
-                         'even reach the operating point, which is a different failure')
+        raise SystemExit(
+            'no flow reaches {:.4f} K/W of EXTERNAL resistance on a {:.0f} mm^2 die with {} and a '
+            '{} sink -- a real answer: this cooling class cannot hold the published temperature '
+            'through this package.'.format(r_ext, area_mm2, p['fluid'], p.get('cooler_class')))
     if p['fluid'] == 'air':
-        spec = air_spec(area_mm2, spec.flow_m3s, p['ambient_C'], ambient_C=p['ambient_C'])
-    sink = CoolingSpecSink(spec, p['power_W'])
+        spec = air_spec(area_mm2, spec.flow_m3s, p['ambient_C'], ambient_C=p['ambient_C'],
+                        base_spread=spread)
+    sink = CoolingSpecSink(spec, p['power_W'], r_package_K_per_W=r_pkg)
 
     stack = render_stack_with_sink(get_stack_template(args.stack),
                                    sink, os.path.join(out_dir, 'stack.stk'))
@@ -147,6 +176,8 @@ def run_point(args, key, split_mode='assumed', leak_fraction=None, leak_by_class
 
     ok, verdict = check_peak(key, peak_C, diverged=diverged)
     return {'point': key, 'split_mode': split_mode, 'leak_fraction': leak_fraction,
+            'r_package_K_per_W': r_pkg, 'r_external_K_per_W': r_ext,
+            'cooler_class': p.get('cooler_class'),
             'leak_by_class': leak_by_class, 'r_th_K_per_W': sink.r_th_K_per_W,
             'flow_m3s': spec.flow_m3s, 'wall_plug_W': spec.wall_plug_W(p['power_W']),
             'peak_C': peak_C, 'peak_class': (tiers or {}).get('peak_class'),
@@ -158,7 +189,9 @@ def run_point(args, key, split_mode='assumed', leak_fraction=None, leak_by_class
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--point', default='H100_AIR', choices=sorted(PUBLISHED_POINTS))
+    ap.add_argument('--point', default='H100_AIR', choices=sorted(all_thermal_points()))
+    ap.add_argument('--package-r', type=float, default=None,
+                    help='skip the calibration solve and use this package resistance [K/W]')
     ap.add_argument('--bisect', action='store_true',
                     help='on failure, walk the candidate causes')
     ap.add_argument('--leak-fraction', type=float, default=0.25)
@@ -176,7 +209,7 @@ def main():
     args.out_dir = os.path.abspath(args.out_dir)
     os.makedirs(args.out_dir, exist_ok=True)
 
-    p = PUBLISHED_POINTS[args.point]
+    p = all_thermal_points()[args.point]
     print('ACCEPTANCE TEST: {}'.format(p['label']))
     print('  source   : {}'.format(p['source']))
     print('  published: {:.0f} W, ambient {:.1f} C, observed {:.0f}-{:.0f} C under load'.format(

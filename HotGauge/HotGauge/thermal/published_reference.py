@@ -43,6 +43,7 @@ PUBLISHED_POINTS = {
         'temp_C': (54.0, 72.0),
         'implied_r_th_peak': (72.0 - 21.5) / 470.0,     # 0.1074 K/W
         'note': 'traditional air setup, 8 fans per node',
+        'cooler_class': 'datacenter_module',
     },
     'H100_LIQUID': {
         'label': 'H100 80GB HBM3, direct-to-chip liquid, LLM fine-tuning',
@@ -55,6 +56,7 @@ PUBLISHED_POINTS = {
         'temp_C': (41.0, 50.0),
         'implied_r_th_peak': (50.0 - 20.0) / 453.0,     # 0.0662 K/W
         'note': 'D2C cooling, 4 fans per node',
+        'cooler_class': 'datacenter_module',
     },
 }
 
@@ -82,6 +84,7 @@ CPU_POINTS = {
         'temp_C': (74.9, 76.3),          # 75.6 +/- 0.7
         'implied_r_th_peak': (75.6 - 24.0) / 132.0,      # 0.391 K/W
         'note': 'dual 120 mm fans, 6x6 mm heat pipes; NOT at TjMax, so a clean thermal point',
+        'cooler_class': 'desktop_tower',
     },
     'RYZEN_7500F_LIQUID': {
         'label': 'Ryzen 5 7500F, Lian Li Galahad II Lite 360 mm AIO, Prime95',
@@ -93,6 +96,7 @@ CPU_POINTS = {
         'temp_C': (69.5, 71.1),          # 70.3 +/- 0.8
         'implied_r_th_peak': (70.3 - 24.0) / 129.0,      # 0.359 K/W
         'note': '360 mm radiator, 3x120 mm fans; NOT at TjMax',
+        'cooler_class': 'desktop_tower',
     },
 }
 
