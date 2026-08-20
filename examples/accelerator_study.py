@@ -65,6 +65,7 @@ from HotGauge.thermal.accelerator_floorplan import (
     power_density_by_class, power_split_sensitivity, tier_analysis_by_class,
     kernel_activity, KERNELS)
 
+_REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOGGER = logging.getLogger('accelerator_study')
 T_FLOOR_K = 273.15
 
@@ -182,7 +183,15 @@ def main():
     ap.add_argument('--ambient-K', type=float, default=308.15)
     ap.add_argument('--stack', default='skylake')
     ap.add_argument('--tech-node', type=int, default=7)
-    ap.add_argument('--leakage-cal', default='docs/evidence/leakage_calibration.json')
+    ap.add_argument('--leakage-cal',
+                    # The measured McPAT curve lives HERE. I first defaulted this to
+                    # docs/evidence/, which does not exist, so every accelerator run
+                    # silently fell back to an assumed exponential while the CPU runs
+                    # used the measured one -- breaking the iso-node comparison the
+                    # whole study rests on. The fallback is legitimate; defaulting to
+                    # it by typo is not.
+                    default=os.path.join(_REPO, 'leakage_calibration',
+                                         'leakage_calibration.json'))
     ap.add_argument('--tol', type=float, default=0.05)
     ap.add_argument('--max-iter', type=int, default=120)
     ap.add_argument('--relax', type=float, default=0.5)

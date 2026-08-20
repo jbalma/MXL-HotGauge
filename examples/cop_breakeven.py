@@ -267,8 +267,11 @@ def main():
     ap.add_argument('--leakage-cal-default-note', default=None, help=argparse.SUPPRESS)
     ap.add_argument('--stack', default='skylake')
     ap.add_argument('--ambient-K', type=float, default=308.15)
-    ap.add_argument('--leakage-cal', default=os.path.join(_REPO, 'docs', 'evidence',
-                                                          'leakage_calibration.json'))
+    ap.add_argument('--leakage-cal',
+                    # See the note in accelerator_study.py: the measured curve is in
+                    # leakage_calibration/, not docs/evidence/.
+                    default=os.path.join(_REPO, 'leakage_calibration',
+                                         'leakage_calibration.json'))
     ap.add_argument('--tol', type=float, default=0.05)
     ap.add_argument('--max-iter', type=int, default=120)
     ap.add_argument('--relax', type=float, default=0.5)

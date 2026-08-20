@@ -1,0 +1,795 @@
+
+<title>Photonic Microrefrigeration Handbook</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    --ground:#EDF1F2; --surface:#FBFCFC; --sunken:#E3E9EB;
+    --ink:#131A1C; --ink-2:#3A474B; --muted:#66757A;
+    --rule:#D4DCDE; --rule-2:#E5EBEC;
+    --accent:#0F5C6E; --accent-2:#14798F;
+    --meas:#1F6F43; --meas-bg:#E2EFE8;
+    --asum:#8A5A00; --asum-bg:#F5EDDB;
+    --gap:#8C2F52;  --gap-bg:#F5E3E9;
+    --shadow:0 1px 2px rgba(19,26,28,.05),0 12px 32px -20px rgba(19,26,28,.28);
+    --f-display:Newsreader,Charter,Cambria,Georgia,serif;
+    --f-ui:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --f-data:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --col:68ch; --wide:1120px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0E1416; --surface:#141B1E; --sunken:#192226;
+      --ink:#E7EDEE; --ink-2:#B6C2C6; --muted:#8A9AA0;
+      --rule:#242F33; --rule-2:#1C2529;
+      --accent:#4FB3C9; --accent-2:#7FCFE0;
+      --meas:#6FC191; --meas-bg:#12241A;
+      --asum:#D9A845; --asum-bg:#251C0C;
+      --gap:#E08AA3;  --gap-bg:#27131A;
+      --shadow:0 1px 2px rgba(0,0,0,.5),0 12px 32px -20px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0E1416; --surface:#141B1E; --sunken:#192226;
+    --ink:#E7EDEE; --ink-2:#B6C2C6; --muted:#8A9AA0;
+    --rule:#242F33; --rule-2:#1C2529;
+    --accent:#4FB3C9; --accent-2:#7FCFE0;
+    --meas:#6FC191; --meas-bg:#12241A;
+    --asum:#D9A845; --asum-bg:#251C0C;
+    --gap:#E08AA3;  --gap-bg:#27131A;
+    --shadow:0 1px 2px rgba(0,0,0,.5),0 12px 32px -20px rgba(0,0,0,.8);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;padding:0 24px 120px;background:var(--ground);color:var(--ink);
+       font-family:var(--f-display);font-size:17.5px;line-height:1.62;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:var(--wide);margin:0 auto}
+  .col{max-width:var(--col)}
+  section{padding:38px 0;border-top:1px solid var(--rule)}
+  section:first-of-type{border-top:none}
+
+  h1{font-family:var(--f-display);font-weight:600;font-size:clamp(2.1rem,5vw,3.1rem);
+     line-height:1.08;letter-spacing:-.02em;margin:.1em 0 .3em;text-wrap:balance}
+  h2{font-family:var(--f-display);font-weight:600;font-size:1.62rem;line-height:1.2;
+     margin:0 0 .1em;letter-spacing:-.01em;text-wrap:balance}
+  h3{font-family:var(--f-ui);font-weight:700;font-size:1.03rem;margin:1.9em 0 .5em;
+     letter-spacing:.005em}
+  p{margin:0 0 1.05em}
+  .kicker{font-family:var(--f-ui);font-size:.78rem;font-weight:700;letter-spacing:.1em;
+          text-transform:uppercase;color:var(--accent);margin:0 0 1.1em}
+  .eyebrow{font-family:var(--f-ui);font-size:.75rem;font-weight:600;letter-spacing:.13em;
+           text-transform:uppercase;color:var(--muted);margin:0}
+  .standfirst{font-size:1.24rem;line-height:1.5;color:var(--ink-2);max-width:60ch}
+  .masthead{padding:64px 0 34px}
+  a{color:var(--accent);text-underline-offset:2px}
+  code,.mono{font-family:var(--f-data);font-size:.87em;background:var(--sunken);
+             padding:.08em .34em;border-radius:3px}
+  strong{font-weight:600}
+
+  /* provenance chips -- the recurring structural device */
+  .chip{display:inline-block;font-family:var(--f-ui);font-size:.68rem;font-weight:700;
+        letter-spacing:.07em;text-transform:uppercase;padding:.16em .5em;border-radius:3px;
+        vertical-align:.09em;white-space:nowrap}
+  .m{background:var(--meas-bg);color:var(--meas)}
+  .a{background:var(--asum-bg);color:var(--asum)}
+  .g{background:var(--gap-bg);color:var(--gap)}
+
+  table{border-collapse:collapse;width:100%;font-family:var(--f-ui);font-size:.93rem;
+        font-variant-numeric:tabular-nums}
+  .scroll{overflow-x:auto;margin:0 0 1.3em;border:1px solid var(--rule);border-radius:6px;
+          background:var(--surface)}
+  th,td{text-align:left;padding:.56em .82em;border-bottom:1px solid var(--rule-2);
+        vertical-align:top}
+  thead th{font-size:.73rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);
+           font-weight:700;border-bottom:1px solid var(--rule);white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td.num,th.num{text-align:right}
+
+  dl.gloss{margin:0;display:grid;gap:0}
+  dl.gloss>div{padding:1.05em 0;border-bottom:1px solid var(--rule-2)}
+  dl.gloss>div:last-child{border-bottom:none}
+  dt{font-family:var(--f-ui);font-weight:700;font-size:1rem;margin:0 0 .3em}
+  dd{margin:0;color:var(--ink-2)}
+  dd p{margin:0 0 .6em}
+  dd p:last-child{margin:0}
+
+  .note{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--accent);
+        border-radius:5px;padding:1.05em 1.25em;margin:0 0 1.3em;box-shadow:var(--shadow)}
+  .note.warn{border-left-color:var(--gap)}
+  .note p:last-child{margin:0}
+  .note .lbl{font-family:var(--f-ui);font-size:.72rem;font-weight:700;letter-spacing:.09em;
+             text-transform:uppercase;color:var(--muted);display:block;margin:0 0 .45em}
+
+  ul.plain{list-style:none;padding:0;margin:0 0 1.2em}
+  ul.plain>li{padding:.42em 0 .42em 1.15em;position:relative;color:var(--ink-2)}
+  ul.plain>li::before{content:"";position:absolute;left:0;top:1.02em;width:6px;height:1px;
+                      background:var(--accent)}
+  ol.steps{padding-left:1.3em;margin:0 0 1.2em;color:var(--ink-2)}
+  ol.steps>li{padding:.3em 0}
+
+  nav.toc{background:var(--surface);border:1px solid var(--rule);border-radius:6px;
+          padding:1.1em 1.35em;box-shadow:var(--shadow)}
+  nav.toc ol{list-style:none;padding:0;margin:0;columns:2;column-gap:2.4em;
+             font-family:var(--f-ui);font-size:.93rem}
+  nav.toc li{padding:.24em 0;break-inside:avoid}
+  nav.toc a{text-decoration:none;color:var(--ink-2)}
+  nav.toc a:hover{color:var(--accent);text-decoration:underline}
+  nav.toc .n{font-family:var(--f-data);font-size:.78rem;color:var(--muted);margin-right:.6em}
+  @media (max-width:640px){nav.toc ol{columns:1}}
+
+  footer{border-top:1px solid var(--rule);margin-top:40px;padding-top:24px;
+         font-family:var(--f-ui);font-size:.86rem;color:var(--muted);max-width:var(--col)}
+  :where(a,[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">MXL&#8209;HotGauge &middot; Maxwell Labs &middot; living document &middot; revised 19 August 2026</p>
+  <h1>Photonic Microrefrigeration Handbook</h1>
+  <p class="standfirst">What we are trying to find out, how the simulation works, what every term
+  means, which numbers are measured and which are assumed &mdash; and what still has to be built
+  before the project can answer its own question.</p>
+</header>
+
+<section>
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><span class="n">01</span><a href="#question">The question</a></li>
+      <li><span class="n">02</span><a href="#physics">The physics, in one page</a></li>
+      <li><span class="n">03</span><a href="#glossary">Glossary</a></li>
+      <li><span class="n">04</span><a href="#dies">The dies we simulate</a></li>
+      <li><span class="n">05</span><a href="#provenance">Measured vs assumed</a></li>
+      <li><span class="n">06</span><a href="#modes">What the pipeline can ask</a></li>
+      <li><span class="n">07</span><a href="#findings">What we have found</a></li>
+      <li><span class="n">08</span><a href="#workload">Workload dependence</a></li>
+      <li><span class="n">09</span><a href="#gaps">Open gaps</a></li>
+      <li><span class="n">10</span><a href="#toolchain">Toolchain work</a></li>
+    </ol>
+  </nav>
+</section>
+
+<section id="question">
+  <div class="col">
+    <p class="kicker">01 &mdash; The question</p>
+    <h2>Can you cool a processor with light, and is it worth doing?</h2>
+    <p>Maxwell Labs is developing <strong>photonic microrefrigeration</strong> (MR): a solid-state
+    cooler that removes heat from a chip using <em>anti&#8209;Stokes fluorescence</em>. A laser
+    pumps a crystal bonded to the die; the crystal re-emits light at a shorter wavelength than it
+    absorbed, and the energy difference comes out of the lattice as heat. The re-emitted light is
+    carried away, and some of it is recovered as electricity by a photovoltaic cell (the
+    &ldquo;LPC&rdquo;). The result is a cooler with no moving parts that can be aimed at a spot on
+    the die roughly ten microns across.</p>
+    <p>That last property is the interesting one. Conventional cooling &mdash; a heatsink, a fan, a
+    cold plate &mdash; removes heat from the <em>whole package</em>. MR can remove it from
+    <em>one block</em>. The premise of the project is that this ought to be worth a great deal,
+    because a processor&rsquo;s limits are usually set by its hottest structure rather than its
+    average temperature.</p>
+    <p>This work exists to test that premise quantitatively, and to say <em>where</em> it holds.
+    The concrete deliverable is not a yes or no; it is a set of numbers a device team can aim at
+    and a system architect can plan around.</p>
+
+    <div class="note">
+      <span class="lbl">What we are actually simulating</span>
+      <p>A processor die under a real workload, solved for its steady-state temperature field with
+      <strong>temperature-dependent leakage in the loop</strong> &mdash; hotter silicon leaks more
+      current, which makes it hotter still. We then add microrefrigeration to selected blocks and
+      re-solve, and compare against the alternative of simply buying more conventional cooling.</p>
+    </div>
+  </div>
+</section>
+
+<section id="physics">
+  <div class="col">
+    <p class="kicker">02 &mdash; The physics, in one page</p>
+    <h2>Four mechanisms explain nearly every result here</h2>
+
+    <h3>1. Leakage&ndash;temperature feedback, and thermal runaway</h3>
+    <p>Transistor leakage rises steeply with temperature. Power heats the die, the die leaks more,
+    the extra leakage is more power. At low density this converges to a steady state. Above some
+    density it does not: the loop diverges and the part has <strong>no steady state at all</strong>.
+    That threshold &mdash; the <em>stability cliff</em> &mdash; is at
+    <strong>1.05&ndash;1.10&nbsp;W/mm&sup2;</strong> on our CPU die with 88&nbsp;CFM of air.</p>
+    <p>This matters because runaway is a <em>local</em> phenomenon driven by the hottest blocks,
+    and MR is a local tool. Arresting a runaway turns out to be extraordinarily cheap.</p>
+
+    <h3>2. Constriction resistance</h3>
+    <p>Heat leaving a small hot block has to spread through silicon before it reaches the heatsink.
+    That spreading resistance is a property of the <em>die</em>, not of the cooler, so no amount of
+    airflow removes it. We measure it as <span class="mono">&beta;&nbsp;&minus;&nbsp;&alpha;</span>
+    &asymp; <strong>1.04&nbsp;K/W</strong>, essentially flat from 88 to 600&nbsp;CFM. It is why
+    spinning the fan harder eventually stops helping a hotspot while continuing to cost power.</p>
+
+    <h3>3. Thermal degeneracy &mdash; the plateau</h3>
+    <p>If many blocks sit at nearly the same temperature, cooling the hottest one achieves almost
+    nothing, because the second-hottest immediately becomes the peak. We call the set of blocks
+    within the device&rsquo;s reach of the peak the <strong>plateau</strong>, and its width is the
+    single strongest predictor of whether hotspot cooling can help. A balanced CPU die has 15
+    blocks in its plateau. A uniformly loaded accelerator has <strong>332 of 367</strong>.</p>
+
+    <h3>4. Depth versus breadth</h3>
+    <p>A cooler is limited in two independent ways: how <em>many</em> blocks it can cover, and how
+    far <em>down</em> it can pull any one of them. These are different constraints with different
+    fixes, and confusing them wasted a week of this project. Breadth is the plateau; depth is
+    <span class="mono">dt_max</span>.</p>
+  </div>
+</section>
+
+<section id="glossary">
+  <div class="col">
+    <p class="kicker">03 &mdash; Glossary</p>
+    <h2>Terms, defined precisely</h2>
+    <p>Several of these look like they should be related and are not. The distinctions matter
+    enough that mixing them up has produced wrong conclusions in this project more than once.</p>
+
+    <dl class="gloss">
+      <div>
+        <dt>clip&#8209;one gain</dt>
+        <dd>
+          <p><strong>How many kelvin the die&rsquo;s peak temperature falls if you apply the
+          cooler to exactly one block &mdash; the hottest one &mdash; and pull it down as far as
+          the device allows.</strong></p>
+          <p>It is a measure of <em>degeneracy</em>, not of the cooler. If the second-hottest block
+          is 0.04&nbsp;K below the peak, then removing the peak block entirely lowers the die by
+          0.04&nbsp;K and no further, however good the cooler is. So clip-one gain answers: <em>is
+          there a hotspot here worth aiming at?</em></p>
+          <p>We report it against the device&rsquo;s own capability. &ldquo;0.040&nbsp;K, 0.4% of
+          the device&rdquo; means the cooler could have delivered 10&nbsp;K of lift and the die&rsquo;s
+          structure only let 0.04&nbsp;K of it turn into a lower peak.</p>
+          <p><em>A caution learned the hard way:</em> clip-one gain is the right metric when the
+          plateau is wide and you cannot afford to cool all of it. When the plateau collapses to a
+          handful of blocks, the relevant question becomes the cost of cooling the whole plateau,
+          and clip-one understates MR badly. We drew a wrong conclusion from it once.</p>
+        </dd>
+      </div>
+
+      <div>
+        <dt><span class="mono">dt_max</span> &mdash; &ldquo;a 10&nbsp;K device&rdquo;</dt>
+        <dd>
+          <p><strong>The maximum temperature <em>lift</em> the refrigerator can sustain: how many
+          kelvin colder than its surroundings it can hold the spot it is cooling.</strong> Our
+          baseline device is 10&nbsp;K. This is a thermodynamic property of the cooler.</p>
+          <p><strong>It is not the COP, and in our model the two are entirely independent.</strong>
+          A block sitting 12.6&nbsp;K above where you need it cannot be rescued by a 10&nbsp;K
+          device at <em>any</em> efficiency, however cheap the watts are. That is a hard wall, and
+          it is the wall we are currently against.</p>
+        </dd>
+      </div>
+
+      <div>
+        <dt><span class="mono">h_max</span></dt>
+        <dd><p><strong>Maximum cooling power density the stage can deliver, 10&nbsp;W/mm&sup2;.</strong>
+        How much heat per unit area, as distinct from how deep a temperature drop. In practice this
+        has never been the binding constraint in our runs &mdash; the plans we compute use a few
+        percent of it.</p></dd>
+      </div>
+
+      <div>
+        <dt>COP, and its three flavours</dt>
+        <dd>
+          <p>Coefficient of performance &mdash; watts of heat removed per watt spent. We track
+          three, and conflating them overstates the cooler:</p>
+          <ul class="plain">
+            <li><strong>&eta;<sub>ASF</sub> = 0.20</strong> &mdash; <em>optical</em> COP: heat
+            removed per watt of light delivered to the crystal.</li>
+            <li><strong>Electrical COP = 0.14</strong> &mdash; &eta;<sub>ASF</sub> &times;
+            &eta;<sub>laser</sub> (0.70 wall-plug). Heat removed per watt drawn from the wall.</li>
+            <li><strong>Effective COP = 0.574</strong> &mdash; after the LPC recovers 76% of the
+            draw as electricity. This is the figure that belongs in a system power budget.</li>
+          </ul>
+          <p>There is also a <em>device</em> break-even: if the recovery ratio exceeds 1, the loop
+          returns more power than it draws. At our laser and LPC efficiencies that needs
+          &eta;<sub>ASF</sub> &ge; 0.587 &mdash; so the <em>extractor</em>, not the LPC, is the
+          binding term there.</p>
+        </dd>
+      </div>
+
+      <div>
+        <dt>plateau</dt>
+        <dd><p><strong>The number of blocks within <span class="mono">dt_max</span> of the peak
+        temperature.</strong> Equivalently: how many blocks you would have to cool to realise the
+        device&rsquo;s full lift. Wide plateau &rArr; hotspot cooling is structurally the wrong
+        tool. Narrow plateau &rArr; it may be exactly the right one.</p></dd>
+      </div>
+
+      <div>
+        <dt>rescue vs. holding a temperature</dt>
+        <dd>
+          <p>Two different questions that our tooling can both answer, and that we mislabelled for
+          weeks:</p>
+          <p><strong>Rescue</strong> &mdash; the cheapest plan that gives a runaway die <em>any</em>
+          steady state. It lands wherever the stable branch happens to sit. On the CPU die at
+          1.10&nbsp;W/mm&sup2; this costs <strong>0.29&nbsp;W</strong> and lands at 99.95&nbsp;&deg;C.</p>
+          <p><strong>Holding a target</strong> &mdash; the cheapest plan that pins the peak to a
+          stated temperature. Same die, same nominal 98&nbsp;&deg;C target:
+          <strong>131&nbsp;W</strong>, because it requires cooling everything between 98 and
+          100&nbsp;&deg;C, which on that die is the entire plateau.</p>
+          <p><strong>450&times; apart.</strong> Always quote which one you mean, and the achieved
+          peak alongside the watts.</p>
+        </dd>
+      </div>
+
+      <div>
+        <dt>damping verification</dt>
+        <dd><p>Every result is re-solved at half the numerical damping; if the two disagree, the
+        point is marked unquotable. This is not ceremony &mdash; it retired four published figures
+        in a single day. A converged-looking number from an unconverged solve is the characteristic
+        failure mode of this kind of simulation.</p></dd>
+      </div>
+
+      <div>
+        <dt>system matrix, and why it governs runtime</dt>
+        <dd><p>The thermal solver factorises a sparse matrix built from the <em>stack geometry and
+        the floorplan</em> &mdash; not from the power values. So sweeping power, workload, MR target
+        or <span class="mono">dt_max</span> reuses one factorisation and is nearly free; sweeping
+        <em>airflow, grid, or die geometry</em> costs a full factorisation each. At accelerator
+        scale that is 431 seconds apiece, and it is the whole of our compute budget.</p></dd>
+      </div>
+    </dl>
+  </div>
+</section>
+
+<section id="dies">
+  <div class="col">
+    <p class="kicker">04 &mdash; The dies</p>
+    <h2>Two processors, same node class</h2>
+    <p>Everything is modelled at <strong>7&nbsp;nm</strong> so the two can be compared directly.
+    They are deliberately opposite in structure, which is what makes the comparison informative.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr>
+        <th>&nbsp;</th><th>CPU die</th><th>Accelerator die</th>
+      </tr></thead>
+      <tbody>
+        <tr><td><strong>Basis</strong></td>
+            <td>Skylake-derived floorplan, scaled to 34 cores</td>
+            <td>Nvidia GA100 (A100), from published die analysis</td></tr>
+        <tr><td><strong>Area</strong></td><td>101.2 mm&sup2; (12.36 &times; 8.19 mm)</td>
+            <td>826 mm&sup2; (32.39 &times; 25.50 mm)</td></tr>
+        <tr><td><strong>Blocks</strong></td><td>1126</td><td>367</td></tr>
+        <tr><td><strong>Structure</strong></td>
+            <td>34 cores, each with distinct functional units of differing power density</td>
+            <td>128 near-identical SM tiles, 96 L2 tiles, 6 HBM PHY, 4 memory controllers</td></tr>
+        <tr><td><strong>Power source</strong></td>
+            <td>Sniper &rarr; McPAT, Linpack at 3.8 GHz, per-block</td>
+            <td>Total die power divided by an assumed per-class split</td></tr>
+        <tr><td><strong>Typical density</strong></td><td>1.00&ndash;1.17 W/mm&sup2;</td>
+            <td>0.48 W/mm&sup2; at 400 W; 0.85 at 700 W</td></tr>
+        <tr><td><strong>Fails by</strong></td><td>Thermal runaway &mdash; loses its steady state</td>
+            <td>Exceeding its temperature limit while remaining stable</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>That last row is a structural result rather than a detail. An 826&nbsp;mm&sup2; die spreads
+    heat laterally far better than a 101&nbsp;mm&sup2; one, and dilutes the leakage feedback across
+    eight times the area, so the local positive feedback that destabilises the CPU never closes.
+    <strong>The accelerator does not run away where the CPU does</strong> &mdash; it simply gets too
+    hot. Those need different interventions.</p>
+
+    <h3>How the accelerator floorplan was built</h3>
+    <p>From annotated die photographs (SemiAnalysis / Locuza): die area, TPC and L2 tile areas, PCIe
+    PHY area, and the physical arrangement are all read off the shots. One number came from a second
+    die (GA102): the <strong>SRAM fraction inside a compute tile, 33.4%</strong>. Without it the
+    finest structure on the die would be a whole 3.4&nbsp;mm&sup2; SM, and no hotspot smaller than
+    that could exist by construction.</p>
+    <p>The die outline is fixed by measured area and aspect; the tile height by the measured
+    16-tall arrangement; the tile width by the tile&rsquo;s own measured area. The interior width
+    that results is therefore a <em>prediction</em> of the arrangement, not a fit &mdash; and it
+    closes on the measured die area.</p>
+  </div>
+</section>
+
+<section id="provenance">
+  <div class="col">
+    <p class="kicker">05 &mdash; Provenance</p>
+    <h2>What is simulated directly, and what is assumed</h2>
+    <p>This is the most important table in the document. Nothing here is calibrated against a
+    physical microrefrigerator, because none has been measured into this pipeline yet &mdash; so
+    <strong>no absolute number in this project is a product prediction.</strong> What the model does
+    support are <em>comparisons</em>, where a shared assumption cancels.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr>
+        <th>Input</th><th>Status</th><th>Where it comes from, and what it costs us</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>Thermal conduction &amp; spreading</td><td><span class="chip m">simulated</span></td>
+            <td>3D-ICE finite-volume solve over the full stack, per block, per grid cell.</td></tr>
+        <tr><td>Leakage vs temperature</td><td><span class="chip m">measured</span></td>
+            <td>Extracted from McPAT across temperature, with an Arrhenius tail above 400 K. The
+            tail is used to decide <em>whether</em> a point diverges, not by how much.</td></tr>
+        <tr><td>Per-block power (CPU)</td><td><span class="chip m">simulated</span></td>
+            <td>Sniper architectural simulation &rarr; McPAT power model, per functional unit.</td></tr>
+        <tr><td>Heatsink R<sub>th</sub> and fan power</td><td><span class="chip m">measured</span></td>
+            <td>Calibrated against a repaired HS483 heatsink FMU across five fan speeds; residuals
+            &le; 0.003 K/W.</td></tr>
+        <tr><td>Hotspot sensitivity &alpha;/&beta;</td><td><span class="chip m">measured</span></td>
+            <td>Digitised from a SimScale CFD study, cross-checked in 3D-ICE.</td></tr>
+        <tr><td>Accelerator block <em>areas</em></td><td><span class="chip m">measured</span></td>
+            <td>Read from annotated die photographs.</td></tr>
+        <tr><td>Accelerator per-class <em>power split</em></td><td><span class="chip a">assumed</span></td>
+            <td>Die shots give areas, not dissipation, and no public per-block breakdown exists.
+            Stated with reasoning per entry; a sensitivity function renormalises any one share
+            against the rest. <strong>Which block is hottest depends on this; the plateau does
+            not.</strong></td></tr>
+        <tr><td>MR device: <span class="mono">dt_max</span> 10 K, <span class="mono">h_max</span>
+            10 W/mm&sup2;</td><td><span class="chip a">assumed</span></td>
+            <td>Device targets, not measurements. Every conclusion about reachability scales
+            directly with <span class="mono">dt_max</span>.</td></tr>
+        <tr><td>MR efficiencies (&eta;<sub>ASF</sub>, laser, LPC)</td><td><span class="chip a">assumed</span></td>
+            <td>From the Maxwell Labs power-analysis spreadsheet; the accounting reproduces it
+            exactly, but the efficiencies themselves are targets.</td></tr>
+        <tr><td>Coupling between lift and efficiency</td><td><span class="chip g">not modelled</span></td>
+            <td><strong>Treated as independent.</strong> In any real refrigerator COP degrades as
+            &Delta;T rises. See the warning below &mdash; this bears directly on our headline
+            recommendation.</td></tr>
+        <tr><td>V/F curve above ~4 GHz</td><td><span class="chip a">assumed</span></td>
+            <td>The shipped table is not a modern-node curve. An IRDS-anchored replacement exists,
+            but IRDS gives a technology metric, not a product clock. <strong>No clock
+            <em>ceiling</em> should be quoted.</strong></td></tr>
+        <tr><td>f<sub>max</sub> derate slope</td><td><span class="chip a">assumed</span></td>
+            <td>Absolute GFLOP/s inherit it. Ratios are robust; absolutes are not.</td></tr>
+        <tr><td>Pump / chiller power for liquid</td><td><span class="chip g">not modelled</span></td>
+            <td>Liquid points give a thermal resistance with <em>no</em> power cost, so MR must
+            never be priced against liquid cooling in this pipeline as it stands.</td></tr>
+        <tr><td>Transient behaviour</td><td><span class="chip g">not exercised</span></td>
+            <td>All results are steady-state. Pulsed pre-cooling is blocked on a longer, burstier
+            workload trace rather than on modelling.</td></tr>
+        <tr><td>Cost, integration, reliability</td><td><span class="chip g">not modelled</span></td>
+            <td>Everything is priced in <em>watts</em>. Any break-even here is a lower bound on
+            what MR must beat commercially.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <div class="note warn">
+      <span class="lbl">The assumption most likely to change a conclusion</span>
+      <p>Our model lets you raise <span class="mono">dt_max</span> from 10&nbsp;K to 13&nbsp;K
+      without paying anything in efficiency. Real refrigerators do not work that way &mdash; COP
+      falls as the temperature lift rises.</p>
+      <p>We can bound how much that matters, because the efficiency margin is enormous: at the
+      operating point below, MR beats its alternative by <strong>33.7&times;</strong>. So COP could
+      degrade by up to 33.7&times; between 10 and 13&nbsp;K before the conclusion flips &mdash; a
+      30% increase in lift causing a 3,000% collapse in efficiency, which no plausible device does.
+      <strong>The recommendation survives, but the coupling should be modelled before anyone
+      commits silicon to it.</strong></p>
+    </div>
+  </div>
+</section>
+
+<section id="modes">
+  <div class="col">
+    <p class="kicker">06 &mdash; Analysis modes</p>
+    <h2>What questions the pipeline can actually answer</h2>
+    <p>Any of the variables below can be made the <em>output</em> rather than the input. The two
+    directions asked about most often &mdash; constrain performance and solve for efficiency, or
+    constrain efficiency and solve for performance &mdash; are both supported, though one of them
+    only for a temperature target rather than a throughput target.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr>
+        <th>Question</th><th>Tool</th><th>Status</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>Given a cooling solution, what clock can the part sustain?</td>
+            <td><span class="mono">clock_headroom.py</span></td>
+            <td><span class="chip m">exercised</span></td></tr>
+        <tr><td>Given a temperature target, what COP does MR need to beat more airflow?</td>
+            <td><span class="mono">cop_breakeven.py</span></td>
+            <td><span class="chip m">exercised</span></td></tr>
+        <tr><td>Given an efficiency and an MR budget, what clock results?</td>
+            <td><span class="mono">clock_headroom.py --mr --mr-budget-W --eta-asf</span></td>
+            <td><span class="chip m">exercised</span></td></tr>
+        <tr><td>Given a fixed cooling power budget, what fan/MR split maximises throughput?</td>
+            <td><span class="mono">hybrid_cooling_optimizer.py</span> (mode A)</td>
+            <td><span class="chip a">built, never run</span></td></tr>
+        <tr><td>Given a performance target, what is the cheapest cooling and its split?</td>
+            <td><span class="mono">hybrid_cooling_optimizer.py</span> (mode B)</td>
+            <td><span class="chip a">built, never run</span></td></tr>
+        <tr><td>Given a device lift, what becomes reachable and at what cost?</td>
+            <td><span class="mono">--dt-max-K</span> sweep</td>
+            <td><span class="chip m">exercised</span></td></tr>
+        <tr><td>How degenerate is this die, and where are its hot blocks?</td>
+            <td><span class="mono">thermal_tiers.py</span>, <span class="mono">accelerator_study.py</span></td>
+            <td><span class="chip m">exercised</span></td></tr>
+        <tr><td>What does an MR rescue cost at a given density?</td>
+            <td><span class="mono">mr_comparison.py</span></td>
+            <td><span class="chip m">exercised</span></td></tr>
+        <tr><td><strong>Given a throughput target, what COP is required?</strong></td>
+            <td>chain <span class="mono">clock_headroom</span> &rarr; <span class="mono">cop_breakeven</span></td>
+            <td><span class="chip g">gap &mdash; not automated</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>The one genuine gap is the last row. <span class="mono">cop_breakeven.py</span> solves for
+    efficiency against a <em>temperature</em> constraint; converting a throughput target into the
+    temperature that delivers it requires a separate clock search, and nothing chains the two. It
+    is a modest piece of work and it is the most useful next addition, because throughput is the
+    constraint a customer actually states.</p>
+    <p>The <span class="mono">hybrid_cooling_optimizer</span> is the other opportunity: it already
+    implements both directions of the budget/performance trade and has <em>never been run</em>. Its
+    premise is sound &mdash; the fan&rsquo;s marginal value collapses about 90&times; across its
+    range while MR&rsquo;s cost stays roughly linear, and diminishing returns against linear cost is
+    exactly the shape that produces an interior optimum rather than an all-fan or all-MR answer.</p>
+  </div>
+</section>
+
+<section id="findings">
+  <div class="col">
+    <p class="kicker">07 &mdash; Findings</p>
+    <h2>Where microrefrigeration pays, and where it does not</h2>
+    <p>Ordered by how confident we are, most confident first.</p>
+
+    <h3>MR arrests thermal runaway extremely cheaply <span class="chip m">verified</span></h3>
+    <p>A 34-core die at 1.10&nbsp;W/mm&sup2; has <em>no steady state</em> &mdash; left alone it runs
+    away. <strong>0.29&nbsp;W of net electrical power, applied to four blocks, gives it one</strong>,
+    landing just under its 100&nbsp;&deg;C limit. That is 290&nbsp;W of die stabilised per watt
+    spent. Runaway is driven by a handful of blocks, and a local tool is exactly right for a local
+    instability.</p>
+
+    <h3>MR is weak as a clock enabler <span class="chip m">verified</span></h3>
+    <p>On the same die, raising the sustainable clock is a different matter: +1.1% for about a watt,
+    +2.2% for 43&nbsp;W. The clock ceiling is set by the die-average thermal path, which hotspot
+    clipping barely touches. A 50&times; better heatsink buys +55% clock and still never reaches the
+    part&rsquo;s rated frequency.</p>
+
+    <h3>Cost is dominated by how much margin you demand <span class="chip m">verified</span></h3>
+    <p>Three margin curves. The cost of a rescue rises 30&ndash;160&times; as the demanded target
+    moves a few kelvin, and the knee <em>moves with density</em> &mdash; ~94&nbsp;&deg;C at
+    1.10&nbsp;W/mm&sup2;, ~97&nbsp;&deg;C at 1.15. It is not an absolute temperature; it tracks the
+    top of the block distribution. Below the knee the target dips into the plateau and cooling
+    anything means cooling everything.</p>
+    <p>The third curve is the uncomfortable one: on a liquid-class sink at the same density, the die
+    holds 93.6&nbsp;&deg;C unaided and MR engages <strong>zero blocks</strong>. Better conventional
+    cooling did not make MR more valuable &mdash; it made it irrelevant.</p>
+
+    <h3>A uniformly loaded accelerator is the wrong target <span class="chip m">verified</span></h3>
+    <p>332 of 367 blocks within the device&rsquo;s reach of the peak; clipping one buys 0.4% of its
+    capability. All 128 compute tiles span 8.3&nbsp;K &mdash; the array is effectively one thermal
+    object. Unchanged across every leakage assumption we varied.</p>
+
+    <h3>A realistic kernel overturns that <span class="chip a">re-verification in progress</span></h3>
+    <p>Uniform activity was a deliberate control &mdash; so any hotspot came from geometry rather
+    than from an imbalance assumed into the input &mdash; and it is the <em>least</em> favourable
+    input MR could be given. Under a low-occupancy kernel (8 of 128 SMs active, contiguous) on a
+    700&nbsp;W part, the plateau collapses <strong>332 &rarr; 9 blocks</strong> on a die
+    10&nbsp;K over its limit.</p>
+    <p>This also revealed that clip-one gain was the wrong metric here: it stays small because the
+    <em>active</em> tiles are mutually degenerate, while the quantity that matters &mdash; how many
+    blocks a rescue must cover &mdash; had fallen by 37&times;.</p>
+
+    <h3>The binding constraint is lift, not cost <span class="chip a">re-verification in progress</span></h3>
+    <p>Five accelerator runs exited &ldquo;iteration limit reached&rdquo;. Quadrupling the budget
+    moved them 1%. They had not run out of iterations &mdash; each had raised its peak by
+    <em>exactly</em> <span class="mono">dt_max</span> and stopped. Sweeping the parameter confirmed
+    it against a prediction registered beforehand: the achieved peak tracks
+    <em>uncooled&nbsp;&minus;&nbsp;dt_max</em> precisely, then halts on reaching the target.</p>
+    <p>So the three candidate constraints separate, and only one binds:</p>
+    <ul class="plain">
+      <li><strong>Breadth</strong> (the plateau) &mdash; collapses 332&nbsp;&rarr;&nbsp;9 under a
+      concentrated kernel. Not binding.</li>
+      <li><strong>Cost</strong> (the COP) &mdash; oversupplied 34&times;. Not binding.</li>
+      <li><strong>Depth</strong> (<span class="mono">dt_max</span>) &mdash; needs 13&nbsp;K, has 10.
+      <strong>Binding.</strong></li>
+    </ul>
+
+    <h3>Priced against airflow, MR wins by 34&times; <span class="chip a">re-verification in progress</span></h3>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Holding 98&nbsp;&deg;C on a 700 W accelerator</th><th class="num">cooling</th>
+        <th class="num">die</th><th class="num">fan</th><th class="num">MR</th><th class="num">total</th></tr></thead>
+      <tbody>
+        <tr><td>more airflow</td><td class="num">184 CFM</td><td class="num">369.2 W</td>
+            <td class="num">205.8 W</td><td class="num">&mdash;</td><td class="num"><strong>575.0 W</strong></td></tr>
+        <tr><td>microrefrigeration</td><td class="num">88 CFM</td><td class="num">356.4 W</td>
+            <td class="num">35.0 W</td><td class="num">22.3 W</td><td class="num"><strong>413.8 W</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>Break-even COP <strong>0.0170</strong> against an effective <strong>0.574</strong> &mdash;
+    a 33.7&times; margin, saving 161&nbsp;W or 28% of system power. The MR arm also runs a cooler
+    die, because clipping the hot blocks suppresses their leakage. The MR plan is flagged
+    non-minimal, so 22.3&nbsp;W is an <em>upper</em> bound and the true break-even is lower: the
+    error runs in MR&rsquo;s favour.</p>
+
+    <div class="note">
+      <span class="lbl">What this reframes</span>
+      <p>Every earlier &ldquo;MR costs too much&rdquo; conclusion in this project was measured
+      against a thermal target MR could not <em>reach</em> &mdash; not against a cost it could not
+      justify. <strong>Efficiency is not the problem. Lift is.</strong> The device ask is one
+      number: get <span class="mono">dt_max</span> from 10&nbsp;K to 13&nbsp;K.</p>
+    </div>
+
+    <div class="note warn">
+      <span class="lbl">Two caveats that bound this result</span>
+      <p><strong>It compares MR against fans.</strong> Pump and chiller power are not modelled, and
+      a 700&nbsp;W part would not be air-cooled in practice. The comparison that decides deployment
+      &mdash; MR against a cold plate &mdash; has not been run and cannot be, as the pipeline
+      stands.</p>
+      <p><strong>It is one operating point.</strong> The uniformly loaded 700&nbsp;W case needs
+      <span class="mono">dt_max</span>&nbsp;&ge;&nbsp;30&nbsp;K <em>and</em> 299&nbsp;W, 43% of the
+      die. No efficiency rescues that. MR&rsquo;s case on an accelerator rests specifically on
+      low-occupancy kernels at high TDP.</p>
+    </div>
+  </div>
+</section>
+
+<section id="workload">
+  <div class="col">
+    <p class="kicker">08 &mdash; Workload dependence</p>
+    <h2>The answer changes with what the chip is running</h2>
+    <p>This is not a caveat on the results; it is one of the results. The same die, same power, same
+    cooler gives opposite verdicts depending on the workload&rsquo;s <em>shape</em>.</p>
+
+    <p>What matters is not how much power the workload draws but <strong>how concentrated it
+    is</strong>, and concentration has two independent axes we can vary:</p>
+    <ul class="plain">
+      <li><strong>Occupancy</strong> &mdash; how many compute tiles are active. Real GPU kernels
+      routinely use a fraction of the machine: small grids, tail effects, partitioned inference.</li>
+      <li><strong>Placement</strong> &mdash; whether the active tiles are physically adjacent.
+      Eight neighbouring tiles pile their heat together; eight scattered across the die each sit in
+      their own cool surroundings. Same occupancy, materially different thermal outcome.</li>
+    </ul>
+
+    <p>Three kernel shapes are implemented, all real GPU behaviour rather than contrivances:
+    <strong>occupancy</strong> (N tiles active and boosted, the rest idling),
+    <strong>memory-bound</strong> (compute stalled, memory interface at full rate), and
+    <strong>tensor</strong> (power shifted from each tile&rsquo;s SRAM into its datapath at
+    constant die power).</p>
+
+    <p>Only the first produces a hotspot. Memory-bound lands the die at 65&nbsp;&deg;C with a
+    171-block plateau &mdash; the interface blocks are hot <em>together</em>, not one of them alone.
+    Tensor moves the plateau only 332&nbsp;&rarr;&nbsp;320: intra-tile concentration barely
+    registers.</p>
+
+    <div class="note">
+      <span class="lbl">The trade that bounds every occupancy result</span>
+      <p><strong>MR&rsquo;s leverage peaks where the die is coldest.</strong> Idling tiles is what
+      creates the concentration, and it is also what takes the power out. At 2 active tiles the
+      clip-one gain is best in the entire study &mdash; 22% of device capability &mdash; and the die
+      sits at 72&nbsp;&deg;C, thirty kelvin below its limit, needing no cooling at all.</p>
+      <p>Only raising total power gets you both concentration and heat. That is why the accelerator
+      case rests on <em>high-TDP parts running low-occupancy kernels</em>, and not on either
+      condition alone.</p>
+    </div>
+
+    <p>One deliberate choice cuts against finding hotspots: within a block class, power is shared
+    <strong>equally</strong>. Any hotspot therefore comes from geometry rather than from an
+    imbalance we assumed into the input. Real kernels are less even than this, so the results are
+    conservative &mdash; and a genuinely skewed activity map is the most promising unexplored route
+    to a stronger accelerator case.</p>
+  </div>
+</section>
+
+<section id="gaps">
+  <div class="col">
+    <p class="kicker">09 &mdash; Open gaps</p>
+    <h2>What we cannot yet answer</h2>
+    <p>Ordered by how much each one could move the project&rsquo;s conclusions.</p>
+
+    <ol class="steps">
+      <li><strong>MR has never been priced against liquid cooling.</strong> The headline 34&times;
+      is against <em>fans</em>. A 700&nbsp;W accelerator ships on a cold plate, and our liquid
+      points model a thermal resistance with no pump or chiller power at all &mdash; so they cannot
+      be used as the comparison arm. If MR only beats a cooling solution nobody would fit to this
+      part, the margin is measuring the wrong race. <em>This is the single most important gap.</em></li>
+
+      <li><strong>Lift and efficiency are modelled as independent.</strong> Real refrigerators lose
+      COP as &Delta;T rises. Our recommendation is to raise <span class="mono">dt_max</span> by 30%
+      and it assumes that costs nothing. The 33.7&times; margin makes the conclusion robust to any
+      plausible penalty, but the coupling is unmodelled and should not stay that way.</li>
+
+      <li><strong>No per-block power breakdown for the accelerator.</strong> Die shots give areas,
+      not dissipation. Which block is hottest &mdash; and therefore what MR should aim at &mdash;
+      rests on an assumed split. The plateau result does not, but the targeting does.</li>
+
+      <li><strong>No product V/F curve.</strong> The shipped table is not a modern-node curve, and
+      the IRDS replacement is a technology metric that does not survive extrapolation to GPU clocks
+      (it puts a 1.4&nbsp;GHz part at 0.26&nbsp;V against a 0.70&nbsp;V nominal). Comparative
+      results are unaffected &mdash; the curve cancels &mdash; but no clock <em>ceiling</em> should
+      be quoted from either.</li>
+
+      <li><strong>Throughput cannot be constrained directly.</strong> We can solve for the COP that
+      holds a <em>temperature</em>, but not one that delivers a <em>throughput</em>, which is what
+      a customer actually specifies.</li>
+
+      <li><strong>The fan/MR split has never been optimised.</strong> The tool exists and has never
+      been run. Every result to date spends on one lever or the other, and the physics says the
+      optimum is interior.</li>
+
+      <li><strong>No transient results.</strong> Everything is steady-state. Pulsed pre-cooling
+      &mdash; aiming the laser at a unit just before it fires &mdash; needs a workload trace longer
+      and burstier than the 3.2&nbsp;ms we have, in which the hot units are essentially flat.</li>
+
+      <li><strong>Deep memory stacks hit a solver ceiling</strong> at roughly 1.7&nbsp;M unknowns,
+      not a physical one. See below.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="toolchain">
+  <div class="col">
+    <p class="kicker">10 &mdash; Toolchain</p>
+    <h2>What has to be built</h2>
+
+    <h3>Required to close the gaps above</h3>
+    <ul class="plain">
+      <li><strong>A pump-and-chiller power model.</strong> Without it, MR cannot be compared against
+      the cooling a high-TDP part actually ships with, and the project&rsquo;s central commercial
+      claim stays unproven. Smallest change with the largest effect on credibility.</li>
+      <li><strong>A COP&ndash;&Delta;T coupling in the device model.</strong> Currently
+      <span class="mono">MRParams</span> takes lift and efficiency as unrelated numbers.</li>
+      <li><strong>Chain the clock search into the break-even solve</strong>, so a throughput target
+      can be converted into the temperature it implies and then into a required COP.</li>
+      <li><strong>Run the hybrid optimiser</strong>, and sweep efficiency across it to produce the
+      full (budget, split, throughput, COP) surface rather than points on it.</li>
+    </ul>
+
+    <h3>Solver capacity</h3>
+    <p>Two distinct walls, often conflated:</p>
+    <p><strong>Speed.</strong> Factorisation dominates &mdash; 98.9% of a large accelerator run.
+    It scales superlinearly, and the model predicted a 5.64&nbsp;M-unknown factorisation at
+    2916&nbsp;s against 2849&nbsp;s measured, a 2.3% error over an 8&times; extrapolation. A GPU
+    direct solver would give an estimated 3.5&times; on essentially all of it.</p>
+    <p><strong>Robustness.</strong> Deep stacks fail inside SuperLU 4.3&rsquo;s memory-expansion
+    heuristic at ~1.7&nbsp;M unknowns &mdash; with 629&nbsp;GB of RAM free and about 2&nbsp;GB of
+    estimated fill-in. That is a 2011 solver defect, not a capacity limit, and a modern CPU solver
+    fixes it for a fraction of the effort of a CUDA port.</p>
+
+    <div class="note">
+      <span class="lbl">The GPU trigger, as a number</span>
+      <p>A faster solver only pays in proportion to the number of <em>distinct system
+      matrices</em> a study needs &mdash; and workload sweeps need one, while cooling and geometry
+      sweeps need one per point. Break-even is at roughly <strong>140 distinct matrices</strong> at
+      accelerator scale, or about three to four full break-even studies.</p>
+      <p><strong>Go</strong> at four or more matrix-diverse studies of that size. <strong>No-go</strong>
+      while the work is workload sweeps. Two preconditions: group points by matrix first &mdash;
+      that alone was worth 10&times; and cost nothing &mdash; and expose the GPUs, which currently
+      report as absent on a node named for six of them.</p>
+    </div>
+
+    <h3>A note on how this project fails</h3>
+    <p>Worth recording, because it has been consistent. Nearly every apparent physical obstacle here
+    has turned out to be an artefact: a cooling plan sized from a diverging trajectory, a
+    convergence test that got weaker as damping tightened, a session cache constructed inside a
+    loop, a hard-coded timeout read as a hang, an iteration limit read as a device limit, a
+    calibration file path that silently fell back to an assumed model. Each looked like physics and
+    was not.</p>
+    <p>The practices that catch these &mdash; damping verification on every solve, harvesting
+    results from run output rather than transcribing them, recording a prediction before the run,
+    and checking process liveness rather than the absence of a marker &mdash; are load-bearing, not
+    bureaucratic. Every published figure in this project that later needed retracting was caught by
+    one of them.</p>
+  </div>
+
+  <footer>
+    <p>All results are damping-verified coupled 3D-ICE solves with temperature-dependent leakage,
+    harvested from run output rather than transcribed. 311 tests passing. Device and DRAM
+    parameters, the accelerator power split, and the V/F curve are documented assumptions, not
+    datasheet extractions; accelerator block areas are measured from published die analysis.
+    Nothing here is a product prediction.</p>
+    <p>Sections marked <span class="chip a">re-verification in progress</span> were measured with an
+    assumed leakage model rather than the calibrated McPAT curve, owing to a wrong default path
+    since corrected. They are being re-run; the mechanisms are not expected to move, but the
+    absolute values may.</p>
+  </footer>
+</section>
+
+</div>
