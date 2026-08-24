@@ -127,7 +127,7 @@
 <div class="wrap">
 
 <header class="masthead">
-  <p class="eyebrow">MXL&#8209;HotGauge &middot; Maxwell Labs &middot; living document &middot; revised 20 August 2026</p>
+  <p class="eyebrow">MXL&#8209;HotGauge &middot; Maxwell Labs &middot; living document &middot; revised 21 August 2026</p>
   <h1>Photonic Microrefrigeration Handbook</h1>
   <p class="standfirst">What we are trying to find out, how the simulation works, what every term
   means, which numbers are measured and which are assumed &mdash; and what still has to be built
@@ -155,71 +155,113 @@
 
 <section id="status">
   <div class="col">
-    <p class="kicker">Status &mdash; 20 August</p>
-    <h2>Every accelerator thermal number is currently withdrawn</h2>
+    <p class="kicker">Status &mdash; 21 August</p>
+    <h2>The model is now measured against real parts, and mostly fails</h2>
     <div class="note warn">
       <span class="lbl">Read this before quoting anything below</span>
-      <p>Two defects found on 20 August invalidate the accelerator thermal results. The
-      <strong>geometry</strong> results &mdash; plateau widths, degeneracy, placement sensitivity
-      &mdash; follow from the power map and survive. Everything that depends on a temperature does
-      not.</p>
+      <p>Every accelerator <strong>temperature</strong> remains withdrawn. What changed is that the
+      model is now checked against parts that demonstrably work, so the failures are localised
+      rather than suspected. <strong>Geometry</strong> results &mdash; plateau widths, degeneracy,
+      placement sensitivity &mdash; follow from the power map and stand.</p>
     </div>
 
-    <h3>1. The leakage feedback was inert on the accelerator <span class="chip g">fixed, re-run</span></h3>
-    <p><span class="mono">run_leakage_feedback</span> built its own McPAT&rarr;floorplan name map
-    unconditionally. That map returns <span class="mono">None</span> for any name it does not
-    recognise, so on a die-shot-derived floorplan <em>no block ever matched</em> and the leakage
-    update was applied to nothing. All 43 accelerator studies were <strong>constant-power</strong>
-    solves in a project whose entire subject is temperature-dependent leakage.</p>
-    <p>They looked healthy: converged, reported residuals, passed damping verification. Three
-    symptoms were visible and each was explained away &mdash; a residual of 0.0000&nbsp;K at the
-    first iteration, and results identical across a 60% change in leakage fraction and across two
-    different leakage <em>models</em>. The second of those was reported here as a
-    <em>robustness</em> result, which is the exact opposite of what it was.</p>
-    <p>Fixed with an explicit <span class="mono">name_map</span> parameter, plus a guard that now
-    <em>raises</em> when a leakage reference is supplied and not one unit resolves. The CPU path is
-    untouched and no CPU result moves.</p>
-
-    <h3>2. The heatsink does not scale with die area <span class="chip g">open &mdash; blocking</span></h3>
-    <p><span class="mono">BaffledFinSink</span> returns <strong>0.0764&nbsp;K/W at 101&nbsp;mm&sup2;
-    and 0.0764&nbsp;K/W at 826&nbsp;mm&sup2;</strong> &mdash; identical. There is no area term. The
-    accelerator has been cooled by a heatsink sized for a CPU eight times smaller: 400&nbsp;W
-    &times; 0.0764 = 30.6&nbsp;K of rise before leakage even starts.</p>
-    <p>With the leakage feedback now working, the consequence is stark:</p>
+    <h3>An acceptance gate against published parts</h3>
+    <p>Five defects have surfaced in sequence, and <em>none</em> was found by reading code. Each
+    came from comparing against something external. So the comparison is now in the test suite:
+    reference operating points from parts you can buy, run through the same coupled solve every
+    study uses.</p>
   </div>
 
   <div class="scroll">
     <table>
-      <thead><tr><th>Accelerator point</th><th>as published (feedback inert)</th>
-        <th>with feedback coupled</th></tr></thead>
+      <thead><tr><th>Reference point</th><th>published</th><th>model</th><th>verdict</th></tr></thead>
       <tbody>
-        <tr><td>400 W uniform, 88 CFM</td><td>peak 88.06 &deg;C, plateau 332</td>
-            <td><strong>runaway &mdash; no steady state</strong></td></tr>
-        <tr><td>700 W uniform, 88 CFM</td><td>peak 127.85 &deg;C, plateau 170</td>
-            <td><strong>runaway</strong></td></tr>
-        <tr><td>700 W, 8/128 SMs active</td><td>peak 110.61 &deg;C, plateau 9</td>
-            <td><strong>runaway</strong></td></tr>
-        <tr><td>&hellip;the same point with MR</td><td>13 blocks, 22.3 W electrical</td>
-            <td>rescued, but by cooling <strong>all 367 blocks</strong> for
-            <strong>687 W</strong> on a 369 W die</td></tr>
+        <tr><td>H100 80GB, air, ~470 W <span class="mono">arXiv:2507.16781</span></td>
+            <td>54&ndash;72 &deg;C</td><td><strong>60.7 &deg;C</strong></td>
+            <td><span class="chip m">pass</span></td></tr>
+        <tr><td>H100 80GB, direct-to-chip liquid, ~453 W</td>
+            <td>41&ndash;50 &deg;C</td><td>&mdash;</td>
+            <td><span class="chip g">fail</span></td></tr>
+        <tr><td>Ryzen 5 7500F, air, 132 W <span class="mono">nhsjs.com/2026</span></td>
+            <td>75&ndash;76 &deg;C</td><td>&mdash;</td>
+            <td><span class="chip g">fail</span></td></tr>
+        <tr><td>Ryzen 5 7500F, 360 mm AIO, 129 W</td>
+            <td>70&ndash;71 &deg;C</td><td>not run</td><td><span class="chip a">&mdash;</span></td></tr>
       </tbody>
     </table>
   </div>
 
   <div class="col">
-    <p>A 400 W part running away at 0.484&nbsp;W/mm&sup2; &mdash; less than half the CPU&rsquo;s
-    measured stability cliff &mdash; is not a physical result. It is what happens when an
-    826&nbsp;mm&sup2; die is given a CPU&rsquo;s cooling. So <strong>both</strong> versions of the
-    accelerator story are withdrawn: the first was uncoupled, the second is cooled wrongly.</p>
-    <p>The consequence for the headline result is direct. The <strong>34&times; margin by which MR
-    beat &ldquo;more airflow&rdquo; was measured against an unreasonably weak opponent</strong>
-    &mdash; 88&nbsp;CFM of air on a part that would ship on a cold plate. Pricing MR against a
-    properly sized cooling solution is expected to reduce that margin substantially, and it is the
-    comparison that actually decides deployment.</p>
-    <p>The fix in progress is a cooling specification that derives thermal resistance from real
-    heatsink or cold-plate geometry scaled to the die, and returns the wall-plug power that
-    geometry implies as a function of flow rate and inlet temperature &mdash; for air
-    <em>and</em> liquid. See <a href="#toolchain">&sect;10</a>.</p>
+    <p>The H100 air pass took two corrections, and <em>neither</em> was among the three causes I had
+    reasoned my way to. The published resistance is junction-to-ambient and already contains the
+    package, which 3D-ICE then adds again &mdash; so external cooling supplies only the remainder,
+    0.1074&nbsp;&minus;&nbsp;0.0566&nbsp;=&nbsp;0.0508&nbsp;K/W. And the heatsink is sized by
+    <em>cooler class</em>, not by a universal ratio to die area.</p>
+    <p>Its most persuasive number was not fitted to anything: 192.6&nbsp;W of fan, against the
+    study's own air-versus-liquid node difference of about 146&nbsp;W per GPU.</p>
+
+    <h3>Both failures have one cause, and it is now identified</h3>
+    <p>Reading the stack file back as a <strong>resistance budget</strong> made it visible at a
+    glance, and the budget cross-checks against the solver itself &mdash; 0.0402&nbsp;K/W predicted
+    against 0.0406 measured on the 826&nbsp;mm&sup2; die, 0.3648 against 0.361 on 91&nbsp;mm&sup2;.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>package layer</th><th class="num">826 mm&sup2;</th><th class="num">91 mm&sup2;</th>
+        <th class="num">share</th></tr></thead>
+      <tbody>
+        <tr><td>solder TIM</td><td class="num">0.0097</td><td class="num">0.0879</td><td class="num">24%</td></tr>
+        <tr><td>copper spreader</td><td class="num">0.0093</td><td class="num">0.0845</td><td class="num">23%</td></tr>
+        <tr><td>thermal grease</td><td class="num">0.0091</td><td class="num">0.0824</td><td class="num">23%</td></tr>
+        <tr><td>sink metal</td><td class="num">0.0081</td><td class="num">0.0733</td><td class="num">20%</td></tr>
+        <tr><td>silicon (7 layers)</td><td class="num">0.0040</td><td class="num">0.0366</td><td class="num">10%</td></tr>
+        <tr><td><strong>total</strong></td><td class="num"><strong>0.0402</strong></td>
+            <td class="num"><strong>0.3648</strong></td><td class="num">&mdash;</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>The total scales <em>exactly</em> as 1/area &mdash; 9.08&times; for 9.08&times; the area
+    &mdash; which is the signature of <strong>no lateral spreading whatsoever</strong>. Every layer
+    spans precisely the die footprint, because 3D-ICE takes its chip dimensions from the floorplan
+    and the template's heat-spreader geometry sits inside a
+    <span class="mono">/* REMOVED BECAUSE THEY LIE */</span> block.</p>
+    <p>A real integrated heat spreader is roughly 40&times;40&nbsp;mm over an 8&times;8&nbsp;mm die
+    and carries heat sideways before handing it up. On an 826&nbsp;mm&sup2; die the missing overhang
+    costs little, which is exactly why the accelerator point passes. On 91&nbsp;mm&sup2; the package
+    reaches 0.36&nbsp;K/W against a 0.396 budget and swamps everything. Direct-to-chip liquid fails
+    from the other side: D2C <em>deletes</em> the lid and spreader, so a lidded package spends the
+    entire budget before the coolant is reached.</p>
+    <p>It also <em>cleared</em> the material constants, which I had suspected. They are correct once
+    the units are read properly &mdash; 3D-ICE quotes conductivity in W/(&micro;m&nbsp;K), so
+    silicon's <span class="mono">1.20e-4</span> is 120&nbsp;W/(m&nbsp;K) and grease's
+    <span class="mono">0.04e-4</span> is 4. Read as SI they look like insulators.</p>
+
+    <h3>Fixing it inside 3D-ICE: two of three obstacles cleared</h3>
+    <p>A real spreader exists in 3D-ICE, but only on the <em>pluggable</em> sink model, and upstream
+    refuses that in steady state with a bare <span class="mono">//TODO</span>. That TODO understates
+    it. Three things stand in the way:</p>
+    <ul class="plain">
+      <li><span class="chip m">fixed</span> The steady vector fill walked only the chip layers, so
+      the spreader rows were never written.</li>
+      <li><span class="chip m">fixed</span> The plugin computes heat flow <em>from</em> the
+      temperature it is handed, so one linear solve cannot close it. Now a fixed point &mdash; the
+      same shape as the leakage feedback one level up.</li>
+      <li><span class="chip g">open</span> <strong>Spreader cells have no conductance to
+      ambient.</strong> The plugin contributes heat as a <em>source</em>, never as a matrix
+      coefficient. In transient the capacity/timestep term on the diagonal keeps the system
+      non-singular; in steady it is zero, so the matrix is singular &mdash; a pure Neumann problem
+      with no reference temperature anywhere. SuperLU returns NaN.</li>
+    </ul>
+    <p>The remedy is to <strong>linearise the plugin into the matrix</strong> rather than the
+    right-hand side: probe it at two uniform temperatures to recover <em>g</em> and
+    <em>T<sub>ambient</sub></em> from <em>Q&nbsp;=&nbsp;g(T&nbsp;&minus;&nbsp;T<sub>ambient</sub>)</em>,
+    then add <em>g</em> to the spreader diagonal. For a linear boundary that is exact, needs no
+    iteration, and preserves the factorisation so the session cache still works.</p>
+    <p>Until then the path detects the singularity and explains it, rather than iterating on NaN or
+    handing back a plausible field.</p>
   </div>
 </section>
 
@@ -384,6 +426,34 @@
       </div>
 
       <div>
+        <dt>volumetric extraction, and R&nbsp;=&nbsp;0</dt>
+        <dd>
+          <p>The claim that distinguishes photonic cooling from every conventional technology, and
+          the one worth being precise about. Conventional cooling removes heat <em>through a
+          surface</em>, so it always pays the conduction path from the hotspot outwards. MR couples
+          to phonons <em>inside the silicon</em>, so the extracted heat never travels that path at
+          all.</p>
+          <p>The MR writeup (&sect;3.6.5) puts it as cancelling &ldquo;any conduction-induced
+          thermal resistance, thereby setting R&nbsp;=&nbsp;0 between any hotspot and the working
+          fluid&rdquo;, with its Table&nbsp;10 giving laser cooling
+          R<sub>th,hotspot</sub>&nbsp;=&nbsp;0, <em>independent of area</em>, where air is
+          20&ndash;50 and liquid 5&ndash;10 K&middot;cm&sup2;/W and both worsen as the hotspot
+          shrinks.</p>
+          <p>Follow it to its conclusion and there is a fixed point: when extraction per unit area
+          matches dissipation per unit area the net source is zero and no heat flows, so the
+          effective resistance is zero; push extraction higher and the block goes <em>below</em> its
+          surroundings and heat flows inward &mdash; a negative effective resistance at the
+          interface between the cooled layer and the active silicon.</p>
+          <p>Our model represents this correctly in kind, which was not by design and is worth
+          recording: MR is applied by subtracting power <strong>at the source layer</strong>, and
+          the subtraction is <em>not clamped at zero</em>. So extracted heat never flows through the
+          stack, and a block can go net-negative. What the model does <em>not</em> yet do is let
+          <span class="mono">dt_max</span> be anything other than a hard cap on lift, which is a
+          device constraint rather than the path-bypass the theory describes.</p>
+        </dd>
+      </div>
+
+      <div>
         <dt>damping verification</dt>
         <dd><p>Every result is re-solved at half the numerical damping; if the two disagree, the
         point is marked unquotable. This is not ceremony &mdash; it retired four published figures
@@ -509,10 +579,15 @@
             <em>ceiling</em> should be quoted.</strong></td></tr>
         <tr><td>f<sub>max</sub> derate slope</td><td><span class="chip a">assumed</span></td>
             <td>Absolute GFLOP/s inherit it. Ratios are robust; absolutes are not.</td></tr>
-        <tr><td>Heatsink scaling with die area</td><td><span class="chip g">not modelled</span></td>
-            <td><strong>The blocking gap.</strong> The sink returns the same 0.0764 K/W for a
-            101 mm&sup2; die and an 826 mm&sup2; one. Every accelerator temperature is therefore
-            wrong, and in the pessimistic direction.</td></tr>
+        <tr><td>Cooling resistance vs die area</td><td><span class="chip m">validated</span></td>
+            <td>CoolingSpec reproduces the published H100 junction-to-air resistance to within a
+            few percent, and its fan power lands near the study's own measured air-versus-liquid
+            node difference &mdash; a number it was not fitted to.</td></tr>
+        <tr><td>Package spreader overhang</td><td><span class="chip g">not modelled</span></td>
+            <td><strong>The blocking gap.</strong> Every package layer spans exactly the die
+            footprint, so resistance scales as 1/area with no lateral relief. Costs little at
+            826 mm&sup2;, dominant at 91 mm&sup2;. Blocked inside 3D-ICE &mdash; see the status
+            section.</td></tr>
         <tr><td>Pump / chiller power for liquid</td><td><span class="chip g">not modelled</span></td>
             <td>Liquid points give a thermal resistance with <em>no</em> power cost, so MR must
             never be priced against liquid cooling in this pipeline as it stands.</td></tr>
@@ -807,18 +882,25 @@
 
     <h3>Required to close the gaps above</h3>
     <ul class="plain">
-      <li><strong>A cooling specification &mdash; in progress, and blocking everything else.</strong>
-      One object taking fluid, die footprint, target power, fin or channel geometry, flow rate and
-      inlet temperature, returning the thermal resistance that geometry implies <em>and</em> the
-      wall-plug power it costs. Air and liquid alike, and invertible &mdash; so a sweep can ask
-      &ldquo;what flow and inlet temperature meet this target, and what does that cost?&rdquo;</li>
-      <li><strong>Within it, a pump-and-chiller power model.</strong> Without one, MR cannot be
-      compared against the cooling a high-TDP part actually ships with, and the project&rsquo;s
-      central commercial claim stays unproven.</li>
+      <li><span class="chip m">done</span> <strong>A cooling specification.</strong> Fluid, die
+      footprint, geometry, flow and inlet temperature in; thermal resistance and wall-plug power
+      out, air and liquid alike, invertible for sweeps. Validated against the measured curves where
+      they exist and against a published part where they do not. Its chiller term is what finally
+      makes a liquid loop comparable with an air one rather than free.</li>
+      <li><strong>A spreader with overhang &mdash; the one blocking gap.</strong> Requires
+      linearising the pluggable heat sink into the system matrix so steady state stops being
+      singular. Two of the three obstacles are already cleared; see the status section.</li>
+      <li><strong>A direct-to-chip package variant.</strong> D2C removes the lid and spreader
+      entirely, so modelling it with a lidded package spends the whole resistance budget before the
+      coolant is reached. That is a second stack template, not a parameter.</li>
       <li><strong>A COP&ndash;&Delta;T coupling in the device model.</strong> Currently
       <span class="mono">MRParams</span> takes lift and efficiency as unrelated numbers.</li>
       <li><strong>Chain the clock search into the break-even solve</strong>, so a throughput target
       can be converted into the temperature it implies and then into a required COP.</li>
+      <li><strong>Validate the clock model too.</strong> The published CPU study gives
+      <strong>+30.4% clock from cooling alone</strong> at a fixed 95&nbsp;&deg;C limit &mdash; four
+      coolers, same silicon. Our own cooling sweep claims a 50&times; better cooler buys +55%, and
+      that claim has never been checked against anything.</li>
       <li><strong>Run the hybrid optimiser</strong>, and sweep efficiency across it to produce the
       full (budget, split, throughput, COP) surface rather than points on it.</li>
     </ul>
@@ -858,6 +940,12 @@
     and checking process liveness rather than the absence of a marker &mdash; are load-bearing, not
     bureaucratic. Every published figure in this project that later needed retracting was caught by
     one of them.</p>
+    <p>The strongest of them is the newest. <strong>Not one of the five defects was found by reading
+    code</strong>; every one came from comparing against something external &mdash; a second solver
+    path, a lumped estimate, a published part. And in the one case where I reasoned my way to three
+    candidate causes and tested them, <em>all three were wrong</em> and the answer came from
+    measurement. That is the argument for the acceptance gate, and for treating it as a permanent
+    fixture rather than a milestone.</p>
   </div>
 
   <footer>
