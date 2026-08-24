@@ -45,9 +45,36 @@ def _flp_total_power(contents):
     return out
 
 
-def get_stack_template(template_name):
+def get_stack_template(template_name, gen_dir=None):
+    """Path to a stack template, by name or by specification.
+
+    Two forms, so that the thirteen drivers taking ``--stack`` all gain generated stacks without
+    thirteen separate flags:
+
+    ``skylake``, ``direct_die_mr``
+        a checked-in template in ``stack_templates/``, exactly as before.
+
+    ``spec:package=direct_die,mr=GAAS,src=120``
+        built on the spot by :mod:`HotGauge.thermal.die_stack` and written into ``gen_dir``
+        (default ``stack_templates/_generated``). The filename is deterministic, so a sweep that
+        revisits a geometry reuses the file and the session solver cache still recognises its
+        matrix.
+
+    Plain names are dispatched first and unchanged, so nothing that works today can shift.
+    """
+    from HotGauge.thermal.die_stack import is_spec_string, render_spec_string
+    if is_spec_string(template_name):
+        out_dir = gen_dir or os.path.join(ICE_STK_DIR, '_generated')
+        return render_spec_string(template_name, out_dir)
     template_fname = template_name.replace('.stk','') + '.stk'
     stack_file = os.path.join(ICE_STK_DIR, template_fname)
+    if not os.path.isfile(stack_file):
+        # A mistyped template used to surface far downstream as a confusing 3D-ICE parse error.
+        avail = sorted(f[:-4] for f in os.listdir(ICE_STK_DIR) if f.endswith('.stk'))
+        raise FileNotFoundError(
+            'no stack template {!r} in {}; available: {}. For a generated stack use a spec '
+            'string, e.g. spec:package=direct_die,mr=GAAS'.format(
+                template_name, ICE_STK_DIR, ', '.join(avail)))
     return stack_file
 
 def strip_stack_file(stack_file):

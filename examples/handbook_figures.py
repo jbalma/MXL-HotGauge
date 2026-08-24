@@ -819,6 +819,152 @@ def fig_accel_breakdown(accel_flp, out_path, total_W=470.0):
     return {'die_mm2': die, 'area': area, 'count': count, 'density': dict(zip(keys, dens))}
 
 
+
+
+# --------------------------------------------------------------------------------------------
+# The package change: lidded -> direct die with a photonic pixel layer
+# --------------------------------------------------------------------------------------------
+
+MR_COLOR = '#2e9e5b'
+
+
+def _draw_stack(ax, spec, title, strike=(), highlight=(), depth_callout=False):
+    """One stack drawn top-down, vertical scale compressed as sqrt(thickness).
+
+    ``strike`` names package layers to draw as removed; ``highlight`` names layers to ring.
+    """
+    from HotGauge.thermal.die_stack import MATERIALS
+
+    rows = []
+    for inst, _, h, mat in spec.package_layers():
+        rows.append({'label': inst, 'h': h, 'mat': mat, 'src': False})
+    for i, dl in enumerate(spec.die_layers()):
+        rows.append({'label': 'die[{}]'.format(i), 'h': dl['height_um'], 'mat': dl['material'],
+                     'src': dl['kind'] == 'source'})
+
+    drawn = [math.sqrt(r['h']) for r in rows]
+    total = sum(drawn)
+    y = total
+    for r, dh in zip(rows, drawn):
+        y -= dh
+        r['y0'], r['dh'] = y, dh
+        col = SOURCE_COLOR if r['src'] else MAT_COLOR.get(r['mat'], MR_COLOR)
+        ax.add_patch(Rectangle((0, y), 1.0, dh, facecolor=col, edgecolor='white',
+                               linewidth=0.8, alpha=0.35 if r['label'] in strike else 0.9))
+        k = MATERIALS[r['mat']][0]
+        if r['src']:
+            txt = 'SOURCE  {:.0f} um  -- heat made here'.format(r['h'])
+        elif r['label'].startswith('die['):
+            txt = '{}  {:.0f} um  silicon'.format(r['label'], r['h'])
+        else:
+            txt = '{}  {:.0f} um  {}  k={:.0f}'.format(
+                r['label'], r['h'], r['mat'].lower().replace('_', ' '), k)
+        ax.text(0.015, y + dh / 2.0, txt, va='center', ha='left', fontsize=7.2,
+                color='white' if r['mat'] in ('COPPER', 'SILICON') or r['src'] else '#222222',
+                fontweight='bold' if r['src'] else 'normal')
+        if r['label'] in strike:
+            ax.plot([0.02, 0.98], [y + dh * 0.65, y + dh * 0.35], color='#b03030', linewidth=2.4)
+            ax.plot([0.02, 0.98], [y + dh * 0.35, y + dh * 0.65], color='#b03030', linewidth=2.4)
+        if r['label'] in highlight:
+            ax.add_patch(Rectangle((0, y), 1.0, dh, facecolor='none', edgecolor=MR_COLOR,
+                                   linewidth=2.6, zorder=6))
+
+    if depth_callout:
+        src = [r for r in rows if r['src']][0]
+        # The callout must span silicon + pixels, not the sink: it is the path a watt takes from
+        # the transistors to the coolant, which is the number a vendor has to agree to.
+        pix = [r for r in rows if r['label'] == 'MR_PIXELS'][0]
+        top = pix['y0'] + pix['dh']
+        ax.annotate('', xy=(1.06, top), xytext=(1.06, src['y0'] + src['dh']),
+                    arrowprops=dict(arrowstyle='<->', color='#b03030', linewidth=1.4))
+        ax.text(1.10, (top + src['y0']) / 2.0,
+                'burial depth\n{:.0f} um silicon\n+ {:.0f} um pixels\n= {:.0f} um to coolant\n'
+                '(now a parameter)'.format(spec.source_depth_um, spec.mr_um,
+                                           spec.path_to_coolant_um()['total_um']),
+                va='center', ha='left', fontsize=7.2, color='#b03030')
+
+    ax.set_xlim(-0.05, 1.75)
+    ax.set_ylim(-4, total + 4)
+    ax.axis('off')
+    ax.set_title(title, fontsize=9.2)
+    return rows, total
+
+
+def fig_stack_packages(out_path):
+    """The package change the project needs, and what it is worth.
+
+    Photonic microrefrigeration is only buildable direct-die: the pixels have to sit on the
+    silicon. Modelling it through a lidded package spends most of the resistance budget on solder
+    and a copper lid before the cooler does anything, and those two layers are exactly what
+    direct-die deletes.
+    """
+    from HotGauge.thermal.die_stack import StackSpec, compare_packages
+
+    lidded = StackSpec(package='lidded', cell_um=50.0)
+    direct = StackSpec(package='direct_die', mr_layer=True, mr_material='GAAS', cell_um=50.0)
+
+    fig = plt.figure(figsize=(13.8, 6.1))
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.0, 1.0, 1.25], wspace=0.16)
+    axl, axd, axb = (fig.add_subplot(gs[0, i]) for i in range(3))
+
+    _draw_stack(axl, lidded, 'Before: lidded package\n(what every result so far came through)',
+                strike=('HSP', 'SOLDER'))
+    axl.text(0.5, -2.5, 'the two struck layers are 47% of the resistance,\n'
+                        'and they sit between the cooler and the heat',
+             ha='center', va='top', fontsize=7.6, color='#b03030')
+
+    _draw_stack(axd, direct, 'After: direct die\npixel array where the grease was',
+                highlight=('MR_PIXELS',), depth_callout=True)
+    axd.text(0.5, -2.5, 'GaAs pixels are 14x more conductive than the\n'
+                        'grease they replace, so the array is not a tax',
+             ha='center', va='top', fontsize=7.6, color=MR_COLOR)
+
+    # Budget comparison at both die areas.
+    cmp826, cmp91 = compare_packages(826.0), compare_packages(91.0)
+    groups = [('826 mm$^2$\nGA100', cmp826), ('91 mm$^2$\nRyzen 7500F', cmp91)]
+    x = np.arange(len(groups))
+    for i, (lab, c) in enumerate(groups):
+        base = 0.0
+        for r in c['lidded']['rows']:
+            col = SOURCE_COLOR if r['name'].endswith('*') else MAT_COLOR.get(r['material'], '#999')
+            axb.bar(i - 0.19, r['r_K_per_W'], bottom=base, width=0.34, color=col,
+                    edgecolor='white', linewidth=0.5)
+            base += r['r_K_per_W']
+        axb.text(i - 0.19, base * 1.10, 'lidded\n{:.4f}'.format(base), ha='center',
+                 fontsize=7.6, color='#333333')
+        base2 = 0.0
+        for r in c['direct_die']['rows']:
+            col = (MR_COLOR if r['material'] == 'GAAS'
+                   else SOURCE_COLOR if r['name'].endswith('*')
+                   else MAT_COLOR.get(r['material'], '#999'))
+            axb.bar(i + 0.19, r['r_K_per_W'], bottom=base2, width=0.34, color=col,
+                    edgecolor='white', linewidth=0.5)
+            base2 += r['r_K_per_W']
+        axb.text(i + 0.19, base2 * 1.10, 'direct die\n{:.4f}\n({:.0f}% lower)'
+                 .format(base2, 100 * c['reduction']), ha='center', fontsize=7.6,
+                 color=MR_COLOR, fontweight='bold')
+    axb.set_xticks(x)
+    axb.set_xticklabels([l for l, _ in groups], fontsize=8.4)
+    axb.set_yscale('log')
+    axb.set_ylabel('stack resistance, die footprint  [K/W]')
+    axb.set_ylim(1e-3, 1.3)
+    axb.set_title('The same 68% cut at both die sizes, because every layer\nis 1/area. On the '
+                  '91 mm$^2$ part that takes the package\nfrom 91% of the published budget to '
+                  '29%. What is left is\nmostly the grey sink base -- the next artifact, not a '
+                  'result.', fontsize=8.8)
+    axb.grid(axis='y', alpha=0.25, linewidth=0.6, which='both')
+    axb.set_axisbelow(True)
+    for sp in ('top', 'right'):
+        axb.spines[sp].set_visible(False)
+
+    fig.suptitle('The stack, rebuilt for direct-die photonic cooling', fontsize=11.5, y=1.02)
+    fig.savefig(out_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    return {'lidded_826': cmp826['lidded_K_per_W'], 'direct_826': cmp826['direct_die_K_per_W'],
+            'lidded_91': cmp91['lidded_K_per_W'], 'direct_91': cmp91['direct_die_K_per_W'],
+            'reduction': cmp826['reduction']}
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--out-dir', default=os.path.join(_REPO, 'docs', 'figures'))
@@ -830,6 +976,11 @@ if __name__ == '__main__':
     r = fig_stack_side_view(a.stack, os.path.join(a.out_dir, 'stack_side_view.png'))
     print('stack_side_view.png  total R: {:.4f} (826) {:.4f} (91)'
           .format(r['big']['total_K_per_W'], r['small']['total_K_per_W']))
+
+    sp = fig_stack_packages(os.path.join(a.out_dir, 'stack_packages.png'))
+    print('stack_packages.png  826: {:.5f} -> {:.5f}   91: {:.5f} -> {:.5f}  ({:.0f}% lower)'
+          .format(sp['lidded_826'], sp['direct_826'], sp['lidded_91'], sp['direct_91'],
+                  100 * sp['reduction']))
 
     fp = os.path.join(_REPO, 'examples', 'floorplans', 'outputs')
     e = fig_dies([('34-core CPU, 7 nm', os.path.join(fp, 'skylake7nm_34core_3_3D-ICE_template.flp'), 'cpu'),
