@@ -965,6 +965,127 @@ def fig_stack_packages(out_path):
             'reduction': cmp826['reduction']}
 
 
+
+
+# --------------------------------------------------------------------------------------------
+# Where the cooling is applied, and why it decides whether burial depth matters
+# --------------------------------------------------------------------------------------------
+
+#: Measured, 3D-ICE, 100 um grid, 8.8 x 6.1 mm die at 100 W, 3 W of removal aimed at L3_4 -- the
+#: block that sets the peak with no cooling. Only the PLACE of the removal and the burial depth
+#: change between columns. Linear solves: no leakage feedback, deliberately, so the only thing
+#: moving is geometry. results/mr_placement/summary.json
+PLACEMENT_ROWS = (
+    {'burial_um': 360.0, 'no_mr_C': 81.845, 'gain_source_K': -8.566, 'gain_pixels_K': -4.066},
+    {'burial_um': 100.0, 'no_mr_C': 76.812, 'gain_source_K': -8.474, 'gain_pixels_K': -5.662},
+    {'burial_um': 20.0, 'no_mr_C': 75.929, 'gain_source_K': -9.254, 'gain_pixels_K': -6.800},
+)
+
+
+def fig_mr_placement(out_path):
+    """The correction, in one figure: cooling has to happen where the cooler is.
+
+    Applying the removal as negative power on a processor block puts it in the die's own source
+    layer, in the same 20 um of silicon as the transistors. Cooling and heating are then
+    co-located and the extracted watt crosses no silicon at all -- so the burial depth cannot
+    affect the answer, by construction. Moving the removal into the pixel array, where the
+    hardware puts it, makes the watt climb the burial depth first.
+    """
+    d = [r['burial_um'] for r in PLACEMENT_ROWS]
+    gs = [-r['gain_source_K'] for r in PLACEMENT_ROWS]
+    gp = [-r['gain_pixels_K'] for r in PLACEMENT_ROWS]
+    base = [r['no_mr_C'] for r in PLACEMENT_ROWS]
+
+    fig = plt.figure(figsize=(13.4, 4.7))
+    gs_ = fig.add_gridspec(1, 3, width_ratios=[1.0, 1.15, 1.0], wspace=0.30)
+    axa, axb, axc = (fig.add_subplot(gs_[0, i]) for i in range(3))
+
+    # Panel 1: the two placements, drawn.
+    for ax_x, title, col, ycool in ((0.26, 'MR in the SOURCE layer\n(the old formulation)',
+                                     '#c0392b', 0.30),
+                                    (0.74, 'MR in the PIXEL layer\n(the hardware)',
+                                     MR_COLOR, 0.74)):
+        axa.add_patch(Rectangle((ax_x - 0.19, 0.78), 0.38, 0.14, facecolor='#9aa7b4',
+                                edgecolor='white'))
+        axa.text(ax_x, 0.85, 'SINK', ha='center', va='center', fontsize=7.4)
+        axa.add_patch(Rectangle((ax_x - 0.19, 0.70), 0.38, 0.08, facecolor=MR_COLOR,
+                                edgecolor='white', alpha=0.85))
+        axa.text(ax_x, 0.74, 'pixel array', ha='center', va='center', fontsize=7.4,
+                 color='white')
+        axa.add_patch(Rectangle((ax_x - 0.19, 0.30), 0.38, 0.40, facecolor='#4a6fa5',
+                                edgecolor='white', alpha=0.85))
+        axa.text(ax_x, 0.50, 'silicon\n(burial depth)', ha='center', va='center', fontsize=7.4,
+                 color='white')
+        axa.add_patch(Rectangle((ax_x - 0.19, 0.24), 0.38, 0.06, facecolor=SOURCE_COLOR,
+                                edgecolor='white'))
+        axa.text(ax_x, 0.27, 'transistors', ha='center', va='center', fontsize=7.0,
+                 color='white', fontweight='bold')
+        axa.add_patch(FancyArrowPatch((ax_x, 0.27), (ax_x, ycool), arrowstyle='-|>',
+                                      mutation_scale=13, color=col, linewidth=2.2))
+        axa.text(ax_x, 0.16, title, ha='center', va='top', fontsize=8.0, color=col)
+        axa.text(ax_x, 0.06,
+                 'watt crosses 0 um' if ycool < 0.5 else 'watt crosses the\nburial depth',
+                 ha='center', va='top', fontsize=7.4, color=col, style='italic')
+    axa.set_xlim(0, 1)
+    axa.set_ylim(-0.05, 1.0)
+    axa.axis('off')
+    axa.set_title('Same stack, same 3 W. Only the arrow moves.', fontsize=9.2)
+
+    # Panel 2: what the 3 W buys, against burial depth.
+    axb.plot(d, gs, marker='s', color='#c0392b', linewidth=2.0, markersize=8,
+             label='MR in the source layer')
+    axb.plot(d, gp, marker='o', color=MR_COLOR, linewidth=2.0, markersize=8,
+             label='MR in the pixel layer')
+    for x, a, b in zip(d, gs, gp):
+        axb.annotate('', xy=(x, b), xytext=(x, a),
+                     arrowprops=dict(arrowstyle='<->', color='#888888', linewidth=0.9))
+        axb.text(x * 1.06, (a + b) / 2.0, '{:.2f}x'.format(a / b), fontsize=7.6,
+                 color='#555555', va='center')
+    axb.set_xscale('log')
+    axb.set_xticks(d)
+    axb.set_xticklabels(['{:.0f}'.format(x) for x in d])
+    axb.invert_xaxis()
+    axb.set_xlabel('burial depth of the active layer  [um]   (thinner to the right)')
+    axb.set_ylabel('temperature drop on the target block  [K]')
+    axb.set_ylim(0, 11)
+    axb.set_title('The old formulation over-states what 3 W buys by\n2.1x on an unthinned die, '
+                  'and never converges:\neven at 20 um the watt still crosses the bond.',
+                  fontsize=9.2)
+    axb.legend(fontsize=7.8, frameon=False, loc='lower left')
+    axb.grid(alpha=0.25, linewidth=0.6)
+    axb.set_axisbelow(True)
+
+    # Panel 3: the sensitivity itself, which is the point.
+    span_s = max(gs) - min(gs)
+    span_p = max(gp) - min(gp)
+    axc.bar([0], [span_s], width=0.5, color='#c0392b', edgecolor='white')
+    axc.bar([1], [span_p], width=0.5, color=MR_COLOR, edgecolor='white')
+    axc.text(0, span_s + 0.08, '{:.2f} K\nand not even\nmonotone'.format(span_s), ha='center',
+             fontsize=8.0, color='#c0392b')
+    axc.text(1, span_p + 0.08, '{:.2f} K\nmonotone,\n+{:.0f}% by thinning'
+             .format(span_p, 100 * (gp[-1] / gp[0] - 1)), ha='center', fontsize=8.0,
+             color=MR_COLOR)
+    axc.set_xticks([0, 1])
+    axc.set_xticklabels(['MR in the\nsource layer', 'MR in the\npixel layer'], fontsize=8.4)
+    axc.set_ylabel('how much the MR gain moves\nfrom 360 um to 20 um of burial  [K]')
+    axc.set_ylim(0, 4.0)
+    axc.set_title('Burial depth is a design parameter only in the\nright-hand case. In the left '
+                  'one it is inert --\nnot approximately, but by construction.', fontsize=9.2)
+    axc.grid(axis='y', alpha=0.25, linewidth=0.6)
+    axc.set_axisbelow(True)
+
+    for ax in (axb, axc):
+        for sp in ('top', 'right'):
+            ax.spines[sp].set_visible(False)
+
+    fig.suptitle('Where the cooling is applied decides whether die thinning is worth anything',
+                 fontsize=11.5, y=1.03)
+    fig.savefig(out_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    return {'span_source': span_s, 'span_pixels': span_p,
+            'overstatement': [a / b for a, b in zip(gs, gp)]}
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--out-dir', default=os.path.join(_REPO, 'docs', 'figures'))
@@ -976,6 +1097,11 @@ if __name__ == '__main__':
     r = fig_stack_side_view(a.stack, os.path.join(a.out_dir, 'stack_side_view.png'))
     print('stack_side_view.png  total R: {:.4f} (826) {:.4f} (91)'
           .format(r['big']['total_K_per_W'], r['small']['total_K_per_W']))
+
+    mp = fig_mr_placement(os.path.join(a.out_dir, 'mr_placement.png'))
+    print('mr_placement.png  source span {:.2f} K, pixel span {:.2f} K, over-stated {}'
+          .format(mp['span_source'], mp['span_pixels'],
+                  ', '.join('{:.2f}x'.format(x) for x in mp['overstatement'])))
 
     sp = fig_stack_packages(os.path.join(a.out_dir, 'stack_packages.png'))
     print('stack_packages.png  826: {:.5f} -> {:.5f}   91: {:.5f} -> {:.5f}  ({:.0f}% lower)'

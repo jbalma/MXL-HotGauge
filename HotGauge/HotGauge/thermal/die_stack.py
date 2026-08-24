@@ -31,19 +31,26 @@ The lidded default reproduces the historical ``skylake.stk`` die layer-for-layer
 makes the direct-die numbers a comparison rather than a fresh start. ``test_die_stack.py`` asserts
 that byte-level equivalence.
 
-Where the microrefrigeration actually is, today
-----------------------------------------------
-Worth stating plainly, because it is easy to assume otherwise from the stack file: **nothing in
-the stack proxies the photonic tile array.** MR is applied by ``apply_cooling_to_trace`` as
-*negative power on floorplan blocks*, which lands in the die's ``source`` layer -- the same
-20 um of silicon the transistors are in. The model therefore places the cooling exactly where the
-heat is made, with zero transport distance between them. That is the most optimistic placement
-possible and it is not what the hardware does.
+Where the microrefrigeration is
+-------------------------------
+The array is a **second 3D-ICE die element** sandwiched between the silicon and the sink, in the
+place the thermal grease used to occupy, with its own floorplan of pixel tiles carrying *negative*
+power (``mr_powered=True``). That is what the hardware is, and it is the only arrangement in which
+the burial depth means anything.
 
-``mr_layer`` here gives the array a physical home: a layer of the pixels' own bulk material, in
-the place the thermal grease used to occupy, between the silicon and the sink. Making it a
-*powered* layer -- a second 3D-ICE ``die`` element with its own floorplan of pixel tiles carrying
-negative power -- is the next step and is not done yet; see ``mr_layer_is_powered``.
+It matters because of what it replaces. MR used to be applied by ``apply_cooling_to_trace`` as
+negative power on *processor* floorplan blocks, which lands in the die's own ``source`` layer --
+the same 20 um of silicon the transistors are in. Cooling and heating were therefore co-located,
+with **zero transport distance between them**, so the extracted watt never had to cross the
+silicon above the transistors. Under that arrangement the burial depth cannot affect the answer
+at all, by construction: sweeping it moves silicon that no heat flows through on its way to the
+cooler. Every MR number computed that way is an upper bound.
+
+With ``mr_powered``, the removal happens where the pixels are and the heat has to get there --
+up through ``source_depth_um`` of silicon, then across the bond. Burial depth becomes a real
+constraint on how much a tile can pull, and pixel pitch becomes a real constraint on where it can
+pull from. See :mod:`HotGauge.thermal.mr_array` for the tile floorplan and for projecting a plan
+expressed over processor blocks onto the tiles above them.
 """
 
 import os
@@ -192,7 +199,7 @@ class StackSpec(object):
     def __init__(self, package='direct_die', die_um=DEFAULT_DIE_UM,
                  source_depth_um=DEFAULT_SOURCE_DEPTH_UM, source_um=DEFAULT_SOURCE_UM,
                  n_above=5, grading_ratio=0.6,
-                 mr_layer=False, mr_material='GAAS', mr_um=30.0,
+                 mr_layer=False, mr_powered=False, mr_material='GAAS', mr_um=30.0,
                  grease_um=30.0, spreader_um=3000.0, solder_um=200.0, sink_um=2000.0,
                  cell_um=50.0, htc_3dice=1.0e-7, ambient_K=303.15, name=None):
         if package not in ('direct_die', 'lidded'):
@@ -213,6 +220,13 @@ class StackSpec(object):
         self.n_above = int(n_above)
         self.grading_ratio = float(grading_ratio)
         self.mr_layer = bool(mr_layer)
+        # A powered array is a die element with its own floorplan; an unpowered one is an inert
+        # slab that only conducts. Powering it without having it is meaningless, so say so here
+        # rather than emitting a stack that references a floorplan nothing will write.
+        if mr_powered and not mr_layer:
+            raise ValueError('mr_powered requires mr_layer: the array cannot carry power '
+                             'without being in the stack')
+        self.mr_powered = bool(mr_powered)
         self.mr_material = mr_material
         self.mr_um = float(mr_um)
         self.grease_um = float(grease_um)
@@ -224,13 +238,8 @@ class StackSpec(object):
         self.ambient_K = float(ambient_K)
         self.name = name or ('{}_{:.0f}um_src{:.0f}{}'
                              .format(package, self.die_um, self.source_depth_um,
+                                     '_mrp' if self.mr_powered else
                                      '_mr' if self.mr_layer else ''))
-
-    #: The MR layer is inert: it conducts, it has no floorplan and it carries no power. MR heat
-    #: removal still lands in the die's source layer via apply_cooling_to_trace. Making this
-    #: layer carry the removal needs a second 3D-ICE die element with its own pixel floorplan,
-    #: and the solver takes one floorplan today.
-    mr_layer_is_powered = False
 
     def die_layers(self):
         return die_layers(self.die_um, self.source_depth_um, self.source_um,
@@ -248,6 +257,8 @@ class StackSpec(object):
             out.append(('HSP', 'HSP_LAYER', self.spreader_um, 'COPPER'))
             out.append(('SOLDER', 'SOLDER_LAYER', self.solder_um, 'SOLDER_TIM'))
         elif self.mr_layer:
+            # A powered array is emitted as a die element, not a layer, so it is reported here
+            # for the resistance budget but rendered separately.
             out.append(('MR_PIXELS', 'MR_LAYER', self.mr_um, self.mr_material))
         else:
             out.append(('TIM', 'TIM_LAYER', self.grease_um, 'THERMAL_GREASE'))
@@ -282,15 +293,30 @@ class StackSpec(object):
             r['share'] = r['r_K_per_W'] / total if total else 0.0
         return {'die_area_mm2': float(die_area_mm2), 'rows': rows, 'total_K_per_W': total}
 
+    def mr_flp_placeholder(self):
+        """Whether the rendered stack references a second floorplan the caller must supply.
+
+        A powered array is a die element, so the stack contains ``{mr_flp_file}``. Rendering it
+        without one produces a stack that names a file nothing writes, which 3D-ICE reports as a
+        missing floorplan rather than as the configuration mistake it is.
+        """
+        return '{mr_flp_file}' if self.mr_powered else None
+
     def path_to_coolant_um(self):
         """Material a watt crosses from the top of the active layer to the sink base.
 
         The figure direct-die is meant to shrink. Silicon above the source plus whatever the
         package puts between the die and the sink.
+
+        ``to_cooling_um`` is the one that matters once the array is powered: how far a watt has to
+        travel before anything removes it. With the removal in the die's own source layer that
+        distance is zero and the burial depth is inert; with it in the pixels it is the burial
+        depth itself.
         """
         above = self.source_depth_um
         pkg = sum(h for inst, _, h, _ in self.package_layers() if inst != 'SINK')
-        return {'silicon_um': above, 'package_um': pkg, 'total_um': above + pkg}
+        return {'silicon_um': above, 'package_um': pkg, 'total_um': above + pkg,
+                'to_cooling_um': above if self.mr_powered else 0.0}
 
 
 def render_stack_text(spec):
@@ -330,6 +356,8 @@ def render_stack_text(spec):
     A('// ---------------------------- Layers -------------------------------')
     seen = set()
     for inst, typ, h, mat in spec.package_layers():
+        if spec.mr_powered and inst == 'MR_PIXELS':
+            continue                      # emitted as a die element below, not a passive layer
         if typ in seen:
             continue
         seen.add(typ)
@@ -339,6 +367,15 @@ def render_stack_text(spec):
         A('')
 
     A('// ---------------------------- Die ----------------------------------')
+    if spec.mr_powered:
+        # The photonic array as a die element: one source layer of the pixels' bulk material,
+        # bonded to the exposed silicon. Its floorplan carries NEGATIVE power -- the heat the
+        # anti-Stokes process removes -- so extraction happens here, above the silicon, and a
+        # watt made in the transistors has to cross source_depth_um of it to be taken away.
+        A('die MR_DIE :')
+        A('   source {:<6s}{} ; // photonic cooling tiles, negative power'
+          .format(_fmt(spec.mr_um), spec.mr_material))
+        A('')
     A('// Listed top-down. The active layer sits {} um below the top surface of a {} um die;'
       .format(_fmt(spec.source_depth_um), _fmt(spec.die_um)))
     A('// the mesh is graded finer approaching it, where the gradient is.')
@@ -353,7 +390,10 @@ def render_stack_text(spec):
     A('// ---------------------------- Stack --------------------------------')
     A('stack:')
     for inst, typ, _, _ in spec.package_layers():
-        A('   layer {} {} ;'.format(inst, typ))
+        if spec.mr_powered and inst == 'MR_PIXELS':
+            A('   die MR_ARRAY MR_DIE floorplan "{mr_flp_file}";')
+        else:
+            A('   layer {} {} ;'.format(inst, typ))
     A('   die PROCESSOR_DIE IC floorplan "{flp_file}";')
     A('')
 

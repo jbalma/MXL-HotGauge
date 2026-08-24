@@ -22,8 +22,15 @@ from HotGauge.thermal.ICE import ICE_STK_DIR
 #: the back catalogue.
 TEMPLATES = {
     'direct_die': StackSpec(package='direct_die', cell_um=50.0),
+    # Inert array: conducts, carries no power. Kept because it is the right control for
+    # "what does the bond cost thermally" with no cooling in play.
     'direct_die_mr': StackSpec(package='direct_die', mr_layer=True, mr_material='GAAS',
                                cell_um=50.0),
+    # The real thing: the array as its own die element with a floorplan of pixel tiles carrying
+    # negative power, so the removal happens ABOVE the silicon and the burial depth is a real
+    # constraint. Needs a second floorplan; see HotGauge.thermal.mr_array.
+    'direct_die_mr_powered': StackSpec(package='direct_die', mr_layer=True, mr_powered=True,
+                                       mr_material='GAAS', cell_um=50.0),
     'direct_die_mr_sin': StackSpec(package='direct_die', mr_layer=True, mr_material='SI3N4',
                                    cell_um=50.0),
     # The lidded rebuild. Not used by any study -- it exists so that the equivalence with
@@ -37,8 +44,10 @@ def main():
         path = write_stack(spec, os.path.join(ICE_STK_DIR, name + '.stk'))
         b826 = spec.resistance_budget(826.0)['total_K_per_W']
         b91 = spec.resistance_budget(91.0)['total_K_per_W']
-        print('{:<20s} {:>10.5f} K/W @826mm2  {:>9.5f} @91mm2   coolant path {:>5.0f} um   {}'
-              .format(name, b826, b91, spec.path_to_coolant_um()['total_um'],
+        pth = spec.path_to_coolant_um()
+        print('{:<24s} {:>9.5f} K/W @826  {:>9.5f} @91   coolant {:>5.0f} um   '
+              'silicon to cooling {:>5.0f} um   {}'
+              .format(name, b826, b91, pth['total_um'], pth['to_cooling_um'],
                       os.path.basename(path)))
     print()
     for area in (826.0, 91.0):

@@ -1,0 +1,50 @@
+{
+ "note": "what the burial depth is worth, as a function of WHERE the cooling is applied. Linear solves, no leakage feedback: only geometry moves.",
+ "driver": "examples/mr_placement_probe.py",
+ "target": "L3_4",
+ "target_um": [
+  2913.426,
+  241.183
+ ],
+ "die_W": 100.0,
+ "mr_W": 3.0,
+ "pitch_um": 500.0,
+ "cell_um": 100.0,
+ "coverage": {
+  "n_tiles": 204,
+  "n_engaged": 6,
+  "engaged_area_um2": 1550000.0,
+  "requested_area_um2": 702668.822958,
+  "collateral_area_ratio": 2.205875583713847,
+  "W_requested": 3.0,
+  "W_projected": 3.0000000000000004
+ },
+ "rows": [
+  {
+   "burial_um": 360.0,
+   "no_mr_C": 81.84500000000003,
+   "source_C": 73.279,
+   "pixels_C": 77.779,
+   "gain_source_K": -8.566000000000031,
+   "gain_pixels_K": -4.066000000000031
+  },
+  {
+   "burial_um": 100.0,
+   "no_mr_C": 76.81200000000001,
+   "source_C": 68.33800000000002,
+   "pixels_C": 71.15000000000003,
+   "gain_source_K": -8.47399999999999,
+   "gain_pixels_K": -5.661999999999978
+  },
+  {
+   "burial_um": 20.0,
+   "no_mr_C": 75.92900000000003,
+   "source_C": 66.67500000000001,
+   "pixels_C": 69.12900000000002,
+   "gain_source_K": -9.254000000000019,
+   "gain_pixels_K": -6.800000000000011
+  }
+ ],
+ "span_source_K": 0.7800000000000296,
+ "span_pixels_K": 2.7339999999999804
+}

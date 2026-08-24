@@ -144,6 +144,61 @@ class TestDirectDie(unittest.TestCase):
             StackSpec(package='direct_die', mr_layer=True, mr_material='UNOBTAINIUM')
 
 
+class TestPoweredArray(unittest.TestCase):
+    """The array as a die element -- the only arrangement in which burial depth means anything."""
+
+    def test_powered_array_is_a_die_element_with_its_own_floorplan(self):
+        text = render_stack_text(StackSpec(package='direct_die', mr_layer=True, mr_powered=True))
+        self.assertIn('die MR_ARRAY MR_DIE floorplan "{mr_flp_file}";', text)
+        self.assertIn('die MR_DIE :', text)
+
+    def test_powered_array_is_not_also_emitted_as_a_passive_layer(self):
+        """Emitting both would put the pixels in the stack twice and double their resistance."""
+        text = render_stack_text(StackSpec(package='direct_die', mr_layer=True, mr_powered=True))
+        self.assertNotIn('layer MR_PIXELS MR_LAYER ;', text)
+        self.assertNotIn('layer MR_LAYER :', text)
+
+    def test_array_sits_between_the_silicon_and_the_sink(self):
+        """Order is the whole point: sink on top, pixels, then the die."""
+        text = render_stack_text(StackSpec(package='direct_die', mr_layer=True, mr_powered=True))
+        stack = text.split('stack:')[1]
+        i_sink = stack.index('layer SINK')
+        i_mr = stack.index('die MR_ARRAY')
+        i_die = stack.index('die PROCESSOR_DIE')
+        self.assertLess(i_sink, i_mr)
+        self.assertLess(i_mr, i_die)
+
+    def test_unpowered_array_stays_a_passive_layer(self):
+        text = render_stack_text(StackSpec(package='direct_die', mr_layer=True))
+        self.assertIn('layer MR_PIXELS MR_LAYER ;', text)
+        self.assertNotIn('MR_ARRAY', text)
+
+    def test_powering_an_absent_array_is_refused(self):
+        with self.assertRaises(ValueError):
+            StackSpec(package='direct_die', mr_layer=False, mr_powered=True)
+
+    def test_burial_depth_is_inert_unless_the_array_is_powered(self):
+        """The heart of it. With the removal in the die's own source layer the extracted watt
+        crosses no silicon, so sweeping the burial depth cannot change what MR achieves."""
+        inert = StackSpec(package='direct_die', mr_layer=True)
+        powered = StackSpec(package='direct_die', mr_layer=True, mr_powered=True)
+        self.assertEqual(inert.path_to_coolant_um()['to_cooling_um'], 0.0)
+        self.assertAlmostEqual(powered.path_to_coolant_um()['to_cooling_um'],
+                               powered.source_depth_um)
+
+    def test_powered_stack_declares_the_second_floorplan(self):
+        spec = StackSpec(package='direct_die', mr_layer=True, mr_powered=True)
+        self.assertEqual(spec.mr_flp_placeholder(), '{mr_flp_file}')
+        self.assertIsNone(StackSpec(package='direct_die', mr_layer=True).mr_flp_placeholder())
+
+    def test_powering_the_array_does_not_change_the_resistance_budget(self):
+        """Same material, same thickness, same place -- only the power differs."""
+        a = StackSpec(package='direct_die', mr_layer=True).resistance_budget(91.0)
+        b = StackSpec(package='direct_die', mr_layer=True,
+                      mr_powered=True).resistance_budget(91.0)
+        self.assertAlmostEqual(a['total_K_per_W'], b['total_K_per_W'], places=12)
+
+
 class TestSpecStrings(unittest.TestCase):
     """Spec strings are how the thirteen ``--stack`` drivers reach generated stacks."""
 
