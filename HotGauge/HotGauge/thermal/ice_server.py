@@ -224,6 +224,43 @@ class ICEServerSession(object):
                 self._proc = None
                 self.port = self._free_port()
 
+    @staticmethod
+    def other_servers_running(exclude_pid=None):
+        """Other 3D-ICE-Server processes on this machine, as ``[(pid, elapsed, cmdline)]``.
+
+        A server takes roughly fifteen cores while it factorises. If the Python process that
+        launched one is SIGKILLed -- ``pkill``, an OOM kill, a scheduler timeout -- ``atexit``
+        never runs and the server survives indefinitely, quietly starving every factorisation
+        that follows. The startup timeout then reports itself as a problem-size limit, which is
+        the wrong diagnosis and cost an hour to unpick.
+
+        Best-effort: no ``ps``, no diagnosis, and the timeout message just omits this line.
+        """
+        import subprocess as _sp
+        try:
+            out = _sp.run(['ps', '-eo', 'pid,etime,args'], capture_output=True, text=True,
+                          timeout=10).stdout
+        except Exception:      # noqa: BLE001 - a diagnostic must never be the thing that fails
+            return []
+        rows = []
+        for line in out.splitlines()[1:]:
+            parts = line.split(None, 2)
+            if len(parts) < 3:
+                continue
+            # Match the EXECUTABLE, not the line. A shell command that merely mentions
+            # 3D-ICE-Server -- this project's own diagnostics do -- is not a running server, and
+            # a detector that reports one would send the reader hunting a process that is a grep.
+            if os.path.basename(parts[2].split()[0]) != '3D-ICE-Server':
+                continue
+            try:
+                pid = int(parts[0])
+            except ValueError:
+                continue
+            if exclude_pid is not None and pid == exclude_pid:
+                continue
+            rows.append((pid, parts[1], parts[2]))
+        return rows
+
     def _start_once(self):
         self._log_path = self.stack_file + '.server{}.log'.format(self.port)
         log = open(self._log_path, 'wb')
@@ -251,12 +288,25 @@ class ICEServerSession(object):
                 pass
             time.sleep(0.25)
         else:
+            mine = self._proc.pid if self._proc is not None else None
+            others = self.other_servers_running(exclude_pid=mine)
             self.close()
-            raise ICEServerError('server did not become ready within {:.0f} s'
-                                 .format(self.startup_timeout_s)
-                                 + '. Startup is the FACTORISATION and it scales as '
-                                   'N^1.67, so this is usually a problem-size limit rather '
-                                   'than a hang: raise MXL_ICE_STARTUP_TIMEOUT_S, or coarsen the grid.')
+            msg = ('server did not become ready within {:.0f} s'
+                   .format(self.startup_timeout_s)
+                   + '. Startup is the FACTORISATION and it scales as N^1.67, so this is '
+                     'usually a problem-size limit rather than a hang: raise '
+                     'MXL_ICE_STARTUP_TIMEOUT_S, or coarsen the grid.')
+            if others:
+                # Check this BEFORE blaming the problem size. A single orphan takes ~15 cores
+                # and will time out every factorisation that follows it, forever.
+                msg += ('\n\nBUT FIRST: {} other 3D-ICE-Server process(es) are running on this '
+                        'machine and each takes roughly fifteen cores. If nothing is '
+                        'deliberately using them they are orphans from a killed run, and they '
+                        'are the reason this timed out:\n'.format(len(others)))
+                for pid, elapsed, cmd in others[:5]:
+                    msg += '  pid {:<8} up {:<12} {}\n'.format(pid, elapsed, cmd[:90])
+                msg += 'Kill them and retry before touching the grid or the timeout.'
+            raise ICEServerError(msg)
 
         self.factorisation_time_s = time.time() - t0
         self.matrix_fingerprint = matrix_fingerprint(self.stack_file)

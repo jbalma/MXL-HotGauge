@@ -248,6 +248,34 @@ def test_powers_take_effect_on_the_same_solve():
     assert abs(again - base) < 0.01, 'same powers must give the same answer, got {}'.format(peaks)
 
 
+def test_orphan_detector_matches_the_executable_not_the_line():
+    """An orphaned server starves every factorisation after it, so the timeout must name it.
+
+    A single 3D-ICE-Server takes roughly fifteen cores. If the Python process that launched one
+    is SIGKILLed, atexit never runs and the server survives; the next run then times out and
+    blames the problem size, which is the wrong diagnosis. The detector has to match the
+    EXECUTABLE, though -- this project's own diagnostics mention the server by name on their
+    command lines, and reporting one of those as an orphan sends the reader after a grep.
+    """
+    rows = ICEServerSession.other_servers_running()
+    assert isinstance(rows, list)
+    for pid, elapsed, cmd in rows:
+        assert isinstance(pid, int)
+        assert os.path.basename(cmd.split()[0]) == '3D-ICE-Server', \
+            'detector matched a line that merely mentions the server: {!r}'.format(cmd)
+
+
+def test_orphan_detector_can_exclude_our_own_process():
+    import subprocess
+    p = subprocess.Popen(['sleep', '30'])
+    try:
+        assert all(pid != p.pid for pid, _, _ in
+                   ICEServerSession.other_servers_running(exclude_pid=p.pid))
+    finally:
+        p.kill()
+        p.wait()
+
+
 def test_startup_timeout_is_configurable_because_startup_is_the_factorisation():
     """The 50 um GA100 run was reported as a hang. It was not: startup IS the factorisation,
     factorisation scales as N^1.67, and the 87.5 s measured at 691k unknowns projects to ~2900 s at
