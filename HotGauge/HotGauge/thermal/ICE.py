@@ -221,11 +221,28 @@ class ICESim(ExecutableJob):
     OUTPUT_TSTACK_FINAL = 'Tstack ("final.tstack", final ) ;'
     parallel_options = copy.deepcopy(ExecutableJob.parallel_options)
 
-    def __init__(self, stack_template, flp_template, power_trace, sim_config, *args, **kwargs):
+    def __init__(self, stack_template, flp_template, power_trace, sim_config, *args,
+                 mr_flp_template=None, mr_powers=None, **kwargs):
+        """``mr_flp_template`` / ``mr_powers`` add a SECOND powered die to the stack.
+
+        The photonic cooling array is a 3D-ICE die element of its own, bonded above the silicon,
+        whose floorplan of pixel tiles carries negative power. A stack built with
+        ``StackSpec(mr_powered=True)`` therefore contains a ``{mr_flp_file}`` placeholder, and
+        the run directory needs an ``MR.flp`` alongside ``IC.flp``.
+
+        Both must be supplied together. Supplying neither leaves every existing path byte-for-byte
+        unchanged, which is what keeps the back catalogue comparable.
+        """
         self.stack_template = stack_template
         self.flp_template = flp_template
         self.power_trace = power_trace
         self.sim_config = sim_config
+        if (mr_flp_template is None) != (mr_powers is None):
+            raise ValueError('mr_flp_template and mr_powers must be given together: a tile '
+                             'floorplan with no powers would run unpowered, and powers with no '
+                             'floorplan have nowhere to land')
+        self.mr_flp_template = mr_flp_template
+        self.mr_powers = mr_powers
         self._output_files_cache = None
         super().__init__(*args, **kwargs)
 
@@ -244,6 +261,15 @@ class ICESim(ExecutableJob):
         return os.path.join(self.run_path, 'IC.stk')
 
     @property
+    def mr_flp_file(self):
+        """The cooling array's floorplan, when the stack has one."""
+        return os.path.join(self.run_path, 'MR.flp')
+
+    @property
+    def has_mr_array(self):
+        return self.mr_flp_template is not None
+
+    @property
     def expected_output_length(self):
         return len(self.power_trace)
 
@@ -257,6 +283,8 @@ class ICESim(ExecutableJob):
 
     def input_files(self):
         files = [self.stack_file, self.flp_file, self.__class__.EMULATOR_EXECUTABLE]
+        if self.has_mr_array:
+            files.append(self.mr_flp_file)
         initial_temp_file = self.sim_config.initial_temp_file
         if initial_temp_file != None:
             files.append(initial_temp_file)
@@ -276,6 +304,8 @@ class ICESim(ExecutableJob):
 
     def prep_for_run(self):
         self.fill_flp_template()
+        if self.has_mr_array:
+            self.fill_mr_flp_template()
         self.fill_stk_template()
 
     def fill_flp_template(self):
@@ -308,6 +338,33 @@ class ICESim(ExecutableJob):
         return write_or_update_file(self.flp_file, contents)
 
 
+    def fill_mr_flp_template(self):
+        """Write the cooling array's floorplan, with the same power-landing guard as the die.
+
+        The guard matters more here, not less. Tile powers are NEGATIVE, so the sanity check is
+        that the written total matches the intended total -- not that it is positive. A template
+        that came from a run directory rather than from ``write_mr_floorplan`` has literal
+        numbers, passes through ``str.format`` untouched, and the array silently cools nothing
+        while every temperature still looks plausible.
+        """
+        powers = {k: ', '.join('{!r}'.format(float(x)) for x in np.atleast_1d(v))
+                  for k, v in self.mr_powers.items()}
+        contents = populate_template(self.mr_flp_template, powers=powers)
+        written = sum(_flp_total_power(contents))
+        expected = sum(float(np.sum(np.atleast_1d(v))) for v in self.mr_powers.values())
+        if abs(written - expected) > 1e-3 * max(1.0, abs(expected)):
+            raise ValueError(
+                'cooling-array floorplan accepted no power: meant {:.4f} W, wrote {:.4g} W to '
+                '{}. The template almost certainly has literal numbers rather than '
+                '"{{powers[NAME]}}" placeholders, so this solve would run with the array '
+                'inert.'.format(expected, written, self.mr_flp_file))
+        if expected > 0:
+            raise ValueError(
+                'cooling-array powers sum to {:+.4f} W. The array REMOVES heat, so its powers '
+                'must be negative; a positive total means the sign was lost between the plan '
+                'and the floorplan.'.format(expected))
+        return write_or_update_file(self.mr_flp_file, contents)
+
     def fill_stk_template(self):
         flp = Floorplan.from_file(self.flp_file)
         stk_width, stk_height = flp.width + 1e-3, flp.height + 1e-3
@@ -321,14 +378,30 @@ class ICESim(ExecutableJob):
 
         output_list_str = '\n'.join('   ' + o for o in self.sim_config.output_list)
 
+        # Checked BEFORE substitution: populate_template raises a bare KeyError on a missing
+        # key, which names the placeholder but not what to do about it.
+        if not self.has_mr_array:
+            with open(self.stack_template) as f:
+                if '{mr_flp_file}' in f.read():
+                    raise ValueError(
+                        '{} declares a cooling-array die but no MR floorplan was supplied. '
+                        'Build the sim with mr_flp_template= and mr_powers=, or use a stack '
+                        'built without mr_powered.'.format(self.stack_template))
+
         rel_flp_file = os.path.abspath(self.flp_file)
+        # {mr_flp_file} is only present in stacks built with StackSpec(mr_powered=True). Passing
+        # it unconditionally is harmless -- populate_template ignores unused keys -- and passing
+        # a path for a run that has no MR floorplan would be worse than useless, so it is only
+        # supplied when one was actually written.
+        extra = {'mr_flp_file': os.path.abspath(self.mr_flp_file)} if self.has_mr_array else {}
         contents = populate_template(self.stack_template, flp_file=rel_flp_file,
                                      flp_width=stk_width,
                                      flp_height=stk_height,
                                      solver_config=self.solver_config,
                                      ICE_DIR=ICE_DIR,
                                      plugin_args=self.sim_config.plugin_args,
-                                     output_list=output_list_str)
+                                     output_list=output_list_str,
+                                     **extra)
 
         status = write_or_update_file(self.stack_file, contents)
         pluggable_heatsink = parse_pluggable_heatsink_from_stack_file(self.stack_file)

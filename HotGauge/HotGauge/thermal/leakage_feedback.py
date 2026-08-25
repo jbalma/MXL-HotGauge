@@ -519,7 +519,8 @@ class ICEThermalSolver(object):
                  initial_temp=DEFAULT_TREF_K, plugin_args=None, num_cores=8,
                  core_sources=None, single_thread=True, steps_per_slot=None,
                  mode='transient', steady_reduce='mean', session_cache=None,
-                 extra_die_outputs=None, already_dice_named=False):
+                 extra_die_outputs=None, already_dice_named=False,
+                 mr_flp_template=None, mr_powers=None):
         if mode not in self.SIM_MODES:
             raise ValueError('mode must be one of {}, got {!r}'.format(self.SIM_MODES, mode))
         if steady_reduce not in STEADY_REDUCERS:
@@ -553,7 +554,49 @@ class ICEThermalSolver(object):
         # Set when the incoming trace is already keyed by floorplan element name, which is the
         # case for a floorplan built outside the McPAT pipeline. See prepare_dice_trace.
         self.already_dice_named = bool(already_dice_named)
+
+        # The photonic cooling array, when the stack has one. It is a SECOND powered die element
+        # above the silicon, so its heat removal is not part of the processor trace at all: the
+        # trace carries what the chip dissipates and mr_powers carries what the array takes away,
+        # and 3D-ICE conducts between them through the burial depth.
+        #
+        # This is what makes the burial depth mean anything. Subtracting the removal from the
+        # processor trace instead -- which is what every study did until now -- puts the cooling
+        # in the die's own source layer alongside the transistors, so the extracted watt crosses
+        # no silicon and thinning the die changes nothing. See HotGauge.thermal.mr_array.
+        if (mr_flp_template is None) != (mr_powers is None):
+            raise ValueError('mr_flp_template and mr_powers must be given together')
+        if mr_flp_template is not None and mode != 'steady':
+            raise ValueError('the cooling array is only wired for mode="steady"; the transient '
+                             'path would need a per-slot tile trace, which nothing produces yet')
+        if mr_flp_template is not None and session_cache is not None:
+            # The socket protocol sends ONE flat power vector, "one value per floorplan element,
+            # in order". With two dies that order is the stack's declaration order, and getting
+            # it wrong would put cooling powers on processor blocks and return a plausible,
+            # wrong field -- the exact failure test_server_matches_oneshot_emulator_by_name
+            # exists to catch. A configuration error, so it is refused at construction rather
+            # than on the first solve.
+            raise NotImplementedError(
+                'the session cache does not yet carry a cooling array: the server takes one '
+                'flat power vector across both dies and that element order has not been '
+                'verified against the one-shot Emulator. Drop session_cache for MR-array runs.')
+        self.mr_flp_template = mr_flp_template
+        self.mr_powers = dict(mr_powers) if mr_powers else None
         self._iter = 0
+
+    def set_mr_powers(self, mr_powers):
+        """Replace the array's tile powers between solves.
+
+        The MR planner revises its plan every feedback iteration, and the tiles are a fixed grid,
+        so the floorplan is written afresh each solve while the geometry stays put. Refuses to
+        introduce an array the stack has no die element for -- that would render a stack with an
+        unfilled ``{mr_flp_file}`` and fail far downstream.
+        """
+        if self.mr_flp_template is None:
+            raise ValueError('this solver has no cooling array; construct it with '
+                             'mr_flp_template= to give the stack one')
+        self.mr_powers = dict(mr_powers)
+        return self
 
     def __call__(self, power_trace):
         dice_trace = prepare_dice_trace(power_trace, self.flp_template, self.tech_node,
@@ -605,7 +648,9 @@ class ICEThermalSolver(object):
                    + self.extra_die_outputs)
         config = ICESimConfig(initial_temp=self.initial_temp, plugin_args=self.plugin_args,
                               output_list=outputs)
-        sim = ICESteadySim(self.stack_template, self.flp_template, steady_trace, config, run_dir)
+        sim = ICESteadySim(self.stack_template, self.flp_template, steady_trace, config, run_dir,
+                           mr_flp_template=self.mr_flp_template,
+                           mr_powers=self.mr_powers)
 
         if self.session_cache is not None:
             # Persistent path: render IC.stk/IC.flp but do not spawn the Emulator. The session
