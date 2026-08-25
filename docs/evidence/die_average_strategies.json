@@ -1,0 +1,134 @@
+{
+ "note": "peak and die-mean temperature against total watts removed, for four spatial strategies at equal budget. Tests whether an area cooling array can move the die-average path that sets the clock ceiling, or only shaves hotspots. Linear solves, no leakage feedback.",
+ "driver": "examples/die_average_cooling.py",
+ "floorplan": "skylake10nm_7core_0_3D-ICE_template.flp",
+ "die_W": 100.0,
+ "pitch_um": 500.0,
+ "burial_um": 100.0,
+ "cell_um": 50.0,
+ "n_tiles": 204,
+ "base_peak_C": 78.34100000000001,
+ "base_mean_C": 67.10859999999997,
+ "rows": [
+  {
+   "strategy": "hotspot",
+   "watts": 3.0,
+   "peak_C": 76.43800000000005,
+   "mean_C": 65.99828000000002,
+   "d_peak_K": -1.9029999999999632,
+   "d_mean_K": -1.1103199999999447,
+   "peak_K_per_W": 0.6343333333333211,
+   "mean_K_per_W": 0.3701066666666482
+  },
+  {
+   "strategy": "hotspot",
+   "watts": 10.0,
+   "peak_C": 74.40300000000002,
+   "mean_C": 63.407479999999964,
+   "d_peak_K": -3.937999999999988,
+   "d_mean_K": -3.701120000000003,
+   "peak_K_per_W": 0.3937999999999988,
+   "mean_K_per_W": 0.37011200000000033
+  },
+  {
+   "strategy": "hotspot",
+   "watts": 30.0,
+   "peak_C": 71.78400000000005,
+   "mean_C": 56.00552000000005,
+   "d_peak_K": -6.5569999999999595,
+   "d_mean_K": -11.10307999999992,
+   "peak_K_per_W": 0.21856666666666533,
+   "mean_K_per_W": 0.370102666666664
+  },
+  {
+   "strategy": "top5",
+   "watts": 3.0,
+   "peak_C": 75.382,
+   "mean_C": 65.97384,
+   "d_peak_K": -2.959000000000003,
+   "d_mean_K": -1.1347599999999716,
+   "peak_K_per_W": 0.9863333333333344,
+   "mean_K_per_W": 0.37825333333332384
+  },
+  {
+   "strategy": "top5",
+   "watts": 10.0,
+   "peak_C": 74.57000000000005,
+   "mean_C": 63.325960000000066,
+   "d_peak_K": -3.770999999999958,
+   "d_mean_K": -3.782639999999901,
+   "peak_K_per_W": 0.3770999999999958,
+   "mean_K_per_W": 0.3782639999999901
+  },
+  {
+   "strategy": "top5",
+   "watts": 30.0,
+   "peak_C": 72.274,
+   "mean_C": 55.76060000000001,
+   "d_peak_K": -6.067000000000007,
+   "d_mean_K": -11.347999999999956,
+   "peak_K_per_W": 0.20223333333333357,
+   "mean_K_per_W": 0.3782666666666652
+  },
+  {
+   "strategy": "uniform",
+   "watts": 3.0,
+   "peak_C": 77.38900000000001,
+   "mean_C": 66.15656000000007,
+   "d_peak_K": -0.9519999999999982,
+   "d_mean_K": -0.9520399999998972,
+   "peak_K_per_W": 0.31733333333333275,
+   "mean_K_per_W": 0.3173466666666324
+  },
+  {
+   "strategy": "uniform",
+   "watts": 10.0,
+   "peak_C": 75.168,
+   "mean_C": 63.93495999999993,
+   "d_peak_K": -3.173000000000002,
+   "d_mean_K": -3.1736400000000344,
+   "peak_K_per_W": 0.3173000000000002,
+   "mean_K_per_W": 0.3173640000000034
+  },
+  {
+   "strategy": "uniform",
+   "watts": 30.0,
+   "peak_C": 68.82000000000005,
+   "mean_C": 57.587600000000066,
+   "d_peak_K": -9.520999999999958,
+   "d_mean_K": -9.520999999999901,
+   "peak_K_per_W": 0.3173666666666653,
+   "mean_K_per_W": 0.31736666666666336
+  },
+  {
+   "strategy": "proportional",
+   "watts": 3.0,
+   "peak_C": 77.072,
+   "mean_C": 66.09564,
+   "d_peak_K": -1.2690000000000055,
+   "d_mean_K": -1.0129599999999641,
+   "peak_K_per_W": 0.4230000000000018,
+   "mean_K_per_W": 0.33765333333332137
+  },
+  {
+   "strategy": "proportional",
+   "watts": 10.0,
+   "peak_C": 74.11200000000002,
+   "mean_C": 63.732200000000034,
+   "d_peak_K": -4.228999999999985,
+   "d_mean_K": -3.376399999999933,
+   "peak_K_per_W": 0.4228999999999985,
+   "mean_K_per_W": 0.3376399999999933
+  },
+  {
+   "strategy": "proportional",
+   "watts": 30.0,
+   "peak_C": 65.654,
+   "mean_C": 56.97896000000003,
+   "d_peak_K": -12.687000000000012,
+   "d_mean_K": -10.129639999999938,
+   "peak_K_per_W": 0.4229000000000004,
+   "mean_K_per_W": 0.3376546666666646
+  }
+ ]
+}

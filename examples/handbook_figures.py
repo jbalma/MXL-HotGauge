@@ -1173,6 +1173,86 @@ def fig_tile_pitch(evidence_dir, out_path):
             'best_concentrated': max(rows_h, key=lambda r: r['peak_drop_K'])['pitch_um']}
 
 
+
+
+# --------------------------------------------------------------------------------------------
+# Where to put the cooling: targeted saturates, proportional does not
+# --------------------------------------------------------------------------------------------
+
+def fig_die_average(evidence_dir, out_path):
+    """Whether an area cooling array can move the die-average path that sets the clock.
+
+    The handbook said MR is weak as a clock enabler because "the clock ceiling is set by the
+    die-average thermal path, which hotspot clipping barely touches". Both halves of that are
+    true. The conclusion does not follow, because hotspot clipping is one strategy among several
+    and it is the one that saturates soonest.
+    """
+    d = json.load(open(os.path.join(evidence_dir, 'die_average_strategies.json')))
+    base = d['base_peak_C']
+    order = ('hotspot', 'top5', 'uniform', 'proportional')
+    cols = {'hotspot': '#c0392b', 'top5': '#B05924', 'uniform': '#8A8F98',
+            'proportional': MR_COLOR}
+    by = {s: sorted([r for r in d['rows'] if r['strategy'] == s], key=lambda r: r['watts'])
+          for s in order}
+
+    fig = plt.figure(figsize=(13.4, 4.8))
+    gs = fig.add_gridspec(1, 3, wspace=0.30)
+    axa, axb, axc = (fig.add_subplot(gs[0, i]) for i in range(3))
+
+    for s in order:
+        w = [r['watts'] for r in by[s]]
+        axa.plot(w, [-r['d_peak_K'] for r in by[s]], marker='o', color=cols[s], linewidth=2.0,
+                 markersize=7, label=s)
+        axb.plot(w, [-r['d_peak_K'] / r['watts'] for r in by[s]], marker='o', color=cols[s],
+                 linewidth=2.0, markersize=7, label=s)
+    axa.set_xlabel('watts removed from the die')
+    axa.set_ylabel('peak temperature reduction [K]')
+    axa.set_title('Targeted cooling bends over. Proportional\nextraction is straight: it scales '
+                  'the whole field.', fontsize=9.2)
+    axa.legend(fontsize=7.8, frameon=False, loc='upper left')
+
+    axb.set_xlabel('watts removed from the die')
+    axb.set_ylabel('peak reduction per watt removed  [K/W]')
+    axb.set_title('The same thing as efficiency. Targeted loses 65-80%\nof its efficiency by '
+                  '30 W; distributed loses none.', fontsize=9.2)
+    axb.set_ylim(0, 1.1)
+    axb.legend(fontsize=7.8, frameon=False, loc='upper right')
+
+    for ax in (axa, axb):
+        ax.grid(alpha=0.25, linewidth=0.6)
+        ax.set_axisbelow(True)
+
+    # Why: where the cooling ends up relative to the peak.
+    w30 = {s: [r for r in by[s] if r['watts'] == 30.0][0] for s in order}
+    x = np.arange(len(order))
+    axc.bar(x, [-w30[s]['d_peak_K'] for s in order],
+            color=[cols[s] for s in order], edgecolor='white', width=0.62)
+    for i, s in enumerate(order):
+        axc.text(i, -w30[s]['d_peak_K'] + 0.25, '{:.1f} K'.format(-w30[s]['d_peak_K']),
+                 ha='center', fontsize=8.6,
+                 fontweight='bold' if s == 'proportional' else 'normal', color=cols[s])
+    axc.set_xticks(x)
+    axc.set_xticklabels(order, fontsize=8.4, rotation=12)
+    axc.set_ylabel('peak reduction at 30 W removed [K]')
+    axc.set_ylim(0, 15)
+    axc.set_title('At 30 W, matching extraction to dissipation is\nworth 1.9x hotspot clipping '
+                  '-- on the same watts.', fontsize=9.2)
+    axc.grid(axis='y', alpha=0.25, linewidth=0.6)
+    axc.set_axisbelow(True)
+
+    for ax in (axa, axb, axc):
+        for sp in ('top', 'right'):
+            ax.spines[sp].set_visible(False)
+
+    fig.suptitle('How to move the die-average path: match extraction to dissipation, '
+                 'do not chase the hotspot', fontsize=11.5, y=1.03)
+    fig.savefig(out_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    return {'best_30W': max(order, key=lambda s: -w30[s]['d_peak_K']),
+            'prop_30W_K': -w30['proportional']['d_peak_K'],
+            'hotspot_30W_K': -w30['hotspot']['d_peak_K']}
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--out-dir', default=os.path.join(_REPO, 'docs', 'figures'))
@@ -1184,6 +1264,11 @@ if __name__ == '__main__':
     r = fig_stack_side_view(a.stack, os.path.join(a.out_dir, 'stack_side_view.png'))
     print('stack_side_view.png  total R: {:.4f} (826) {:.4f} (91)'
           .format(r['big']['total_K_per_W'], r['small']['total_K_per_W']))
+
+    da = fig_die_average(os.path.join(_REPO, 'docs', 'evidence'),
+                         os.path.join(a.out_dir, 'die_average.png'))
+    print('die_average.png  at 30 W: proportional {:.2f} K vs hotspot {:.2f} K'
+          .format(da['prop_30W_K'], da['hotspot_30W_K']))
 
     tp = fig_tile_pitch(os.path.join(_REPO, 'docs', 'evidence'),
                         os.path.join(a.out_dir, 'tile_pitch.png'))
