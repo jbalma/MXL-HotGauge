@@ -29,8 +29,27 @@ tiles are and how a plan expressed over processor blocks is projected onto them.
 
 Projection is by **area overlap**, which is the only defensible mapping between two grids that do
 not line up: a block covered half by one tile and half by another has its removal split in that
-ratio. A block smaller than one tile puts all of its removal on the tile above it -- and that tile
-then cools everything else under it too, which is the geometric cost the old formulation hid.
+ratio. A block smaller than one tile puts all of its removal on the tile above it, and that tile
+then cools everything else under it as well.
+
+Collateral cooling is not a penalty
+-----------------------------------
+It is tempting to read the extra area a tile touches as pure waste. It is not, and which way it
+cuts depends on the die:
+
+* **Where the peak is degenerate it helps, and may be the main mechanism.** The CPU results are
+  dominated by the plateau: cooling the single hottest block buys 1.25 K because the second
+  hottest immediately becomes the peak. A tile that spans several plateau members clips them
+  together, which is exactly what the block-level formulation could not do at any price. And an
+  over-cooled neighbour is not wasted either -- it becomes a lateral sink, and the heat flow into
+  it scales with the temperature difference the cooling created.
+* **Where the hotspot is isolated it costs.** Watts spent on silicon that was already cool buy no
+  peak reduction, so the efficiency -- kelvin of peak per watt removed, and ultimately COP --
+  gets worse.
+
+So collateral trades **effectiveness** against **efficiency**, and which dominates is a property
+of the power map rather than of the device. ``coverage_report`` reports the ratio without calling
+it good or bad; a pitch sweep is what decides it. See ``examples/tile_pitch_sweep.py``.
 """
 
 import os
@@ -174,6 +193,68 @@ def project_plan_to_tiles(plan_W, blocks, tiles, strict=True):
     return out
 
 
+def ideal_targeting_tiles(blocks, cell_um=50.0, name_prefix='MRB'):
+    """One cooling tile per floorplan block: the pitch -> 0 limit, in one ordinary solve.
+
+    A tile finer than every feature on the die can target any block exactly, so the infinitely
+    fine array is just "cool precisely the blocks the plan names" -- with the cooling still in
+    the pixel layer, above the silicon, where the hardware puts it. That is this.
+
+    It exists because the fine end of a pitch sweep is not reachable by simulation. 3D-ICE must
+    mesh at least as finely as the tiles, and on an 8.8 x 6.1 mm die a 1 um grid is 483 million
+    unknowns -- about 122 days of factorisation at the measured N^1.67 scaling, and terabytes of
+    LU factors. A 10 um grid is 4.8 million unknowns and roughly 1.3 hours per factorisation,
+    which affords a few one-off solves but no leakage-feedback loop.
+
+    Rather than extrapolate the trend, this computes its endpoint exactly. Note the endpoint is
+    an upper bound on what targeting can buy, not a buildable device: it is finer than the
+    thermal grid the rest of the model runs on, so it separates "does finer targeting help" from
+    "can the mesh see it".
+    """
+    cell_um = float(cell_um)
+    tiles = []
+    for i, (name, (x, y, w, h)) in enumerate(sorted(blocks.items())):
+        x0, y0 = _snap(x, cell_um), _snap(y, cell_um)
+        x1, y1 = _snap(x + w, cell_um), _snap(y + h, cell_um)
+        # A block thinner than a cell snaps to zero width. Give it one cell rather than dropping
+        # it: the solver cannot resolve it either way, and a silently missing tile would lose
+        # that block's cooling with no error.
+        if x1 <= x0:
+            x1 = x0 + cell_um
+        if y1 <= y0:
+            y1 = y0 + cell_um
+        tiles.append({'name': '{}_{:04d}'.format(name_prefix, i), 'block': name,
+                      'x': x0, 'y': y0, 'w': x1 - x0, 'h': y1 - y0, 'row': 0, 'col': i})
+
+    # Everything is cell-aligned, so overlap is exact: rasterise and look for a cell claimed
+    # twice. 3D-ICE rejects overlapping floorplan elements, and the failure mode is worth naming
+    # rather than passing through -- a die whose blocks are finer than the mesh cannot be
+    # targeted per block AT THIS RESOLUTION, which is a statement about the model, not the array.
+    claimed, clashes = {}, []
+    for t in tiles:
+        for cx in range(int(t['x'] / cell_um), int((t['x'] + t['w']) / cell_um)):
+            for cy in range(int(t['y'] / cell_um), int((t['y'] + t['h']) / cell_um)):
+                prev = claimed.get((cx, cy))
+                if prev is not None:
+                    clashes.append((prev, t['block']))
+                else:
+                    claimed[(cx, cy)] = t['block']
+    if clashes:
+        seen, examples = set(), []
+        for a, b in clashes:
+            if (a, b) not in seen:
+                seen.add((a, b))
+                examples.append('{} / {}'.format(a, b))
+        raise ValueError(
+            'per-block targeting is not representable on a {:.0f} um grid for this floorplan: '
+            '{} block pairs collide once snapped to the mesh, e.g. {}. Blocks thinner than one '
+            'thermal cell cannot be given their own cooling tile because the solver cannot '
+            'resolve them either -- so the pitch -> 0 limit is undefined here rather than merely '
+            'expensive. Use a coarser floorplan, or a finer grid if the factorisation affords '
+            'one.'.format(cell_um, len(seen), ', '.join(examples[:3])))
+    return tiles
+
+
 def tile_powers_for_stack(tile_plan_W, tiles):
     """Tile powers as 3D-ICE sees them: **negative**, one entry per tile, zeros included.
 
@@ -188,20 +269,37 @@ def blocks_from_floorplan(flp):
     return {e.name: (e.minx, e.miny, e.width, e.height) for e in flp.elements}
 
 
-def coverage_report(plan_W, tile_plan_W, blocks, tiles):
+def coverage_report(plan_W, tile_plan_W, blocks, tiles, share_floor=0.01):
     """What the projection cost, in numbers rather than in prose.
 
     The interesting figure is ``collateral_area_ratio``: the die area sitting under an engaged
     tile, divided by the area of the blocks the plan actually asked to cool. It is 1.0 only when
-    the plan happens to align with the tile grid, and it is the geometric penalty the old
-    block-level formulation could not express at all.
+    the plan aligns with the tile grid.
+
+    It is reported, not judged. On a degenerate peak the extra area is the mechanism that makes a
+    tile array beat block-level clipping; on an isolated hotspot it is watts spent on silicon
+    that did not need them. Effectiveness and efficiency move in opposite directions and the
+    power map decides which wins.
     """
+    total_W = sum(v for v in tile_plan_W.values() if v > 0)
     engaged = [t for t in tiles if tile_plan_W.get(t['name'], 0.0) > 1e-12]
-    engaged_area = sum(t['w'] * t['h'] for t in engaged)
     asked_area = sum(blocks[n][2] * blocks[n][3] for n, w in plan_W.items()
                      if w and w > 0 and n in blocks)
-    return {'n_tiles': len(tiles), 'n_engaged': len(engaged),
-            'engaged_area_um2': engaged_area, 'requested_area_um2': asked_area,
-            'collateral_area_ratio': (engaged_area / asked_area) if asked_area > 0 else float('nan'),
+
+    # Which tiles count as cooling. Any-overlap overstates it badly: snapping puts slivers of
+    # neighbouring tiles inside a block's footprint, and a tile carrying 0.1% of the watts was
+    # counted at its full area -- which inflated the per-block case to 12.6x when the watts were
+    # almost entirely on one tile. Tiles carrying at least ``share_floor`` of the removal are the
+    # ones doing the work; the total area of THOSE is the silicon actually being cooled.
+    material = [t for t in engaged if tile_plan_W[t['name']] >= share_floor * total_W]
+    eff_area = sum(t['w'] * t['h'] for t in material)
+    engaged_area = sum(t['w'] * t['h'] for t in engaged)
+    n_material = len(material)
+    return {'n_tiles': len(tiles), 'n_engaged': len(engaged), 'n_material': n_material,
+            'engaged_area_um2': engaged_area, 'effective_area_um2': eff_area,
+            'requested_area_um2': asked_area,
+            'collateral_area_ratio': (eff_area / asked_area) if asked_area > 0 else float('nan'),
+            'collateral_any_overlap': ((engaged_area / asked_area) if asked_area > 0
+                                       else float('nan')),
             'W_requested': sum(w for w in plan_W.values() if w and w > 0),
             'W_projected': sum(tile_plan_W.values())}

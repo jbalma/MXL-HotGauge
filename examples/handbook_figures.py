@@ -1086,6 +1086,93 @@ def fig_mr_placement(out_path):
             'overstatement': [a / b for a, b in zip(gs, gp)]}
 
 
+
+
+# --------------------------------------------------------------------------------------------
+# Tile pitch: how coarse the cooling array should be, and why it depends on the workload
+# --------------------------------------------------------------------------------------------
+
+def fig_tile_pitch(evidence_dir, out_path):
+    """The optimal cooling-tile pitch reverses between two power maps on the same die.
+
+    A tile cools whatever is under it. Whether that extra area is waste or the whole mechanism
+    depends on how degenerate the peak is, and this measures it: identical die, identical target,
+    identical 3 W of removal, only the power map changed.
+
+    On a degenerate peak, cooling one block harder is pointless -- the runner-up takes over 0.56 K
+    later -- so the coarse tile that drags the neighbourhood down wins. On an isolated hotspot
+    there is nothing to take over, and every watt spent outside the spike is wasted.
+    """
+    u = json.load(open(os.path.join(evidence_dir, 'tile_pitch_uniform.json')))
+    h = json.load(open(os.path.join(evidence_dir, 'tile_pitch_concentrated.json')))
+    rows_u = [r for r in u['rows'] if r['pitch_um'] > 0]
+    rows_h = [r for r in h['rows'] if r['pitch_um'] > 0]
+    p = [r['pitch_um'] for r in rows_u]
+
+    fig = plt.figure(figsize=(13.4, 4.8))
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.15, 1.15, 1.0], wspace=0.32)
+    axa, axb, axc = (fig.add_subplot(gs[0, i]) for i in range(3))
+
+    for ax, rows, title, col, sub in (
+            (axa, rows_u, 'Uniform power: the peak is degenerate', '#2C4A6E',
+             '24 of 25 blocks within 10 K of the peak;\nthe runner-up is 0.56 K behind'),
+            (axb, rows_h, 'Concentrated 8x: the peak is isolated', '#c0392b',
+             '1 block within 10 K of the peak;\nthe runner-up is 12.25 K behind')):
+        y = [r['peak_drop_K'] for r in rows]
+        ax.plot(p, y, marker='o', color=col, linewidth=2.2, markersize=8)
+        best = max(rows, key=lambda r: r['peak_drop_K'])
+        ax.plot([best['pitch_um']], [best['peak_drop_K']], marker='o', markersize=15,
+                markerfacecolor='none', markeredgecolor=MR_COLOR, markeredgewidth=2.4)
+        ax.annotate('best: {:.0f} um'.format(best['pitch_um']),
+                    xy=(best['pitch_um'], best['peak_drop_K']),
+                    xytext=(0, 16), textcoords='offset points', ha='center', fontsize=8.4,
+                    color=MR_COLOR, fontweight='bold')
+        ax.set_xscale('log')
+        ax.set_xticks(p)
+        ax.set_xticklabels(['{:.0f}'.format(x) for x in p])
+        ax.invert_xaxis()
+        ax.set_xlabel('tile pitch [um]   (finer to the right)')
+        ax.set_ylabel('peak reduction for a fixed 3 W  [K]')
+        ax.set_ylim(0, 7.6)
+        ax.set_title(title + '\n' + sub, fontsize=9.2)
+        ax.grid(alpha=0.25, linewidth=0.6)
+        ax.set_axisbelow(True)
+
+    # The structural point: one strategy is a constant, the other is a bet.
+    coarse = [rows_u[0]['peak_drop_K'], rows_h[0]['peak_drop_K']]
+    fine = [rows_u[-1]['peak_drop_K'], rows_h[-1]['peak_drop_K']]
+    x = np.arange(2)
+    axc.bar(x - 0.19, coarse, width=0.36, color='#8A8F98', edgecolor='white',
+            label='coarse, 2000 um')
+    axc.bar(x + 0.19, fine, width=0.36, color=MR_COLOR, edgecolor='white',
+            label='fine, 100 um')
+    for xi, (c, f) in enumerate(zip(coarse, fine)):
+        axc.text(xi - 0.19, c + 0.12, '{:.2f}'.format(c), ha='center', fontsize=8.0)
+        axc.text(xi + 0.19, f + 0.12, '{:.2f}'.format(f), ha='center', fontsize=8.0,
+                 color=MR_COLOR, fontweight='bold')
+    axc.set_xticks(x)
+    axc.set_xticklabels(['uniform', 'concentrated'], fontsize=9)
+    axc.set_ylabel('peak reduction for a fixed 3 W  [K]')
+    axc.set_ylim(0, 8.4)
+    axc.set_title('A coarse array is a constant: 3.03 vs 3.09 K across a\npower map whose peak '
+                  'moved 79 K. A fine one swings 3.6x.\nFine targeting is the high-variance bet.',
+                  fontsize=9.2)
+    axc.legend(fontsize=7.8, frameon=False, loc='upper left')
+    axc.grid(axis='y', alpha=0.25, linewidth=0.6)
+    axc.set_axisbelow(True)
+
+    for ax in (axa, axb, axc):
+        for sp in ('top', 'right'):
+            ax.spines[sp].set_visible(False)
+
+    fig.suptitle('The best cooling-tile pitch depends on the workload, and reverses between these '
+                 'two', fontsize=11.5, y=1.03)
+    fig.savefig(out_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    return {'best_uniform': max(rows_u, key=lambda r: r['peak_drop_K'])['pitch_um'],
+            'best_concentrated': max(rows_h, key=lambda r: r['peak_drop_K'])['pitch_um']}
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--out-dir', default=os.path.join(_REPO, 'docs', 'figures'))
@@ -1097,6 +1184,11 @@ if __name__ == '__main__':
     r = fig_stack_side_view(a.stack, os.path.join(a.out_dir, 'stack_side_view.png'))
     print('stack_side_view.png  total R: {:.4f} (826) {:.4f} (91)'
           .format(r['big']['total_K_per_W'], r['small']['total_K_per_W']))
+
+    tp = fig_tile_pitch(os.path.join(_REPO, 'docs', 'evidence'),
+                        os.path.join(a.out_dir, 'tile_pitch.png'))
+    print('tile_pitch.png  best pitch: uniform {:.0f} um, concentrated {:.0f} um'
+          .format(tp['best_uniform'], tp['best_concentrated']))
 
     mp = fig_mr_placement(os.path.join(a.out_dir, 'mr_placement.png'))
     print('mr_placement.png  source span {:.2f} K, pixel span {:.2f} K, over-stated {}'

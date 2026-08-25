@@ -1,0 +1,83 @@
+{
+ "note": "peak reduction and kelvin-per-watt against cooling-tile pitch, at a FIXED removal budget. Collateral cooling helps a degenerate peak and wastes watts on an isolated one; this measures which. Linear solves, no leakage feedback.",
+ "driver": "examples/tile_pitch_sweep.py",
+ "floorplan": "skylake10nm_7core_0_3D-ICE_template.flp",
+ "target": "L3_4",
+ "target_um": [
+  2913.426,
+  241.183
+ ],
+ "die_W": 100.0,
+ "mr_W": 3.0,
+ "burial_um": 100.0,
+ "cell_um": 50.0,
+ "base_peak_C": 78.34100000000001,
+ "rows": [
+  {
+   "label": "2000",
+   "pitch_um": 2000.0,
+   "n_tiles": 12,
+   "n_engaged": 2,
+   "collateral_area_ratio": 12.38136617955514,
+   "peak_C": 75.315,
+   "peak_drop_K": 3.0260000000000105,
+   "K_per_W": 1.0086666666666702,
+   "target_C": 75.24400000000003
+  },
+  {
+   "label": "1000",
+   "pitch_um": 1000.0,
+   "n_tiles": 48,
+   "n_engaged": 3,
+   "collateral_area_ratio": 4.696380275003674,
+   "peak_C": 76.29700000000003,
+   "peak_drop_K": 2.0439999999999827,
+   "K_per_W": 0.6813333333333276,
+   "target_C": 73.65200000000004
+  },
+  {
+   "label": "500",
+   "pitch_um": 500.0,
+   "n_tiles": 204,
+   "n_engaged": 6,
+   "collateral_area_ratio": 2.205875583713847,
+   "peak_C": 76.43800000000005,
+   "peak_drop_K": 1.9029999999999632,
+   "K_per_W": 0.6343333333333211,
+   "target_C": 72.231
+  },
+  {
+   "label": "200",
+   "pitch_um": 200.0,
+   "n_tiles": 1290,
+   "n_engaged": 45,
+   "collateral_area_ratio": 1.6793117346982835,
+   "peak_C": 76.428,
+   "peak_drop_K": 1.913000000000011,
+   "K_per_W": 0.6376666666666703,
+   "target_C": 71.64700000000005
+  },
+  {
+   "label": "100",
+   "pitch_um": 100.0,
+   "n_tiles": 5307,
+   "n_engaged": 90,
+   "collateral_area_ratio": 0.8254244119703427,
+   "peak_C": 76.42200000000003,
+   "peak_drop_K": 1.9189999999999827,
+   "K_per_W": 0.6396666666666609,
+   "target_C": 71.56700000000001
+  },
+  {
+   "label": "per-block",
+   "pitch_um": 0.0,
+   "n_tiles": 25,
+   "n_engaged": 5,
+   "collateral_area_ratio": 5.46843672930352,
+   "peak_C": 76.41000000000003,
+   "peak_drop_K": 1.9309999999999832,
+   "K_per_W": 0.6436666666666611,
+   "target_C": 71.55400000000003
+  }
+ ]
+}

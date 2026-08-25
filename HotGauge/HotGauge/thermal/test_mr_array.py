@@ -165,6 +165,46 @@ class TestCollateralCost(unittest.TestCase):
         self.assertAlmostEqual(cov['W_requested'], cov['W_projected'], places=9)
 
 
+class TestCollateralMetric(unittest.TestCase):
+    """The collateral figure has been wrong twice; both mistakes are pinned here.
+
+    First it counted a tile's FULL area whenever it carried any power at all, so snapped slivers
+    of neighbouring tiles were reported as cooling at full strength -- the per-block case came
+    back as 12.6x when the watts were almost entirely on one tile. The fix for that computed a
+    power-weighted MEAN tile area, which is a different quantity again and reported 0.0x at fine
+    pitch. It now sums the area of tiles carrying at least ``share_floor`` of the removal.
+    """
+
+    def test_a_sliver_of_overlap_does_not_count_as_cooling(self):
+        tiles = tile_grid(4000.0, 4000.0, pitch_um=1000.0, cell_um=100.0)
+        # Overhangs the tile boundary at 1000 by 1 um: 99.9% of the block is in the first tile.
+        blocks = _blocks(A=(1.0, 1.0, 1000.0, 900.0))
+        tp = project_plan_to_tiles({'A': 4.0}, blocks, tiles)
+        cov = coverage_report({'A': 4.0}, tp, blocks, tiles)
+        self.assertGreater(cov['n_engaged'], cov['n_material'],
+                           'the sliver should be engaged but not material')
+        self.assertLess(cov['collateral_area_ratio'], cov['collateral_any_overlap'])
+
+    def test_collateral_falls_monotonically_as_the_pitch_narrows(self):
+        """The headline of the pitch sweep. If this is not monotone the metric is broken."""
+        blocks = _blocks(A=(2000.0, 2000.0, 2913.0, 241.0))
+        ratios = []
+        for pitch in (2000.0, 1000.0, 500.0, 200.0, 100.0):
+            tiles = tile_grid(8800.0, 6100.0, pitch_um=pitch, cell_um=50.0)
+            tp = project_plan_to_tiles({'A': 3.0}, blocks, tiles)
+            ratios.append(coverage_report({'A': 3.0}, tp, blocks, tiles)['collateral_area_ratio'])
+        self.assertTrue(all(a >= b for a, b in zip(ratios, ratios[1:])),
+                        'collateral must fall as the pitch narrows, got {}'.format(ratios))
+
+    def test_share_floor_is_adjustable(self):
+        tiles = tile_grid(4000.0, 4000.0, pitch_um=1000.0, cell_um=100.0)
+        blocks = _blocks(A=(1.0, 1.0, 1000.0, 900.0))
+        tp = project_plan_to_tiles({'A': 4.0}, blocks, tiles)
+        strict = coverage_report({'A': 4.0}, tp, blocks, tiles, share_floor=0.5)
+        loose = coverage_report({'A': 4.0}, tp, blocks, tiles, share_floor=0.0)
+        self.assertLessEqual(strict['n_material'], loose['n_material'])
+
+
 class TestFloorplanFile(unittest.TestCase):
 
     def test_written_floorplan_uses_placeholders_not_literal_zeros(self):
