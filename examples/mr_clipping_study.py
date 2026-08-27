@@ -51,7 +51,11 @@ from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power,
                                                mcpat_tref_from_trace_dir)
 from HotGauge.thermal.sink_models import (ThermalResistanceSink, render_stack_with_sink,
                                           chip_area_m2_from_floorplan)
-from HotGauge.thermal.microrefrigeration import MRParams, run_mr_clipping, mr_accounting
+from HotGauge.thermal.sink_models import spreading_sink_for_stack
+from HotGauge.thermal.die_stack import stack_for_spreading
+from HotGauge.thermal.mr_array import wiring_for_stack, DEFAULT_PITCH_UM
+from HotGauge.thermal.microrefrigeration import (MRParams, run_mr_clipping, mr_accounting,
+                                                 DEFAULT_H_MAX_W_PER_MM2, DEFAULT_DT_MAX_K, DEFAULT_ETA_ASF, DEFAULT_LASER_WALLPLUG, DEFAULT_LPC_EFFICIENCY)
 from HotGauge.power.performance_model import FMaxModel, performance_summary
 from HotGauge.thermal.utils import K_to_C
 
@@ -95,7 +99,26 @@ def main():
     ap.add_argument('--flp-template', default=None)
     ap.add_argument('--tech-node', type=int, default=7)
     ap.add_argument('--num-cores', type=int, default=8)
+    ap.add_argument('--spreading', action='store_true',
+                    help='take the cold-plate slab OUT of the stack and fold it into the boundary '
+                         'as a real overhanging base (P0.4). A slab in the stack is a column of '
+                         'metal the width of the die, so the package budget comes out as 1/area '
+                         '-- 15.5x across the die sizes here, against 2.6x with the overhang. '
+                         'Amends the --stack spec with sink_in_stack=0. STRONGLY preferred for '
+                         'anything quotable; off by default so results predating it reproduce.')
+    ap.add_argument('--base-mm2', type=float, default=None,
+                    help='cold-plate footprint [mm^2] for --spreading. Default: the socket '
+                         'footprint (a fixed AREA, not a ratio of the die)')
     ap.add_argument('--stack', default='skylake')
+    ap.add_argument('--pitch-um', type=float, default=DEFAULT_PITCH_UM,
+                    help='cooling tile pitch; the array is a second powered die above the silicon')
+    ap.add_argument('--no-array', action='store_true',
+                    help='legacy placement: subtract the plan from the processor trace instead of putting it on the array. An upper bound, not the device -- see CoolingApplication')
+    ap.add_argument('--cell-um', type=float, default=50.0,
+                    help='3D-ICE grid cell; the tile grid SNAPS to it. Must match the cell= in '
+                         'the stack spec: tiles snapped to a finer grid than the solver uses '
+                         'come back overlapping after 3D-ICE quantises them, and the failure is '
+                         'a wrong floorplan rather than an error')
     ap.add_argument('--powers', type=float, nargs='+', default=[50.0, 65.0])
     ap.add_argument('--r-th', type=float, default=0.3, help='bulk cooler [K/W]')
     ap.add_argument('--ambient-K', type=float, default=303.15)
@@ -103,15 +126,15 @@ def main():
     ap.add_argument('--doubling', type=float, default=15.0)
     ap.add_argument('--mr-target-C', type=float, default=85.0,
                     help='temperature MR clips hot blocks down to')
-    ap.add_argument('--eta-asf', type=float, default=0.20,
+    ap.add_argument('--eta-asf', type=float, default=DEFAULT_ETA_ASF,
                     help='anti-Stokes/extractor efficiency (OPTICAL: heat removed per watt of '
                          'pump light). Electrical COP = eta_asf * eta_laser.')
-    ap.add_argument('--eta-laser', type=float, default=0.70, help='laser wall-plug efficiency')
-    ap.add_argument('--eta-lpc', type=float, default=0.90, help='LPC cell efficiency')
+    ap.add_argument('--eta-laser', type=float, default=DEFAULT_LASER_WALLPLUG, help='laser wall-plug efficiency')
+    ap.add_argument('--eta-lpc', type=float, default=DEFAULT_LPC_EFFICIENCY, help='LPC cell efficiency')
     ap.add_argument('--no-recovery', action='store_true',
                     help='disable LPC recovery (for before/after comparison)')
-    ap.add_argument('--mr-h-max', type=float, default=10.0, help='W/mm^2 cooling density cap')
-    ap.add_argument('--mr-dt-max', type=float, default=10.0)
+    ap.add_argument('--mr-h-max', type=float, default=DEFAULT_H_MAX_W_PER_MM2, help='W/mm^2 cooling density cap')
+    ap.add_argument('--mr-dt-max', type=float, default=DEFAULT_DT_MAX_K)
     ap.add_argument('--mr-budget-W', type=float, default=None, help='cap on heat removed [W]')
     ap.add_argument('--mr-iter', type=int, default=6)
     ap.add_argument('--f-nominal', type=float, default=4.0)
@@ -151,7 +174,12 @@ def main():
                   recover=not args.no_recovery, max_total_W=args.mr_budget_W)
 
     sink = ThermalResistanceSink(args.r_th, area_m2, ambient_K=args.ambient_K)
-    stack = render_stack_with_sink(get_stack_template(args.stack), sink,
+    stack_name = args.stack
+    if args.spreading:
+        stack_name = stack_for_spreading(stack_name)
+        sink = spreading_sink_for_stack(stack_name, sink, area_m2 * 1e6,
+                                        base_area_mm2=args.base_mm2)
+    stack = render_stack_with_sink(get_stack_template(stack_name), sink,
                                    os.path.join(args.out_dir, 'stack.stk'))
 
     print('MR clipping study')
@@ -170,6 +198,13 @@ def main():
     print(hdr)
     print('-' * len(hdr))
 
+    # The cooling array as a second powered die. --no-array keeps the legacy in-source-layer
+    # placement, which is an upper bound rather than the device: the extracted watt crosses no
+    # silicon, so burial depth is inert by construction.
+    wiring = wiring_for_stack(stack, args.flp_template, args.out_dir,
+                              want_array=not args.no_array, pitch_um=args.pitch_um,
+                              cell_um=args.cell_um)
+
     rows = []
     for p_w in args.powers:
         trace, leak_ref = scaled_trace(args.trace_dir, p_w, args.flp_template,
@@ -182,7 +217,8 @@ def main():
                                     run_base_dir=os.path.join(args.out_dir,
                                                               'P{:g}_{}'.format(p_w, tag)),
                                     initial_temp=args.ambient_K, num_cores=args.num_cores,
-                                    single_thread=True, mode='steady')
+                                    single_thread=True, mode='steady',
+                                    **(wiring.solver_kwargs() if wiring else {}))
 
         # --- baseline: leakage feedback only -------------------------------------------
         base = run_leakage_feedback(trace, leak_ref, make_solver('base'), model=leak_model,
@@ -225,7 +261,8 @@ def main():
             return r['temp_trace']
 
         res = run_mr_clipping(trace, solve_with_leakage, geom, mr, name_map,
-                              max_iter=args.mr_iter, tol_K=2.0, relax=0.7)
+                              max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
+                              **(wiring.planner_kwargs() if wiring else {}))
         acc = res['accounting']
         last = getattr(solve_with_leakage, 'last', None)
         m_div = bool(last.get('diverged')) if last else True

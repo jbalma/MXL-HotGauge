@@ -24,7 +24,25 @@
 # The catch that has to be reported either way: idling SMs LOWERS die power, moving the part away
 # from the runaway regime where MR's rescue value lives. A kernel that creates a hotspot and
 # removes the instability has given MR a target and taken away its reason.
+#
+# Stack, 26 Aug 2026: the CONTROL arm throughout -- direct die, 30 um of thermal grease, no
+# cooling array. The question here is whether a KERNEL SHAPE can concentrate power enough to
+# break the plateau, which is a property of the power map and the floorplan; the cooling layer
+# above it is not part of the question and would only add a constant. Running it on the control
+# rather than the historical lidded `skylake` keeps these peaks comparable with accel_batch.sh
+# and with the MR arms in accel_mr_batch.sh.
 set -uo pipefail
+
+# The cooling array's stack and pitch, in one place -- see scripts/array_config.sh.
+. "$(dirname "${BASH_SOURCE[0]}")/array_config.sh"
+
+# ACCELERATOR POWER, re-centred 26 Aug 2026. The GA100 direct-die has no steady state
+# above ~250 W on a water cold plate at 30 C inlet -- measured, see
+# docs/evidence/accelerator_water_envelope.json. The 400 W and 700 W points this file
+# used are from the air-cooled, constant-power era and are now entirely past the cliff;
+# 200 W keeps the "comfortably convergent" role and 280 W the "just past comfortable,
+# MR has something to do" one. See also accelerator_runaway_cause.json: the old
+# convergent numbers were constant-power solves and their temperatures are withdrawn.
 
 JOBID="${1:?usage: kernel_batch.sh <slurm_jobid>}"
 REPO=/mnt/nfs01/scratch/jbalma/MXL-HotGauge
@@ -49,9 +67,10 @@ run() {
          touch $OUT/$tag/done" &
 }
 
-BASE="--die-power-W 400 --cfm 88 --max-iter 60"
+BASE="$ACCEL_CONTROL_ARGS $ACCEL_COOLING --die-power-W $ACCEL_W_LO --max-iter 60"
 
 log "=== kernel batch starting, max concurrency $MAX_CONC ==="
+log "    stack: $ACCEL_CONTROL_STACK  (control arm -- grease, no array)"
 
 # --- the occupancy ladder, contiguous: the best shot MR gets ---------------------------
 for N in 64 32 16 8 4 2 1; do
@@ -78,7 +97,7 @@ run "occ_c8_boost2.5" $BASE --kernel occupancy --n-active 8 --placement contiguo
 run "occ_c8_idle0"    $BASE --kernel occupancy --n-active 8 --placement contiguous --idle-fraction 0.0
 
 # --- combined worst case: concentrated kernel on a high-power part ---------------------
-run "occ_c8_700W" --die-power-W 700 --cfm 88 --max-iter 80 --kernel occupancy --n-active 8 --placement contiguous
+run "occ_c8_700W" $ACCEL_CONTROL_ARGS --die-power-W $ACCEL_W_HI $ACCEL_COOLING --max-iter 80 --kernel occupancy --n-active 8 --placement contiguous
 
 log "all points queued; waiting"
 wait

@@ -23,6 +23,21 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS = os.path.join(REPO, 'results')
 
 
+def _globs(pattern):
+    """Glob one pattern or several, de-duplicated and sorted.
+
+    The catalogue re-run writes the CPU and accelerator arms to separate roots (they hold
+    different batch directories, so nothing collides). Harvesting has to see both, and pointing
+    at only one silently produces a FINDINGS.json missing half the catalogue.
+    """
+    if isinstance(pattern, str):
+        pattern = [pattern]
+    out = []
+    for pat in pattern:
+        out.extend(glob.glob(pat))
+    return sorted(set(out))
+
+
 def _load(path):
     try:
         with open(path) as f:
@@ -34,7 +49,7 @@ def _load(path):
 def collect_mr_comparison(pattern, label):
     """mr_comparison.py output: MR on/off pairs at a density."""
     out = []
-    for path in sorted(glob.glob(pattern)):
+    for path in _globs(pattern):
         d = _load(path)
         if not d:
             continue
@@ -66,7 +81,7 @@ def collect_mr_comparison(pattern, label):
 
 def collect_tiers(pattern, label):
     out = []
-    for path in sorted(glob.glob(pattern)):
+    for path in _globs(pattern):
         d = _load(path)
         if not d:
             continue
@@ -87,7 +102,7 @@ def collect_tiers(pattern, label):
 
 def collect_clock(pattern, label):
     out = []
-    for path in sorted(glob.glob(pattern)):
+    for path in _globs(pattern):
         d = _load(path)
         if not d:
             continue
@@ -115,7 +130,7 @@ def collect_clock(pattern, label):
 
 def collect_stacked(pattern, label):
     out = []
-    for path in sorted(glob.glob(pattern)):
+    for path in _globs(pattern):
         d = _load(path)
         if not d:
             continue
@@ -147,7 +162,7 @@ def collect_accelerator(pattern, label):
     distinction gets lost.
     """
     out = []
-    for path in sorted(glob.glob(pattern)):
+    for path in _globs(pattern):
         d = _load(path)
         if not d:
             continue
@@ -181,9 +196,20 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--out', default=os.path.join(REPO, 'docs', 'evidence', 'FINDINGS.json'))
+    ap.add_argument('--results', nargs='+', default=[RESULTS],
+                    help='root the result trees live under. The catalogue re-run writes to '
+                         'results/rerun/ rather than results/, so a harvest of the new '
+                         'generation needs pointing at it -- and pointing at the old one by '
+                         'accident is how two generations end up in one FINDINGS.json with '
+                         'nothing to tell them apart (default: %(default)s)')
     args = ap.parse_args()
 
-    R = lambda *p: os.path.join(RESULTS, *p)
+    roots = [os.path.abspath(r) for r in args.results]
+    for r in roots:
+        if not os.path.isdir(r):
+            raise SystemExit('no such results root: {}'.format(r))
+    R = lambda *p: [os.path.join(r, *p) for r in roots]
+    print('harvesting from {}'.format(', '.join(roots)))
     findings = {
         'note': 'Harvested from the JSON the runs produced, not written from memory. Every '
                 'entry carries its convergence and verification status; "quotable" false means '

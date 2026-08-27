@@ -33,6 +33,7 @@ Usage
 """
 import os
 import sys
+import math
 import json
 import argparse
 
@@ -50,14 +51,18 @@ from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power, die_pow
                                                mcpat_flp_name_map, replicate_trace_cores,
                                                load_calibrated_leakage_model,
                                                mcpat_tref_from_trace_dir)
+from HotGauge.thermal.die_stack import DEFAULT_DIRECT_SOURCE_DEPTH_UM
 from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
-                                          render_stack_with_sink,
+                                          render_stack_with_sink, spreading_sink_for_stack,
                                           chip_area_m2_from_floorplan, simscale_fan_power,
                                           SIMSCALE_T0_K)
 from HotGauge.thermal.microrefrigeration import (MRParams, run_mr_clipping, mr_accounting,
                                                  DEFAULT_SPOT_MIN_UM,
-                                                 DEFAULT_SPOT_POLICY)
+                                                 DEFAULT_SPOT_POLICY,
+                                                 DEFAULT_H_MAX_W_PER_MM2, DEFAULT_DT_MAX_K, DEFAULT_ETA_ASF, DEFAULT_LASER_WALLPLUG, DEFAULT_LPC_EFFICIENCY)
 from HotGauge.thermal.ice_server import ICESessionCache
+from HotGauge.thermal.mr_array import (ArrayWiring, wiring_for_stack, DEFAULT_PITCH_UM,
+                                       device_pitch_range_um)
 from HotGauge.power.process_nodes import NODES, describe_assumptions, TRACE_REFERENCE_GHZ
 from HotGauge.power.performance_model import FMaxModel, performance_summary
 from HotGauge.thermal.utils import K_to_C
@@ -93,20 +98,67 @@ def make_sink(args, area_m2):
     return BaffledFinSink(args.cfm, area_m2, ambient_K=args.ambient_K)
 
 
+#: The three arms. See docs/EXECUTION_PLAN.md 6a for why two is not enough once the array is a
+#: real die layer: comparing against a grease stack credits the laser with the GaAs-versus-grease
+#: conductivity gain, and comparing against the unpowered array discards it. Three separates them.
+ARMS = ('control', 'array_idle', 'array_on')
+
+
+def arm_stack_spec(args, arm):
+    """Stack spec string for one arm. ``control`` keeps the 30 um grease; the array arms
+    replace exactly that layer and change nothing else."""
+    if args.stack != 'auto':
+        return args.stack
+    # Under --no-array every arm gets the control stack: the legacy placement subtracts the plan
+    # from the processor trace, so there IS no array die, and rendering one nothing fills would
+    # fail in ICESteadySim rather than here.
+    mr = 'none' if (arm == 'control' or args.no_array) else args.mr_material
+    # Under --spreading the cold-plate slab comes OUT of the stack; SpreadingSink puts it back
+    # in the boundary with its real overhang. Both arms lose it, so the arms still differ by
+    # exactly the 30 um layer.
+    sink_term = ',sink_in_stack=0' if args.spreading else ''
+    return 'spec:package=direct_die,mr={},src={:.0f},cell={:.0f}{}'.format(
+        mr, args.burial_um, args.cell_um, sink_term)
+
+
 def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax,
-             area_m2, n_cores, use_mr, tag):
-    """One (floorplan, MR on/off) point."""
+             area_m2, n_cores, arm, tag):
+    """One (floorplan, arm) point."""
+    use_mr = (arm == 'array_on')
+    stack_spec = arm_stack_spec(args, arm)
     sink = make_sink(args, area_m2)
-    stack = render_stack_with_sink(get_stack_template(args.stack), sink,
+    if args.spreading:
+        # Identical in every arm: the base is above the 30 um layer, so it cannot be part of
+        # what separates them.
+        sink = spreading_sink_for_stack(stack_spec, sink, area_m2 * 1e6,
+                                        base_area_mm2=args.base_mm2)
+    stack = render_stack_with_sink(get_stack_template(stack_spec), sink,
                                    os.path.join(args.out_dir, 'stacks', tag + '.stk'))
     counter = {'n': 0}
+
+    # The cooling array, when this arm has one. ArrayWiring owns the tile grid, the tile
+    # floorplan on disk, and the plan that moves between solves -- see its docstring for the two
+    # bugs that motivated factoring it out rather than repeating it per driver.
+    #
+    # Via wiring_for_stack, not ArrayWiring directly: the placement has to be derived from the
+    # STACK, because the two can disagree and both directions are silent. With --stack skylake
+    # (or any single-die template) a bare ArrayWiring would compute a plan, project it onto tiles
+    # the stack has no die for, and land nothing -- which reads as an expensive cooler that does
+    # not work. That is now an error naming the fix.
+    wiring = None
+    if arm != 'control' and not args.no_array:
+        wiring = wiring_for_stack(stack, flp, os.path.join(args.out_dir, tag),
+                                  want_array=True,
+                                  pitch_um=args.pitch_um, cell_um=args.cell_um)
 
     def solver_factory(sub):
         return ICEThermalSolver(stack, flp, args.tech_node,
                                 run_base_dir=os.path.join(args.out_dir, tag, sub),
                                 initial_temp=args.ambient_K, num_cores=n_cores,
                                 single_thread=True, mode='steady',
-                                session_cache=args.session_cache)
+                                session_cache=args.session_cache,
+                                # re-read every time: the planner revises between solves
+                                **(wiring.solver_kwargs() if wiring else {}))
 
     # The MR clipping loop calls this several times, so verification has to be accumulated over
     # ALL of them. Reporting only the last solve's agreement is actively misleading: a point can
@@ -148,7 +200,12 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
     if use_mr:
         res = run_mr_clipping(trace, solve_with_leakage, geom, mr, name_map,
                               max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
-                              status_fn=last_status, plan_mode=args.mr_plan_mode)
+                              status_fn=last_status, plan_mode=args.mr_plan_mode,
+                              # No wiring under --no-array: omitting all three of tiles /
+                              # tile_blocks / set_mr_powers is what selects the legacy
+                              # in-source-layer placement. A HALF-specified array is refused by
+                              # CoolingApplication rather than half-applied.
+                              **(wiring.planner_kwargs() if wiring else {}))
         temps, acc = res['temp_trace'], res['accounting']
     else:
         temps = solve_with_leakage(trace)
@@ -174,7 +231,14 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
         unconverged = bool(res['result_unconverged'])
     else:
         unconverged = bool(ver['n_unconverged'])
-    row = {'tag': tag, 'cores': n_cores, 'mr': use_mr, 'fan_W': sink.parasitic_power_W(),
+    row = {'tag': tag, 'cores': n_cores, 'arm': arm, 'mr': use_mr,
+           # Which generation of results this is. 'mr: true/false' no longer identifies a row
+           # now that the array can be a real die layer or a subtraction from the trace.
+           'placement': (res or {}).get('placement', 'none' if arm == 'control' else 'array_above'),
+           'n_tiles': len(wiring.tiles) if wiring else 0,
+           'pitch_um': args.pitch_um if wiring else None,
+           'stack_spec': arm_stack_spec(args, arm),
+           'fan_W': sink.parasitic_power_W(),
            # probe failures are diagnostics, kept so a suspicious point can still be audited
            'n_probe_solves_unconverged': ver['n_unconverged'],
            'mr_reason': (res or {}).get('reason') if use_mr else None,
@@ -243,7 +307,47 @@ def main():
                                                         'linpack_3.8GHz'))
     ap.add_argument('--tech-node', type=int, default=7)
     ap.add_argument('--trace-cores', type=int, default=8)
-    ap.add_argument('--stack', default='skylake')
+    ap.add_argument('--stack', default='auto',
+                    help="'auto' builds a direct-die stack per arm -- 30 um grease for the "
+                         "control, 30 um pixel array for the others, nothing else different. "
+                         "Give a template name or a spec: string to override, in which case "
+                         "every arm shares it.")
+    ap.add_argument('--arms', nargs='+', default=list(ARMS), choices=list(ARMS),
+                    help='control = grease, no cooling; array_idle = pixels at 0 W (the passive '
+                         'term); array_on = pixels under the planner (the laser term, measured '
+                         'against array_idle)')
+    ap.add_argument('--pitch-um', type=float, default=DEFAULT_PITCH_UM,
+                    help='cooling tile pitch. Granularity is a SWEPT variable -- the ladder is '
+                         '50/100/200/500/1000/2000 um and the ordering of coarse against fine '
+                         'reverses with the workload -- so a single value here is for holding it '
+                         'fixed while sweeping something else. The device is a tile COUNT (4-16 '
+                         'on ~200 mm^2), which is an annotation per die, not a pitch: see '
+                         'mr_array.device_pitch_range_um')
+    ap.add_argument('--burial-um', type=float, default=DEFAULT_DIRECT_SOURCE_DEPTH_UM,
+                    help='active-layer depth below the cooled surface; identical in every arm')
+    ap.add_argument('--no-array', action='store_true',
+                    help='legacy placement: subtract the plan from the processor trace instead '
+                         'of putting it on the array. An UPPER BOUND, not the device -- the '
+                         'extracted watt crosses no silicon, so burial depth is inert by '
+                         'construction. Every arm then runs on the control stack and '
+                         'array_idle is dropped, because with no array die it would be the '
+                         'control under a second name. Retained so results predating the array '
+                         'reproduce; pair it with --stack skylake to reproduce one exactly.')
+    ap.add_argument('--spreading', action='store_true',
+                    help='take the cold-plate slab OUT of the stack and fold it into the boundary '
+                         'as a real overhanging base (P0.4). 3D-ICE gives every layer exactly the '
+                         'die footprint, so a slab in the stack is a column of metal the width of '
+                         'the die and the package budget comes out proportional to 1/area -- '
+                         '15.5x across the die sizes here, against 2.6x with the overhang. '
+                         'STRONGLY preferred for anything quotable; off by default only so that '
+                         'results predating it reproduce.')
+    ap.add_argument('--base-mm2', type=float, default=None,
+                    help='cold-plate footprint [mm^2] for --spreading. Default: the socket '
+                         'footprint (a fixed AREA, not a ratio of the die -- a ratio puts 1/area '
+                         'straight back in)')
+    ap.add_argument('--mr-material', default='GAAS')
+    ap.add_argument('--cell-um', type=float, default=50.0,
+                    help='3D-ICE grid cell; the tile grid snaps to it')
     ap.add_argument('--density', type=float, default=0.575,
                     help='die-average power density [W/mm^2] held fixed across floorplans')
     ap.add_argument('--cfm', type=float, default=88.0)
@@ -255,11 +359,11 @@ def main():
     ap.add_argument('--leakage-cal', default=os.path.join(
         _REPO, 'leakage_calibration', 'leakage_calibration.json'))
     ap.add_argument('--mr-target-C', type=float, default=92.0)
-    ap.add_argument('--eta-asf', type=float, default=0.20)
-    ap.add_argument('--eta-laser', type=float, default=0.70)
-    ap.add_argument('--eta-lpc', type=float, default=0.90)
-    ap.add_argument('--mr-h-max', type=float, default=10.0)
-    ap.add_argument('--mr-dt-max', type=float, default=10.0)
+    ap.add_argument('--eta-asf', type=float, default=DEFAULT_ETA_ASF)
+    ap.add_argument('--eta-laser', type=float, default=DEFAULT_LASER_WALLPLUG)
+    ap.add_argument('--eta-lpc', type=float, default=DEFAULT_LPC_EFFICIENCY)
+    ap.add_argument('--mr-h-max', type=float, default=DEFAULT_H_MAX_W_PER_MM2)
+    ap.add_argument('--mr-dt-max', type=float, default=DEFAULT_DT_MAX_K)
     ap.add_argument('--mr-iter', type=int, default=6)
     # 'auto' sizes the plan from the uncooled baseline when that baseline exists, and from the
     # device envelope (descending toward the target) when it does not. The latter is required in
@@ -324,6 +428,13 @@ def main():
     args = ap.parse_args()
     args.out_dir = os.path.abspath(args.out_dir or os.path.join(os.getcwd(), 'mr_compare'))
     os.makedirs(args.out_dir, exist_ok=True)
+
+    # With no array die there is no material substitution to separate, so array_idle would be
+    # the control under a second name -- and reporting it as a third arm would invent a passive
+    # term that does not exist on the legacy path. Dropped rather than silently duplicated.
+    if args.no_array and 'array_idle' in args.arms:
+        args.arms = [a for a in args.arms if a != 'array_idle']
+        print('  --no-array: dropping the array_idle arm (nothing to be idle)')
 
     # One persistent 3D-ICE session, shared across every point in the sweep. It factorises the
     # system matrix once (~88 s on the 34-core die) and each later solve costs ~0.6 s instead
@@ -420,17 +531,22 @@ def main():
         name_map = mcpat_flp_name_map(include_core_idx=(n > 1))
 
         pair = {}
-        for use_mr in (False, True):
-            tag = '{}c_{}'.format(n, 'mr' if use_mr else 'nomr')
+        for arm in args.arms:
+            tag = '{}c_{}'.format(n, arm)
             r = evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax,
-                         area_m2, n, use_mr, tag)
+                         area_m2, n, arm, tag)
             r.update({'area_mm2': area_m2 * 1e6, 'power_W': power_W})
             rows.append(r)
-            pair['mr' if use_mr else 'nomr'] = r
+            pair[arm] = r
+            # Back-compatible aliases so the summarisers and collect_findings keep working while
+            # both generations of results are on disk.
+            if arm == 'control':
+                pair.setdefault('nomr', r)
+            elif arm == 'array_on':
+                pair['mr'] = r
             if r['diverged']:
-                print('{:>6d} {:>8.1f} {:>7.1f} {:>4s} {:>8s} {:>8s} {:>8s} {:>7s} {:>10s} '
-                      '{:>9s}  RUNAWAY'.format(n, area_m2 * 1e6, power_W,
-                                               'yes' if use_mr else 'no',
+                print('{:>6d} {:>8.1f} {:>7.1f} {:>11s} {:>8s} {:>8s} {:>8s} {:>7s} {:>10s} '
+                      '{:>9s}  RUNAWAY'.format(n, area_m2 * 1e6, power_W, arm,
                                                '--', '--', '--', '--', '--', '--'))
             else:
                 flags = '  THROTTLED' if r['throttling'] else ''
@@ -439,30 +555,72 @@ def main():
                               'spread {:.1f} K **').format(
                         r.get('n_unconverged_solves', '?'), r.get('n_solves', '?'),
                         r.get('worst_peak_spread_K') or float('nan'))
-                print('{:>6d} {:>8.1f} {:>7.1f} {:>4s} {:>8.1f} {:>8.3f} {:>8.2f} {:>8.2f} '
+                print('{:>6d} {:>8.1f} {:>7.1f} {:>11s} {:>8.1f} {:>8.3f} {:>8.2f} {:>8.2f} '
                       '{:>7.3f} {:>10.1f} {:>9.3f}{}'.format(
-                          n, area_m2 * 1e6, power_W, 'yes' if use_mr else 'no',
+                          n, area_m2 * 1e6, power_W, arm,
                           r['peak_C'], r['heat_removed_W'], r['p_leak_growth_W'],
                           r['p_cool_W'], r['f_GHz'], r['gflops'], r['gflops_per_total_W'],
                           flags))
-        a, b = pair.get('nomr'), pair.get('mr')
-        if a and b and (a.get('unconverged') or b.get('unconverged')):
-            print('       -> MR delta NOT REPORTED: at least one side failed convergence '
+        # Report the two terms SEPARATELY. Collapsing them back into one number is the exact
+        # confound the three arms exist to remove: the passive term is what replacing grease
+        # with GaAs is worth before any light, and the laser term is what the planner buys on
+        # top of it. A single "MR delta" credits the laser with both.
+        ctrl, idle, on = pair.get('control'), pair.get('array_idle'), pair.get('array_on')
+        live = [x for x in (ctrl, idle, on) if x]
+        if any(x.get('unconverged') for x in live):
+            print('       -> deltas NOT REPORTED: at least one arm failed convergence '
                   'verification, so the difference would be a difference of artefacts.')
-        elif a and b and not a['diverged'] and not b['diverged']:
-            print('       -> MR delta: {:+.1f} K, {:+.1f}% throughput, {:+.2f} W cooling, '
-                  'peak block {} -> {}'.format(
-                      b['peak_C'] - a['peak_C'],
-                      100.0 * (b['gflops'] / a['gflops'] - 1.0),
-                      b['p_cool_W'] - a['p_cool_W'], a['peak_block'], b['peak_block']))
-        elif a and b and a['diverged'] and not b['diverged']:
-            print('       -> MR RESCUES a die with no steady state: {:.1f} C, {:.1f} GFLOP/s'
-                  .format(b['peak_C'], b['gflops']))
+        elif ctrl and ctrl['diverged'] and on and not on['diverged']:
+            # WHICH arm did the rescuing is the whole point. Attributing a runaway rescue to the
+            # laser when the unpowered array already arrested it would credit the light with what
+            # the material substitution achieved -- and that is the headline claim, so it has to
+            # be right.
+            if idle and not idle['diverged']:
+                print('       -> the UNPOWERED array already rescues a die with no steady '
+                      'state: {:.1f} C at 0 W of light. The grease stack has no steady state; '
+                      'swapping 30 um of it for GaAs is sufficient on its own.'
+                      .format(idle['peak_C']))
+                print('       -> laser  (array idle -> array on): {:+.1f} K, {:+.1f}% '
+                      'throughput, {:.3f} W removed for {:+.2f} W'.format(
+                          on['peak_C'] - idle['peak_C'],
+                          100.0 * (on['gflops'] / idle['gflops'] - 1.0),
+                          on['heat_removed_W'], on['p_cool_W'] - idle['p_cool_W']))
+            else:
+                print('       -> the LASER rescues a die with no steady state (the unpowered '
+                      'array does not): {:.1f} C, {:.1f} GFLOP/s, {:.3f} W removed'
+                      .format(on['peak_C'], on['gflops'], on['heat_removed_W']))
+        else:
+            if ctrl and idle and not ctrl['diverged'] and not idle['diverged']:
+                print('       -> passive (grease -> GaAs, no light): {:+.1f} K, {:+.1f}% '
+                      'throughput'.format(idle['peak_C'] - ctrl['peak_C'],
+                                          100.0 * (idle['gflops'] / ctrl['gflops'] - 1.0)))
+            if idle and on and not idle['diverged'] and not on['diverged']:
+                print('       -> laser  (array idle -> array on): {:+.1f} K, {:+.1f}% '
+                      'throughput, {:+.2f} W cooling, {:.3f} W removed{}'.format(
+                          on['peak_C'] - idle['peak_C'],
+                          100.0 * (on['gflops'] / idle['gflops'] - 1.0),
+                          on['p_cool_W'] - idle['p_cool_W'], on['heat_removed_W'],
+                          '  (idle: nothing above target)' if on['heat_removed_W'] == 0 else ''))
+            if ctrl and on and not ctrl['diverged'] and not on['diverged']:
+                print('       -> TOTAL  (grease -> array on): {:+.1f} K, {:+.1f}% throughput, '
+                      'peak block {} -> {}'.format(
+                          on['peak_C'] - ctrl['peak_C'],
+                          100.0 * (on['gflops'] / ctrl['gflops'] - 1.0),
+                          ctrl['peak_block'], on['peak_block']))
         print()
 
     with open(os.path.join(args.out_dir, 'mr_comparison.json'), 'w') as f:
         json.dump({'density': args.density, 'cfm': args.cfm, 'r_th': args.r_th,
                    'f_nominal_GHz': args.f_nominal, 'node': args.node,
+                   # The array configuration at the top level as well as per row. The rows are
+                   # authoritative, but a summariser deciding whether two result files are
+                   # comparable should not have to open the rows to find out -- and a batch
+                   # script deciding whether an old result can be reused cannot.
+                   'arms': list(args.arms), 'stack': args.stack,
+                   'spreading': bool(args.spreading), 'base_mm2': args.base_mm2,
+                   'pitch_um': args.pitch_um, 'burial_um': args.burial_um,
+                   'mr_material': args.mr_material, 'cell_um': args.cell_um,
+                   'stack_specs': {a: arm_stack_spec(args, a) for a in args.arms},
                    'rows': rows}, f, indent=2)
     print('  written: {}'.format(os.path.join(args.out_dir, 'mr_comparison.json')))
 

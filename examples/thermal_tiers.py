@@ -51,6 +51,8 @@ from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power, replica
 from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           render_stack_with_sink,
                                           chip_area_m2_from_floorplan, SIMSCALE_T0_K)
+from HotGauge.thermal.sink_models import spreading_sink_for_stack
+from HotGauge.thermal.die_stack import stack_for_spreading
 from HotGauge.thermal.ice_server import ICESessionCache
 from HotGauge.power.clock_search import (scale_cores, single_core_turbo,
                                          mixed_utilisation, emphasise_units)
@@ -97,6 +99,16 @@ def main():
     ap.add_argument('--flp', default=None, help='explicit floorplan path (for design variants)')
     ap.add_argument('--trace-dir', default=os.path.join(_REPO, 'mcpat_runs', '7nm',
                                                         'linpack_3.8GHz'))
+    ap.add_argument('--spreading', action='store_true',
+                    help='take the cold-plate slab OUT of the stack and fold it into the boundary '
+                         'as a real overhanging base (P0.4). A slab in the stack is a column of '
+                         'metal the width of the die, so the package budget comes out as 1/area '
+                         '-- 15.5x across the die sizes here, against 2.6x with the overhang. '
+                         'Amends the --stack spec with sink_in_stack=0. STRONGLY preferred for '
+                         'anything quotable; off by default so results predating it reproduce.')
+    ap.add_argument('--base-mm2', type=float, default=None,
+                    help='cold-plate footprint [mm^2] for --spreading. Default: the socket '
+                         'footprint (a fixed AREA, not a ratio of the die)')
     ap.add_argument('--stack', default='skylake')
     ap.add_argument('--density', type=float, default=1.07)
     ap.add_argument('--cfm', type=float, default=88.0)
@@ -203,7 +215,12 @@ def main():
     sink = (ThermalResistanceSink(args.r_th, area_m2, ambient_K=args.ambient_K)
             if args.r_th is not None
             else BaffledFinSink(args.cfm, area_m2, ambient_K=args.ambient_K))
-    stack = render_stack_with_sink(get_stack_template(args.stack), sink,
+    stack_name = args.stack
+    if args.spreading:
+        stack_name = stack_for_spreading(stack_name)
+        sink = spreading_sink_for_stack(stack_name, sink, area_m2 * 1e6,
+                                        base_area_mm2=args.base_mm2)
+    stack = render_stack_with_sink(get_stack_template(stack_name), sink,
                                    os.path.join(args.out_dir, 'tiers.stk'))
     solver = ICEThermalSolver(stack, flp, args.tech_node,
                               run_base_dir=os.path.join(args.out_dir, 'solve'),

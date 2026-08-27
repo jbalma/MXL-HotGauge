@@ -32,8 +32,27 @@
 # suspected limit. Phase 3 asks it directly at the densities where it now matters.
 #
 # Points already measured with this exact configuration are SEEDED from results/cliff_verified
-# rather than re-run: same code, same arguments, same machine.
+# rather than re-run: same code, same arguments, same machine.#
+# THE ARRAY, 26 Aug 2026
+# ----------------------
+# mr_comparison now emits three arms per point of its own accord -- control (30 um of thermal
+# grease, no cooling), array_idle (30 um of GaAs pixels in its place, at 0 W) and array_on (the
+# same array under the planner) -- and reports the passive and the laser term separately. What
+# this script has to supply is the GEOMETRY: $ARM_ARGS pins the stack, the burial depth, the grid
+# and, above all, the TILE PITCH.
+#
+# The pitch is the substantive change. Everything in this file was swept at the driver's 500 um
+# default, which is a modelling default chosen to keep the element count tractable on an 826 mm^2
+# accelerator die. The first-generation device is 4-16 tiles over ~200 mm^2 -- 3.5 to 7 mm -- so
+# these points were an order of magnitude finer than anything anyone is building. At 500 um a tile
+# sits inside one floorplan block; at 5 mm one tile spans several, which is where the collateral
+# trade lives. Results from before this line are a different device and must not be pooled with
+# results from after it.
+
 set -uo pipefail
+
+# The cooling array's stack and pitch, in one place -- see scripts/array_config.sh.
+. "$(dirname "${BASH_SOURCE[0]}")/array_config.sh"
 
 JOBID="${1:?usage: overnight3_study.sh <slurm_jobid>}"
 REPO=/mnt/nfs01/scratch/jbalma/MXL-HotGauge
@@ -52,16 +71,35 @@ running() { jobs -rp | wc -l; }
 throttle() { while [ "$(running)" -ge "$MAX_CONC" ]; do sleep 10; done; }
 
 # seed <tag> <density>  -- reuse an identical, already-verified point
+#
+# "Identical configuration" was true when the only difference between arms was a number in the
+# power trace. It is not true across the cooling-array port: results/cliff_verified predates the
+# array, so its points were solved on a different stack, with the cooling subtracted from the
+# processor trace, at a tile pitch an order of magnitude finer than the device. Seeding them into
+# a post-array run would mix two generations inside one summary table with nothing to tell them
+# apart -- the exact failure `placement` was added to stamp against.
+#
+# So the seed is now CHECKED rather than assumed: the candidate must carry this run's array stack
+# in its rows. When it does not, the point is re-run and the reason is logged. This costs
+# walltime the first time after a configuration change, which is the correct price.
 seed() {
     local tag="$1" d="$2"
+    local src="$SEED/d$d/mr_comparison.json"
     if [ -f "$OUT/$tag/mr_comparison.json" ]; then return 0; fi
-    if [ -f "$SEED/d$d/mr_comparison.json" ]; then
-        mkdir -p "$OUT/$tag"
-        cp "$SEED/d$d/mr_comparison.json" "$OUT/$tag/"
-        log "SEED $tag from cliff_verified/d$d (identical configuration)"
-        return 0
+    [ -f "$src" ] || return 1
+    if ! grep -q "\"$ARRAY_STACK\"" "$src"; then
+        log "NO SEED $tag: $src predates this configuration (no $ARRAY_STACK in it) -- re-running"
+        return 1
     fi
-    return 1
+    # Anchored: a bare substring test would let PITCH_UM=500 match "pitch_um": 5000.0.
+    if ! grep -qE "\"pitch_um\": ${PITCH_UM}(\.0)?[,[:space:]}]" "$src"; then
+        log "NO SEED $tag: $src was solved at a different tile pitch -- re-running"
+        return 1
+    fi
+    mkdir -p "$OUT/$tag"
+    cp "$src" "$OUT/$tag/"
+    log "SEED $tag from cliff_verified/d$d (configuration verified identical)"
+    return 0
 }
 
 point() {
@@ -74,7 +112,7 @@ point() {
     log "START $tag"
     srun --jobid="$JOBID" --overlap bash -lc \
         ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && \
-         python -u examples/mr_comparison.py $* --out-dir $OUT/$tag \
+         python -u examples/mr_comparison.py $ARM_ARGS $* --out-dir $OUT/$tag \
          > $OUT/$tag.log 2>&1" &
 }
 
@@ -85,7 +123,7 @@ log "=== overnight3 starting, max concurrency $MAX_CONC ==="
 # Attempt 2 sampled 0.60-1.15 believing the cliff was at 1.30; it is between 1.05 and 1.15, so
 # the resolution goes where the answer is.
 # ---------------------------------------------------------------------------------------
-for D in 0.60 0.70 0.80 0.90 1.00 1.05 1.08 1.10 1.12 1.15; do
+for D in $DENSITY_SWEEP; do
     seed "p1_dens_d${D}" "$D" || \
     point "p1_dens_d${D}" --cores 34 --density "$D" --cfm 88 --mr-target-C 92 \
           --spot-min-um 10 --spot-policy dilute
@@ -95,7 +133,7 @@ done
 # Phase 2 -- where MR stops rescuing. 1.15 rescues (no steady state -> 96.83 C, 4.013 GHz);
 # 1.18 does not. This resolves the ceiling to 0.01 W/mm^2.
 # ---------------------------------------------------------------------------------------
-for D in 1.16 1.17 1.18 1.20; do
+for D in $DENSITY_CLIFF; do
     seed "p2_ceiling_d${D}" "$D" || \
     point "p2_ceiling_d${D}" --cores 34 --density "$D" --cfm 88 --mr-target-C 92 \
           --spot-min-um 10 --spot-policy dilute
@@ -108,22 +146,51 @@ done
 # does not, the limit is the heat budget (h_max / dt_max), which is a different device.
 # ---------------------------------------------------------------------------------------
 for T in 92 78 65; do
-    for D in 1.12 1.16 1.18; do
+    for D in $DENSITY_WORKING 0.92 0.96; do
         point "p3_target_T${T}_d${D}" --cores 34 --density "$D" --cfm 88 --mr-target-C "$T" \
               --spot-min-um 10 --spot-policy dilute
     done
 done
 
 # ---------------------------------------------------------------------------------------
-# Phase 4 -- pixel pitch and policy, at a density and target where MR is genuinely working.
-# Re-confirms the "pitch barely matters" result at a verified operating point; that result is a
-# large fabrication saving if it holds (~450 pixels at 100 um vs ~32,000 at 10 um).
+# Phase 4 -- granularity, in its two distinct senses. They are NOT the same variable and the
+# catalogue has historically conflated them.
+#
+#   --spot-min-um  the legacy BLOCK-LEVEL targeting rule: how narrow a floorplan block the
+#                  planner will still aim at. It shapes the plan before any projection happens.
+#   --pitch-um     the actual TILE PITCH of the array -- the geometry of the second die. This is
+#                  the physical device parameter, and until the array became a real die element
+#                  there was no way to sweep it inside a coupled solve at all.
+#
+# Both are run, and they are labelled apart in the tags so the two families never merge again.
 # ---------------------------------------------------------------------------------------
 for S in 1 10 100; do
     for POL in dilute exclude; do
-        point "p4_spot_s${S}_${POL}" --cores 34 --density 1.15 --cfm 88 --mr-target-C 78 \
+        point "p4_spot_s${S}_${POL}" --cores 34 --density $DENSITY_WORKING --cfm 88 --mr-target-C 78 \
               --spot-min-um "$S" --spot-policy "$POL"
     done
+done
+
+# The tile-pitch LADDER, coupled. Each rung is its own system matrix -- the tile floorplan is
+# part of the geometry the factorisation is built from -- so this is the most expensive family
+# per point in the catalogue and it is worth it: the ordering of coarse against fine REVERSES
+# with the workload, and that is only visible across the ladder.
+#
+# ONE workload here, because mr_comparison has no power-shape knob -- its axes are density,
+# cores, cooling and target, none of which changes the CONCENTRATION of the map. This arm is
+# therefore the CPU plateau case only.
+#
+# The reversal needs a concentration axis, and the place that has a real one is the accelerator:
+# `--kernel occupancy` with `--placement contiguous` against `scattered` is precisely the
+# degenerate-plateau against isolated-hotspot contrast. The ladder is run against both in
+# scripts/accel_mr_batch.sh; do not read a reversal out of this block alone.
+# --pitch-um appears TWICE on these: $ARM_ARGS carries the fixed default and the rung follows
+# it. argparse keeps the last, which is the rung -- that is deliberate, not an oversight, and
+# scripts/catalogue_rerun.py::matrix_key applies the same last-wins rule so the ladder partitions
+# into one matrix group per rung rather than being split by the duplicate.
+for P in $PITCH_SWEEP_UM; do
+    point "p4_pitch_p${P}" --cores 34 --density $DENSITY_WORKING --cfm 88 --mr-target-C 78 \
+          --spot-min-um 10 --spot-policy dilute --pitch-um "$P"
 done
 
 # ---------------------------------------------------------------------------------------
@@ -132,13 +199,13 @@ done
 # not between two runaways. 128-core is expensive (~670 s factorisation), hence only two points.
 # ---------------------------------------------------------------------------------------
 for N in 70 128; do
-    for D in 0.80 1.00; do
+    for D in $DENSITY_SCALING; do
         point "p5_cores${N}_d${D}" --cores "$N" --density "$D" --cfm 88 --mr-target-C 78 \
               --spot-min-um 10 --spot-policy dilute
     done
 done
 for CFM in 50 133 200; do
-    point "p5_cfm${CFM}_d1.10" --cores 34 --density 1.10 --cfm "$CFM" --mr-target-C 78 \
+    point "p5_cfm${CFM}_d1.10" --cores 34 --density $DENSITY_WORKING_LO --cfm "$CFM" --mr-target-C 78 \
           --spot-min-um 10 --spot-policy dilute
 done
 

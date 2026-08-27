@@ -6,7 +6,7 @@ from HotGauge.power import BasicPowerTrace
 from HotGauge.thermal.microrefrigeration import (MRParams, clipping_plan, apply_cooling_to_trace,
                                                  mr_accounting, estimate_sensitivity,
                                                  run_mr_clipping, DEFAULT_SPOT_MIN_UM,
-                                                 DEFAULT_SPOT_POLICY)
+                                                 DEFAULT_SPOT_POLICY, CoolingApplication)
 
 GEOM = {'hot': {'area_mm2': 0.02, 'min_dim_um': 140.0},
         'small': {'area_mm2': 0.002, 'min_dim_um': 13.0},
@@ -884,3 +884,147 @@ def test_a_genuinely_truncated_descent_still_says_max_iter():
     assert res['dt_max_bound'] is False
     assert 'max_iter reached' in res['reason']
     assert 'LOWER BOUND' in res['reason']
+
+
+# ---------------------------------------------------------------------------
+# Where the cooling is applied
+# ---------------------------------------------------------------------------
+_TILES = [{'name': 'MR_r00_c00', 'x': 0.0, 'y': 0.0, 'w': 100.0, 'h': 100.0},
+          {'name': 'MR_r00_c01', 'x': 100.0, 'y': 0.0, 'w': 100.0, 'h': 100.0}]
+_BLOCKS = {'A': (0.0, 0.0, 100.0, 100.0), 'B': (100.0, 0.0, 100.0, 100.0)}
+
+
+class TestCoolingApplication:
+    """The plan has to reach the array, and every result has to say where it landed.
+
+    Both failure modes are silent. A plan applied to the processor trace still produces
+    temperatures -- just an upper bound, because the extracted watt crosses no silicon. And a
+    result with no placement stamp is indistinguishable from the other generation's.
+    """
+
+    def test_legacy_placement_subtracts_from_the_trace(self):
+        trace = BasicPowerTrace({'A': [10.0], 'B': [10.0]}, 1.0)
+        app = CoolingApplication(trace, lambda u: u)
+        assert app.placement == 'in_source_layer'
+        out = app({'A': 2.0})
+        assert float(np.ravel(out.powers['A'])[-1]) == pytest.approx(8.0)
+        assert float(np.ravel(out.powers['B'])[-1]) == pytest.approx(10.0)
+        assert app.last_tile_plan is None
+
+    def test_array_placement_leaves_the_processor_trace_alone(self):
+        """The cooling is on the other die. Touching the trace as well would double-count it."""
+        trace = BasicPowerTrace({'A': [10.0], 'B': [10.0]}, 1.0)
+        pushed = {}
+        app = CoolingApplication(trace, lambda u: u, tiles=_TILES, blocks=_BLOCKS,
+                                 set_mr_powers=pushed.update)
+        assert app.placement == 'array_above'
+        out = app({'A': 2.0})
+        assert out is trace
+        assert float(np.ravel(out.powers['A'])[-1]) == pytest.approx(10.0)
+        assert sum(pushed.values()) == pytest.approx(-2.0)
+
+    @pytest.mark.parametrize('kw', [
+        {'tiles': _TILES},
+        {'tiles': _TILES, 'blocks': _BLOCKS},
+        {'tiles': _TILES, 'set_mr_powers': dict().update},
+        {'blocks': _BLOCKS},
+    ])
+    def test_a_half_specified_array_is_refused(self, kw):
+        """tiles without the callback would compute a plan and then never apply it."""
+        with pytest.raises(ValueError):
+            CoolingApplication([], lambda u: u, **kw)
+
+    def test_projection_conserves_the_planned_watts(self):
+        trace = BasicPowerTrace({'A': [10.0]}, 1.0)
+        pushed = {}
+        app = CoolingApplication(trace, lambda u: u, tiles=_TILES, blocks=_BLOCKS,
+                                 set_mr_powers=pushed.update)
+        app({'A': 1.5, 'B': 0.5})
+        assert sum(app.last_tile_plan.values()) == pytest.approx(2.0, abs=1e-9)
+        assert sum(pushed.values()) == pytest.approx(-2.0, abs=1e-9)
+
+    def test_every_run_is_stamped_with_its_placement(self):
+        """Thirteen exits in the loop; the stamp has to survive all of them."""
+        trace = BasicPowerTrace({'hot': [1.0]}, 1.0)
+        params = MRParams(target_K=400.0)
+        res = run_mr_clipping(trace, lambda tr: {'hot': np.array([300.0])},
+                              GEOM, params, lambda u: u)
+        assert res['placement'] == 'in_source_layer'
+        assert 'tile_plan' in res
+
+
+class TestEnvelopeProvenance:
+    """The MR envelope, its sources, and the duplication that hid it.
+
+    Until 26 Aug 2026 the block read "Documented MR envelope: h_max 10 W/mm^2, dt_max 10 K" with
+    no source, and SEVEN drivers repeated those literals in their own argparse defaults. So the
+    envelope had eight definitions and no provenance, and it was wrong in both directions: 25x
+    below the demonstrated cooling density and 5.7x above the demonstrated ASF efficiency.
+
+    The consequence was not a wrong number, it was a HIDDEN CEILING. The planner could never ask
+    for more than 10 K of lift, so any architectural lever needing more was unreachable by
+    assumption. The threshold-voltage lever needs 22 K at 50 mV -- inside the demonstrated 45 K,
+    outside the assumed 10 K.
+    """
+
+    def test_capability_matches_the_bench(self):
+        from HotGauge.thermal.microrefrigeration import (DEFAULT_H_MAX_W_PER_MM2,
+                                                         DEFAULT_DT_MAX_K, DEMONSTRATED)
+        assert DEFAULT_H_MAX_W_PER_MM2 == DEMONSTRATED['h_max_W_per_mm2'] == 250.0
+        assert DEFAULT_DT_MAX_K == DEMONSTRATED['dt_max_K'] == 45.0
+
+    def test_efficiency_targets_are_above_what_is_demonstrated(self):
+        """They are targets. The test exists so nobody quotes them as measurements."""
+        from HotGauge.thermal.microrefrigeration import (DEFAULT_ETA_ASF, DEFAULT_LASER_WALLPLUG,
+                                                         DEFAULT_LPC_EFFICIENCY, DEMONSTRATED)
+        assert DEFAULT_ETA_ASF > DEMONSTRATED['eta_asf']
+        assert DEFAULT_LASER_WALLPLUG > DEMONSTRATED['laser_wallplug']
+        assert DEFAULT_LPC_EFFICIENCY > DEMONSTRATED['lpc_efficiency']
+
+    def test_the_target_envelope_is_net_generating(self):
+        """breakeven_ratio > 1 at the targets -- a different regime, not a better number."""
+        from HotGauge.thermal.microrefrigeration import MRParams, LEGACY_ENVELOPE
+        target = MRParams(target_K=358.15)
+        legacy = MRParams(target_K=358.15, **LEGACY_ENVELOPE)
+        assert target.breakeven_ratio > 1.0
+        assert legacy.breakeven_ratio < 1.0
+        assert target.cop > legacy.cop
+
+    def test_the_legacy_envelope_still_reproduces(self):
+        from HotGauge.thermal.microrefrigeration import MRParams, LEGACY_ENVELOPE
+        m = MRParams(target_K=358.15, **LEGACY_ENVELOPE)
+        assert (m.h_max, m.dt_max_K) == (10.0, 10.0)
+        assert m.cop == pytest.approx(0.14)
+
+    def test_the_vt_lever_is_now_inside_the_envelope(self):
+        """Why the envelope mattered: 50 and 75 mV were unreachable at dt_max=10."""
+        from HotGauge.thermal.microrefrigeration import DEFAULT_DT_MAX_K, LEGACY_DT_MAX_K
+        from HotGauge.power.irds_vf import IRDSVFModel
+        for dvt, _ in ((50.0, None), (75.0, None)):
+            need = IRDSVFModel(2024, vt_shift_mV=dvt).cooling_K_to_offset(10.9)
+            assert need > LEGACY_DT_MAX_K       # was out of reach by assumption
+            assert need < DEFAULT_DT_MAX_K      # is inside the demonstrated capability
+
+    def test_no_driver_re_hardcodes_the_envelope(self):
+        """Eight definitions is how the envelope went unsourced for months.
+
+        Every driver must take these from the module. A literal here is not a wrong number
+        today -- it is a number that will not move when the module does.
+        """
+        import glob, os, re
+        root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..',
+                            'examples')
+        if not os.path.isdir(root):
+            pytest.skip('examples/ not present')
+        FLAGS = ('--mr-h-max', '--mr-dt-max', '--dt-max-K', '--eta-asf', '--eta-laser',
+                 '--eta-lpc')
+        bad = []
+        for f in sorted(glob.glob(os.path.join(root, '*.py'))):
+            src = open(f).read()
+            for flag in FLAGS:
+                for m in re.finditer(re.escape(flag) + r"',\s*type=float,\s*default=([^,)\s]+)",
+                                     src):
+                    val = m.group(1)
+                    if re.match(r'^[0-9.]+$', val):
+                        bad.append('{}: {} default={}'.format(os.path.basename(f), flag, val))
+        assert not bad, 'hardcoded envelope defaults: ' + '; '.join(bad)

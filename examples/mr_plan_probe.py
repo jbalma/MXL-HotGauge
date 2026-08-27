@@ -49,7 +49,11 @@ from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power, replica
                                                peak_temp_K)
 from HotGauge.thermal.sink_models import (BaffledFinSink, render_stack_with_sink,
                                           chip_area_m2_from_floorplan, SIMSCALE_T0_K)
-from HotGauge.thermal.microrefrigeration import MRParams, run_mr_clipping
+from HotGauge.thermal.sink_models import spreading_sink_for_stack
+from HotGauge.thermal.die_stack import stack_for_spreading
+from HotGauge.thermal.mr_array import wiring_for_stack, DEFAULT_PITCH_UM
+from HotGauge.thermal.microrefrigeration import (MRParams, run_mr_clipping,
+                                                 DEFAULT_H_MAX_W_PER_MM2, DEFAULT_DT_MAX_K)
 from HotGauge.thermal.ice_server import ICESessionCache
 from HotGauge.thermal.utils import K_to_C
 
@@ -66,14 +70,33 @@ def main():
     ap.add_argument('--flp-dir', default=os.path.join(_HERE, 'floorplans', 'outputs'))
     ap.add_argument('--trace-dir', default=os.path.join(_REPO, 'mcpat_runs', '7nm',
                                                         'linpack_3.8GHz'))
+    ap.add_argument('--spreading', action='store_true',
+                    help='take the cold-plate slab OUT of the stack and fold it into the boundary '
+                         'as a real overhanging base (P0.4). A slab in the stack is a column of '
+                         'metal the width of the die, so the package budget comes out as 1/area '
+                         '-- 15.5x across the die sizes here, against 2.6x with the overhang. '
+                         'Amends the --stack spec with sink_in_stack=0. STRONGLY preferred for '
+                         'anything quotable; off by default so results predating it reproduce.')
+    ap.add_argument('--base-mm2', type=float, default=None,
+                    help='cold-plate footprint [mm^2] for --spreading. Default: the socket '
+                         'footprint (a fixed AREA, not a ratio of the die)')
     ap.add_argument('--stack', default='skylake')
+    ap.add_argument('--pitch-um', type=float, default=DEFAULT_PITCH_UM,
+                    help='cooling tile pitch; the array is a second powered die above the silicon')
+    ap.add_argument('--no-array', action='store_true',
+                    help='legacy placement: subtract the plan from the processor trace instead of putting it on the array. An upper bound, not the device -- see CoolingApplication')
+    ap.add_argument('--cell-um', type=float, default=50.0,
+                    help='3D-ICE grid cell; the tile grid SNAPS to it. Must match the cell= in '
+                         'the stack spec: tiles snapped to a finer grid than the solver uses '
+                         'come back overlapping after 3D-ICE quantises them, and the failure is '
+                         'a wrong floorplan rather than an error')
     ap.add_argument('--densities', type=float, nargs='+',
                     default=[1.10, 1.12, 1.15, 1.16])
     ap.add_argument('--cfm', type=float, default=88.0)
     ap.add_argument('--ambient-K', type=float, default=SIMSCALE_T0_K)
     ap.add_argument('--mr-target-C', type=float, default=92.0)
-    ap.add_argument('--mr-h-max', type=float, default=10.0)
-    ap.add_argument('--mr-dt-max', type=float, default=10.0)
+    ap.add_argument('--mr-h-max', type=float, default=DEFAULT_H_MAX_W_PER_MM2)
+    ap.add_argument('--mr-dt-max', type=float, default=DEFAULT_DT_MAX_K)
     ap.add_argument('--mr-iter', type=int, default=6)
     ap.add_argument('--spot-min-um', type=float, default=10.0)
     ap.add_argument('--spot-policy', default='dilute')
@@ -110,7 +133,12 @@ def main():
             if args.cores > args.trace_cores else base0)
 
     sink = BaffledFinSink(args.cfm, area_m2, ambient_K=args.ambient_K)
-    stack = render_stack_with_sink(get_stack_template(args.stack), sink,
+    stack_name = args.stack
+    if args.spreading:
+        stack_name = stack_for_spreading(stack_name)
+        sink = spreading_sink_for_stack(stack_name, sink, area_m2 * 1e6,
+                                        base_area_mm2=args.base_mm2)
+    stack = render_stack_with_sink(get_stack_template(stack_name), sink,
                                    os.path.join(args.out_dir, 'probe.stk'))
     cache = ICESessionCache()
     mr = MRParams(target_K=args.mr_target_C + 273.15, h_max=args.mr_h_max,
@@ -136,13 +164,18 @@ def main():
 
         counter = {'n': 0}
         seen = {'first': None}
+        # The array as a second powered die; --no-array keeps the legacy in-source-layer bound.
+        wiring = wiring_for_stack(stack, flp, os.path.join(args.out_dir, 'd{:g}'.format(d)),
+                                  want_array=not args.no_array, pitch_um=args.pitch_um,
+                                  cell_um=args.cell_um)
 
         def solver_factory(sub):
             return ICEThermalSolver(stack, flp, args.tech_node,
                                     run_base_dir=os.path.join(args.out_dir,
                                                               'd{:g}'.format(d), sub),
                                     initial_temp=args.ambient_K, num_cores=args.cores,
-                                    single_thread=True, mode='steady', session_cache=cache)
+                                    single_thread=True, mode='steady', session_cache=cache,
+                                    **(wiring.solver_kwargs() if wiring else {}))
 
         def solve(tr, _lr=leak_ref):
             counter['n'] += 1
@@ -160,7 +193,8 @@ def main():
             return r['temp_trace']
 
         res = run_mr_clipping(trace, solve, geom, mr, name_map,
-                              max_iter=args.mr_iter, tol_K=2.0, relax=0.7)
+                              max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
+                              **(wiring.planner_kwargs() if wiring else {}))
         first = seen['first'] or {}
         base_peak = first.get('peak_K')
         # How many blocks the plan was sized against, and how big it came out.

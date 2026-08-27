@@ -419,19 +419,33 @@ def fig_tiles(accel_flp, cpu_flp, out_path, accel_cell_um=100.0, cpu_cell_um=50.
 # The acceptance gate
 # --------------------------------------------------------------------------------------------
 
-#: One row per published reference point. ``r_package`` is what the SOLVER measured on that run
-#: (external resistance set to zero and the die driven at the published power), not a lumped
-#: estimate -- except RYZEN_7500F_LIQUID, which never ran because the package alone already
-#: exceeds its budget, and takes the air run's measured package resistance.
+#: One row per published reference point. ``package`` is what the SOLVER measured on that run
+#: (external resistance set to zero, die driven at the published power), not a lumped estimate.
+#:
+#: **Re-measured 27 Aug 2026 with the spreading boundary wired** --
+#: ``docs/evidence/acceptance_gate_spreading.json``. The change is not a tuning: it is the
+#: package's spreading layers moving out of the stack, where 3D-ICE gave them exactly the die
+#: footprint, and into the boundary where they get their real overhang. Before it the Ryzen
+#: package was 0.3610 K/W of a 0.3962 budget -- 91%, leaving almost nothing for a cooler, and it
+#: was 0.4675 before the lid moved too, which is MORE than the whole budget and therefore
+#: impossible rather than merely wrong. It is now 0.1223, a 31% share, and both Ryzen points have
+#: a feasible external budget.
+#:
+#: Two of four pass. The two that do not have different causes and neither is the sink model:
+#: RYZEN_7500F_AIR now fails on a leakage runaway in the coupled solve (it needs a Zen4
+#: floorplan, not a parameter change -- 132 W spread by area over a 14-core Skylake floorplan is
+#: not a Zen4 CCD), and H100_LIQUID needs 0.0037 K/W of external resistance after the stack and
+#: the spreading have taken their share of a 0.0662 K/W budget, which no flow in the class
+#: reaches.
 GATE_ROWS = (
-    {'tag': 'H100, air\n470 W, 826 mm$^2$', 'budget': 0.1074, 'package': 0.05665,
-     'pub_C': (54.0, 72.0), 'model_C': 60.669, 'status': 'PASS', 'lab_xy': (170.0, 0.175)},
-    {'tag': 'H100, D2C liquid\n453 W, 826 mm$^2$', 'budget': 0.0662, 'package': 0.0550,
+    {'tag': 'H100, air\n470 W, 826 mm$^2$', 'budget': 0.1074, 'package': 0.0542,
+     'pub_C': (54.0, 72.0), 'model_C': 61.0, 'status': 'PASS', 'lab_xy': (170.0, 0.175)},
+    {'tag': 'H100, D2C liquid\n453 W, 826 mm$^2$', 'budget': 0.0662, 'package': 0.0542,
      'pub_C': (41.0, 50.0), 'model_C': None, 'status': 'FAIL', 'lab_xy': (150.0, 0.038)},
-    {'tag': 'Ryzen 7500F, air\n132 W, 91 mm$^2$', 'budget': 0.3962, 'package': 0.3610,
+    {'tag': 'Ryzen 7500F, air\n132 W, 91 mm$^2$', 'budget': 0.3962, 'package': 0.1223,
      'pub_C': (74.9, 76.3), 'model_C': None, 'status': 'FAIL', 'lab_xy': (120.0, 1.05)},
-    {'tag': 'Ryzen 7500F, liquid\n129 W, 91 mm$^2$', 'budget': 0.3651, 'package': 0.3610,
-     'pub_C': (69.5, 71.1), 'model_C': None, 'status': 'not run', 'lab_xy': (120.0, 0.72)},
+    {'tag': 'Ryzen 7500F, liquid\n129 W, 91 mm$^2$', 'budget': 0.3651, 'package': 0.1224,
+     'pub_C': (69.5, 71.1), 'model_C': 64.2, 'status': 'PASS', 'lab_xy': (120.0, 0.72)},
 )
 
 #: The one-dimensional stack resistance is exactly proportional to 1/area, because every layer

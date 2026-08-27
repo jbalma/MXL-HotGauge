@@ -6,8 +6,27 @@
 #
 # Study A -- how far can MR be pushed, ignoring the cooling power budget?
 # Study B -- can MR make an older process node out-perform a newer one?
+##
+# THE ARRAY, 26 Aug 2026
+# ----------------------
+# mr_comparison now emits three arms per point of its own accord -- control (30 um of thermal
+# grease, no cooling), array_idle (30 um of GaAs pixels in its place, at 0 W) and array_on (the
+# same array under the planner) -- and reports the passive and the laser term separately. What
+# this script has to supply is the GEOMETRY: $ARM_ARGS pins the stack, the burial depth, the grid
+# and, above all, the TILE PITCH.
 #
+# The pitch is the substantive change. Everything in this file was swept at the driver's 500 um
+# default, which is a modelling default chosen to keep the element count tractable on an 826 mm^2
+# accelerator die. The first-generation device is 4-16 tiles over ~200 mm^2 -- 3.5 to 7 mm -- so
+# these points were an order of magnitude finer than anything anyone is building. At 500 um a tile
+# sits inside one floorplan block; at 5 mm one tile spans several, which is where the collateral
+# trade lives. Results from before this line are a different device and must not be pooled with
+# results from after it.
+
 set -uo pipefail
+
+# The cooling array's stack and pitch, in one place -- see scripts/array_config.sh.
+. "$(dirname "${BASH_SOURCE[0]}")/array_config.sh"
 JOBID="${1:?usage: followon_study.sh <jobid>}"
 REPO=/mnt/nfs01/scratch/jbalma/MXL-HotGauge
 OUT="$REPO/results/followon"
@@ -26,7 +45,7 @@ point() {
     log "START $tag"
     srun --jobid="$JOBID" --overlap bash -lc \
         ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && \
-         python examples/mr_comparison.py $* --out-dir $dir > $OUT/$tag.log 2>&1" &
+         python examples/mr_comparison.py $ARM_ARGS $* --out-dir $dir > $OUT/$tag.log 2>&1" &
 }
 
 # Wait for the main study to release the machine.
@@ -49,15 +68,15 @@ log "=== follow-on starting ==="
 # question, as opposed to the deployment question.
 # =====================================================================================
 for T in 92 85 78 70 60 50 40 30; do
-    point "A_ceiling_T${T}" --cores 34 --density 1.15 --cfm 88 --mr-target-C "$T" \
+    point "A_ceiling_T${T}" --cores 34 --density $DENSITY_WORKING --cfm 88 --mr-target-C "$T" \
           --spot-min-um 10 --spot-policy dilute
 done
 for DT in 5 10 20 40; do
-    point "A_dtmax_${DT}" --cores 34 --density 1.15 --cfm 88 --mr-target-C 40 \
+    point "A_dtmax_${DT}" --cores 34 --density $DENSITY_WORKING --cfm 88 --mr-target-C 40 \
           --mr-dt-max "$DT" --spot-min-um 10 --spot-policy dilute
 done
 for H in 5 10 25 50; do
-    point "A_hmax_${H}" --cores 34 --density 1.15 --cfm 88 --mr-target-C 40 \
+    point "A_hmax_${H}" --cores 34 --density $DENSITY_WORKING --cfm 88 --mr-target-C 40 \
           --mr-h-max "$H" --spot-min-um 10 --spot-policy dilute
 done
 

@@ -111,16 +111,95 @@ def flp_element_names(flp_path):
     return names
 
 
-def stack_floorplan_path(stack_file):
-    """The .flp a .stk points at (``die NAME IC floorplan "path";``)."""
+#: ``die INSTANCE TYPE floorplan "path";`` inside the ``stack:`` section.
+_STACK_DIE_RGX = re.compile(r'^\s*die\s+(\w+)\s+(\w+)\s+floorplan\s+"([^"]+)"', re.M)
+
+
+def stack_floorplans(stack_file):
+    """Every powered die in a .stk as ``(instance, flp_path)``, **in power-vector order**.
+
+    Order is the whole point of this function, and it is *not* the order the file lists.
+
+    A ``.stk`` declares its stack top-down -- ``SINK``, then ``MR_ARRAY``, then
+    ``PROCESSOR_DIE``. 3D-ICE stores layers bottom-up: ``power_grid_fill`` walks the stack
+    element list backwards and indexes each element by its physical ``Offset``
+    (``3d-ice/sources/power_grid.c:180``), and ``insert_power_values`` then iterates
+    ``layer = 0 .. NLayers`` ascending (``power_grid.c:653``), consuming one floorplan's worth
+    of powers at each source layer it meets.
+
+    So the flat power vector runs **bottom of the stack upward**: the processor die's blocks
+    first, then the array's tiles. Reversing the declaration order is therefore correct and
+    the file order would be exactly wrong -- it would put cooling powers on processor blocks
+    and return a plausible, wrong field.
+
+    Verified end to end against the one-shot Emulator by
+    ``test_ice_server.py::test_two_die_server_matches_oneshot_emulator_by_name``, which uses an
+    asymmetric power pattern so a transposed order cannot pass.
+    """
     with open(stack_file) as f:
-        m = re.search(r'floorplan\s+"([^"]+)"', f.read())
+        text = f.read()
+    m = re.search(r'\bstack\s*:(.*?)(?:solver\s*:|output\s*:|\Z)', text, re.S)
     if not m:
+        raise ICEServerError('no stack section in {}'.format(stack_file))
+    base = os.path.dirname(os.path.abspath(stack_file))
+    out = []
+    for inst, _typ, path in _STACK_DIE_RGX.findall(m.group(1)):
+        if not os.path.isabs(path):
+            path = os.path.join(base, path)
+        out.append((inst, path))
+    if not out:
         raise ICEServerError('no floorplan reference in {}'.format(stack_file))
-    path = m.group(1)
-    if not os.path.isabs(path):
-        path = os.path.join(os.path.dirname(os.path.abspath(stack_file)), path)
-    return path
+    out.reverse()                      # declaration order is top-down; the wire is bottom-up
+    return out
+
+
+#: ``Tflp (INSTANCE, "file", QUANTITY, INSTANT) ;`` in the ``output:`` section.
+_TFLP_RGX = re.compile(
+    r'\bTflp\s*\(\s*(\w+)\s*,\s*"[^"]*"\s*,\s*(\w+)\s*,\s*(\w+)\s*\)', re.I)
+
+_QTY_WORDS = {'average': QTY_AVERAGE, 'maximum': QTY_MAXIMUM,
+              'minimum': QTY_MINIMUM, 'gradient': QTY_GRADIENT}
+_INSTANT_WORDS = {'final': INSTANT_FINAL, 'slot': INSTANT_SLOT, 'step': INSTANT_STEP}
+
+
+def tflp_output_dies(stack_file, quantity=QTY_AVERAGE, instant=INSTANT_FINAL):
+    """Die instances whose Tflp values come back for a given filter, in reply order.
+
+    Temperatures and powers do **not** travel the same way, and conflating them is the whole
+    hazard this function exists to remove. Powers are one flat vector over every source layer,
+    bottom-up (:func:`stack_floorplans`). Temperatures come back per *inspection point*: the
+    server returns one block of values for each ``Tflp`` instruction matching the requested
+    instant/type/quantity, in the order the ``output:`` section declares them
+    (``3D-ICE-Server.c``, ``TDICE_SEND_OUTPUT``).
+
+    With one die and one output instruction the two orders coincide, which is why zipping power
+    names against temperatures worked until now. With a processor die and a photonic array they
+    need not, and a stack that reported the array first would have mapped tile temperatures onto
+    processor blocks without any error.
+    """
+    with open(stack_file) as f:
+        text = f.read()
+    m = re.search(r'\boutput\s*:(.*)\Z', text, re.S)
+    if not m:
+        raise ICEServerError('no output section in {}'.format(stack_file))
+    body = re.sub(r'//[^\n]*', '', m.group(1))
+    out = []
+    for inst, qty, when in _TFLP_RGX.findall(body):
+        if (_QTY_WORDS.get(qty.lower()) == quantity
+                and _INSTANT_WORDS.get(when.lower()) == instant):
+            out.append(inst)
+    return out
+
+
+def stack_floorplan_path(stack_file):
+    """The .flp a .stk points at (``die NAME IC floorplan "path";``).
+
+    The **first in file order**, i.e. the topmost powered die. Retained for single-die callers
+    and for tests that predate multi-die support; anything that has to line up with a power
+    vector wants :func:`stack_floorplans` instead.
+    """
+    flps = stack_floorplans(stack_file)
+    return flps[-1][1] if len(flps) > 1 else flps[0][1]
 
 
 class ICEServerError(RuntimeError):
@@ -181,6 +260,7 @@ class ICEServerSession(object):
         # which interpretation this build actually produces rather than assuming.
         self._temp_dtype = '<f4'
         self._names = None
+        self._temp_names = {}
         self.matrix_fingerprint = None
         self._warned_unknown = False
 
@@ -461,14 +541,76 @@ class ICEServerSession(object):
 
     # -- named interface ---------------------------------------------------------------
     def element_names(self):
-        """Block names in wire order, parsed from the .flp this session's .stk references."""
+        """Element names in **power-vector order**, across every powered die in the stack.
+
+        One die is the common case and then this is just that floorplan's names. With a photonic
+        array the stack has two, and the vector runs bottom-up -- processor blocks first, then
+        tiles. :func:`stack_floorplans` owns that ordering and explains why.
+
+        Two things are checked rather than assumed, because both fail silently:
+
+        * the total must equal what the server reports, or powers land on the wrong elements;
+        * names must be unique **across** dies, since :meth:`solve_named` keys by name. A tile
+          called ``L3_4`` would collide with the processor block of that name and one of them
+          would quietly get the other's power.
+        """
         if self._names is None:
-            self._names = flp_element_names(stack_floorplan_path(self.stack_file))
-            if self.n_elements is not None and len(self._names) != self.n_elements:
+            names, per_die = [], []
+            for inst, flp in stack_floorplans(self.stack_file):
+                got = flp_element_names(flp)
+                per_die.append((inst, len(got)))
+                names.extend(got)
+            if len(set(names)) != len(names):
+                seen, dupes = set(), []
+                for n in names:
+                    if n in seen and n not in dupes:
+                        dupes.append(n)
+                    seen.add(n)
                 raise ICEServerError(
-                    'floorplan has {} named elements but the server reports {}. Powers would '
-                    'land on the wrong blocks.'.format(len(self._names), self.n_elements))
+                    'element names collide across dies ({}): e.g. {}. solve_named keys by name, '
+                    'so one die would silently take the other\'s power.'
+                    .format(', '.join('{}={}'.format(i, n) for i, n in per_die),
+                            sorted(dupes)[:5]))
+            if self.n_elements is not None and len(names) != self.n_elements:
+                raise ICEServerError(
+                    'floorplans have {} named elements ({}) but the server reports {}. Powers '
+                    'would land on the wrong blocks.'
+                    .format(len(names), ', '.join('{}={}'.format(i, n) for i, n in per_die),
+                            self.n_elements))
+            self._names = names
         return self._names
+
+    def temperature_names(self, quantity=QTY_AVERAGE, instant=INSTANT_FINAL):
+        """Element names lining up with :meth:`temperatures`, in reply order.
+
+        Not the same list as :meth:`element_names` in general -- see :func:`tflp_output_dies`.
+        Falls back to the power order when the stack has a single powered die, which keeps
+        single-die stacks working even if their output section is written unusually.
+        """
+        key = (quantity, instant)
+        cached = self._temp_names.get(key)
+        if cached is not None:
+            return cached
+        by_inst = dict(stack_floorplans(self.stack_file))
+        reported = tflp_output_dies(self.stack_file, quantity=quantity, instant=instant)
+        if not reported:
+            if len(by_inst) > 1:
+                raise ICEServerError(
+                    'no Tflp output instruction in {} matches quantity={} instant={}, but the '
+                    'stack has {} powered dies -- which die the reply describes cannot be '
+                    'inferred.'.format(self.stack_file, quantity, instant, len(by_inst)))
+            names = list(self.element_names())
+        else:
+            names = []
+            for inst in reported:
+                flp = by_inst.get(inst)
+                if flp is None:
+                    raise ICEServerError(
+                        'output section names die {!r}, which is not a powered die in {}. '
+                        'Known: {}'.format(inst, self.stack_file, sorted(by_inst)))
+                names.extend(flp_element_names(flp))
+        self._temp_names[key] = names
+        return names
 
     def solve_named(self, power_by_name, strict=False, **kw):
         """``{block: watts}`` in, ``{block: kelvin}`` out.
@@ -497,7 +639,8 @@ class ICEServerSession(object):
                 self._warned_unknown = True
         vec = [float(np.ravel(power_by_name.get(n, 0.0))[-1]) for n in names]
         temps = self.solve(vec, **kw)
-        return dict(zip(names, temps))
+        return dict(zip(self.temperature_names(**{k: kw[k] for k in ('quantity', 'instant')
+                                                  if k in kw}), temps))
 
     def check_matrix_unchanged(self):
         """Raise if the stack has been rewritten since this session factorised it.
@@ -549,11 +692,15 @@ def matrix_fingerprint(stack_file):
     # the full factorisation cost with no error to show for it. The floorplan's *content* is
     # hashed below, so nothing material is lost.
     h.update(re.sub(r'"[^"]*"', '""', stk).encode('utf-8'))
-    flp = stack_floorplan_path(stack_file)
-    with open(flp) as f:
-        for line in f:
-            if not _FLP_POWER_RGX.match(line):
-                h.update(line.encode('utf-8'))
+    # Every powered die, not just the first. With a photonic array the tile floorplan is as much
+    # a part of the system matrix as the processor's -- changing the pitch changes the geometry
+    # and must rebuild the session, while changing tile powers must not.
+    for inst, flp in stack_floorplans(stack_file):
+        h.update(inst.encode('utf-8'))
+        with open(flp) as f:
+            for line in f:
+                if not _FLP_POWER_RGX.match(line):
+                    h.update(line.encode('utf-8'))
     return h.hexdigest()
 
 

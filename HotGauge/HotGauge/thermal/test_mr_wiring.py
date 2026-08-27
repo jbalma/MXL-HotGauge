@@ -141,13 +141,86 @@ class TestSolverPlumbing(unittest.TestCase):
         s.set_mr_powers({'MR_r00_c00': -2.0, 'MR_r00_c01': -0.5})
         self.assertEqual(s.mr_powers, {'MR_r00_c00': -2.0, 'MR_r00_c01': -0.5})
 
-    def test_session_cache_refuses_an_array_until_ordering_is_verified(self):
-        """The socket takes one flat vector across both dies; a wrong order is silent."""
+    def test_session_cache_now_accepts_an_array(self):
+        """Was refused while the two-die element order was unverified. It is verified now.
+
+        The socket takes one flat vector across both dies and a wrong order is silent, so this
+        was a NotImplementedError rather than a bug waiting to happen. What lifted it is
+        ice_server.stack_floorplans plus an end-to-end check against the one-shot Emulator on an
+        asymmetric field -- see test_ice_server.py::TestTwoDieOrdering and
+        test_two_die_server_matches_oneshot_emulator_by_name. Construction succeeding is the
+        whole assertion; correctness lives in those tests, not this one.
+        """
         from HotGauge.thermal import ICEThermalSolver
         from HotGauge.thermal.ice_server import ICESessionCache
-        with self.assertRaises(NotImplementedError):
-            ICEThermalSolver('s.stk', 'f.flp', 7, run_base_dir='.', mode='steady',
+        s = ICEThermalSolver('s.stk', 'f.flp', 7, run_base_dir='.', mode='steady',
                              session_cache=ICESessionCache(),
+                             mr_flp_template='MR.flp', mr_powers={'MR_r00_c00': -1.0})
+        self.assertIsNotNone(s.session_cache)
+        self.assertEqual(s.mr_powers, {'MR_r00_c00': -1.0})
+
+    def test_tile_powers_reach_the_session_solve(self):
+        """The array must not be inert on the fast path.
+
+        solve_named zero-fills any element it is not handed, so omitting the tiles produces a
+        stack with a cooling array that removes nothing -- and a run that reads as the cooler
+        being ineffective, with no error anywhere.
+        """
+        class _Session(object):
+            def element_names(self):
+                return ['CORE_0', 'CORE_1', 'MR_r00_c00', 'MR_r00_c01']
+
+        class _Trace(object):
+            powers = {'CORE_0': 3.0, 'CORE_1': 4.0}
+
+        s = self._solver(mr_flp_template='MR.flp',
+                         mr_powers={'MR_r00_c00': -1.5, 'MR_r00_c01': -0.5})
+        got = s.session_powers(_Trace(), _Session())
+        self.assertEqual(got, {'CORE_0': 3.0, 'CORE_1': 4.0,
+                               'MR_r00_c00': -1.5, 'MR_r00_c01': -0.5})
+        self.assertAlmostEqual(sum(got.values()), 5.0)
+
+    def test_a_tile_the_stack_does_not_have_is_refused(self):
+        class _Session(object):
+            def element_names(self):
+                return ['CORE_0', 'MR_r00_c00']
+
+        class _Trace(object):
+            powers = {'CORE_0': 3.0}
+
+        s = self._solver(mr_flp_template='MR.flp', mr_powers={'MR_r09_c09': -1.0})
+        with self.assertRaisesRegex(RuntimeError, 'silently remove nothing'):
+            s.session_powers(_Trace(), _Session())
+
+    def test_a_tile_named_like_a_processor_block_is_refused(self):
+        class _Session(object):
+            def element_names(self):
+                return ['CORE_0']
+
+        class _Trace(object):
+            powers = {'CORE_0': 3.0}
+
+        s = self._solver(mr_flp_template='MR.flp', mr_powers={'CORE_0': -1.0})
+        with self.assertRaisesRegex(RuntimeError, 'collide'):
+            s.session_powers(_Trace(), _Session())
+
+    def test_no_array_means_the_block_powers_are_unchanged(self):
+        class _Session(object):
+            def element_names(self):
+                raise AssertionError('must not be consulted when there is no array')
+
+        class _Trace(object):
+            powers = {'CORE_0': 3.0, 'CORE_1': 4.0}
+
+        s = self._solver()
+        self.assertEqual(s.session_powers(_Trace(), _Session()),
+                         {'CORE_0': 3.0, 'CORE_1': 4.0})
+
+    def test_the_array_is_still_refused_in_transient_mode(self):
+        """Lifting the session-cache limit must not quietly lift the transient one too."""
+        from HotGauge.thermal import ICEThermalSolver
+        with self.assertRaises(ValueError):
+            ICEThermalSolver('s.stk', 'f.flp', 7, run_base_dir='.', mode='transient',
                              mr_flp_template='MR.flp', mr_powers={'MR_r00_c00': -1.0})
 
 

@@ -99,3 +99,72 @@ def test_every_node_row_is_self_consistent():
         assert n['vt'] < n['vdd'], year
         assert n['f_cpu'] < n['f_wireloaded'] < n['f_unloaded'], year
         assert 0.5 < n['dyn_mW_per_GHz'] < 5.0, year
+
+
+class TestThresholdVoltageLever:
+    """The low-Vt trade: CODESIGN_PLAN 9's 'deepest lever, and the one only LCMR unlocks'.
+
+    It is also the only lever that does not run into the V/F ceiling, because lowering Vt shifts
+    the curve rather than climbing it -- and the shipped curve's ceiling is a DEVICE limit
+    (5.0 GHz at 1.4 V; 6.0 GHz would need 2.74 V), not a truncated table. See docs/LADDER_GEN0.md.
+    """
+
+    def test_zero_shift_is_exactly_the_nominal_device(self):
+        from HotGauge.power.irds_vf import IRDSVFModel
+        a, b = IRDSVFModel(2024), IRDSVFModel(2024, vt_shift_mV=0.0)
+        assert a.vt == b.vt == a.vt_nominal
+        assert b.clock_gain() == 0.0
+        assert b.leakage_multiplier == 1.0
+        for V in (0.5, 0.6, 0.7, 0.77):
+            assert a.frequency(V) == b.frequency(V)
+
+    def test_lowering_vt_buys_clock_at_fixed_supply(self):
+        from HotGauge.power.irds_vf import IRDSVFModel
+        base = IRDSVFModel(2024, anchor='cpu')
+        prev = 0.0
+        for d in (25.0, 50.0, 75.0):
+            m = IRDSVFModel(2024, anchor='cpu', vt_shift_mV=d)
+            assert m.frequency(m.vdd) > base.frequency(base.vdd)
+            assert m.clock_gain() > prev            # monotone in the shift
+            prev = m.clock_gain()
+
+    def test_k_is_held_on_the_nominal_vt(self):
+        """Re-fitting k to the shifted Vt would define the lever to buy nothing."""
+        from HotGauge.power.irds_vf import IRDSVFModel
+        base = IRDSVFModel(2024, anchor='cpu')
+        m = IRDSVFModel(2024, anchor='cpu', vt_shift_mV=50.0)
+        assert m._k == pytest.approx(base._k)
+        assert m.frequency(m.vdd) != pytest.approx(base.f_anchor)
+
+    def test_the_leakage_cost_is_the_nodes_own_subthreshold_swing(self):
+        from HotGauge.power.irds_vf import IRDSVFModel, IRDS_NODES
+        for year in (2024, 2027, 2031):
+            ss = IRDS_NODES[year]['ss_mV_dec']
+            m = IRDSVFModel(year, vt_shift_mV=float(ss))   # exactly one decade
+            assert m.leakage_multiplier == pytest.approx(10.0)
+            assert m.ss_mV_dec == ss
+
+    def test_cooling_needed_scales_with_the_doublings(self):
+        from HotGauge.power.irds_vf import IRDSVFModel
+        m = IRDSVFModel(2024, vt_shift_mV=82.0)            # one decade at SS=82 -> 3.32 doublings
+        assert m.cooling_K_to_offset(10.0) == pytest.approx(33.22, rel=1e-3)
+        assert m.cooling_K_to_offset(0.0) == 0.0
+        assert IRDSVFModel(2024).cooling_K_to_offset(10.0) == 0.0
+
+    def test_the_claim_only_exists_in_the_hot_regime(self):
+        """The calibrated doubling is ~10 K at 400 K and ~300 K at 320 K.
+
+        A part already running cool gains nothing from being cooled further, and the API must
+        make that visible rather than returning a flattering constant.
+        """
+        from HotGauge.power.irds_vf import IRDSVFModel
+        m = IRDSVFModel(2024, vt_shift_mV=50.0)
+        hot = m.cooling_K_to_offset(10.9)
+        cold = m.cooling_K_to_offset(300.0)
+        assert hot < 25.0                    # affordable: the measured passive term is 14.4 K
+        assert cold > 500.0                  # not a thing any cooler does
+
+    def test_a_shift_that_removes_the_threshold_is_refused(self):
+        from HotGauge.power.irds_vf import IRDSVFModel
+        with pytest.raises(ValueError, match='not a device'):
+            IRDSVFModel(2024, vt_shift_mV=200.0)

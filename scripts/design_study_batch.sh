@@ -32,6 +32,30 @@
 #  the bistability fix, and the 1.10 W/mm^2 point that failed damping verification.
 set -uo pipefail
 
+# The cooling array's stack and pitch, in one place -- see scripts/array_config.sh.
+. "$(dirname "${BASH_SOURCE[0]}")/array_config.sh"
+
+# The array configuration is injected BY DRIVER rather than written at each call site.
+#
+# Before the array existed, no point in this file named a stack: they all inherited
+# `--stack skylake`, the historical lidded template, and the cooling was subtracted from the
+# processor trace so the package barely showed. Both of those are now wrong, and a per-call-site
+# fix is a list of places to forget. A driver that is not listed here is REFUSED rather than run
+# on whatever default it ships -- an unstamped result is worse than a missing one, because it
+# looks like a result.
+stack_args_for() {
+    case "$1" in
+        # Builds its own stack per arm and emits all three.
+        examples/mr_comparison.py|examples/clock_headroom.py)  echo "$ARM_ARGS" ;;
+        # One stack per invocation; these points are baselines, so the control arm.
+        examples/thermal_tiers.py)                             echo "$CONTROL_STACK_ONLY" ;;
+        examples/accelerator_study.py)                         echo "$ACCEL_CONTROL_ARGS" ;;
+        # The memory stack cannot take a generated template yet -- see LEGACY_STACK.
+        examples/stacked_memory_study.py)                      echo "--stack $LEGACY_STACK" ;;
+        *)                                                     echo "__UNCONFIGURED__" ;;
+    esac
+}
+
 JOBID="${1:?usage: design_study_batch.sh <slurm_jobid>}"
 REPO=/mnt/nfs01/scratch/jbalma/MXL-HotGauge
 OUT="$REPO/results/design_batch"
@@ -53,12 +77,17 @@ run() {
     if [ -f "$OUT/$tag/done" ]; then log "SKIP $tag"; return 0; fi
     throttle
     log "START $tag"
+    local sargs; sargs="$(stack_args_for "$script")"
+    if [ "$sargs" = "__UNCONFIGURED__" ]; then
+        log "REFUSED $tag: no array configuration for $script -- add one to stack_args_for()"
+        return 1
+    fi
     mkdir -p "$OUT/$tag"
     local qargs
     printf -v qargs '%q ' "$@"
     srun --jobid="$JOBID" --overlap bash -lc \
         ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && \
-         python -u $script $qargs --out-dir $OUT/$tag > $OUT/$tag.log 2>&1 && \
+         python -u $script $sargs $qargs --out-dir $OUT/$tag > $OUT/$tag.log 2>&1 && \
          touch $OUT/$tag/done" &
 }
 
@@ -69,13 +98,13 @@ log "=== design study batch starting, max concurrency $MAX_CONC ==="
 # put the logic hotspot in different places and therefore heat different memory banks.
 # ---------------------------------------------------------------------------------------
 run "D_stacked_balanced"     examples/stacked_memory_study.py \
-    --cores 34 --density 1.00 --cfm 88 --mem-iter 8
+    --cores 34 --density $DENSITY_STACKED --cfm 88 --mem-iter 8
 run "D_stacked_concentrated" examples/stacked_memory_study.py \
-    --cores 34 --density 1.00 --cfm 88 --mem-iter 8 \
+    --cores 34 --density $DENSITY_STACKED --cfm 88 --mem-iter 8 \
     --emphasise 'Floating Point Units' --emphasis-factor 4
 # Cooler logic: does the memory limit still bind when the logic is comfortable?
 run "D_stacked_liquid"       examples/stacked_memory_study.py \
-    --cores 34 --density 1.00 --r-th 0.05 --mem-iter 8
+    --cores 34 --density $DENSITY_STACKED --r-th 0.05 --mem-iter 8
 
 # ---------------------------------------------------------------------------------------
 # F -- dt_max roadmap, on both degeneracy regimes. Screens only: the tier metric is what the
@@ -83,9 +112,9 @@ run "D_stacked_liquid"       examples/stacked_memory_study.py \
 # ---------------------------------------------------------------------------------------
 for DT in 10 20 30; do
     run "F_balanced_dt$DT"    examples/thermal_tiers.py \
-        --cores 34 --density 1.00 --cfm 88 --dt-max $DT --top 20
+        --cores 34 --density $DENSITY_STACKED --cfm 88 --dt-max $DT --top 20
     run "F_concentrated_dt$DT" examples/thermal_tiers.py \
-        --cores 34 --density 1.00 --cfm 88 --dt-max $DT --top 20 \
+        --cores 34 --density $DENSITY_STACKED --cfm 88 --dt-max $DT --top 20 \
         --emphasise 'Floating Point Units' --emphasis-factor 4 \
         --activity turbo --background 0.25
 done
@@ -105,7 +134,7 @@ run "E_distributed" examples/clock_headroom.py \
 # bistability fix. The published 46.6 W used a 92 C target on a 100 C-limit die, so part of
 # that cost was policy; and the hot-branch rejection was not in place when it was measured.
 # ---------------------------------------------------------------------------------------
-for D in 1.10 1.15; do
+for D in $DENSITY_WORKING_LO $DENSITY_WORKING; do
     run "rescue_d${D}" examples/mr_comparison.py \
         --cores 34 --density "$D" --cfm 88 --mr-target-C 98 \
         --spot-min-um 10 --spot-policy dilute --mr-iter 25

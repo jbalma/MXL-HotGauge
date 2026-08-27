@@ -19,6 +19,30 @@ not hot. Whether that is waste depends entirely on the die, and the two effects 
 So this sweep reports **both**: peak reduction (effectiveness) and kelvin per watt removed
 (efficiency), at a fixed removal budget, against tile pitch.
 
+The ladder, and why it is a ladder
+----------------------------------
+**50, 100, 200, 500, 1000, 2000 um.** Granularity is the variable this file exists to measure, and
+the two results it has produced only exist as comparisons ACROSS the ladder:
+
+* **the ordering reverses with the workload.** Coarse wins on a degenerate peak -- one tile clips
+  several plateau members together, which per-block cooling cannot do at any price -- and fine
+  wins on an isolated hotspot, where a coarse tile spends its watts on silicon that was already
+  cool. Which dominates is a property of the power map, not of the device.
+* **coarse is low-variance, fine is not.** The fine end swings 3.6x across workloads on identical
+  hardware. That is a control-loop and a manufacturing argument, and a single pitch cannot state
+  it at all.
+
+A point estimate of that curve is not a smaller version of this study; it is a different and
+misleading one.
+
+**The device is a tile COUNT, and it is an annotation on this ladder rather than a rung of it.**
+The demo system is 4-16 tiles on a ~200 mm^2 die. Converted per die
+(``mr_array.device_pitch_range_um``) that is 1.8-3.7 mm on the 7-core die and **2.5-5.0 mm on the
+34-core** -- coarser than this ladder's 2000 um top. So the first-generation device sits just
+beyond the coarse end of the studied range, which is worth telling a device roadmap and is not a
+reason to move the ladder. Converting the count into one absolute pitch and applying it across
+dies gives 1 tile on the 7-core and 2 on the 34-core, which measures nothing.
+
 Why the pitch range stops where it does
 ---------------------------------------
 3D-ICE must mesh at least as finely as the tiles, and the factorisation scales as N^1.67 from a
@@ -65,11 +89,13 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.dirname(_HERE)
 sys.path.insert(0, os.path.join(_REPO, 'HotGauge'))
 
-from HotGauge.thermal.die_stack import StackSpec, render_stack_text
+from HotGauge.thermal.die_stack import (StackSpec, render_stack_text,
+                                        DEFAULT_DIRECT_SOURCE_DEPTH_UM)
 from HotGauge.thermal.ICE import ICE_DIR
 from HotGauge.thermal.mr_array import (tile_grid, ideal_targeting_tiles, write_mr_floorplan,
                                        project_plan_to_tiles, tile_powers_for_stack,
-                                       blocks_from_floorplan, coverage_report)
+                                       blocks_from_floorplan, coverage_report,
+                                       device_pitch_range_um)
 from HotGauge.utils.floorplan import Floorplan
 
 EMULATOR = os.path.join(ICE_DIR, 'bin', '3D-ICE-Emulator')
@@ -127,14 +153,28 @@ def _write_and_run(d, spec, die_powers, tiles, tile_powers, flp_template, chip_w
     return 0.0
 
 
+#: The ladder, coarse to fine. Six rungs spanning the two decades the solver can actually mesh:
+#: the fine end is bounded by the thermal grid (a pitch below the cell size is refused by
+#: tile_grid -- the solve cannot resolve tiles it cannot mesh) and the coarse end by the point at
+#: which a whole die is a handful of tiles and targeting stops meaning anything.
+#:
+#: NOTE the accelerator cannot take the bottom rung: the GA100 runs on a 100 um grid, so 50 um is
+#: refused there. Sweep from 100 on that die.
+DEFAULT_PITCHES = (2000.0, 1000.0, 500.0, 200.0, 100.0, 50.0)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--out-dir', default=os.path.join(_REPO, 'results', 'tile_pitch'))
     ap.add_argument('--flp', default=os.path.join(_HERE, 'floorplans', 'outputs',
                                                   'skylake10nm_7core_0_3D-ICE_template.flp'))
-    ap.add_argument('--pitches', type=float, nargs='+',
-                    default=[2000.0, 1000.0, 500.0, 200.0, 100.0])
+    ap.add_argument('--pitches', type=float, nargs='+', default=list(DEFAULT_PITCHES),
+                    help='centre-to-centre tile pitch [um], coarse to fine. The default is the '
+                         'ladder 2000/1000/500/200/100/50; the first-generation device is a tile '
+                         'COUNT that annotates it rather than a rung of it (4-16 tiles is '
+                         '{:.0f}-{:.0f} um on THIS die -- see mr_array.device_pitch_range_um)'
+                         .format(*device_pitch_range_um()))
     ap.add_argument('--no-ideal', action='store_true',
                     help='skip the optional per-block upper bound (a hypothetical, not a device)')
     ap.add_argument('--die-W', type=float, default=100.0)
@@ -142,7 +182,8 @@ def main():
                     help='total watts removed, held FIXED across pitches -- the sweep is about '
                          'where those watts go, not how many there are')
     ap.add_argument('--cell-um', type=float, default=50.0)
-    ap.add_argument('--burial-um', type=float, default=100.0)
+    ap.add_argument('--burial-um', type=float, default=DEFAULT_DIRECT_SOURCE_DEPTH_UM,
+                    help='active-layer depth below the cooled surface [um]')
     ap.add_argument('--mr-material', default='GAAS')
     ap.add_argument('--mr-um', type=float, default=30.0)
     ap.add_argument('--target', default=None)

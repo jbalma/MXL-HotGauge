@@ -29,7 +29,9 @@ recorded here rather than asserted away.
 import pytest
 
 from HotGauge.thermal.published_reference import (PUBLISHED_POINTS, CPU_POINTS, CPU_CLOCK_POINTS,
-                                                  all_thermal_points, check_peak)
+                                                  all_thermal_points, check_peak,
+                                                  DIRECT_DIE_HARDWARE, DIE_GEOMETRY,
+                                                  CORE_ULTRA_125H_POWER, HX370_POWER_DENSITY)
 from HotGauge.thermal.cooling_spec import external_r_for_total, COOLER_CLASSES
 
 
@@ -115,3 +117,76 @@ def test_h100_air_still_reproduces_the_published_point():
     """The real gate. Needs the 3D-ICE toolchain; run with -m slow."""
     pytest.skip('run examples/validate_published.py --point H100_AIR; ~8 minutes with the '
                 'session cache')
+
+
+# ---------------------------------------------------------------------------
+# Direct-die hardware: in hand, not yet a gate
+# ---------------------------------------------------------------------------
+class TestDirectDieHardware:
+    """The parts that actually match the baseline configuration.
+
+    Every current gate point is a LIDDED part, so reproducing it means modelling an IHS and a
+    solder die-attach the device does not have -- the package we most need to get right is the
+    one we cannot check. These are direct-die and in house. They are not gate points yet, and
+    the tests here exist to keep it that way until they are measured.
+    """
+
+    def test_none_of_it_can_be_used_as_a_gate_point_yet(self):
+        """An unmeasured part must not become an acceptance test by being added to a dict."""
+        assert not set(DIRECT_DIE_HARDWARE) & set(all_thermal_points())
+
+    def test_every_entry_says_what_it_still_needs(self):
+        """A placeholder that does not record its own gap turns into a forgotten assumption."""
+        for key, hw in DIRECT_DIE_HARDWARE.items():
+            assert hw['form_factor'] == 'direct_die', key
+            assert hw.get('missing_for_a_gate_point'), key
+            assert hw.get('measurement'), key
+
+    def test_the_framework_inventory_covers_more_than_one_isa(self):
+        """Same chassis, same thermal envelope, different ISAs -- that is the cross-ISA
+        comparison Phase 2 wants, with the cooling held fixed."""
+        parts = DIRECT_DIE_HARDWARE['FRAMEWORK_13']['parts']
+        vendors = {p[0].split()[0] for p in parts}
+        assert {'AMD', 'Intel'} <= vendors
+        assert any('RISC-V' in p[0] for p in parts)
+
+    def test_the_recorded_specs_are_self_consistent(self):
+        for name, pc, ec, threads, base, turbo, base_w, max_w in \
+                DIRECT_DIE_HARDWARE['FRAMEWORK_13']['parts']:
+            assert pc > 0, name
+            assert threads >= pc + ec, name
+            assert 0 < base_w <= max_w, name
+            assert base > 0, name
+
+
+class TestInHouseDieData:
+    """Geometry and measured power read off docs/demo_hw_slides.pdf."""
+
+    def test_die_areas_match_their_stated_dimensions(self):
+        for key, g in DIE_GEOMETRY.items():
+            if 'die_mm' in g and 'die_area_mm2' in g:
+                w, h = g['die_mm']
+                assert g['die_area_mm2'] == pytest.approx(w * h, rel=0.01), key
+
+    def test_every_geometry_entry_cites_its_source(self):
+        for key, g in DIE_GEOMETRY.items():
+            assert 'slides' in g['source'] or 'Intel' in g['source'], key
+
+    def test_the_125h_sweep_is_monotone_in_the_obvious_places(self):
+        r = CORE_ULTRA_125H_POWER['rows']
+        assert r['idle'][1] < r['1core_2thread_SSE'][1] < r['allcore_allthread'][1]
+        assert all(row[0] > row[1] > row[2] for row in r.values()), \
+            'system power must exceed package, which must exceed all-core'
+
+    def test_the_125h_is_power_limited_not_thermally_limited(self):
+        """25 W all-core against a 115 W ceiling. A ladder that assumes the part is thermally
+        limited would be reasoning about the wrong constraint on this hardware."""
+        assert CORE_ULTRA_125H_POWER['rows']['allcore_allthread'][1] < 0.3 * 115.0
+
+    def test_power_density_concentrates_as_the_window_shrinks(self):
+        """The measured version of what an area cooler responds to: the same watt is 8x denser
+        at the innermost block than spread over the core."""
+        d = HX370_POWER_DENSITY
+        assert list(d['levels_mm2']) == sorted(d['levels_mm2'], reverse=True)
+        assert list(d['W_per_mm2']) == sorted(d['W_per_mm2'])
+        assert d['W_per_mm2'][-1] / d['W_per_mm2'][0] > 5.0

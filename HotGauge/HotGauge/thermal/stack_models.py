@@ -243,6 +243,43 @@ def memory_stack_floorplans(logic_flp, out_dir, n_dies=1, n_x=4, n_y=4):
     return paths, by_die, every
 
 
+class MemoryFloorplans(object):
+    """The memory dies' floorplans, and the step that actually puts power in them.
+
+    ``memory_floorplan`` writes a TEMPLATE carrying ``{powers[NAME]}`` placeholders. That is
+    correct -- commit b7d762e changed it from a literal ``power values 0.0;`` precisely because a
+    literal passes through ``str.format`` untouched and the die then solves carrying no power at
+    all, which is how an emulator run came back at the inlet temperature everywhere.
+
+    But nothing filled the memory templates afterwards. ``ICESim`` fills the processor die's
+    floorplan and, since the array landed, the tile floorplan; the memory dies are neither. So
+    from 20 Aug 2026 every stacked-memory run handed 3D-ICE a file reading
+    ``power values {powers[MEM0_r0c0]};`` and died on a parse error four lines in. This class is
+    the missing half: it keeps the templates in memory and re-renders them per solve, exactly the
+    way :class:`~HotGauge.thermal.mr_array.ArrayWiring` does for the tiles.
+    """
+
+    def __init__(self, logic_flp, out_dir, n_dies=1, n_x=4, n_y=4):
+        self.paths, self.by_die, self.names = memory_stack_floorplans(
+            logic_flp, out_dir, n_dies=n_dies, n_x=n_x, n_y=n_y)
+        # Read BEFORE any write: rendering in place would destroy the template.
+        self._templates = [open(p).read() for p in self.paths]
+
+    def write(self, powers):
+        """Render every memory floorplan with ``powers`` [W per block]."""
+        missing = [n for n in self.names if n not in powers]
+        if missing:
+            raise ValueError(
+                '{} memory block(s) have no power, e.g. {}. The die would render with an '
+                'unfilled placeholder and 3D-ICE would fail to parse it.'
+                .format(len(missing), sorted(missing)[:4]))
+        fmt = {k: '{:.6f}'.format(float(v)) for k, v in powers.items()}
+        for path, tmpl in zip(self.paths, self._templates):
+            with open(path, 'w') as f:
+                f.write(tmpl.format(powers=fmt))
+        return self.paths
+
+
 def memory_output_instructions(n_dies=1):
     """Tflp instruction per memory die: a die with no output instruction reports nothing.
 

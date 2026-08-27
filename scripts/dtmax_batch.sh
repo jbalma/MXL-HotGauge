@@ -17,7 +17,30 @@
 #
 # If instead the peak stops responding once dt_max is large, something else binds and the dt_max
 # story is wrong.
+#
+# THREE ARMS, 26 Aug 2026. The array is a real die element now, so the dt_max prediction has to be
+# stated against the right baseline. The prediction is that the achieved peak tracks
+# (uncooled peak - dt_max) -- and "uncooled" is `array_idle`, the same GaAs stack with the laser
+# off, NOT `control`. Testing it against the grease control would fold the ~14x conductivity step
+# from grease to GaAs into the dt_max budget, and the sweep would appear to over-deliver at every
+# dt_max: exactly the kind of agreement that is worse than a disagreement, because it looks like
+# confirmation.
+#
+# control and array_idle do not depend on dt_max, so they run ONCE per configuration rather than
+# once per dt_max value -- the array is at 0 W in both, and dt_max is a cap on a plan that does
+# not exist.
 set -uo pipefail
+
+# The cooling array's stack and pitch, in one place -- see scripts/array_config.sh.
+. "$(dirname "${BASH_SOURCE[0]}")/array_config.sh"
+
+# ACCELERATOR POWER, re-centred 26 Aug 2026. The GA100 direct-die has no steady state
+# above ~250 W on a water cold plate at 30 C inlet -- measured, see
+# docs/evidence/accelerator_water_envelope.json. The 400 W and 700 W points this file
+# used are from the air-cooled, constant-power era and are now entirely past the cliff;
+# 200 W keeps the "comfortably convergent" role and 280 W the "just past comfortable,
+# MR has something to do" one. See also accelerator_runaway_cause.json: the old
+# convergent numbers were constant-power solves and their temperatures are withdrawn.
 
 JOBID="${1:?usage: dtmax_batch.sh <slurm_jobid>}"
 REPO=/mnt/nfs01/scratch/jbalma/MXL-HotGauge
@@ -42,18 +65,32 @@ run() {
          touch $OUT/$tag/done" &
 }
 
-BASE="--mr --mr-target-C 98 --mr-iter 60 --max-iter 60 --cfm 88"
+# Common to every arm: the operating point and the solver settings. The arms must differ ONLY by
+# the 30 um layer and by whether the laser is on.
+BASE="--max-iter 60 $ACCEL_COOLING --die-power-W $ACCEL_W_HI"
+# What the laser arm adds on top.
+LASER="--mr --mr-target-C 98 --mr-iter 60"
+OCC8="--kernel occupancy --n-active 8 --placement contiguous"
 
 log "=== dt_max sweep starting ==="
+log "    control : $ACCEL_CONTROL_STACK"
+log "    array   : $ACCEL_ARRAY_STACK  at ${PITCH_UM} um pitch"
+
+# The two laser-free arms, once per configuration. array_idle is what the dt_max prediction is
+# measured against; control says how much of the gap the GaAs slab had already closed before any
+# light was applied.
+run "occ8_700W_control"       $ACCEL_CONTROL_ARGS $BASE $OCC8
+run "occ8_700W_array_idle"    $ACCEL_ARRAY_ARGS   $BASE $OCC8
+run "uniform_700W_control"    $ACCEL_CONTROL_ARGS $BASE
+run "uniform_700W_array_idle" $ACCEL_ARRAY_ARGS   $BASE
 
 # The concentrated kernel that needs 12.6 K. 10 is the shipped device; 13 should just clear it.
 for DT in 10 13 15 20 30; do
-    run "occ8_700W_dt${DT}" --die-power-W 700 $BASE --dt-max-K $DT \
-        --kernel occupancy --n-active 8 --placement contiguous
+    run "occ8_700W_dt${DT}" $ACCEL_ARRAY_ARGS $BASE $LASER --dt-max-K $DT $OCC8
 done
 # The uniform 700 W control needs 29.8 K -- far outside any plausible device.
 for DT in 10 20 30 40; do
-    run "uniform_700W_dt${DT}" --die-power-W 700 $BASE --dt-max-K $DT
+    run "uniform_700W_dt${DT}" $ACCEL_ARRAY_ARGS $BASE $LASER --dt-max-K $DT
 done
 
 log "all points queued; waiting"

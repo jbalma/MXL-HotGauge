@@ -569,17 +569,13 @@ class ICEThermalSolver(object):
         if mr_flp_template is not None and mode != 'steady':
             raise ValueError('the cooling array is only wired for mode="steady"; the transient '
                              'path would need a per-slot tile trace, which nothing produces yet')
-        if mr_flp_template is not None and session_cache is not None:
-            # The socket protocol sends ONE flat power vector, "one value per floorplan element,
-            # in order". With two dies that order is the stack's declaration order, and getting
-            # it wrong would put cooling powers on processor blocks and return a plausible,
-            # wrong field -- the exact failure test_server_matches_oneshot_emulator_by_name
-            # exists to catch. A configuration error, so it is refused at construction rather
-            # than on the first solve.
-            raise NotImplementedError(
-                'the session cache does not yet carry a cooling array: the server takes one '
-                'flat power vector across both dies and that element order has not been '
-                'verified against the one-shot Emulator. Drop session_cache for MR-array runs.')
+        # The session cache DOES carry a cooling array as of 25 Aug 2026. The socket protocol
+        # sends one flat power vector, "one value per floorplan element, in order", and with two
+        # dies that order is the reverse of the stack's declaration order: 3D-ICE stores layers
+        # bottom-up, so the processor die's blocks come first and the array's tiles follow.
+        # ice_server.stack_floorplans owns that, and it is verified end to end against the
+        # one-shot Emulator by test_two_die_server_matches_oneshot_emulator_by_name using an
+        # asymmetric power pattern -- measured agreement 5.1e-4 K across a 121 K field.
         self.mr_flp_template = mr_flp_template
         self.mr_powers = dict(mr_powers) if mr_powers else None
         self._iter = 0
@@ -597,6 +593,31 @@ class ICEThermalSolver(object):
                              'mr_flp_template= to give the stack one')
         self.mr_powers = dict(mr_powers)
         return self
+
+    def session_powers(self, steady_trace, session):
+        """The flat power dict for one persistent-session solve: processor blocks **and** tiles.
+
+        Separated out because leaving the tiles off does not fail. ``solve_named`` zero-fills any
+        floorplan element it is not given, so a stack would carry a cooling array that removes
+        nothing and the run would read as the cooler being ineffective -- a wrong answer with no
+        error attached, which is the failure mode this project keeps meeting.
+        """
+        powers = {b: float(np.ravel(v)[-1]) for b, v in steady_trace.powers.items()}
+        if not self.mr_powers:
+            return powers
+        known = set(session.element_names())
+        missing = [t for t in self.mr_powers if t not in known]
+        if missing:
+            raise RuntimeError(
+                '{} tile powers name elements the stack does not have, e.g. {}. The array would '
+                'silently remove nothing.'.format(len(missing), sorted(missing)[:5]))
+        overlap = set(powers) & set(self.mr_powers)
+        if overlap:
+            raise RuntimeError(
+                'tile names collide with processor block names: {}. One would overwrite the '
+                'other in the power vector.'.format(sorted(overlap)[:5]))
+        powers.update({t: float(np.ravel(v)[-1]) for t, v in self.mr_powers.items()})
+        return powers
 
     def __call__(self, power_trace):
         dice_trace = prepare_dice_trace(power_trace, self.flp_template, self.tech_node,
@@ -660,7 +681,7 @@ class ICEThermalSolver(object):
             # see ICESessionCache.
             sim.prep_for_run()
             session = self.session_cache.session(sim.stack_file)
-            powers = {b: float(np.ravel(v)[-1]) for b, v in steady_trace.powers.items()}
+            powers = self.session_powers(steady_trace, session)
             named = session.solve_named(powers)
             steady = {b: np.array([t]) for b, t in named.items()}
             return broadcast_steady_temps(steady, n_steps)

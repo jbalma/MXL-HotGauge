@@ -16,13 +16,33 @@ import pytest
 
 from HotGauge.thermal.ice_server import (
     ICEServerSession, ICEServerError, ICESessionCache, matrix_fingerprint,
-    flp_element_names, stack_floorplan_path,
+    flp_element_names, stack_floorplan_path, stack_floorplans, tflp_output_dies,
     _pack, MSG_INSERT_POWERS, MSG_SIMULATE_SLOT,
     SIM_SLOT_DONE, SIM_STEP_DONE, SIM_SOLVER_ERROR, _SIM_RESULT_NAMES)
 
 _REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 _REF_DIR = os.path.join(_REPO, 'results', 'mr_compare', '34c_nomr', 'it01', 'iter_000')
 _SERVER = os.path.join(_REPO, '3d-ice', 'bin', '3D-ICE-Server')
+
+#: Names this file imports from ice_server at module scope. ``importlib.reload`` rebinds every
+#: class in a module, so after a reload these names point at objects the module no longer uses --
+#: and ``pytest.raises(ICEServerError)`` then silently stops matching the error the code actually
+#: raises, because the two classes are different objects with the same name. Any test that reloads
+#: must re-sync through :func:`_resync_module_names` or it leaves that trap for everything that
+#: runs after it. This is not hypothetical: it is what made TestTwoDieOrdering pass in isolation
+#: and fail in file order.
+_IMPORTED_FROM_ICE_SERVER = (
+    'ICEServerSession', 'ICEServerError', 'ICESessionCache', 'matrix_fingerprint',
+    'flp_element_names', 'stack_floorplan_path', 'stack_floorplans', 'tflp_output_dies',
+    'MSG_INSERT_POWERS', 'MSG_SIMULATE_SLOT', 'SIM_SLOT_DONE', 'SIM_STEP_DONE',
+    'SIM_SOLVER_ERROR', '_SIM_RESULT_NAMES', '_pack')
+
+
+def _resync_module_names(mod):
+    """Point this file's module-scope imports back at the reloaded module's objects."""
+    globals().update({n: getattr(mod, n) for n in _IMPORTED_FROM_ICE_SERVER
+                      if hasattr(mod, n)})
+
 
 _has_ref = os.path.isfile(os.path.join(_REF_DIR, 'IC.flp'))
 _has_server = os.path.isfile(_SERVER)
@@ -296,6 +316,7 @@ def test_startup_timeout_is_configurable_because_startup_is_the_factorisation():
         else:
             os.environ['MXL_ICE_STARTUP_TIMEOUT_S'] = old
         importlib.reload(mod)
+        _resync_module_names(mod)
     assert mod.ICEServerSession.DEFAULT_STARTUP_TIMEOUT_S == 1800.0
 
 
@@ -350,3 +371,168 @@ def test_shared_cache_survives_module_re_execution_the_way_a_study_global_does_n
         assert seen == [id(first)] * 3
     finally:
         mod.reset_shared_cache()
+
+
+# ---------------------------------------------------------------------------
+# Two dies: the photonic array as a second powered element
+# ---------------------------------------------------------------------------
+def _build_two_die_stack(d, pitch_um=2000.0, cell_um=50.0, mr_first_in_output=False):
+    """A real two-die stack in ``d``. Returns (stk, block_names, tile_names)."""
+    import math
+    from HotGauge.thermal.die_stack import StackSpec, render_stack_text
+    from HotGauge.thermal.mr_array import tile_grid, write_mr_floorplan, blocks_from_floorplan
+    from HotGauge.utils.floorplan import Floorplan
+
+    flp = os.path.join(_REPO, 'examples', 'floorplans', 'outputs',
+                       'skylake10nm_7core_0_3D-ICE_template.flp')
+    tmpl = open(flp).read()
+    blocks = blocks_from_floorplan(Floorplan.from_file(flp, frmt='3D-ICE'))
+    cw = int(math.ceil(max(b[0] + b[2] for b in blocks.values()) / cell_um) * cell_um)
+    ch = int(math.ceil(max(b[1] + b[3] for b in blocks.values()) / cell_um) * cell_um)
+    tiles = tile_grid(cw, ch, pitch_um=pitch_um, cell_um=cell_um)
+
+    bnames, tnames = sorted(blocks), [t['name'] for t in tiles]
+    write_mr_floorplan(os.path.join(d, 'MR.flp'), tiles)
+    mt = open(os.path.join(d, 'MR.flp')).read()
+    open(os.path.join(d, 'MR.flp'), 'w').write(
+        mt.format(powers={k: '0.0' for k in tnames}))
+    open(os.path.join(d, 'IC.flp'), 'w').write(
+        tmpl.format(powers={k: '1.0' for k in bnames}))
+
+    ic = '   Tflp (PROCESSOR_DIE, "die.temps", average, final ) ;\n'
+    mr = '   Tflp (MR_ARRAY, "mr.temps", average, final ) ;\n'
+    spec = StackSpec(package='direct_die', mr_layer=True, mr_powered=True, cell_um=cell_um)
+    stk = os.path.join(d, 'IC.stk')
+    open(stk, 'w').write(render_stack_text(spec).format(
+        flp_width=str(cw), flp_height=str(ch), flp_file='IC.flp', mr_flp_file='MR.flp',
+        solver_config='   steady ;\n   initial temperature 300.0 ;',
+        output_list=(mr + ic) if mr_first_in_output else (ic + mr)))
+    return stk, bnames, tnames
+
+
+class TestTwoDieOrdering:
+    """Powers and temperatures travel differently, and both orders have to be right.
+
+    A wrong order does not crash. It puts cooling powers on processor blocks and returns a
+    plausible, wrong field -- so every assertion here is about ordering, not about physics.
+    """
+
+    def test_power_order_is_bottom_up_not_file_order(self, tmp_path):
+        """The .stk lists dies top-down; 3D-ICE consumes powers bottom-up."""
+        stk, _, _ = _build_two_die_stack(str(tmp_path))
+        got = [inst for inst, _ in stack_floorplans(stk)]
+        assert got == ['PROCESSOR_DIE', 'MR_ARRAY'], (
+            'power vector runs from the bottom of the stack up: the processor die comes first '
+            'even though the file declares the array above it')
+        declared = re.findall(r'die\s+(\w+)\s+\w+\s+floorplan', open(stk).read())
+        assert got == list(reversed(declared))
+
+    def test_temperature_order_follows_the_output_section(self, tmp_path):
+        """Not the power order: whichever Tflp instruction is written first replies first."""
+        a, _, _ = _build_two_die_stack(str(tmp_path))
+        assert tflp_output_dies(a) == ['PROCESSOR_DIE', 'MR_ARRAY']
+        d2 = tmp_path / 'flipped'
+        d2.mkdir()
+        b, _, _ = _build_two_die_stack(str(d2), mr_first_in_output=True)
+        assert tflp_output_dies(b) == ['MR_ARRAY', 'PROCESSOR_DIE'], (
+            'reversing the output section must reverse the reply order -- if this tracked the '
+            'power order instead, tile temperatures would be reported as processor blocks')
+
+    def test_only_matching_quantity_and_instant_are_reported(self, tmp_path):
+        stk, _, _ = _build_two_die_stack(str(tmp_path))
+        from HotGauge.thermal.ice_server import QTY_MAXIMUM
+        assert tflp_output_dies(stk, quantity=QTY_MAXIMUM) == []
+
+    def test_fingerprint_covers_the_tile_floorplan(self, tmp_path):
+        """Changing the array's geometry must rebuild the session; changing its powers must not."""
+        d1, d2, d3 = tmp_path / 'a', tmp_path / 'b', tmp_path / 'c'
+        for x in (d1, d2, d3):
+            x.mkdir()
+        a, _, tn = _build_two_die_stack(str(d1), pitch_um=2000.0)
+        b, _, _ = _build_two_die_stack(str(d2), pitch_um=1000.0)
+        c, _, tnc = _build_two_die_stack(str(d3), pitch_um=2000.0)
+        assert matrix_fingerprint(a) != matrix_fingerprint(b), 'pitch changes the matrix'
+        assert matrix_fingerprint(a) == matrix_fingerprint(c), 'same geometry, same matrix'
+        mr = os.path.join(str(d3), 'MR.flp')
+        txt = open(mr).read()
+        open(mr, 'w').write(re.sub(r'power values [-0-9.eE+]+', 'power values -3.5', txt))
+        assert matrix_fingerprint(a) == matrix_fingerprint(c), (
+            'tile POWER is the right-hand side and must not invalidate the factorisation')
+
+    def test_colliding_names_across_dies_are_refused(self, tmp_path):
+        """solve_named keys by name, so a shared name would silently misroute power."""
+        stk, bnames, _ = _build_two_die_stack(str(tmp_path))
+        mr = os.path.join(str(tmp_path), 'MR.flp')
+        txt = open(mr).read()
+        m = re.search(r'^(\w+)\s*:', txt, re.M)
+        assert m, 'no floorplan element parsed from the tile floorplan'
+        open(mr, 'w').write(txt.replace(m.group(0), bnames[0] + ' :', 1))
+        s = ICEServerSession.__new__(ICEServerSession)
+        s.stack_file = stk
+        s.n_elements = None
+        s._names = None
+        with pytest.raises(ICEServerError, match='collide'):
+            s.element_names()
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(not _has_server, reason='3D-ICE-Server not built')
+def test_two_die_server_matches_oneshot_emulator_by_name(tmp_path):
+    """The load-bearing test for the photonic array on the fast path.
+
+    Deliberately **asymmetric**: one processor block at 40 W among neighbours near 0.5 W, and one
+    tile pulling -6 W. A near-uniform pattern cannot detect a transposed element order -- that is
+    exactly how the original power-queue phase bug survived its first test -- so the pattern is
+    chosen to make a wrong order impossible to miss. The resulting field spans >100 K; a
+    transposition would show up as errors of that size, not of the 1e-3 K this asserts.
+    """
+    import subprocess
+    from HotGauge.thermal.ICE import ICE_DIR
+
+    d = str(tmp_path)
+    stk, bnames, tnames = _build_two_die_stack(d)
+    bpow = {n: 0.5 + 0.01 * i for i, n in enumerate(bnames)}
+    bpow[bnames[3]] = 40.0
+    tpow = {n: 0.0 for n in tnames}
+    tpow[tnames[7]] = -6.0
+
+    # Rewrite both floorplans with the asymmetric powers.
+    for path, pw in ((os.path.join(d, 'IC.flp'), bpow), (os.path.join(d, 'MR.flp'), tpow)):
+        lines, cur = [], None
+        for line in open(path):
+            m = re.match(r'^(\w+)\s*:', line)
+            if m:
+                cur = m.group(1)
+            if re.match(r'^\s*power values', line) and cur in pw:
+                line = '\tpower values {:.6f};\n'.format(pw[cur])
+            lines.append(line)
+        open(path, 'w').writelines(lines)
+
+    r = subprocess.run([os.path.join(ICE_DIR, 'bin', '3D-ICE-Emulator'), 'IC.stk'],
+                       cwd=d, capture_output=True, text=True)
+    assert r.returncode == 0, (r.stdout + r.stderr)[-800:]
+
+    def read(fname):
+        ls = open(os.path.join(d, fname)).read().split('\n')
+        ns = [x.strip()[:-3] for x in ls[1].split('\t')[1:] if x.strip()]
+        vs = [float(x) for x in ls[2].split('\t')[1:] if x.strip()]
+        return dict(zip(ns, vs))
+
+    ref = {}
+    ref.update(read('die.temps'))
+    ref.update(read('mr.temps'))
+    assert max(ref.values()) - min(ref.values()) > 50.0, (
+        'the reference field must be strongly non-uniform or this test cannot detect a '
+        'transposed element order')
+
+    with ICEServerSession(stk) as s:
+        assert len(s.element_names()) == s.n_elements
+        got = s.solve_named({**bpow, **tpow})
+
+    common = sorted(set(ref) & set(got))
+    assert len(common) == len(ref), 'server did not report every element the emulator did'
+    assert any(k.startswith('MR') for k in common) and any(not k.startswith('MR')
+                                                           for k in common)
+    worst = max(common, key=lambda k: abs(ref[k] - got[k]))
+    assert abs(ref[worst] - got[worst]) < 1e-3, (
+        '{}: emulator {:.4f} K vs server {:.4f} K'.format(worst, ref[worst], got[worst]))

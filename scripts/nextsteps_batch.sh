@@ -18,6 +18,30 @@
 # at ~94 C is the largest lever in the study and currently rests on one curve at one point.
 set -uo pipefail
 
+# The cooling array's stack and pitch, in one place -- see scripts/array_config.sh.
+. "$(dirname "${BASH_SOURCE[0]}")/array_config.sh"
+
+# The array configuration is injected BY DRIVER rather than written at each call site.
+#
+# Before the array existed, no point in this file named a stack: they all inherited
+# `--stack skylake`, the historical lidded template, and the cooling was subtracted from the
+# processor trace so the package barely showed. Both of those are now wrong, and a per-call-site
+# fix is a list of places to forget. A driver that is not listed here is REFUSED rather than run
+# on whatever default it ships -- an unstamped result is worse than a missing one, because it
+# looks like a result.
+stack_args_for() {
+    case "$1" in
+        # Builds its own stack per arm and emits all three.
+        examples/mr_comparison.py|examples/clock_headroom.py)  echo "$ARM_ARGS" ;;
+        # One stack per invocation; these points are baselines, so the control arm.
+        examples/thermal_tiers.py)                             echo "$CONTROL_STACK_ONLY" ;;
+        examples/accelerator_study.py)                         echo "$ACCEL_CONTROL_ARGS" ;;
+        # The memory stack cannot take a generated template yet -- see LEGACY_STACK.
+        examples/stacked_memory_study.py)                      echo "--stack $LEGACY_STACK" ;;
+        *)                                                     echo "__UNCONFIGURED__" ;;
+    esac
+}
+
 JOBID="${1:?usage: nextsteps_batch.sh <slurm_jobid>}"
 REPO=/mnt/nfs01/scratch/jbalma/MXL-HotGauge
 OUT="$REPO/results/nextsteps"
@@ -36,12 +60,17 @@ run() {
     if [ -f "$OUT/$tag/done" ]; then log "SKIP $tag"; return 0; fi
     throttle
     log "START $tag"
+    local sargs; sargs="$(stack_args_for "$script")"
+    if [ "$sargs" = "__UNCONFIGURED__" ]; then
+        log "REFUSED $tag: no array configuration for $script -- add one to stack_args_for()"
+        return 1
+    fi
     mkdir -p "$OUT/$tag"
     local qargs
     printf -v qargs '%q ' "$@"
     srun --jobid="$JOBID" --overlap bash -lc \
         ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && \
-         python -u $script $qargs --out-dir $OUT/$tag > $OUT/$tag.log 2>&1 && \
+         python -u $script $sargs $qargs --out-dir $OUT/$tag > $OUT/$tag.log 2>&1 && \
          touch $OUT/$tag/done" &
 }
 
@@ -55,20 +84,20 @@ log "=== next-steps batch starting, max concurrency $MAX_CONC ==="
 for S in 1 10 100; do
     for POL in dilute exclude; do
         run "pitch_s${S}_${POL}" examples/mr_comparison.py \
-            --cores 34 --density 1.15 --cfm 88 --mr-target-C 98 \
+            --cores 34 --density $DENSITY_WORKING --cfm 88 --mr-target-C 98 \
             --spot-min-um "$S" --spot-policy "$POL" --mr-iter 25 --max-iter 120
     done
 done
 for T in 95 98 99; do
     run "margin_T${T}_d1.10" examples/mr_comparison.py \
-        --cores 34 --density 1.10 --cfm 88 --mr-target-C $T \
+        --cores 34 --density $DENSITY_WORKING_LO --cfm 88 --mr-target-C $T \
         --spot-min-um 10 --spot-policy dilute --mr-iter 25 --max-iter 120
 done
 run "ceiling_d1.17" examples/mr_comparison.py \
-    --cores 34 --density 1.17 --cfm 88 --mr-target-C 98 \
+    --cores 34 --density 0.95 --cfm 88 --mr-target-C 98 \
     --spot-min-um 10 --spot-policy dilute --mr-iter 25 --max-iter 120
 run "cores128_d1.00" examples/mr_comparison.py \
-    --cores 128 --density 1.00 --cfm 88 --mr-target-C 98 \
+    --cores 128 --density 0.70 --cfm 88 --mr-target-C 98 \
     --spot-min-um 10 --spot-policy dilute --mr-iter 20 --max-iter 120
 
 # ---------------------------------------------------------------------------------------
@@ -77,15 +106,15 @@ run "cores128_d1.00" examples/mr_comparison.py \
 # 4-die run at 100 um is included so depth can be compared at EQUAL grid rather than across one.
 # ---------------------------------------------------------------------------------------
 run "D_dies8_air_c100"    examples/stacked_memory_study.py \
-    --cores 34 --density 1.00 --cfm 88 --mem-dies 8 --mem-iter 5 --cell-um 100
+    --cores 34 --density $DENSITY_STACKED --cfm 88 --mem-dies 8 --mem-iter 5 --cell-um 100
 run "D_dies4_air_c100"    examples/stacked_memory_study.py \
-    --cores 34 --density 1.00 --cfm 88 --mem-dies 4 --mem-iter 5 --cell-um 100
+    --cores 34 --density $DENSITY_STACKED --cfm 88 --mem-dies 4 --mem-iter 5 --cell-um 100
 run "D_dies8_liquid_c100" examples/stacked_memory_study.py \
-    --cores 34 --density 1.00 --r-th 0.05 --mem-dies 8 --mem-iter 5 --cell-um 100
+    --cores 34 --density $DENSITY_STACKED --r-th 0.05 --mem-dies 8 --mem-iter 5 --cell-um 100
 # Worse bond conductivity is the other half of "large stack thermal resistance": microbump rather
 # than hybrid bonding, seven layers of it.
 run "D_dies8_air_badbond" examples/stacked_memory_study.py \
-    --cores 34 --density 1.00 --cfm 88 --mem-dies 8 --mem-iter 5 --cell-um 100 --bond-um 15
+    --cores 34 --density $DENSITY_STACKED --cfm 88 --mem-dies 8 --mem-iter 5 --cell-um 100 --bond-um 15
 
 # ---------------------------------------------------------------------------------------
 # ITEM 4: a second margin curve. 1.15 W/mm^2 on air (a harder point on the same cooling) and
@@ -94,10 +123,10 @@ run "D_dies8_air_badbond" examples/stacked_memory_study.py \
 # ---------------------------------------------------------------------------------------
 for T in 93 94 96 98; do
     run "margin2_T${T}_d1.15" examples/mr_comparison.py \
-        --cores 34 --density 1.15 --cfm 88 --mr-target-C $T \
+        --cores 34 --density $DENSITY_WORKING --cfm 88 --mr-target-C $T \
         --spot-min-um 10 --spot-policy dilute --mr-iter 25 --max-iter 120
     run "margin3_T${T}_liquid" examples/mr_comparison.py \
-        --cores 34 --density 1.10 --r-th 0.05 --mr-target-C $T \
+        --cores 34 --density $DENSITY_WORKING_LO --r-th 0.05 --mr-target-C $T \
         --spot-min-um 10 --spot-policy dilute --mr-iter 25 --max-iter 120
 done
 

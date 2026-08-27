@@ -56,7 +56,8 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.dirname(_HERE)
 sys.path.insert(0, os.path.join(_REPO, 'HotGauge'))
 
-from HotGauge.thermal.die_stack import StackSpec, render_stack_text
+from HotGauge.thermal.die_stack import (StackSpec, render_stack_text,
+                                        DEFAULT_DIRECT_SOURCE_DEPTH_UM)
 from HotGauge.thermal.ICE import ICE_DIR
 from HotGauge.thermal.mr_array import (tile_grid, write_mr_floorplan, project_plan_to_tiles,
                                        tile_powers_for_stack, blocks_from_floorplan)
@@ -155,7 +156,8 @@ def main():
     ap.add_argument('--die-W', type=float, default=100.0)
     ap.add_argument('--pitch-um', type=float, default=500.0)
     ap.add_argument('--cell-um', type=float, default=50.0)
-    ap.add_argument('--burial-um', type=float, default=100.0)
+    ap.add_argument('--burial-um', type=float, default=DEFAULT_DIRECT_SOURCE_DEPTH_UM,
+                    help='active-layer depth below the cooled surface [um]')
     ap.add_argument('--mr-material', default='GAAS')
     ap.add_argument('--mr-um', type=float, default=30.0)
     args = ap.parse_args()

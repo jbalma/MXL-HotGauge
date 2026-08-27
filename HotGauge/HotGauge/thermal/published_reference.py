@@ -153,6 +153,222 @@ ACCEPT_ABOVE_MAX_K = 15.0
 ACCEPT_BELOW_MIN_K = 8.0
 
 
+# ---------------------------------------------------------------------------
+# Direct-die hardware available for in-house validation
+# ---------------------------------------------------------------------------
+#: Parts that match the **baseline configuration** -- bare die, cold plate or heatsink straight on
+#: the silicon, no lid, no die-attach solder, no copper IHS.
+#:
+#: Why this matters more than the published points above. Every entry in ``PUBLISHED_POINTS`` and
+#: ``CPU_POINTS`` is a **lidded** part, so reproducing them requires modelling an IHS and a solder
+#: die-attach that the device we are designing for does not have. Validating a direct-die model
+#: against lidded hardware means the package we most need to get right is the one we cannot check.
+#: These are direct-die and in hand.
+#:
+#: **Nothing here is a gate point yet, by construction.** Each needs a measured operating point --
+#: die area, power, ambient, and a temperature -- before ``check_peak`` can use it, and
+#: ``all_thermal_points()`` deliberately does not include them. Specs below are from the Batch 1
+#: demo hardware list; anything absent is absent because it has not been measured, and inventing
+#: it would defeat the point of a gate.
+#:
+#: A thermal camera changes what a gate point *is*. A published number validates one scalar -- the
+#: peak, or whatever sensor the vendor exposes. An IR map validates the **spatial field**, which is
+#: what this project actually predicts: hotspot location, the peak-to-runner-up gap that decides
+#: tile pitch, the plateau width that sizes a plan. That is a far stronger test, and it is the one
+#: a licensee would ask for.
+#:
+#: Two practical caveats that shape the measurement, recorded here because they change what the
+#: data can support rather than merely how it is taken:
+#:
+#: * **Imaging the die means the cooler is off**, so the boundary condition under the camera is not
+#:   the one in service. That is not fatal and may be preferable: a bare die under natural
+#:   convection is a *simpler* boundary to model than a heatsink, and the resulting field is set
+#:   almost entirely by the floorplan and the power map -- which is exactly what we want to test.
+#:   Model the configuration that was measured, not the one that ships.
+#: * **Bare silicon is a poor IR target.** Emissivity is low (~0.6-0.7) and varies with doping,
+#:   surface finish and angle, so an uncalibrated map is not a temperature map. A high-emissivity
+#:   coating or in-frame reference spots at known temperature are needed before the numbers mean
+#:   anything absolute. Relative structure survives uncalibrated; absolute values do not.
+DIRECT_DIE_HARDWARE = {
+    'FRAMEWORK_13': {
+        'label': 'Framework Laptop 13 mainboards, lidless mobile CPUs, in house',
+        'form_factor': 'direct_die',
+        'measurement': 'thermal camera, not yet taken',
+        'parts': [
+            # (part, P-cores, E-cores, threads, base GHz, turbo GHz, base W, max W)
+            ('AMD Ryzen 5 7640U',      6,  0, 12, 3.5, '4.9',          15.0,  30.0),
+            ('AMD Ryzen AI 5 340',     6,  0, 12, 2.0, '4.8',          28.0,  54.0),
+            ('Intel Core i7-1185G7',   4,  0,  8, 1.2, '4.8',          12.0,  28.0),
+            ('Intel Core i7-8650U',    4,  0,  8, 1.9, '4.2',          15.0,  25.0),
+            ('Intel Core i7-1260P',    4,  8, 16, 2.1, 'P:4.7 E:3.4',  28.0,  64.0),
+            ('Intel Core Ultra 5 125H', 4, 10, 18, 1.2, 'P:4.5 E:3.6', 28.0, 115.0),
+            ('DC-ROMA RISC-V RVA23',   8,  0, 16, 2.5, '2.5 (?)',      13.0,  25.0),
+        ],
+        'note': ('x86 from two vendors plus a RISC-V part in the same thermal envelope and the '
+                 'same chassis -- which makes it a cross-ISA comparison with the cooling held '
+                 'fixed, not merely a set of validation points. See docs/CODESIGN_PLAN.md 4. '
+                 'No ARM part in house yet; Framework ships them, so it is procurable rather '
+                 'than blocked.'),
+        'missing_for_a_gate_point': ('a measured operating point per part -- power AND '
+                                     'temperature at a known ambient -- plus the cooling '
+                                     'configuration it was taken under, and an emissivity '
+                                     'calibration for any absolute temperature. Die geometry is '
+                                     'now known for three parts; see DIE_GEOMETRY below.'),
+    },
+    'V100_SXM2': {
+        'label': 'Tesla V100 SXM2, bare GV100 die under a cold plate',
+        'form_factor': 'direct_die',
+        'measurement': 'nvidia-smi telemetry, available on this cluster',
+        'note': ('The direct-die HPC part, and the closest available analogue to the accelerator '
+                 'floorplan this project already models. node-06 carries eight of them, so an '
+                 'operating point is a GPU allocation and a load away rather than a literature '
+                 'search -- but the GPUs are not in the current CPU-only allocation '
+                 '(TRES=cpu=96), so it needs one requested.'),
+        'missing_for_a_gate_point': ('a measured temperature/power/clock sweep under a known '
+                                     'ambient, plus the cold-plate configuration'),
+    },
+}
+
+
+#: Die geometry read off ``docs/demo_hw_slides.pdf``, which carries annotated die shots for the
+#: in-house parts. Dimensions are as marked on the slides.
+#:
+#: These are what a floorplan gets built from, so the provenance matters as much as the number --
+#: the same discipline ``accelerator_floorplan.py`` applies to the GA100 die shot.
+DIE_GEOMETRY = {
+    'AMD_RYZEN_AI_5_340': {
+        'die_mm': (16.0, 12.5), 'die_area_mm2': 200.0,
+        'source': 'demo_hw_slides.pdf, annotated die shot',
+        'blocks': ('Zen 5 P-cores', 'Zen 5c E-cores', 'Cache + AI Engine',
+                   'Graphics & Media', 'I/O & Memory'),
+        'note': 'the slide carries a block-level floorplan sketch, not just an outline',
+    },
+    'INTEL_CORE_ULTRA_5_125H': {
+        'package_mm': (42.0, 20.0), 'compute_region_mm': (23.0, 11.0),
+        'source': 'demo_hw_slides.pdf, annotated package photo + Intel SKU 236848',
+        'hotspots_mm': {'cluster': (8.9, 8.3), 'block': (2.0, 1.0), 'pitch': 4.3},
+        'hotspot_W': 8.0, 'package_W': 115.0,
+        'note': ('four 8 W blocks inside an 8.9 x 8.3 mm cluster -- a concrete hot-cluster '
+                 'geometry to test tile pitch against, rather than a synthetic one'),
+    },
+    'AMD_RYZEN_9_AI_HX_370': {
+        'die_mm': (19.6, 12.3), 'die_area_mm2': 241.1,
+        'source': 'demo_hw_slides.pdf',
+        'note': 'not in the Batch 1 list; carries the nested power-density decomposition below',
+    },
+}
+
+#: Measured package power for the Core Ultra 5 125H across instruction mixes and core counts.
+#: **Measured, not modelled** -- and the only such sweep this project has for a direct-die part.
+#: Its shape is the interesting part: package power barely moves from SSE to AVX-512 on one core
+#: (14 -> 16 W) but single-core power is 14.2 W at one thread against 9.2 W at two, and all-core
+#: all-thread reaches only 25 W package. A part whose ceiling is 115 W sitting at 25 W all-core is
+#: power-management-limited long before it is thermally limited, which is exactly the regime the
+#: CODESIGN_PLAN 9 ladder has to reason about.
+CORE_ULTRA_125H_POWER = {
+    'source': 'demo_hw_slides.pdf, in-house measurement',
+    'units': 'W',
+    'columns': ('system', 'package', 'all_core', 'single_core'),
+    'rows': {
+        'idle':                  (20.0,  6.5,  1.1,  0.3),
+        '1core_1thread_SSE':     (35.0, 22.0, 15.0, 14.2),
+        '1core_2thread_SSE':     (35.0, 14.0, 10.0,  9.2),
+        '1core_2thread_AVX':     (35.0, 15.0, 10.0,  9.2),
+        '1core_2thread_AVX2':    (35.0, 15.0, 10.0,  9.2),
+        '1core_2thread_AVX512':  (37.0, 16.0, 11.0, 10.2),
+        '4core_2thread_AVX512':  (42.0, 18.0, 14.0,  3.5),
+        'allcore_allthread':     (56.0, 25.0, 16.0,  4.0),
+    },
+}
+
+#: Nested power density on the Ryzen 9 AI HX 370, from the same 1.75 W at four zoom levels.
+#: This is the measured version of the argument CODESIGN_PLAN 4 needs: **concentration, not
+#: decode area**, is what an area cooler responds to. The same watt is 1.05 W/mm^2 spread over a
+#: core and 8.33 W/mm^2 at the innermost block -- an 8x range inside one core, which is the range
+#: a tile array has to resolve and the reason tile pitch has a regime reversal at all.
+HX370_POWER_DENSITY = {
+    'source': 'demo_hw_slides.pdf',
+    'W': 1.75,
+    'levels_mm2': (5.87, 1.40, 0.54, 0.21),
+    'W_per_mm2': (1.05, 1.25, 3.24, 8.33),
+}
+
+#: The demo stack as drawn on the Core Ultra 5 125H slide, top to bottom.
+#: Note it is NOT the baseline stack this project models: it has a TEC below the board and treats
+#: the PCB as a conduction path. Recorded so a validation run models what was actually built.
+DEMO_STACK = {
+    'source': 'demo_hw_slides.pdf',
+    'layers': (('Cu heatsink', None, None),
+               ('Si', 500.0, 130.0),
+               ('PCB (BEOL)', 2000.0, 0.6),
+               ('TEC', None, None)),
+    'note': ('thicknesses in um, conductivity in W/(m K) where the slide states it. The 0.6 W/mK '
+             'board is a near-insulator, so essentially all the heat must leave upward -- which '
+             'makes the top-side cooling comparison cleaner than a socketed desktop part.'),
+}
+
+
+#: The demo system as built, from ``docs/demo_system_details.pdf``. This is the configuration a
+#: validation run has to model -- not the baseline stack, and not the slide's heatsink drawing.
+#:
+#: Stack, top to bottom in the schematic::
+#:
+#:     thermal camera (3-6 um window)
+#:     PCP tiles                 <- free-space laser, 4-16 of them
+#:     chip substrate            <- bulk silicon, the backside the camera sees
+#:     active layer of chip
+#:     power delivery network
+#:     PCB
+#:     TEC                       <- the cooling, BELOW the board
+#:
+#: Two things about it change what we should be simulating.
+#:
+#: **This configuration has no heatsink on top** -- the board mounts to a TEC underneath so the
+#: die can run bare and be imaged under load. That is a *measurement* configuration, not a change
+#: to what we model. **The baseline model stays heatsink-on-top** (see the baseline configuration
+#: in docs/PHASE0_CHECKLIST.md); this is one of two complementary ways to check it:
+#:
+#: * **Heatsink and fan, temperatures read in software.** The real heatsink and the real fan we
+#:   already model, mounted on a direct-die part, sweeping airflow against temperature, power and
+#:   performance. This validates the working model end to end -- sink resistance, fan power, the
+#:   power/airflow/performance trade -- and it is the primary validation route.
+#: * **No heatsink, thermal camera.** Gives the spatial temperature *distribution* the software
+#:   sensors cannot: hotspot location, the peak-to-runner-up gap that decides tile pitch, plateau
+#:   width. A bare die under natural convection is also a simpler boundary, so the field is set
+#:   mostly by the floorplan and the power map -- which is what makes it a clean test of the
+#:   floorplan model specifically.
+#:
+#: Either way, model the configuration that was measured. Neither replaces the heatsink-on-top
+#: stack the design work runs on.
+#:
+#: **The first-generation array is 4-16 tiles**, not thousands. On a ~200 mm^2 die that is roughly
+#: a 3.5-7 mm pitch -- coarser than the coarsest point in the tile-pitch sweep (2000 um). The
+#: device-relevant regime is therefore the COARSE end of that study, where a coarse tile was
+#: measured to beat a fine one by 59% on a degenerate peak. The 1-10 um pitches this project has
+#: swept are a long-run limit, not the part being built.
+DEMO_SYSTEM = {
+    'source': 'docs/demo_system_details.pdf',
+    'camera_window_um': (3.0, 6.0),
+    'cooling': ('TEC below the PCB; no heatsink on top, so the die can be imaged under load. '
+                'A measurement configuration -- the modelled baseline keeps its heatsink.'),
+    'validation_routes': ('heatsink + fan with software temperature readout (primary: validates '
+                          'the sink and fan models and the power/airflow/performance trade); '
+                          'thermal camera with no heatsink (spatial distribution)'),
+    'stack_top_down': ('thermal camera', 'PCP tiles', 'chip substrate', 'active layer',
+                       'power delivery network', 'PCB', 'TEC'),
+    'n_tiles': (4, 16),
+    'control_loop': ('thermal camera -> temperature distribution and targeting -> laser pulse '
+                     'and position schedule, with workload functional-unit dynamics as a '
+                     'feed-forward input'),
+    'chips': ('AMD Ryzen 5-7640U', 'AMD Ryzen AI-5340', 'Intel Core i7-1185G7',
+              'Intel Core i7-1260P', 'Intel Core i7-8650U', 'Intel Core Ultra 5 125H',
+              'RISC-V StarFive JH7110'),
+    'note': ('the RISC-V part is the StarFive JH7110 here, superseding the DC-ROMA RVA23 in the '
+             'Batch 1 list. The control loop is the one modelled by run_mr_clipping: sense the '
+             'field, revise the plan, re-solve.'),
+}
+
+
 def all_thermal_points():
     """Every point usable as a thermal acceptance test -- accelerator and CPU."""
     out = dict(PUBLISHED_POINTS)

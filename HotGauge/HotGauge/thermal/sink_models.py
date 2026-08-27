@@ -820,3 +820,389 @@ class BaffledFinSink(SinkModel):
                 'P_fan={:.1f} W)'.format(
                     super().describe(), self.cfm, self.r_th_K_per_W, self.alpha_end_to_end,
                     self.beta_K_per_W, self.hotspot_penalty, self.parasitic_power_W()))
+
+
+class SpreadingSink(SinkModel):
+    """Wraps a convective sink with the conduction path into an **overhanging** base.
+
+    What this is for
+    ----------------
+    3D-ICE gives every layer exactly the die footprint. A cold plate modelled as a slab in the
+    stack is therefore a column of metal the width of the die, and the package budget comes out
+    proportional to 1/area -- measured 0.0402 K/W at 826 mm^2 against 0.3648 at 91 mm^2, which is
+    9.08x for 9.08x the area. There is no way to declare the overhang instead: the grammar's
+    conventional ``top heat sink`` accepts only a coefficient and a temperature, and the pluggable
+    sink that does carry ``spreader length/width/height`` cannot be steady-solved.
+
+    So the base moves out of the stack and into the boundary. The wrapped sink keeps supplying the
+    convective and caloric resistance -- which already knows about the overhang, because
+    :class:`~HotGauge.thermal.cooling_spec.CoolingSpec` sizes its fins on ``base_area_mm2`` -- and
+    this class adds the spreading and conduction from the die footprint into that base. The result
+    is presented as one coefficient over the die footprint, which is what 3D-ICE wants.
+
+    **Use it with a stack that has no sink slab** (``StackSpec(sink_in_stack=False)``). Leaving
+    the slab in place double-counts the base, and the double count is invisible: it just makes
+    every part run hot.
+
+    What it does not do
+    -------------------
+    The base is lumped, so lateral gradients *inside* the cold plate are not resolved. The die's
+    own silicon spreading is still solved by 3D-ICE, so the approximation sits in the package
+    rather than in the within-die peak this project reports.
+    """
+
+    def __init__(self, sink, die_area_mm2, base_area_mm2=None, base_thickness_mm=2.0,
+                 base_k_W_mK=300.0, series_above_base=(), ambient_K=None, label=None):
+        from HotGauge.thermal.cooling_spec import base_area_from_footprint
+
+        self.sink = sink
+        self.die_area_mm2 = float(die_area_mm2)
+        if base_area_mm2 is None:
+            # Prefer the wrapped spec's own base if it has one -- it is sized by cooler class and
+            # validated against published parts. The fixed footprint is only a fallback.
+            spec = getattr(sink, 'spec', None)
+            base_area_mm2 = (getattr(spec, 'base_area_mm2', None)
+                             or base_area_from_footprint(die_area_mm2))
+        self.base_area_mm2 = float(base_area_mm2)
+        self.base_thickness_mm = float(base_thickness_mm)
+        self.base_k_W_mK = float(base_k_W_mK)
+        # Layers sitting on top of the spreading base -- grease, the cold-plate metal on a lidded
+        # part. They act over the BASE area, not the die's, which is the point of moving them:
+        # 30 um of grease is 0.082 K/W across a 91 mm^2 die and 0.004 across an 1825 mm^2 plate.
+        # Supply as (name, thickness_mm, k_W_mK); StackSpec.boundary_series_layers() emits them.
+        self.series_above_base = tuple(series_above_base)
+        if ambient_K is None:
+            ambient_K = getattr(sink, 'ambient_K', 303.15)
+        super().__init__(ambient_K=ambient_K,
+                         label=label or 'Spreading[{}]'.format(getattr(sink, 'label', sink)))
+
+    @property
+    def parasitic_known(self):
+        return bool(getattr(self.sink, 'parasitic_known', False))
+
+    @property
+    def calibrated(self):
+        return bool(getattr(self.sink, 'calibrated', False))
+
+    def _external_r_K_per_W(self):
+        """The wrapped sink's own resistance [K/W]: convection and caloric, no conduction.
+
+        **The area this is evaluated over is the whole point of the class**, and getting it
+        wrong is silent: it cancels the overhang exactly and leaves the answer tracking 1/area
+        as if nothing had been done. Two conventions meet here and they are not the same:
+
+        * A sink that quotes ``r_th_K_per_W`` -- ``ThermalResistanceSink``, ``CoolingSpecSink``
+          -- means a WHOLE-COOLER resistance: "a 0.12 K/W tower". That is already an absolute
+          K/W and is used as it stands.
+        * A plain :class:`SinkModel` is a COEFFICIENT, and a coefficient has no meaning without
+          an area. The area a cooler's h acts over is its own wetted base -- the plate it is
+          bolted to -- not the die underneath it. Evaluating it over the die footprint says
+          "a 1825 mm^2 cold plate that only exchanges heat over the 53 mm^2 directly above the
+          die", which is not a cooler; and because ``total_resistance_K_per_W`` then converts
+          back with ``h_base = 1/(r_ext * base_area)``, the two area factors cancel and the
+          overhang buys exactly nothing. Measured while wiring this into the drivers: 15.2x
+          across the die-size range instead of the 2.6x in
+          ``docs/evidence/direct_die_overhang.json``, against 15.5x for the slab it replaces.
+          The evidence file states the convention outright -- "the die spreads into an 1825 mm^2
+          copper base and the cooler acts over THAT area".
+        """
+        r = getattr(self.sink, 'r_th_K_per_W', None)
+        if r is not None:
+            return float(r)
+        return self.sink.thermal_resistance(self.base_area_mm2 * 1e-6)
+
+    def series_resistance_K_per_W(self):
+        """Conduction through the layers above the base, over the base area."""
+        area_m2 = self.base_area_mm2 * 1e-6
+        return sum((float(t) * 1e-3) / (float(k) * area_m2)
+                   for _, t, k in self.series_above_base)
+
+    def total_resistance_K_per_W(self):
+        """Die surface to ambient: spreading into the base, then out through it."""
+        from HotGauge.thermal.cooling_spec import spreading_resistance_K_per_W
+
+        r_ext = self._external_r_K_per_W() + self.series_resistance_K_per_W()
+        if r_ext <= 0:
+            raise ValueError('wrapped sink has non-positive resistance ({})'.format(r_ext))
+        h_base = 1.0 / (r_ext * self.base_area_mm2 * 1e-6)
+        return spreading_resistance_K_per_W(
+            self.die_area_mm2, self.base_area_mm2, self.base_thickness_mm,
+            self.base_k_W_mK, h_base)
+
+    def htc_si(self):
+        return 1.0 / (self.total_resistance_K_per_W() * self.die_area_mm2 * 1e-6)
+
+    def parasitic_power_W(self):
+        p = getattr(self.sink, 'parasitic_power_W', 0.0)
+        return float(p() if callable(p) else p)
+
+    def describe(self):
+        return ('{}: R_total={:.4f} K/W over {:.0f} mm^2 die into a {:.0f} mm^2 base '
+                '({:.1f} mm, k={:.0f}); h={:.4g} W/(m^2 K), T_amb={:.2f} K, P_cool={:.3g} W'
+                .format(self.label, self.total_resistance_K_per_W(), self.die_area_mm2,
+                        self.base_area_mm2, self.base_thickness_mm, self.base_k_W_mK,
+                        self.htc_si(), self.ambient_K, self.parasitic_power_W()))
+
+
+def external_r_for_spreading_total(total_r_K_per_W, die_area_mm2, base_area_mm2,
+                                   base_thickness_mm=2.0, base_k_W_mK=300.0,
+                                   series_above_base=(), tol=1e-9, max_iter=200):
+    """Convective resistance a cooler must supply for :class:`SpreadingSink` to hit a total.
+
+    The inverse of :meth:`SpreadingSink.total_resistance_K_per_W`, and the piece the acceptance
+    gate needs. The gate works backwards: it takes a published junction-to-ambient figure,
+    subtracts what the stack models, and asks what the external cooling has to deliver. With the
+    base in the boundary that remainder is no longer the convective term alone -- it also contains
+    the spreading and the layers above the base -- so solving the cooler against it directly would
+    demand a cooler better than the target by exactly the spreading resistance.
+
+    Monotone: more convective resistance can only raise the total, so a bisection is safe.
+    Returns ``None`` when even a perfect cooler cannot reach the target, which is a real answer --
+    it means the spreading alone exceeds the budget.
+    """
+    total = float(total_r_K_per_W)
+    if total <= 0:
+        raise ValueError('total resistance must be positive')
+
+    def _total(r_ext):
+        return SpreadingSink(
+            ThermalResistanceSink(r_ext, die_area_mm2 * 1e-6), die_area_mm2,
+            base_area_mm2=base_area_mm2, base_thickness_mm=base_thickness_mm,
+            base_k_W_mK=base_k_W_mK, series_above_base=series_above_base
+        ).total_resistance_K_per_W()
+
+    lo = 1e-9
+    if _total(lo) > total:
+        return None                       # spreading alone already exceeds the budget
+    hi = total
+    while _total(hi) < total:             # widen until it brackets
+        hi *= 2.0
+        if hi > 1e6:
+            return None
+    for _ in range(max_iter):
+        mid = 0.5 * (lo + hi)
+        if _total(mid) < total:
+            lo = mid
+        else:
+            hi = mid
+        if hi - lo < tol:
+            break
+    return 0.5 * (lo + hi)
+
+
+def spreading_sink_for_stack(stack_name, sink, die_area_mm2, base_area_mm2=None,
+                             base_thickness_mm=None, base_k_W_mK=None):
+    """Wrap ``sink`` with the overhang the STACK implies, or refuse and say why.
+
+    This is the join between the two halves of P0.4, and it exists so that the join has exactly
+    one definition. The physics landed in :func:`spreading_resistance_K_per_W` and
+    :class:`SpreadingSink`, and :class:`~HotGauge.thermal.die_stack.StackSpec` learned to hand its
+    base out through ``boundary_base()`` / ``boundary_series_layers()`` -- but for a while nothing
+    connected them, so every study driver still solved against a 2 mm slab at the die footprint.
+    On the baseline stack at a fixed physical cooler that is 9.70 K/W where the overhang is 0.84,
+    and it tracks 1/area: 15.5x across the die sizes this project models, against 2.6x.
+
+    **The stack must have had its sink slab removed** (``sink_in_stack=False``, i.e.
+    ``--stack spec:...,sink_in_stack=0``). Leaving the slab in place while also adding the base to
+    the boundary counts the base twice, and the double count is silent -- it does not error, it
+    just makes every part run hot, which is indistinguishable from a cooling result. So it is an
+    error here, with the fix named, rather than a warning nobody reads.
+
+    ``base_area_mm2`` defaults to the wrapped spec's own base when it has one (sized by cooler
+    class and validated against published parts), and otherwise to the fixed socket footprint from
+    :func:`~HotGauge.thermal.cooling_spec.base_area_from_footprint`. It is a fixed AREA and not a
+    ratio of the die on purpose: the two SimScale models disagree on ratio precisely because the
+    base is near-constant while the die is not, and a ratio would put 1/area straight back in.
+    """
+    from HotGauge.thermal.die_stack import is_spec_string, parse_spec_string
+
+    if not is_spec_string(stack_name):
+        raise ValueError(
+            'the spreading boundary needs a generated stack so its base geometry is known, but '
+            'got the template name {!r}. Use a spec string with the sink taken out of the stack, '
+            'e.g. --stack spec:package=direct_die,mr=GAAS,sink_in_stack=0'.format(stack_name))
+    spec = parse_spec_string(stack_name)
+    if spec.sink_in_stack:
+        raise ValueError(
+            'stack {!r} still carries its sink slab, so adding a spreading base to the boundary '
+            'would count the base TWICE -- silently, as a part that simply runs hot. Add '
+            'sink_in_stack=0 to the spec.'.format(stack_name))
+    base = spec.boundary_base()
+    if base is None:
+        raise ValueError(
+            'stack {!r} declares no boundary base to spread into. Set sink_in_stack=0 (direct '
+            'die) or package_in_boundary=1 (lidded).'.format(stack_name))
+    t_mm, k = base
+    return SpreadingSink(sink, die_area_mm2,
+                         base_area_mm2=base_area_mm2,
+                         base_thickness_mm=(t_mm if base_thickness_mm is None
+                                            else base_thickness_mm),
+                         base_k_W_mK=(k if base_k_W_mK is None else base_k_W_mK),
+                         series_above_base=spec.boundary_series_layers())
+
+
+# ---------------------------------------------------------------------------------------------
+# Direct-die microchannel cold plate
+# ---------------------------------------------------------------------------------------------
+#: Measured reference point for a silicon direct-die microchannel heat sink.
+#:
+#: Source: docs/chip_design_lit/design_physics/microchannel-hotspot-limits-1-s2.0-
+#: S0017931017340309-am.pdf -- banks of 50 high-aspect-ratio channels, 15-33 um wide and 35-470 um
+#: deep, etched into the back of the die, nine sinks over a 5 x 5 mm heated area.
+#:
+#:   * 1020 W/cm^2 background flux dissipated at a chip temperature < 69 C above fluid inlet,
+#:   * at a channel mass flux of 2100 kg/(m^2 s),
+#:   * with a pressure drop below 120 kPa.
+#:   * Hotspot fluxes to 2700 W/cm^2 raise the hotspot only 16 C above the background.
+#:
+#: Why this exists: CoolingSpec's water path models a FINNED BASE sized for the die, which is a
+#: water block, not a cold plate. On the GA100 it returns ~0.055 K/W and bottoms its flow solver
+#: out at a face velocity it then flags as unbuildable. The microchannel reference is ~7x better
+#: and is what a direct-die part is actually cooled by.
+MICROCHANNEL_REF = {
+    'flux_W_per_m2': 1.020e7,        # 1020 W/cm^2
+    'dT_chip_K': 69.0,               # above fluid inlet
+    'mass_flux_kg_m2s': 2100.0,
+    'dp_Pa': 1.20e5,                 # < 120 kPa
+    'hotspot_flux_W_per_m2': 2.70e7, # 2700 W/cm^2
+    'hotspot_dT_K': 16.0,            # above the background
+    'source': ('microchannel-hotspot-limits-1-s2.0-S0017931017340309-am.pdf, '
+               'Table 1 / s5.1.1 / abstract'),
+}
+
+#: Area-specific convective resistance implied by that point [K m^2 / W].
+MICROCHANNEL_R_AREA = MICROCHANNEL_REF['dT_chip_K'] / MICROCHANNEL_REF['flux_W_per_m2']
+
+#: The reference mass flux referred to the DIE FOOTPRINT rather than the channel cross-section,
+#: so it can be compared with a configuration whose channel count is not a parameter.
+#:
+#: The paper's G is per channel: G = mdot / (2 Nsink Nc Ac), with Nsink=9, Nc=50 and, for the
+#: 33x470 um sample, Ac = 1.551e-8 m^2. That is 900 channels of total area 1.396e-5 m^2 over a
+#: 5 x 5 mm = 2.5e-5 m^2 footprint -- an open fraction of 0.558. So the footprint-referred flux
+#: is 2100 * 0.558 = 1172 kg/(m^2 s), and the rig is running a fluid rise of only ~2 K.
+MICROCHANNEL_OPEN_FRACTION = (2 * 9 * 50 * (33e-6 * 470e-6)) / (5e-3 * 5e-3)
+MICROCHANNEL_REF_FLUX_DIE = (MICROCHANNEL_REF['mass_flux_kg_m2s']
+                             * MICROCHANNEL_OPEN_FRACTION)
+
+
+class MicrochannelSink(SinkModel):
+    """Direct-die microchannel cold plate, anchored on a measured reference point.
+
+    The die-to-fluid path is two terms:
+
+    * **convective** -- the paper's area-specific resistance, scaled by die area. It is measured
+      AT the reference mass flux; below that flux it is optimistic, and ``flux_ratio`` reports
+      how far off the reference the configuration is running so the reader can see it.
+    * **caloric** -- the fluid warms as it crosses the die, and the mean driving temperature sits
+      half a fluid rise above inlet. Set by the flow, which is set by ``dT_fluid_K``.
+
+    Pump power is ``dp * Q / eta``. Microchannel flow is deeply laminar (Re is a few tens at
+    15-33 um), so the pressure drop is taken proportional to flow and anchored on the reference
+    -- not a turbulent correlation, which would badly over-predict it.
+
+    **This does not model the manifold, the plenum or the fluid-delivery pressure drop**, only
+    the channels. A real assembly adds both, so the pump power here is a floor.
+    """
+
+    parasitic_known = True
+    calibrated = True          # anchored on a measured point, not an invented one
+
+    def __init__(self, die_area_mm2, heat_W, dT_fluid_K=10.0, inlet_C=30.0,
+                 mover_efficiency=None, ambient_K=None, label=None):
+        from HotGauge.thermal.cooling_spec import DEFAULT_MOVER_EFFICIENCY
+        self.die_area_mm2 = float(die_area_mm2)
+        self.heat_W = float(heat_W)
+        self.dT_fluid_K = float(dT_fluid_K)
+        self.inlet_C = float(inlet_C)
+        self.mover_efficiency = float(
+            mover_efficiency if mover_efficiency is not None
+            else DEFAULT_MOVER_EFFICIENCY['water'])
+        if self.dT_fluid_K <= 0:
+            raise ValueError('dT_fluid_K must be > 0')
+        if self.heat_W <= 0:
+            raise ValueError('heat_W must be > 0')
+        super().__init__(ambient_K=(ambient_K if ambient_K is not None
+                                    else self.inlet_C + 273.15),
+                         label=label or 'MicrochannelSink')
+
+    # -- flow ---------------------------------------------------------------------------
+    @property
+    def flow_m3s(self):
+        """Set by the caloric requirement: Q = P / (rho cp dT_fluid)."""
+        from HotGauge.thermal.cooling_spec import FLUIDS
+        p = FLUIDS['water']
+        return self.heat_W / (p['rho'] * p['cp'] * self.dT_fluid_K)
+
+    @property
+    def mass_flux_kg_m2s(self):
+        """Channel mass flux, for comparison with the reference.
+
+        Referred to the DIE footprint rather than the channel cross-section, because the channel
+        count is not a parameter here -- the model is anchored on area-specific performance. It
+        is therefore a scaled comparison, not the paper's G, and is used only as a ratio.
+        """
+        from HotGauge.thermal.cooling_spec import FLUIDS
+        p = FLUIDS['water']
+        return p['rho'] * self.flow_m3s / (self.die_area_mm2 * 1e-6)
+
+    @property
+    def flux_ratio(self):
+        """This configuration's mass flux over the reference rig's, both die-referred.
+
+        A practical cold plate runs a 5-15 K fluid rise; the rig runs ~2 K, so this comes out
+        well below 1. That does NOT make r_conv optimistic -- see r_conv_K_per_W -- but it does
+        mean the pressure drop and pump power are far below the rig's, which is why they are
+        scaled by this ratio rather than taken at the reference.
+        """
+        return self.mass_flux_kg_m2s / MICROCHANNEL_REF_FLUX_DIE
+
+    # -- resistance ---------------------------------------------------------------------
+    @property
+    def r_conv_K_per_W(self):
+        """Area-specific convective resistance, held INDEPENDENT of flow -- deliberately.
+
+        Microchannel flow at 15-33 um is deeply laminar (Re of order tens), and for
+        thermally-developed laminar flow the Nusselt number is a constant of the channel
+        geometry, so ``h = Nu k / D_h`` does not depend on flow rate at all. Only the caloric
+        term does. The paper's "diminishing returns at high mass flux" is the entry-length
+        effect on top of that, not a flow dependence of the developed value.
+
+        Cross-check on the anchor: for the 33 x 470 um channel D_h = 61.7 um, and Nu ~ 5.5 for a
+        high-aspect-ratio channel heated on three sides gives h ~ 5.5e4 W/(m^2 K) on the wetted
+        area. The wetted area is ~16x the footprint, so footprint-referred that is ~5e5, i.e.
+        R'' ~ 2e-6 K m^2/W against the measured 6.8e-6 -- same order, with the measurement the
+        more conservative. The measured value is what is used.
+        """
+        return MICROCHANNEL_R_AREA / (self.die_area_mm2 * 1e-6)
+
+    @property
+    def r_caloric_K_per_W(self):
+        """Half the fluid rise, as a resistance: the mean driving temperature."""
+        return 0.5 * self.dT_fluid_K / self.heat_W
+
+    @property
+    def r_th_K_per_W(self):
+        """Whole-cooler resistance, die surface to fluid inlet."""
+        return self.r_conv_K_per_W + self.r_caloric_K_per_W
+
+    def htc_si(self):
+        return 1.0 / (self.r_th_K_per_W * self.die_area_mm2 * 1e-6)
+
+    # -- pump ---------------------------------------------------------------------------
+    @property
+    def pressure_drop_Pa(self):
+        """Laminar, anchored on the reference: dp scales with flow."""
+        return MICROCHANNEL_REF['dp_Pa'] * max(self.flux_ratio, 0.0)
+
+    def parasitic_power_W(self):
+        """Pump wall-plug power: dp * Q / eta. Channels only -- a floor, not the assembly."""
+        return self.pressure_drop_Pa * self.flow_m3s / self.mover_efficiency
+
+    def describe(self):
+        return ('{}: R_th={:.4f} K/W ({:.4f} conv + {:.4f} caloric) over {:.0f} mm^2, '
+                'flow {:.4g} m^3/s, dp {:.1f} kPa, pump {:.2f} W, inlet {:.1f} C, '
+                'mass-flux {:.2f}x reference'
+                .format(self.label, self.r_th_K_per_W, self.r_conv_K_per_W,
+                        self.r_caloric_K_per_W, self.die_area_mm2, self.flow_m3s,
+                        self.pressure_drop_Pa / 1e3, self.parasitic_power_W(),
+                        self.inlet_C, self.flux_ratio))

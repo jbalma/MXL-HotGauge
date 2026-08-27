@@ -12,7 +12,8 @@ import unittest
 from HotGauge.thermal.die_stack import (StackSpec, MATERIALS, die_layers, graded_above,
                                         render_stack_text, write_stack, compare_packages,
                                         parse_spec_string, spec_string_filename, is_spec_string,
-                                        DEFAULT_DIE_UM, DEFAULT_SOURCE_DEPTH_UM)
+                                        DEFAULT_DIE_UM, DEFAULT_SOURCE_DEPTH_UM,
+                                        DEFAULT_DIRECT_DIE_UM, DEFAULT_DIRECT_SOURCE_DEPTH_UM)
 from HotGauge.thermal.stack_report import parse_stack, resistance_budget
 
 _LEGACY = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -285,5 +286,214 @@ class TestRendering(unittest.TestCase):
         self.assertNotIn('thermal conductivity     120', text)
 
 
+class TestTheDeviceAsItIsBuilt(unittest.TestCase):
+    """The stack the part actually is: a cold plate on top of a direct-die chip.
+
+    These are not modelling preferences. The array mounts above the die, the convection control
+    keeps the same sink, and the active layer sits at the same depth in both arms. A change that
+    breaks one of these makes every photonic-versus-convection number a comparison of two
+    different machines, which is the failure this class exists to prevent.
+    """
+
+    def test_direct_die_buries_the_active_layer_200_um_down_by_default(self):
+        spec = StackSpec(package='direct_die', mr_layer=True, mr_powered=True)
+        self.assertAlmostEqual(spec.source_depth_um, 200.0)
+        self.assertAlmostEqual(spec.source_depth_um, DEFAULT_DIRECT_SOURCE_DEPTH_UM)
+        self.assertAlmostEqual(spec.die_um, DEFAULT_DIRECT_DIE_UM)
+        above = 0.0
+        for layer in spec.die_layers():
+            if layer['kind'] == 'source':
+                break
+            above += layer['height_um']
+        self.assertAlmostEqual(above, 200.0, places=6)
+
+    def test_lidded_default_is_untouched_by_the_direct_die_default(self):
+        """The historical die must not move; skylake.stk equivalence depends on it."""
+        spec = StackSpec(package='lidded')
+        self.assertAlmostEqual(spec.die_um, DEFAULT_DIE_UM)
+        self.assertAlmostEqual(spec.source_depth_um, DEFAULT_SOURCE_DEPTH_UM)
+
+    def test_photonic_and_convection_differ_in_exactly_one_layer(self):
+        """Same sink, same die, same burial depth -- only the 30 um above the silicon changes.
+
+        The comparison is only about the cooler if nothing else moves with it.
+        """
+        mr = StackSpec(package='direct_die', mr_layer=True, mr_powered=True)
+        air = StackSpec(package='direct_die', mr_layer=False)
+
+        self.assertEqual([(l['kind'], l['height_um'], l['material']) for l in mr.die_layers()],
+                         [(l['kind'], l['height_um'], l['material']) for l in air.die_layers()])
+        self.assertAlmostEqual(mr.source_depth_um, air.source_depth_um)
+
+        mr_pkg, air_pkg = mr.package_layers(), air.package_layers()
+        self.assertEqual(len(mr_pkg), len(air_pkg))
+        self.assertEqual(mr_pkg[0], air_pkg[0], 'the sink must be identical in both arms')
+
+        differing = [(a, b) for a, b in zip(mr_pkg, air_pkg) if a != b]
+        self.assertEqual(len(differing), 1, 'exactly one layer may differ')
+        (mr_inst, _, mr_h, mr_mat), (air_inst, _, air_h, air_mat) = differing[0]
+        self.assertEqual((mr_inst, air_inst), ('MR_PIXELS', 'TIM'))
+        self.assertAlmostEqual(mr_h, air_h, msg='the array must be as thick as the grease it '
+                                                'replaces, or the comparison moves the sink')
+        self.assertEqual((mr_mat, air_mat), ('GAAS', 'THERMAL_GREASE'))
+
+    def test_the_array_sits_directly_between_the_silicon_and_the_sink(self):
+        """Nothing may come between the pixels and the die: that interface IS the device."""
+        pkg = StackSpec(package='direct_die', mr_layer=True, mr_powered=True).package_layers()
+        self.assertEqual([i for i, _, _, _ in pkg], ['SINK', 'MR_PIXELS'])
+
+    def test_every_die_layer_keeps_a_separator_at_an_awkward_depth(self):
+        """A height that renders to six characters must not run into the material name.
+
+        '86.745316SILICON' is a .stk 3D-ICE cannot parse, and our own reader skipped the line
+        rather than complaining -- so the failure showed up as a resistance budget quietly
+        missing 200 um of silicon. Round burial depths hide it; 137 um does not.
+        """
+        import re
+        for depth in (137.0, 200.0, 0.6745, 63.0):
+            spec = StackSpec(package='direct_die', mr_layer=True, mr_powered=True,
+                             source_depth_um=depth, die_um=depth + 40.0)
+            text = render_stack_text(spec)
+            # Only the die bodies declare layers by thickness; the stack section names
+            # instances instead, and would fail this pattern for an unrelated reason.
+            bodies = re.findall(r'^die\s+\w+\s*:\n((?:[ \t]+\S.*\n)+)', text, re.M)
+            self.assertTrue(bodies, 'no die body rendered at depth {}'.format(depth))
+            for body in bodies:
+                for line in body.strip().split('\n'):
+                    stripped = line.strip()
+                    if not re.match(r'^(layer|source)\s+[0-9.]+\s+\w+\s*;', stripped):
+                        self.fail('unparseable die layer at depth {}: {!r}'
+                                  .format(depth, stripped))
+
+    def test_the_budget_off_disk_sees_every_layer_at_any_depth(self):
+        """The spec's own budget and the one parsed back must agree wherever the source sits."""
+        for depth in (360.0, 200.0, 137.0):
+            spec = StackSpec(package='direct_die', mr_layer=True,
+                             source_depth_um=depth, die_um=depth + 40.0)
+            with tempfile.TemporaryDirectory() as d:
+                path = write_stack(spec, os.path.join(d, 's.stk'))
+                parsed = resistance_budget(path, 300.0)['total_K_per_W']
+            self.assertAlmostEqual(spec.resistance_budget(300.0)['total_K_per_W'], parsed,
+                                   places=9, msg='depth {}'.format(depth))
+
+    def test_the_sink_slab_can_move_into_the_boundary(self):
+        """A cold plate modelled as a die-width column is the 1/area artifact. It must be
+        removable so SpreadingSink can carry it with a real overhang instead."""
+        keep = StackSpec(package='direct_die', mr_layer=True, mr_powered=True)
+        drop = StackSpec(package='direct_die', mr_layer=True, mr_powered=True,
+                         sink_in_stack=False)
+        self.assertEqual([i for i, _, _, _ in keep.package_layers()], ['SINK', 'MR_PIXELS'])
+        self.assertEqual([i for i, _, _, _ in drop.package_layers()], ['MR_PIXELS'])
+        text = render_stack_text(drop)
+        self.assertNotIn('SINK_LAYER', text)
+        self.assertIn('top heat sink', text, 'the convective boundary must remain')
+        self.assertLess(drop.resistance_budget(91.0)['total_K_per_W'],
+                        keep.resistance_budget(91.0)['total_K_per_W'])
+
+    def test_dropping_the_slab_is_visible_in_the_stack_name(self):
+        """Two stacks that differ only in where the base lives must not share a name -- the
+        session cache and every results directory key off it."""
+        keep = StackSpec(package='direct_die', mr_layer=True, mr_powered=True)
+        drop = StackSpec(package='direct_die', mr_layer=True, mr_powered=True,
+                         sink_in_stack=False)
+        self.assertNotEqual(keep.name, drop.name)
+        self.assertTrue(drop.name.endswith('_extsink'))
+
+    def test_the_array_still_sits_on_the_silicon_without_the_slab(self):
+        """Removing the base must not move the pixels: they are bonded to the die."""
+        drop = StackSpec(package='direct_die', mr_layer=True, mr_powered=True,
+                         sink_in_stack=False)
+        self.assertEqual([i for i, _, _, _ in drop.package_layers()], ['MR_PIXELS'])
+        self.assertAlmostEqual(drop.path_to_coolant_um()['total_um'],
+                               drop.source_depth_um + drop.mr_um)
+
+    def test_burial_depth_stays_a_free_parameter(self):
+        """Die thinning is an experiment we have to be able to run, not a fixed assumption."""
+        for depth in (360.0, 200.0, 100.0, 20.0):
+            spec = StackSpec(package='direct_die', mr_layer=True, mr_powered=True,
+                             source_depth_um=depth, die_um=depth + 40.0)
+            self.assertAlmostEqual(spec.source_depth_um, depth)
+            self.assertAlmostEqual(spec.path_to_coolant_um()['total_um'], depth + spec.mr_um)
+
+
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestGeneratedStackFilenamesAreUnique:
+    """Two specs that render different stacks must not share a path in _generated/.
+
+    The readable prefix covers package, die, burial, active thickness, pixel material and grid --
+    and nothing else. The boundary flags were invisible to it, so a four-layer package, a
+    three-layer one and a one-layer one all wrote to the same file.
+
+    Within one process that is only wasteful. Across the catalogue re-run's concurrent streams it
+    is a correctness hazard, and the session cache cannot catch it because it fingerprints the
+    file's CONTENTS -- it would faithfully factorise whatever it was handed.
+    """
+
+    COLLIDED = ('spec:package=lidded',
+                'spec:package=lidded,sink_in_stack=0',
+                'spec:package=lidded,sink_in_stack=0,package_in_boundary=1')
+
+    def test_the_three_that_used_to_collide_no_longer_do(self):
+        from HotGauge.thermal.die_stack import parse_spec_string, spec_string_filename
+        names = [spec_string_filename(parse_spec_string(n)) for n in self.COLLIDED]
+        assert len(set(names)) == 3, names
+
+    def test_they_really_do_render_different_stacks(self):
+        """Otherwise the test above is pinning a distinction without a difference."""
+        from HotGauge.thermal.die_stack import parse_spec_string
+        counts = [len(parse_spec_string(n).package_layers()) for n in self.COLLIDED]
+        assert counts == [4, 3, 1], counts
+
+    def test_the_spreading_amendment_changes_the_filename(self):
+        """--spreading turns spec:X into spec:X,sink_in_stack=0 -- the reachable collision."""
+        from HotGauge.thermal.die_stack import (parse_spec_string, spec_string_filename,
+                                                stack_for_spreading)
+        base = 'spec:package=direct_die,mr=GAAS,src=200,cell=50'
+        a = spec_string_filename(parse_spec_string(base))
+        b = spec_string_filename(parse_spec_string(stack_for_spreading(base)))
+        assert a != b
+
+    def test_the_name_is_stable_and_order_independent(self):
+        """A sweep revisiting a geometry must reuse the file, not write a second one."""
+        from HotGauge.thermal.die_stack import parse_spec_string, spec_string_filename
+        a = spec_string_filename(parse_spec_string(
+            'spec:package=direct_die,mr=GAAS,src=200,cell=50'))
+        b = spec_string_filename(parse_spec_string(
+            'spec:src=200,cell=50,mr=GAAS,package=direct_die'))
+        assert a == b
+
+    def test_every_identity_field_actually_moves_the_name(self):
+        """A StackSpec field left out of the identity reintroduces the collision silently."""
+        from HotGauge.thermal.die_stack import (StackSpec, spec_string_filename,
+                                                _SPEC_IDENTITY_FIELDS)
+        # direct_die + mr_layer is the only combination the constructor accepts with a pixel
+        # layer; the perturbations below are applied to a COPY after construction, so they
+        # deliberately bypass that validation -- this is a test about names, not about physics.
+        base = StackSpec(package='direct_die', mr_layer=True)
+        base_name = spec_string_filename(base)
+        VARY = {'package': 'lidded', 'die_um': 401.0, 'source_depth_um': 361.0,
+                'source_um': 21.0, 'cell_um': 100.0, 'n_above': 6, 'grading_ratio': 1.7,
+                'mr_layer': False, 'mr_powered': True, 'mr_material': 'SI3N4', 'mr_um': 31.0,
+                'grease_um': 31.0, 'sink_um': 2001.0, 'spreader_um': 3001.0,
+                'solder_um': 201.0, 'sink_in_stack': False, 'package_in_boundary': True,
+                'ambient_K': 304.0, 'htc_3dice': 2.5e-7}
+        for f in _SPEC_IDENTITY_FIELDS:
+            assert f in VARY, 'no perturbation defined for identity field {}'.format(f)
+            import copy
+            other = copy.copy(base)
+            setattr(other, f, VARY[f])
+            assert spec_string_filename(other) != base_name, f
+
+    def test_a_rendered_spec_lands_at_its_own_filename(self):
+        import tempfile, os as _os
+        from HotGauge.thermal.die_stack import render_spec_string, parse_spec_string, \
+            spec_string_filename
+        d = tempfile.mkdtemp()
+        for n in self.COLLIDED:
+            path = render_spec_string(n, d)
+            assert _os.path.basename(path) == spec_string_filename(parse_spec_string(n))
+        # ...and all three survive on disk together, which is the actual fix.
+        assert len([f for f in _os.listdir(d) if f.endswith('.stk')]) == 3

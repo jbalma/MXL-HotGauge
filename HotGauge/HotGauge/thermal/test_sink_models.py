@@ -12,7 +12,8 @@ import pytest
 from HotGauge.thermal.sink_models import (UM2_PER_M2, htc_si_to_3dice, htc_3dice_to_si,
                                           thermal_resistance_to_htc_si, ConstantHTCSink,
                                           ThermalResistanceSink, HS483AirSink,
-                                          render_stack_with_sink, fit_area_ratio)
+                                          render_stack_with_sink, fit_area_ratio, SpreadingSink,
+                                          external_r_for_spreading_total)
 
 
 # ---------------------------------------------------------------------------
@@ -298,3 +299,290 @@ def test_render_roundtrips_through_the_real_skylake_template(tmp_path):
     text = open(out).read()
     assert '{:.6e}'.format(sink.htc_3dice()) in text
     assert '300.000000' in text
+
+
+# ---------------------------------------------------------------------------
+# The overhanging base
+# ---------------------------------------------------------------------------
+class TestSpreadingSink:
+    """The cold plate as a boundary term rather than a die-width column of metal."""
+
+    def _sink(self, r_th, die_mm2):
+        return ThermalResistanceSink(r_th, die_mm2 * 1e-6)
+
+    def test_it_wraps_and_reports_the_underlying_convection(self):
+        sp = SpreadingSink(self._sink(0.05, 300.0), 300.0, base_area_mm2=1825.0)
+        assert sp.total_resistance_K_per_W() > 0.05, 'spreading can only add resistance'
+        assert sp.htc_si() == pytest.approx(
+            1.0 / (sp.total_resistance_K_per_W() * 300.0 * 1e-6))
+
+    def test_a_small_die_is_penalised_but_not_by_the_area_ratio(self):
+        small = SpreadingSink(self._sink(0.05, 91.0), 91.0, base_area_mm2=1825.0)
+        large = SpreadingSink(self._sink(0.05, 826.0), 826.0, base_area_mm2=1825.0)
+        r_small = small.total_resistance_K_per_W()
+        r_large = large.total_resistance_K_per_W()
+        assert r_small > r_large
+        assert r_small / r_large < 0.6 * (826.0 / 91.0)
+
+    def test_series_layers_act_over_the_base_not_the_die(self):
+        """30 um of grease is 0.082 K/W across a 91 mm^2 die and 0.004 across an 1825 mm^2 plate.
+        Moving it out of the stack is only correct if it is then charged over the base."""
+        grease = [('GREASE', 0.030, 4.0)]
+        sp = SpreadingSink(self._sink(0.05, 91.0), 91.0, base_area_mm2=1825.0,
+                           series_above_base=grease)
+        expect = 0.030e-3 / (4.0 * 1825.0e-6)
+        assert sp.series_resistance_K_per_W() == pytest.approx(expect, rel=1e-9)
+        die_referenced = 0.030e-3 / (4.0 * 91.0e-6)
+        assert sp.series_resistance_K_per_W() < 0.1 * die_referenced
+
+    def test_series_layers_increase_the_total(self):
+        bare = SpreadingSink(self._sink(0.05, 91.0), 91.0, base_area_mm2=1825.0)
+        with_series = SpreadingSink(self._sink(0.05, 91.0), 91.0, base_area_mm2=1825.0,
+                                    series_above_base=[('SINK', 2.0, 300.0)])
+        assert with_series.total_resistance_K_per_W() > bare.total_resistance_K_per_W()
+
+    def test_it_takes_the_base_from_a_cooling_spec_when_there_is_one(self):
+        """A spec's base is sized by cooler class and validated against published parts; the
+        fixed footprint is only the fallback."""
+        class _Spec(object):
+            base_area_mm2 = 4321.0
+
+        class _Sink(object):
+            spec = _Spec()
+            ambient_K = 300.0
+            label = 'x'
+            r_th_K_per_W = 0.05
+
+        assert SpreadingSink(_Sink(), 91.0).base_area_mm2 == pytest.approx(4321.0)
+
+    def test_the_package_no_longer_exceeds_the_published_budget(self):
+        """The Ryzen failure, stated as arithmetic.
+
+        As a die-width column the lidded package came to 0.4675 K/W against a published
+        junction-to-ambient of 0.3962 -- the package alone exceeded the whole budget, which is
+        impossible and is why the gate could not pass. With the lid carrying its real overhang it
+        is 0.31, leaving a plausible share for the cooler.
+        """
+        from HotGauge.thermal.die_stack import StackSpec
+        from HotGauge.thermal.cooling_spec import COOLER_CLASSES
+        import math as _math
+
+        die, published = 71.0, 0.3962
+        base = (_math.sqrt(die) * COOLER_CLASSES['desktop_tower']) ** 2
+        old = StackSpec(package='lidded').resistance_budget(die)['total_K_per_W']
+        new_spec = StackSpec(package='lidded', package_in_boundary=True)
+        t, k = new_spec.boundary_base()
+        sp = SpreadingSink(ThermalResistanceSink(1e-6, die * 1e-6), die, base_area_mm2=base,
+                           base_thickness_mm=t, base_k_W_mK=k,
+                           series_above_base=new_spec.boundary_series_layers())
+        new = new_spec.resistance_budget(die)['total_K_per_W'] + sp.total_resistance_K_per_W()
+
+        assert old > published, 'the old package really did exceed the whole published budget'
+        assert new < published, 'the new one must leave something for the cooler'
+        assert (published - new) / published > 0.1, 'and a plausible share, not a sliver'
+
+
+class TestExternalRForSpreadingTotal:
+    """Inverting the boundary: what a cooler must supply for the total to come out right.
+
+    The gate works backwards from a published junction-to-ambient figure, so it needs this. With
+    the base in the boundary the remainder after the stack is no longer the convective term alone
+    -- it also holds the spreading and the layers above the base -- and solving the cooler
+    directly against it would demand a cooler better than the target by exactly the spreading.
+    """
+
+    GEOM = dict(die_area_mm2=71.0, base_area_mm2=1825.0, base_thickness_mm=3.0,
+                base_k_W_mK=390.0)
+
+    def test_it_round_trips(self):
+        target = 0.2366
+        r = external_r_for_spreading_total(target, **self.GEOM)
+        assert r is not None
+        back = SpreadingSink(ThermalResistanceSink(r, self.GEOM['die_area_mm2'] * 1e-6),
+                             self.GEOM['die_area_mm2'],
+                             base_area_mm2=self.GEOM['base_area_mm2'],
+                             base_thickness_mm=self.GEOM['base_thickness_mm'],
+                             base_k_W_mK=self.GEOM['base_k_W_mK']).total_resistance_K_per_W()
+        assert back == pytest.approx(target, rel=1e-6)
+
+    def test_a_target_below_the_spreading_floor_is_infeasible_not_negative(self):
+        """Returning a negative resistance would silently flatter the cooler. None is the answer."""
+        assert external_r_for_spreading_total(1e-4, **self.GEOM) is None
+
+    def test_the_answer_is_below_the_target(self):
+        """Spreading is part of the budget, so the cooler must be better than the total."""
+        target = 0.2366
+        r = external_r_for_spreading_total(target, **self.GEOM)
+        assert 0.0 < r < target
+
+    def test_series_layers_tighten_the_requirement(self):
+        target = 0.2366
+        bare = external_r_for_spreading_total(target, **self.GEOM)
+        with_series = external_r_for_spreading_total(
+            target, series_above_base=[('SINK', 2.0, 300.0)], **self.GEOM)
+        assert with_series < bare
+
+
+class TestSpreadingSinkForStack:
+    """The join between the overhang physics and the stack that implies it.
+
+    Both halves of P0.4 existed and were tested for a day before anything connected them, so
+    every study driver went on solving against a 2 mm slab at the die footprint. These pin the
+    connection and, more importantly, the two ways of getting it wrong -- both of which are
+    silent: a double-counted base just makes every part run hot, and a template name has no base
+    geometry to read at all.
+    """
+
+    ARRAY = 'spec:package=direct_die,mr=GAAS,src=200,cell=50,sink_in_stack=0'
+    SLAB = 'spec:package=direct_die,mr=GAAS,src=200,cell=50'
+
+    def _sink(self, r=0.12):
+        from HotGauge.thermal.sink_models import ThermalResistanceSink
+        return ThermalResistanceSink(r, 53.0e-6)
+
+    def test_it_builds_from_a_stack_with_the_slab_removed(self):
+        from HotGauge.thermal.sink_models import spreading_sink_for_stack, SpreadingSink
+        s = spreading_sink_for_stack(self.ARRAY, self._sink(), 53.0)
+        assert isinstance(s, SpreadingSink)
+        assert s.total_resistance_K_per_W() > 0
+
+    def test_a_stack_that_still_has_its_slab_is_refused(self):
+        """Double-counting the base does not error downstream -- it just runs hot."""
+        from HotGauge.thermal.sink_models import spreading_sink_for_stack
+        with pytest.raises(ValueError, match='TWICE'):
+            spreading_sink_for_stack(self.SLAB, self._sink(), 53.0)
+
+    def test_a_template_name_is_refused_with_the_fix_named(self):
+        from HotGauge.thermal.sink_models import spreading_sink_for_stack
+        with pytest.raises(ValueError, match='sink_in_stack=0'):
+            spreading_sink_for_stack('skylake', self._sink(), 53.0)
+
+    def test_the_base_geometry_comes_from_the_spec(self):
+        from HotGauge.thermal.die_stack import parse_spec_string
+        from HotGauge.thermal.sink_models import spreading_sink_for_stack
+        spec = parse_spec_string(self.ARRAY)
+        t_mm, k = spec.boundary_base()
+        s = spreading_sink_for_stack(self.ARRAY, self._sink(), 53.0)
+        assert s.base_thickness_mm == pytest.approx(t_mm)
+        assert s.base_k_W_mK == pytest.approx(k)
+
+    def test_it_breaks_the_one_over_area_scaling(self):
+        """The whole reason the overhang exists. A slab in the stack gives 1/area exactly."""
+        from HotGauge.thermal.sink_models import spreading_sink_for_stack, ThermalResistanceSink
+        rs = []
+        for area in (53.0, 826.0):
+            sink = ThermalResistanceSink(0.12, area * 1e-6)
+            rs.append(spreading_sink_for_stack(self.ARRAY, sink, area).total_resistance_K_per_W())
+        area_ratio = 826.0 / 53.0                       # 15.6x
+        assert rs[0] / rs[1] < 0.35 * area_ratio        # nothing like 1/area
+
+    def test_the_base_is_a_fixed_area_not_a_ratio_of_the_die(self):
+        """A ratio would reintroduce 1/area, which is the failure being fixed."""
+        from HotGauge.thermal.sink_models import spreading_sink_for_stack
+        small = spreading_sink_for_stack(self.ARRAY, self._sink(), 53.0)
+        big = spreading_sink_for_stack(self.ARRAY, self._sink(), 200.0)
+        assert small.base_area_mm2 == pytest.approx(big.base_area_mm2)
+
+    def test_a_die_larger_than_the_plate_still_gets_a_sane_base(self):
+        """Clamped to at least the die: a base smaller than its own source is impossible."""
+        from HotGauge.thermal.sink_models import spreading_sink_for_stack
+        s = spreading_sink_for_stack(self.ARRAY, self._sink(), 4000.0)
+        assert s.base_area_mm2 >= 4000.0
+
+    def test_the_lidded_gate_path_uses_the_lid_as_the_base(self):
+        """Gate-only: on a lidded part the dominant spreader is the IHS, not the cold plate."""
+        from HotGauge.thermal.sink_models import spreading_sink_for_stack
+        from HotGauge.thermal.die_stack import parse_spec_string
+        name = 'spec:package=lidded,sink_in_stack=0,package_in_boundary=1'
+        spec = parse_spec_string(name)
+        t_mm, k = spec.boundary_base()
+        s = spreading_sink_for_stack(name, self._sink(), 91.0)
+        assert s.base_thickness_mm == pytest.approx(t_mm)
+        # ...and the grease and cold plate move above the base, acting over ITS area.
+        assert [n for n, _, _ in s.series_above_base] == ['GREASE', 'SINK']
+
+
+class TestSpreadingReproducesTheOverhangEvidence:
+    """The wired path must reproduce docs/evidence/direct_die_overhang.json to the digit.
+
+    This is the strongest test available for the P0.4 integration, because the evidence was
+    computed before the driver wiring existed and by a different route: if the join changes the
+    physics, these move.
+
+    It also pins the area convention, which is the one thing here that fails SILENTLY.
+    ``SpreadingSink`` wraps a cooler expressed as a coefficient, and a coefficient is meaningless
+    without an area. The cooler's h acts over its own wetted base -- the plate it is bolted to --
+    not over the die beneath it. Evaluating it over the die footprint instead cancels against the
+    ``h_base = 1/(r_ext * base_area)`` conversion inside ``total_resistance_K_per_W`` and the
+    overhang buys exactly nothing: measured 15.2x across the die-size range against the slab's
+    15.5x, i.e. indistinguishable from not having done the work. Nothing errors.
+    """
+
+    EVIDENCE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..',
+                            'docs', 'evidence', 'direct_die_overhang.json')
+
+    def _budget(self, die_area_mm2, mr):
+        from HotGauge.thermal.sink_models import spreading_sink_for_stack, ConstantHTCSink
+        from HotGauge.thermal.die_stack import stack_for_spreading, parse_spec_string
+        name = stack_for_spreading('spec:package=direct_die,mr={},src=200,cell=50'.format(mr))
+        stack_r = parse_spec_string(name).resistance_budget(die_area_mm2)['total_K_per_W']
+        boundary = spreading_sink_for_stack(
+            name, ConstantHTCSink(2000.0, ambient_K=303.15), die_area_mm2
+        ).total_resistance_K_per_W()
+        return stack_r + boundary
+
+    def _rows(self):
+        import json
+        if not os.path.isfile(self.EVIDENCE):
+            pytest.skip('docs/evidence/direct_die_overhang.json not present')
+        return json.load(open(self.EVIDENCE))['rows']
+
+    def test_every_overhang_budget_matches(self):
+        for r in self._rows():
+            got_grease = self._budget(r['die_mm2'], 'none')
+            got_array = self._budget(r['die_mm2'], 'GAAS')
+            assert got_grease == pytest.approx(r['grease_overhang_r'], abs=5e-5), r['floorplan']
+            assert got_array == pytest.approx(r['array_overhang_r'], abs=5e-5), r['floorplan']
+
+    def test_the_arm_delta_is_unchanged_by_the_sink_model(self):
+        """The cooling claim must not rest on the sink model -- see the evidence's own note.
+
+        Tolerance is 1.5e-4 rather than the 5e-5 used for the budgets because these two are a
+        DIFFERENCE of two 4-decimal stored values, and the evidence's own delta_slab (0.0688) and
+        delta_overhang (0.0687) already disagree by 1e-4 for that reason on the 34-core row. The
+        physical claim is that the two are the same number; the file cannot express it more
+        precisely than it stored it.
+        """
+        for r in self._rows():
+            delta = self._budget(r['die_mm2'], 'none') - self._budget(r['die_mm2'], 'GAAS')
+            assert delta == pytest.approx(r['delta_overhang'], abs=1.5e-4), r['floorplan']
+            assert delta == pytest.approx(r['delta_slab'], abs=1.5e-4), r['floorplan']
+            # ...and the point of the note: the sink model does not move the arm delta at all.
+            assert r['delta_slab'] == pytest.approx(r['delta_overhang'], abs=1.5e-4)
+
+    def test_the_die_size_dependence_is_broken(self):
+        """15.5x the die area must not give 15.5x less resistance. That is the whole point."""
+        rows = {r['floorplan']: r for r in self._rows()}
+        small, big = rows['skylake_7core'], rows['ga100']
+        area_ratio = big['die_mm2'] / small['die_mm2']
+        slab = small['grease_slab_r'] / big['grease_slab_r']
+        over = (self._budget(small['die_mm2'], 'none') / self._budget(big['die_mm2'], 'none'))
+        assert slab == pytest.approx(area_ratio, rel=0.02)      # the artefact: exactly 1/area
+        assert over < 0.25 * area_ratio                          # the fix
+
+    def test_the_coefficient_is_applied_over_the_base_not_the_die(self):
+        """Pinned directly, because the wrong area is invisible in every other symptom."""
+        from HotGauge.thermal.sink_models import spreading_sink_for_stack, ConstantHTCSink
+        from HotGauge.thermal.die_stack import stack_for_spreading
+        name = stack_for_spreading('spec:package=direct_die,mr=GAAS,src=200,cell=50')
+        s = spreading_sink_for_stack(name, ConstantHTCSink(2000.0, ambient_K=303.15), 53.2)
+        assert s._external_r_K_per_W() == pytest.approx(1.0 / (2000.0 * s.base_area_mm2 * 1e-6))
+
+    def test_a_whole_cooler_resistance_is_used_as_it_stands(self):
+        """The other convention: 'a 0.12 K/W tower' is already absolute, not per unit area."""
+        from HotGauge.thermal.sink_models import (spreading_sink_for_stack,
+                                                  ThermalResistanceSink)
+        from HotGauge.thermal.die_stack import stack_for_spreading
+        name = stack_for_spreading('spec:package=direct_die,mr=GAAS,src=200,cell=50')
+        s = spreading_sink_for_stack(name, ThermalResistanceSink(0.12, 53.2e-6), 53.2)
+        assert s._external_r_K_per_W() == pytest.approx(0.12)

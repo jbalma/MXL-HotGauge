@@ -50,6 +50,10 @@ def main():
                     help='parent directory for per-point --out-dir when a point does not set one')
     ap.add_argument('--keep-going', action='store_true',
                     help='continue after a point raises, instead of stopping the sweep')
+    ap.add_argument('--redo', action='store_true',
+                    help='re-solve points whose output is already on disk. Default is to skip '
+                         'them, so an interrupted or partly-failed catalogue restarts where it '
+                         'stopped instead of paying every factorisation again')
     args = ap.parse_args()
 
     points = load_points(args.points)
@@ -57,11 +61,40 @@ def main():
     if not os.path.isfile(script):
         raise SystemExit('no such script: {}'.format(script))
 
+    #: What each driver writes when it finishes. A point whose output is already on disk has
+    #: been solved, and re-solving it in a restart wastes the factorisation the restart exists to
+    #: preserve. Keyed by script basename so an unknown driver simply never skips.
+    OUTPUT_NAME = {
+        'mr_comparison.py': 'mr_comparison.json',
+        'clock_headroom.py': 'clock_headroom.json',
+        'accelerator_study.py': 'accelerator_study.json',
+        'stacked_memory_study.py': 'stacked_memory.json',
+        'thermal_tiers.py': 'tiers.json',
+        'cop_breakeven.py': 'cop_breakeven.json',
+        'mr_clipping_study.py': 'mr_study.json',
+        'mr_plan_probe.py': 'mr_plan_probe.json',
+        'hybrid_cooling_optimizer.py': 'sweep.json',
+    }
+    out_name = OUTPUT_NAME.get(os.path.basename(script))
+
     results, t_sweep = [], time.time()
+    n_skipped = 0
     for i, argv in enumerate(points):
         if '--out-dir' not in argv:
             root = args.out_root or os.path.join(os.getcwd(), 'sweep')
             argv = argv + ['--out-dir', os.path.join(root, 'point_{:02d}'.format(i))]
+        # -- restart -------------------------------------------------------------------
+        # A 20-hour catalogue will be interrupted, and it will contain points that fail for
+        # reasons worth fixing. Without this a restart re-solves everything that already
+        # succeeded, which on the big dies is the whole cost.
+        if out_name and not args.redo:
+            od = argv[argv.index('--out-dir') + 1]
+            if os.path.isfile(os.path.join(od, out_name)):
+                print('[sweep] point {}/{}: SKIP, {} already present'
+                      .format(i + 1, len(points), out_name), flush=True)
+                results.append({'point': i, 'argv': argv, 'status': 'skipped', 'seconds': 0.0})
+                n_skipped += 1
+                continue
         print('\n' + '=' * 78)
         print('[sweep] point {}/{}: {}'.format(i + 1, len(points), ' '.join(argv)))
         print('=' * 78, flush=True)
@@ -90,7 +123,9 @@ def main():
         print('[sweep] point {} {} in {:.1f} s'.format(i, status, dt), flush=True)
 
     total = time.time() - t_sweep
-    print('\n[sweep] {} points in {:.1f} s ({:.1f} min)'.format(len(points), total, total / 60))
+    print('\n[sweep] {} points in {:.1f} s ({:.1f} min){}'.format(
+        len(points), total, total / 60,
+        '' if not n_skipped else '  [{} already done, skipped]'.format(n_skipped)))
     for r in results:
         print('   point {:<3d} {:<10s} {:8.1f} s'.format(r['point'], r['status'], r['seconds']))
     n_bad = sum(1 for r in results if r['status'] != 'ok')

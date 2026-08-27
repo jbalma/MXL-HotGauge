@@ -37,8 +37,36 @@ These are the measured results the methodology has to be built on. Each one is a
 **Placement of the extraction decides whether die thinning is worth anything.** `measured` —
 `docs/evidence/mr_placement_burial_depth.json`. With cooling co-located with the transistors the
 burial depth is inert by construction. With the array above the silicon, thinning from 360 µm to
-20 µm improves what a fixed 3 W buys by 67%. Burial depth is therefore a spec a vendor must
+20 µm improves what a fixed 3 W buys **by 44% through the production path** (67% by the direct
+probe — see the qualification immediately below). Burial depth is therefore a spec a vendor must
 agree to, and it is the first item on any term sheet.
+
+> **Qualification on the number, 26 August 2026 — read before quoting it externally.** The **67%**
+> is real but it is **not a die-wide constant**, and two things move it several-fold:
+>
+> * **Block maximum against block average.** `mr_placement_probe` writes its own `.stk` with
+>   `Tflp(..., maximum, final)`. The production path is `ICE.DIE_TFLP_OUTPUT`, which is
+>   **`average`** — so every catalogue row, and every block the planner ranks on, is a block
+>   *mean*. On the same block at the same depth the two differ by 2.6 K (81.24 max vs 78.62 avg).
+> * **Which block.** On averages the hottest block is `L2_4`, not `L3_4`. The direct probe re-run
+>   on `L2_4` gives **+11.0%** against +67.2% on `L3_4` —
+>   `docs/evidence/mr_placement_burial_depth_L2.json`.
+>
+> Driven end to end through `run_mr_clipping` — same 3 W, same block, byte-identical tile plan at
+> every depth — the swing is **+44.1% in the array against −7.0% in the source layer**
+> (`docs/evidence/burial_depth_through_planner.json`). **What survives all three measurements is
+> the claim the term sheet actually needs**: array placement is strongly burial-sensitive and
+> co-located placement is not. Quote the magnitude with the block and the reduction stated, or
+> quote the separation.
+
+> **Settled, 25 August 2026.** The device is the array **above the silicon**, always — a cold
+> plate mounted on a direct-die package, with 30 µm of pixel array where the thermal grease
+> would be. Co-location is not what is being built, so there is no escape from the burial-depth
+> spec above and the 67% is a real constraint rather than a choice between two models. The
+> convection control carries the same sink and the same active-layer depth, differing only in
+> that one 30 µm layer. Recorded in `HotGauge/HotGauge/thermal/die_stack.py`, asserted by
+> `test_die_stack.py::TestTheDeviceAsItIsBuilt`, and detailed in `docs/EXECUTION_PLAN.md` §6.
+> Default active-layer depth is 200 µm; it remains a free parameter so thinning can be swept.
 
 **The optimal tile pitch reverses with the workload.** `measured` —
 `docs/evidence/tile_pitch_{uniform,concentrated}.json`. On a degenerate peak a coarse 2000 µm
@@ -213,6 +241,123 @@ Phase 0 is not optional.
 5. **Phase 4** once a burstier trace exists.
 6. **Phase 2(c)** and **Phase 5** when there is something worth licensing.
 
+Section 9 records where this is meant to end up — the generational ladder of floorplans, each
+defined by the bottleneck the previous one exposed — so that the ordering above is read as a route
+to something rather than as a list of studies.
+
 The one thing to avoid: presenting Phase 2(a) RISC-V numbers as characterising RISC-V. They
 characterise a plausible RISC-V-shaped floorplan, which is a different claim, and this project has
 already had to withdraw a catalogue of results once for exactly that class of slippage.
+
+---
+
+## 9. Where this is going — the evolution ladder
+
+Phases 1–4 are instruments. This section is what they are for, and it is the record of the
+destination rather than a schedule.
+
+The output of the programme is not "an LCMR-enabled core". It is a **sequence of floorplans, each
+one defined by the bottleneck the previous one exposed**, run identically across all three ISAs:
+
+```
+  gen 0   baseline floorplan, solved WITH and WITHOUT LCMR
+            │   the delta is not the result -- the BINDING CONSTRAINT it reveals is
+            ▼
+  gen 1   floorplan that spends the removed constraint on the primary bottleneck
+            │   which exposes the next one
+            ▼
+  gen 2   floorplan that addresses what gen 1 exposed
+            │
+            ▼   ... until the binding constraint is no longer thermal
+```
+
+The deliverable is the ladder itself: for each ISA, what bound the design at each rung, what was
+changed in response, and what that bought at fixed die power and fixed MR electrical budget.
+
+### What makes this a measurement rather than a story
+
+Each generation must **name its binding constraint before the next is designed**, and the naming
+has to come out of the solve rather than out of intuition. The pipeline can already distinguish:
+
+| binding constraint | how it announces itself | the lever it licenses |
+|---|---|---|
+| peak block temperature | one block sets `core_fmax` | clustering, tile alignment, hot-unit placement |
+| die-average path | proportional extraction stays linear while targeted saturates | die thinning, tile pitch, total budget |
+| leakage runaway | `diverged` at every damping | lower `T_j` outright — the regime LCMR opens |
+| MR electrical budget | the plan hits its own COP-weighted ceiling | collection efficiency, pitch, η_ASF |
+| V/F table ceiling | `vf_clamped` | **not an architecture result — see below** |
+| none of the above | clock rises with no thermal response | LCMR has stopped being the limit; the ladder ends |
+
+That last row is the honest stopping rule and it belongs up front rather than as a footnote. At
+some rung the answer becomes *"you are now limited by something a cooler cannot fix"* — memory
+bandwidth, ILP, wire delay. Knowing exactly which rung that is, and for which ISA, is a more
+valuable and more defensible claim than pretending the ladder goes on forever.
+
+Three invariants make the rungs comparable. Break any one and "generation 3 is faster" degenerates
+into "generation 3 was allowed more":
+
+* same workload and same trace,
+* same die power budget,
+* same MR **electrical** budget — not the same heat removed, the same watts spent removing it.
+
+### The prerequisite that blocks the first rung
+
+`clock_search` bisects against a **V/F table that stops at 5.0 GHz**. Past it the voltage clamps,
+the power cost is understated, and the search sets `vf_clamped`. The entire premise of the ladder
+is that LCMR buys sustainable clock — and **a study of whether LCMR reaches 6 GHz cannot be run on
+a table that stops at 5.** Extending the V/F table, with its provenance stated the way the unit
+areas are, is a prerequisite for gen 0 rather than a step within it.
+
+### The levers, in the order they are expected to bind
+
+**Turbo and boost policy.** Cheapest to change and most likely to be mis-set for a cooled part:
+today's policies are tuned for a thermal mass that dissipates slowly and a cooler that cannot be
+steered. Needs Phase 4 — transient plus a modulated array — so it is gated on the burstier trace.
+
+**Threshold voltage and the operating regime — the deepest lever, and the one only LCMR unlocks.**
+Lowering V_t buys frequency at the cost of leakage, and leakage is what has always made it
+unaffordable. But leakage is exponential in temperature and this project already has a *calibrated*
+model of that curve: local doubling runs from ~180 K at 310 K to ~8.6 K at 400 K. A cooler that
+holds the junction far below the conventional operating point therefore **buys back the leakage
+cost of a low-V_t device**. That is a co-design result which does not exist without active cooling,
+it is testable with what is already built, and it is the strongest candidate for the programme's
+headline claim. It also inverts the usual framing: LCMR's value is not that it removes more heat,
+it is that it moves the device to a part of the leakage curve nobody can otherwise afford.
+
+**Vector / SIMD width.** The FPU/AVX block is 8.7% of core area *and* it carries the highest power
+density, which is what an area cooler responds to. This is also the honest replacement for the
+decode-area hypothesis in §4, which the unit-area model cannot express (decode is 3.3%).
+
+**Specialised high-frequency ALUs and registers.** A small block clocked past what the rest of the
+core can sustain, because the array can hold that block alone. This is §5's "cluster the hot logic"
+with a concrete mechanism attached, and it is the point where floorplan and µarchitecture stop
+being separable.
+
+**Clustering high-density logic.** Already §5, and the cheapest of these to test.
+
+**Power delivery is out of scope for the current model, and that has to be said rather than
+assumed away.** Nothing in the pipeline sees IR drop, dI/dt or the PDN, so "inject more power to
+reach higher frequency" is a lever we cannot presently evaluate. It is also the lever most likely
+to bind in a real part while remaining invisible here, so any rung that depends on it must be
+labelled as resting on an unmodelled assumption.
+
+### The figures this is meant to produce
+
+Per ISA, and comparable across them:
+
+1. **The ladder itself** — sustainable clock (or throughput) against generation, at fixed die
+   power and fixed MR electrical budget, with the binding constraint annotated at each rung.
+2. **Where the constraint moved** — the floorplan at each generation, shaded by whatever was
+   binding, so the reader sees the hotspot migrate and then stop being a hotspot.
+3. **The three-ISA overlay** — the same ladder for x86, ARM and RISC-V. If the ISAs bind at
+   different rungs, or want different arrays, that is the licensable finding §2 predicts.
+4. **The stopping rung** — what is left when thermal stops being the limit, which is the
+   boundary of the claim.
+
+### What this does not license
+
+Generation *n* is a floorplan we designed to our own rules and scored on our own pipeline. Until
+the acceptance gate reaches 4/4 and at least one ISA's areas come from something a vendor cannot
+argue with (§4 route (c)), the ladder characterises **our model's response to LCMR**, not silicon.
+That is a real and useful thing to know; it is not the same claim, and the project has already had
+to withdraw a catalogue once for exactly this class of slippage.

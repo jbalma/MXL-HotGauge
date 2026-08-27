@@ -19,10 +19,21 @@ order they are cheapest to rule out:
     cooling   the sink, which CoolingSpec already reproduces to within a few percent of the
               published resistance -- so this one is expected to be exonerated
 
-The stack template is the fourth candidate and the one this script cannot vary: every study uses
-``skylake``, whose spreader, TIM and lid are sized for a ~100 mm^2 CPU, under an 826 mm^2 die.
-That is the same class of error as the heatsink one layer down, and if the three above are cleared
-it is where to look next.
+The stack template WAS the fourth candidate and the one this script could not vary. It can now:
+``--stack`` takes a generated spec, and ``--spreading`` moves the package's spreading layers out
+of the stack and into the boundary, where they get their real overhang instead of being a column
+of metal the width of the die.
+
+That fourth candidate turned out to be the largest one. As a stack layer the base tracks 1/area
+exactly -- 15.5x across the die sizes this project models -- which is why the gate reproduced an
+826 mm^2 accelerator and failed a 91 mm^2 CPU. See ``docs/evidence/direct_die_overhang.json``.
+
+**Read the result honestly.** Four package inputs behind this gate are still unvalidated: the
+die-attach solder thickness and conductivity, and the cold plate's thickness and conductivity
+(``docs/PHASE0_CHECKLIST.md``, P0.4). Adjusting them until the gate passes is tuning against the
+acceptance test, which is the exact failure the gate exists to prevent. Run it at the values the
+model already holds; if it fails, that is a result and the four inputs are where to look, with
+their OWN references.
 """
 import os
 import sys
@@ -40,13 +51,16 @@ from HotGauge.power import BasicPowerTrace, LeakageModel
 from HotGauge.thermal import get_stack_template, ICEThermalSolver, run_leakage_feedback
 from HotGauge.thermal.ice_server import shared_cache
 from HotGauge.thermal.leakage_feedback import load_calibrated_leakage_model
-from HotGauge.thermal.sink_models import render_stack_with_sink, chip_area_m2_from_floorplan
+from HotGauge.thermal.sink_models import (render_stack_with_sink, chip_area_m2_from_floorplan,
+                                          SpreadingSink, external_r_for_spreading_total)
+from HotGauge.thermal.die_stack import parse_spec_string, is_spec_string
 from HotGauge.thermal.ICE import Floorplan
 from HotGauge.thermal.stack_models import coarsen_stack_grid
 from HotGauge.thermal.cooling_spec import (CoolingSpec, CoolingSpecSink, air_spec,
                                            solve_flow_for_peak, solve_flow_for_r_th,
                                            velocity_is_plausible, measure_package_resistance,
-                                           external_r_for_total, COOLER_CLASSES)
+                                           external_r_for_total, base_area_from_footprint,
+                                           COOLER_CLASSES)
 from HotGauge.thermal.accelerator_floorplan import (ga100_geometry, ga100_floorplan,
                                                     ga100_block_powers, block_areas_mm2,
                                                     GA100_POWER_SPLIT, SM_SRAM_FRACTION,
@@ -142,22 +156,74 @@ def run_point(args, key, split_mode='assumed', leak_fraction=None, leak_by_class
     #    die the package is more than half the budget.
     # 2. The sink is sized by COOLER CLASS. base_spread 1.85 is the CFD study's own small sink;
     #    using it everywhere demanded face velocities nobody builds.
+    # Base geometry first: the probe below needs the same boundary the real solve will get, or
+    # the resistance it subtracts is not the one 3D-ICE saw.
+    base_mm2 = base_t_mm = base_k = series = None
+    if args.spreading:
+        if not is_spec_string(args.stack):
+            raise SystemExit(
+                '--spreading needs a generated stack so its base geometry is known, not the '
+                'template {!r}. For a lidded reference part: --stack '
+                'spec:package=lidded,sink_in_stack=0,package_in_boundary=1'.format(args.stack))
+        spec_obj = parse_spec_string(args.stack)
+        if spec_obj.boundary_base() is None:
+            raise SystemExit(
+                '--stack {!r} declares no boundary base to spread into. Add sink_in_stack=0, '
+                'and package_in_boundary=1 on a lidded part.'.format(args.stack))
+        base_mm2 = args.base_mm2 or base_area_from_footprint(area_mm2)
+        base_t_mm, base_k = spec_obj.boundary_base()
+        series = spec_obj.boundary_series_layers()
+
+    def _wrap(sk):
+        if not args.spreading:
+            return sk
+        return SpreadingSink(sk, area_mm2, base_area_mm2=base_mm2,
+                             base_thickness_mm=base_t_mm, base_k_W_mK=base_k,
+                             series_above_base=series, ambient_K=p['ambient_C'] + 273.15)
+
     r_pkg = args.package_r
     if r_pkg is None:
         probe = solve_flow_for_peak(p['fluid'], area_mm2, p['power_W'], p['temp_C'][1],
                                     inlet_C=p['ambient_C'], ambient_C=p['ambient_C'],
                                     base_spread=spread)
-        probe_sink = CoolingSpecSink(probe, p['power_W'])
+        probe_sink = _wrap(CoolingSpecSink(probe, p['power_W']))
         probe_stack = render_stack_with_sink(get_stack_template(args.stack), probe_sink,
                                              os.path.join(out_dir, 'probe.stk'))
         coarsen_stack_grid(probe_stack, args.cell_um)
+        # The resistance measure_package_resistance subtracts must be the one the stack was
+        # RENDERED with, or the remainder is not the package.
+        probe_r = (probe_sink.total_resistance_K_per_W() if args.spreading
+                   else probe_sink.r_th_K_per_W)
         _, r_pkg, _ = measure_package_resistance(
-            probe_stack, flp, args.tech_node, area_mm2, probe_sink.r_th_K_per_W,
+            probe_stack, flp, args.tech_node, area_mm2, probe_r,
             p['power_W'], p['ambient_C'] + 273.15, powers,
             session_cache=shared_cache(), run_dir=os.path.join(out_dir, 'pkg'))
 
-    r_ext = external_r_for_total(p['implied_r_th_peak'], r_pkg)
-    spec = solve_flow_for_r_th(p['fluid'], area_mm2, r_ext, inlet_C=p['ambient_C'],
+    # What the boundary as a whole must deliver, once the stack has taken its share.
+    r_boundary = external_r_for_total(p['implied_r_th_peak'], r_pkg)
+
+    if args.spreading:
+        # With the base in the boundary, the remainder is NOT the convective term alone: it also
+        # contains the spreading into the base and whatever sits above it. Solving the cooler
+        # directly against r_boundary would demand a cooler better than the target by exactly the
+        # spreading resistance -- which is how you end up asking for a 0.0028 K/W cooler, a thing
+        # that does not exist. Invert the boundary instead.
+        r_ext = external_r_for_spreading_total(
+            r_boundary, area_mm2, base_mm2, base_thickness_mm=base_t_mm,
+            base_k_W_mK=base_k, series_above_base=series)
+        if r_ext is None:
+            raise SystemExit(
+                'the spreading into a {:.0f} mm^2 base alone exceeds the {:.4f} K/W left after '
+                'the stack on a {:.0f} mm^2 die -- no cooler reaches this point through this '
+                'package. That is a real answer, not a tuning failure.'
+                .format(base_mm2, r_boundary, area_mm2))
+        # The cooler is sized over the BASE it is bolted to, not over the die.
+        cooler_area_mm2 = base_mm2
+    else:
+        r_ext = r_boundary
+        cooler_area_mm2 = area_mm2
+
+    spec = solve_flow_for_r_th(p['fluid'], cooler_area_mm2, r_ext, inlet_C=p['ambient_C'],
                                ambient_C=p['ambient_C'], base_spread=spread)
     if spec is None:
         raise SystemExit(
@@ -165,9 +231,9 @@ def run_point(args, key, split_mode='assumed', leak_fraction=None, leak_by_class
             '{} sink -- a real answer: this cooling class cannot hold the published temperature '
             'through this package.'.format(r_ext, area_mm2, p['fluid'], p.get('cooler_class')))
     if p['fluid'] == 'air':
-        spec = air_spec(area_mm2, spec.flow_m3s, p['ambient_C'], ambient_C=p['ambient_C'],
+        spec = air_spec(cooler_area_mm2, spec.flow_m3s, p['ambient_C'], ambient_C=p['ambient_C'],
                         base_spread=spread)
-    sink = CoolingSpecSink(spec, p['power_W'], r_package_K_per_W=r_pkg)
+    sink = _wrap(CoolingSpecSink(spec, p['power_W'], r_package_K_per_W=r_pkg))
 
     stack = render_stack_with_sink(get_stack_template(args.stack),
                                    sink, os.path.join(out_dir, 'stack.stk'))
@@ -198,9 +264,17 @@ def run_point(args, key, split_mode='assumed', leak_fraction=None, leak_by_class
 
     ok, verdict = check_peak(key, peak_C, diverged=diverged)
     return {'point': key, 'split_mode': split_mode, 'leak_fraction': leak_fraction,
+            'stack': args.stack, 'spreading': bool(args.spreading),
+            'base_mm2': (base_mm2 if args.spreading else None),
+            'r_boundary_K_per_W': r_boundary,
             'r_package_K_per_W': r_pkg, 'r_external_K_per_W': r_ext,
             'cooler_class': p.get('cooler_class'),
-            'leak_by_class': leak_by_class, 'r_th_K_per_W': sink.r_th_K_per_W,
+            'leak_by_class': leak_by_class,
+            # A SpreadingSink has no r_th_K_per_W on purpose -- exposing one would make it look
+            # like a whole-cooler resistance to SpreadingSink's own duck-typed check, and a
+            # wrapped wrapper would then skip its spreading term silently.
+            'r_th_K_per_W': (sink.total_resistance_K_per_W() if args.spreading
+                             else sink.r_th_K_per_W),
             'flow_m3s': spec.flow_m3s, 'wall_plug_W': spec.wall_plug_W(p['power_W']),
             'peak_C': peak_C, 'peak_class': (tiers or {}).get('peak_class'),
             'diverged': diverged, 'unconverged': bool(res.get('unconverged')),
@@ -218,7 +292,19 @@ def main():
                     help='on failure, walk the candidate causes')
     ap.add_argument('--leak-fraction', type=float, default=0.25)
     ap.add_argument('--cell-um', type=float, default=100.0)
-    ap.add_argument('--stack', default='skylake')
+    ap.add_argument('--stack', default='skylake',
+                    help="stack template or spec: string. The gate's reference parts are LIDDED, "
+                         "so the spreading form is "
+                         "spec:package=lidded,sink_in_stack=0,package_in_boundary=1 -- see "
+                         "--spreading. 'skylake' is the historical template every earlier gate "
+                         "run used and is kept as the default so those reproduce.")
+    ap.add_argument('--spreading', action='store_true',
+                    help='fold the package spreading layers into the boundary with their real '
+                         'overhang, instead of leaving them in the stack as columns the width of '
+                         'the die. Requires a --stack spec with sink_in_stack=0 (and '
+                         'package_in_boundary=1 on a lidded part).')
+    ap.add_argument('--base-mm2', type=float, default=None,
+                    help='spreading base footprint [mm^2]; default is the socket footprint')
     ap.add_argument('--tech-node', type=int, default=7)
     ap.add_argument('--tol', type=float, default=0.05)
     ap.add_argument('--max-iter', type=int, default=60)

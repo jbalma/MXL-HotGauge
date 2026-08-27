@@ -45,17 +45,78 @@ import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
-#: Documented MR envelope
-DEFAULT_H_MAX_W_PER_MM2 = 10.0
-DEFAULT_DT_MAX_K = 10.0
-#: Laser wall-plug efficiency (electrical -> optical pump). Maxwell Labs working assumption.
-DEFAULT_LASER_WALLPLUG = 0.70
-#: Laser power converter (LPC) cell efficiency, optical -> DC. Working assumption.
-DEFAULT_LPC_EFFICIENCY = 0.90
-#: Anti-Stokes fluorescence (ASF) / extractor efficiency: heat removed per watt of *optical*
-#: pump delivered. Working assumption 0.20. NOTE this is an OPTICAL efficiency -- the
-#: electrical COP is eta_asf * eta_laser, so 0.20 ASF at 70 % wall-plug is COP 0.14.
-DEFAULT_ETA_ASF = 0.20
+# ---------------------------------------------------------------------------------------------
+# The MR envelope, and where every number in it comes from
+# ---------------------------------------------------------------------------------------------
+# Until 26 August 2026 this block read "Documented MR envelope: h_max 10 W/mm^2, dt_max 10 K"
+# with no source. It was wrong in both directions at once, and the direction mattered:
+#
+#   * **pessimistic about CAPABILITY.** Draft_5 s6.4.1 (benchtop, preliminary) reports
+#     250 W/mm^2 extracted from a 100 x 100 um area and a 45 C reduction against the
+#     conventional baseline. The model was clipping at 10 W/mm^2 and 10 K -- 25x and 4.5x below
+#     what the bench had already shown.
+#   * **optimistic about EFFICIENCY.** The same bench achieved 3.5 % cooling efficiency
+#     (eta_ASF ~ 0.035) where the model assumed 0.20.
+#
+# That combination silently bounded every MR result in the catalogue: the planner could never
+# ask for more than 10 K of lift, so any architectural lever needing more was unreachable **by
+# assumption**, not by physics. The threshold-voltage lever is the case that matters -- a 50 mV
+# V_t reduction needs ~22 K and a 75 mV one ~33 K (docs/LADDER_GEN0.md). Both are inside the
+# demonstrated 45 K and both were outside the assumed 10 K.
+#
+# The values below are the DEMONSTRATED bench figures for capability and the TARGET figures for
+# efficiency. Both are labelled, because they are not the same kind of number and a reader is
+# entitled to know which is which.
+
+#: Peak cooling power density [W/mm^2]. **Demonstrated**, Draft_5 s6.4.1: 250 W/mm^2 from a
+#: 100 x 100 um area on the bench.
+#:
+#: Note what that does and does not say. It is a LOCAL extraction density over 0.01 mm^2. Whether
+#: a tile-scale array sustains it over a 500 um tile is a separate question about pump delivery
+#: and parasitic load, and this model does not answer it -- it applies the figure per tile. If
+#: that turns out to be the binding constraint, it will show up as the plan hitting h_max, which
+#: run_mr_clipping already reports.
+DEFAULT_H_MAX_W_PER_MM2 = 250.0
+#: Previous value, retained so a pre-26-Aug result can be reproduced: --mr-h-max 10
+LEGACY_H_MAX_W_PER_MM2 = 10.0
+
+#: Maximum temperature lift the stage can sustain [K]. **Demonstrated**, Draft_5 s6.4.1:
+#: "Temperature reduction: 45 C below conventional cooling baseline".
+DEFAULT_DT_MAX_K = 45.0
+#: Previous value, retained for reproduction: --mr-dt-max 10
+LEGACY_DT_MAX_K = 10.0
+
+#: Anti-Stokes fluorescence (ASF) extraction efficiency: heat removed per watt of *optical* pump.
+#: **TARGET**, mid-range of Draft_5 s3.5.4's "10-60 % across MVP stages". Bench-demonstrated is
+#: 0.035 (s6.4.1); the previous default was 0.20.
+#:
+#: This is an OPTICAL efficiency. The electrical COP is eta_asf * eta_laser.
+DEFAULT_ETA_ASF = 0.32
+#: Laser diode wall-plug efficiency (electrical -> optical pump). **TARGET**. Draft_5 s3.5.4
+#: gives 70-75 % as *demonstrated* at 900-1000 nm, so 0.85 is beyond demonstrated and must be
+#: reported as a target.
+DEFAULT_LASER_WALLPLUG = 0.85
+#: Laser power converter (LPC) cell efficiency, optical -> DC. **TARGET**. Draft_5 s3.5.4 gives
+#: "up to 87 % demonstrated in GaAs/SiC", so 0.92 is likewise beyond demonstrated.
+DEFAULT_LPC_EFFICIENCY = 0.92
+
+#: What the bench has actually achieved, kept next to the targets so the gap is inspectable
+#: rather than remembered. Sources are all Draft_5.
+DEMONSTRATED = {
+    'h_max_W_per_mm2': 250.0,      # s6.4.1, from a 100 x 100 um area
+    'dt_max_K': 45.0,              # s6.4.1, below the conventional baseline
+    'eta_asf': 0.035,              # s6.4.1, "7000 W/mm^2 pump for 250 W/mm^2 cooling"
+    'laser_wallplug': 0.75,        # s3.5.4, 70-75 % demonstrated at 900-1000 nm
+    'lpc_efficiency': 0.87,        # s3.5.4, "up to 87 % demonstrated in GaAs/SiC"
+    'source': 'docs/photonic_cooling/Draft_5__Photonic_cooling_of_chips_v12___Provisional_Version.pdf',
+}
+
+#: The previous defaults, as one dict, so a driver can offer --legacy-envelope and a test can
+#: assert the old catalogue still reproduces.
+LEGACY_ENVELOPE = {
+    'h_max': 10.0, 'dt_max_K': 10.0,
+    'eta_asf': 0.20, 'laser_wallplug': 0.70, 'lpc_efficiency': 0.90,
+}
 #: Optical-path collection loss between the cooling element and the LPC. 1.0 reproduces the
 #: MXL-Photonic-Cooling-Power-Analysis.xlsx model exactly (it assumes perfect routing).
 DEFAULT_COLLECTION_EFFICIENCY = 1.0
@@ -442,9 +503,94 @@ def _relax_plan_toward_target(plan, envelope, temps, params, sens, relax, t_floo
     return {b: q for b, q in new.items() if q > 0.0}
 
 
+class CoolingApplication(object):
+    """How a plan expressed over processor blocks reaches the solver.
+
+    Two placements exist and they are not interchangeable.
+
+    ``in_source_layer`` (legacy) subtracts the plan from the processor trace, so the removal
+    lands in the die's own source layer -- the same 20 um of silicon the transistors are in.
+    Cooling and heating are then co-located with zero transport distance, the burial depth is
+    inert by construction, and every number so computed is an upper bound. **This is not the
+    device**; it is retained only so results predating the fix stay reproducible.
+
+    ``array_above`` projects the plan onto the tiles of the photonic array, a second powered die
+    directly above the silicon, and hands those tile powers to the solver. The extracted watt
+    then has to cross ``source_depth_um`` of silicon to be taken away, which is what the part
+    actually does.
+
+    Callers get a ``placement`` string to stamp into their output. Two generations of results
+    now exist and ``mr: true/false`` no longer identifies which one a row came from.
+    """
+
+    def __init__(self, trace, name_map, tiles=None, blocks=None, set_mr_powers=None):
+        self.trace = trace
+        self.name_map = name_map
+        self.tiles = tiles
+        self.blocks = blocks
+        self._set_mr_powers = set_mr_powers
+        if tiles is None:
+            if blocks is not None or set_mr_powers is not None:
+                raise ValueError('blocks/set_mr_powers are meaningless without tiles')
+            self.placement = 'in_source_layer'
+        else:
+            if blocks is None or set_mr_powers is None:
+                raise ValueError('the array placement needs tiles, blocks and set_mr_powers '
+                                 'together: without the callback the plan would be computed '
+                                 'and then silently never applied')
+            self.placement = 'array_above'
+        self.last_tile_plan = None
+
+    def __call__(self, plan):
+        """Apply ``plan`` and return the trace to solve.
+
+        For the array the processor trace is returned unchanged -- the cooling is not in it. The
+        tile powers are pushed into the solver as a side effect, which is what makes them a
+        property of the *other* die rather than of the workload.
+        """
+        if self.tiles is None:
+            return apply_cooling_to_trace(self.trace, plan, self.name_map)
+        from HotGauge.thermal.mr_array import project_plan_to_tiles, tile_powers_for_stack
+        tile_plan = project_plan_to_tiles(plan, self.blocks, self.tiles)
+        requested, projected = sum(plan.values()), sum(tile_plan.values())
+        if abs(requested - projected) > 1e-6 * max(1.0, abs(requested)):
+            raise ValueError('projection lost power: {:.6f} W planned, {:.6f} W landed on tiles'
+                             .format(requested, projected))
+        self.last_tile_plan = tile_plan
+        self._set_mr_powers(tile_powers_for_stack(tile_plan, self.tiles))
+        return self.trace
+
+
 def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
                     initial_sensitivity=None, max_iter=6, tol_K=1.0, relax=0.7,
-                    t_floor_K=200.0, status_fn=None, plan_mode='auto'):
+                    t_floor_K=200.0, status_fn=None, plan_mode='auto',
+                    tiles=None, tile_blocks=None, set_mr_powers=None):
+    """Plan MR cooling against the solver. See :func:`_run_mr_clipping_dispatch` for the loop.
+
+    This wrapper exists to do one thing the loop must not be trusted to remember at each of its
+    thirteen exits: **stamp where the cooling was applied**. Two generations of results now
+    exist -- ``in_source_layer`` (legacy, an upper bound) and ``array_above`` (the device) --
+    and ``mr: true/false`` no longer tells them apart. An unstamped row is unusable, so the
+    stamp is applied here where there is exactly one exit rather than thirteen.
+
+    Pass ``tiles``, ``tile_blocks`` and ``set_mr_powers`` together for the array; omit all three
+    for the legacy placement. See :class:`CoolingApplication`.
+    """
+    apply_plan = CoolingApplication(trace, name_map, tiles=tiles, blocks=tile_blocks,
+                                    set_mr_powers=set_mr_powers)
+    result = _run_mr_clipping_dispatch(
+        trace, thermal_solve_fn, block_geom, params, name_map,
+        initial_sensitivity=initial_sensitivity, max_iter=max_iter, tol_K=tol_K, relax=relax,
+        t_floor_K=t_floor_K, status_fn=status_fn, plan_mode=plan_mode, apply_plan=apply_plan)
+    result['placement'] = apply_plan.placement
+    result['tile_plan'] = apply_plan.last_tile_plan
+    return result
+
+
+def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_map,
+                              initial_sensitivity=None, max_iter=6, tol_K=1.0, relax=0.7,
+                              t_floor_K=200.0, status_fn=None, plan_mode='auto',
+                              apply_plan=None):
     """Iterate MR cooling against the thermal solver until hot blocks reach the target.
 
     Structurally the same fixed point as the leakage loop: the plan changes the temperatures,
@@ -491,6 +637,7 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
     if plan_mode not in ('auto', 'baseline', 'envelope'):
         raise ValueError("plan_mode must be 'auto', 'baseline' or 'envelope', got {!r}"
                          .format(plan_mode))
+    apply_plan = apply_plan or CoolingApplication(trace, name_map)
     sens = dict(initial_sensitivity or {})
 
     def _status():
@@ -520,7 +667,8 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
         return _run_mr_clipping_envelope(
             trace, thermal_solve_fn, block_geom, params, name_map, sens,
             max_iter=max_iter, tol_K=tol_K, relax=relax, t_floor_K=t_floor_K,
-            status_fn=_status, base_temps=base_temps, base_status=base_status)
+            status_fn=_status, base_temps=base_temps, base_status=base_status,
+            apply_plan=apply_plan)
 
     base_hot = {b: float(np.ravel(t)[-1]) for b, t in base_temps.items()
                 if float(np.ravel(t)[-1]) > max(t_floor_K, params.target_K)}
@@ -548,7 +696,7 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
 
         blended = ({b: relax * new_plan[b] + (1 - relax) * plan.get(b, 0.0) for b in new_plan}
                    if plan else dict(new_plan))
-        cooled_trace = apply_cooling_to_trace(trace, blended, name_map)
+        cooled_trace = apply_plan(blended)
         temps = thermal_solve_fn(cooled_trace)
         result_status = _status()
 
@@ -624,7 +772,7 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
 def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_map, sens,
                               max_iter=6, tol_K=1.0, relax=0.7, t_floor_K=200.0,
                               status_fn=None, base_temps=None, base_status=None,
-                              bisect_iters=8):
+                              bisect_iters=8, apply_plan=None):
     """MR sizing anchored on the device envelope rather than on an uncooled baseline.
 
     Used when the bare die has no steady state, where the baseline the original scheme plans
@@ -636,6 +784,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
     answer never depends on where a divergent sequence stopped.
     """
     status_fn = status_fn or (lambda: {})
+    apply_plan = apply_plan or CoolingApplication(trace, name_map)
     history = []
 
     # Seed sensitivities for every block we might cool. 1.0 K/W is a placeholder that the
@@ -656,7 +805,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
     plan = dict(envelope)
     prev_peak = None
     result_status, prev_status = {}, {}
-    temps = thermal_solve_fn(apply_cooling_to_trace(trace, plan, name_map))
+    temps = thermal_solve_fn(apply_plan(plan))
     st = status_fn()
     # The status of the solve that produced the field we would REPORT. Exploratory probes below
     # deliberately visit unstable states, so "some solve was unverified" is not a statement about
@@ -765,7 +914,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                     'reason': ('relaxation reached zero but the die has no steady state '
                                'uncooled ({}); reporting the last plan that held'.format(why))}
 
-        temps = thermal_solve_fn(apply_cooling_to_trace(trace, plan, name_map))
+        temps = thermal_solve_fn(apply_plan(plan))
         st = status_fn()
         result_status = dict(st)
         sens.update(estimate_sensitivity(prev_temps, temps,
@@ -794,7 +943,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                 trial = {b: 0.5 * (plan.get(b, 0.0) + bad.get(b, 0.0))
                          for b in set(plan) | set(bad)}
                 trial = {b: q for b, q in trial.items() if q > 0.0}
-                t_trial = thermal_solve_fn(apply_cooling_to_trace(trace, trial, name_map))
+                t_trial = thermal_solve_fn(apply_plan(trial))
                 st_trial = status_fn()
                 pk = max((float(np.ravel(t)[-1]) for t in t_trial.values()
                           if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
@@ -849,7 +998,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                 trial = {b: 0.5 * (enough.get(b, 0.0) + too_little.get(b, 0.0))
                          for b in set(enough) | set(too_little)}
                 trial = {b: q for b, q in trial.items() if q > 0.0}
-                t_trial = thermal_solve_fn(apply_cooling_to_trace(trace, trial, name_map))
+                t_trial = thermal_solve_fn(apply_plan(trial))
                 st_trial = status_fn()
                 pk = max((float(np.ravel(t)[-1]) for t in t_trial.values()
                           if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))

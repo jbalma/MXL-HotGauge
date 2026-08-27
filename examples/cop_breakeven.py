@@ -74,8 +74,12 @@ from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power, replica
 from HotGauge.thermal.sink_models import (BaffledFinSink, render_stack_with_sink,
                                           chip_area_m2_from_floorplan, simscale_fan_power,
                                           simscale_beta, simscale_alpha)
+from HotGauge.thermal.sink_models import spreading_sink_for_stack
+from HotGauge.thermal.die_stack import stack_for_spreading
 from HotGauge.thermal.ice_server import ICESessionCache, shared_cache
-from HotGauge.thermal.microrefrigeration import MRParams, run_mr_clipping, mr_accounting
+from HotGauge.thermal.mr_array import wiring_for_stack, DEFAULT_PITCH_UM
+from HotGauge.thermal.microrefrigeration import (MRParams, run_mr_clipping, mr_accounting,
+                                                 DEFAULT_H_MAX_W_PER_MM2, DEFAULT_DT_MAX_K, DEFAULT_ETA_ASF, DEFAULT_LASER_WALLPLUG, DEFAULT_LPC_EFFICIENCY)
 from HotGauge.thermal.stack_models import coarsen_stack_grid
 from HotGauge.thermal.accelerator_floorplan import (ga100_geometry, ga100_floorplan,
                                                     ga100_block_powers, block_areas_mm2,
@@ -100,12 +104,21 @@ class Point(object):
     def run(self, cfm, use_mr, tag):
         a = self.args
         sink = BaffledFinSink(cfm, self.area_m2, ambient_K=a.ambient_K)
-        stack = render_stack_with_sink(get_stack_template(a.stack), sink,
+        stack_name = a.stack
+        if a.spreading:
+            stack_name = stack_for_spreading(stack_name)
+            sink = spreading_sink_for_stack(stack_name, sink, self.area_m2 * 1e6,
+                                            base_area_mm2=a.base_mm2)
+        stack = render_stack_with_sink(get_stack_template(stack_name), sink,
                                        os.path.join(a.out_dir, 'stacks', tag + '.stk'))
         if self.cell_um:
             coarsen_stack_grid(stack, self.cell_um)
         counter = {'n': 0}
         ver = {'n_solves': 0, 'n_unconverged': 0}
+        # The array as a second powered die; --no-array keeps the legacy upper bound.
+        wiring = wiring_for_stack(stack, self.flp, os.path.join(a.out_dir, tag),
+                                  want_array=(use_mr and not a.no_array),
+                                  pitch_um=a.pitch_um, cell_um=self.cell_um or 50.0)
 
         def solve(tr):
             counter['n'] += 1
@@ -117,7 +130,8 @@ class Point(object):
                                  initial_temp=a.ambient_K, num_cores=self.n_cores,
                                  single_thread=True, mode='steady',
                                  session_cache=a.session_cache,
-                                 already_dice_named=self.already_dice_named),
+                                 already_dice_named=self.already_dice_named,
+                                 **(wiring.solver_kwargs() if wiring else {})),
                 model=self.leak_model, T_ref=self.t_ref, num_cores=self.n_cores,
                 tol_K=a.tol, max_iter=a.max_iter, relax=a.relax, t_floor_K=T_FLOOR_K,
                 # The accelerator trace is keyed by floorplan block name, so it needs the
@@ -144,7 +158,8 @@ class Point(object):
         if use_mr:
             res = run_mr_clipping(self.trace, solve, self.geom, mr, self.name_map,
                                   max_iter=a.mr_iter, tol_K=2.0, relax=0.7,
-                                  status_fn=status, plan_mode='auto')
+                                  status_fn=status, plan_mode='auto',
+                                  **(wiring.planner_kwargs() if wiring else {}))
             temps, acc = res['temp_trace'], res['accounting']
             unconv = bool(res.get('result_unconverged'))
             diverged = bool(res.get('temp_trace_diverged'))
@@ -270,7 +285,21 @@ def main():
     ap.add_argument('--trace-cores', type=int, default=8)
     ap.add_argument('--flp-dir', default=os.path.join(_HERE, 'floorplans', 'outputs'))
     ap.add_argument('--leakage-cal-default-note', default=None, help=argparse.SUPPRESS)
+    ap.add_argument('--spreading', action='store_true',
+                    help='take the cold-plate slab OUT of the stack and fold it into the boundary '
+                         'as a real overhanging base (P0.4). A slab in the stack is a column of '
+                         'metal the width of the die, so the package budget comes out as 1/area '
+                         '-- 15.5x across the die sizes here, against 2.6x with the overhang. '
+                         'Amends the --stack spec with sink_in_stack=0. STRONGLY preferred for '
+                         'anything quotable; off by default so results predating it reproduce.')
+    ap.add_argument('--base-mm2', type=float, default=None,
+                    help='cold-plate footprint [mm^2] for --spreading. Default: the socket '
+                         'footprint (a fixed AREA, not a ratio of the die)')
     ap.add_argument('--stack', default='skylake')
+    ap.add_argument('--pitch-um', type=float, default=DEFAULT_PITCH_UM,
+                    help='cooling tile pitch; the array is a second powered die')
+    ap.add_argument('--no-array', action='store_true',
+                    help='legacy in-source-layer placement -- an upper bound, not the device')
     ap.add_argument('--ambient-K', type=float, default=308.15)
     ap.add_argument('--leakage-cal',
                     # See the note in accelerator_study.py: the measured curve is in
@@ -281,11 +310,11 @@ def main():
     ap.add_argument('--max-iter', type=int, default=120)
     ap.add_argument('--relax', type=float, default=0.5)
     ap.add_argument('--mr-iter', type=int, default=25)
-    ap.add_argument('--mr-h-max', type=float, default=10.0)
-    ap.add_argument('--mr-dt-max', type=float, default=10.0)
-    ap.add_argument('--eta-asf', type=float, default=0.20)
-    ap.add_argument('--eta-laser', type=float, default=0.70)
-    ap.add_argument('--eta-lpc', type=float, default=0.90)
+    ap.add_argument('--mr-h-max', type=float, default=DEFAULT_H_MAX_W_PER_MM2)
+    ap.add_argument('--mr-dt-max', type=float, default=DEFAULT_DT_MAX_K)
+    ap.add_argument('--eta-asf', type=float, default=DEFAULT_ETA_ASF)
+    ap.add_argument('--eta-laser', type=float, default=DEFAULT_LASER_WALLPLUG)
+    ap.add_argument('--eta-lpc', type=float, default=DEFAULT_LPC_EFFICIENCY)
     ap.add_argument('--spot-min-um', type=float, default=10.0)
     ap.add_argument('--spot-policy', default='dilute')
     # --- ga100 only ---
@@ -298,7 +327,7 @@ def main():
     ap.add_argument('--n-active', type=int, default=None)
     ap.add_argument('--placement', default='contiguous',
                     choices=('contiguous', 'scattered', 'cluster'))
-    ap.add_argument('--dt-max-K', type=float, default=10.0,
+    ap.add_argument('--dt-max-K', type=float, default=DEFAULT_DT_MAX_K,
                     help='MR temperature lift. On the accelerator at 700 W this BINDS -- the die '
                          'needs 12.6-30 K -- so a break-even priced at 10 K is a break-even on a '
                          'target MR cannot reach. See docs/ACCELERATOR.md')

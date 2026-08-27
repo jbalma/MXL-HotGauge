@@ -58,7 +58,7 @@ from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power, replica
 from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           render_stack_with_sink,
                                           chip_area_m2_from_floorplan, SIMSCALE_T0_K)
-from HotGauge.thermal.stack_models import (memory_stack_floorplans, memory_output_instructions,
+from HotGauge.thermal.stack_models import (MemoryFloorplans, memory_output_instructions,
                                            render_stacked_memory_template, split_layer_temps)
 from HotGauge.power.dram import (stacked_dram_model, dram_block_powers, dram_limit_report,
                                  DEFAULT_REFRESH_BREAK_K, DEFAULT_DRAM_LIMIT_K)
@@ -153,9 +153,12 @@ def main():
     power_W = args.density * area_mm2
 
     # --- the stack: memory die above the logic die -------------------------------------
-    mem_flps, mem_by_die, mem_blocks = memory_stack_floorplans(
-        flp, args.out_dir, n_dies=args.mem_dies,
-        n_x=args.mem_banks_x, n_y=args.mem_banks_y)
+    # MemoryFloorplans, not the bare memory_stack_floorplans: the templates carry
+    # {powers[NAME]} placeholders and something has to render them per solve. Nothing did between
+    # 20 Aug 2026 and now, so every run of this study died on a 3D-ICE parse error.
+    mem_fp = MemoryFloorplans(flp, args.out_dir, n_dies=args.mem_dies,
+                              n_x=args.mem_banks_x, n_y=args.mem_banks_y)
+    mem_flps, mem_by_die, mem_blocks = mem_fp.paths, mem_fp.by_die, mem_fp.names
     mem_outputs = memory_output_instructions(args.mem_dies)
     stacked_template = render_stacked_memory_template(
         get_stack_template(args.stack), os.path.join(args.out_dir, 'stacked_template.stk'),
@@ -230,6 +233,10 @@ def main():
         # The memory banks are extra blocks on the same solve. They carry their own power and
         # are not in the McPAT trace, so they are injected here rather than through the trace.
         def solve_with_memory(tr):
+            # The banks' power has to reach the solve TWICE: into the power vector, and into the
+            # memory dies' own floorplan files, which 3D-ICE parses separately. Rendering them
+            # here means the plan the loop revises is the plan that gets solved.
+            mem_fp.write(mem_powers)
             merged = dict(tr.powers)
             for blk, p in mem_powers.items():
                 merged[blk] = np.array([float(p)])

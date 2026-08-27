@@ -10,7 +10,10 @@ import pytest
 
 from HotGauge.thermal.cooling_spec import (CoolingSpec, FLUIDS, VELOCITY_SANITY,
                                            velocity_is_plausible, solve_flow_for_r_th,
-                                           solve_flow_for_peak)
+                                           solve_flow_for_peak, spreading_resistance_K_per_W,
+                                           base_area_from_footprint, SIMSCALE_BASE_GEOMETRY,
+                                           DEFAULT_BASE_FOOTPRINT_MM2,
+                                           staged_spreading_resistance_K_per_W)
 
 
 # ---------------------------------------------------------------------------
@@ -334,3 +337,152 @@ def test_the_sink_records_the_package_it_was_built_against():
     assert sink.r_package_K_per_W == pytest.approx(0.0406)
     # the sink still presents only its OWN resistance -- 3D-ICE models the package itself
     assert sink.r_th_K_per_W == pytest.approx(s.r_conv_K_per_W + s.r_caloric_K_per_W)
+
+
+# ---------------------------------------------------------------------------
+# Spreading resistance
+# ---------------------------------------------------------------------------
+class TestSpreadingResistance:
+    """The package term that has to stop scaling as 1/area.
+
+    Every layer in a 3D-ICE stack spans exactly the die footprint, so a sink modelled as a slab
+    gives a package budget proportional to 1/area -- measured 0.0402 K/W at 826 mm^2 and 0.3648
+    at 91 mm^2, which is 9.08x for 9.08x the area. That is why the acceptance gate reproduces an
+    accelerator and fails a CPU.
+    """
+
+    K_CU = 300.0
+    H = 2000.0
+
+    def test_a_base_the_size_of_the_die_is_exactly_the_one_dimensional_answer(self):
+        """With no overhang there is nothing to spread into, so the correlation must collapse.
+
+        This is the calibration-free check on the whole formula: no fitted constant can hide
+        here, because the 1-D answer is arithmetic.
+        """
+        area, t = 300.0, 2.0
+        got = spreading_resistance_K_per_W(area, area, t, self.K_CU, self.H)
+        exact = t * 1e-3 / (self.K_CU * area * 1e-6) + 1.0 / (self.H * area * 1e-6)
+        assert got == pytest.approx(exact, rel=1e-9)
+
+    def test_the_half_space_limit_is_right_and_conservative(self):
+        """The check that caught a dropped 1/sqrt(pi) on the spreading term.
+
+        A vanishing source on a thick, weakly-cooled base is the classical constriction problem.
+        The Lee correlation tends to a dimensionless psi of 1/sqrt(pi) = 0.5642 there; the exact
+        isoflux half-space value is 8/(3 pi^1.5) = 0.4789, so the correlation runs ~18%
+        conservative in its worst corner. Both bounds are asserted, because the *direction* of
+        the error matters: this term must never come out optimistically small.
+
+        The ``base == die`` test above cannot see this error at all -- the spreading term
+        vanishes when eps = 1 -- which is exactly why a second limit is needed.
+        """
+        k, die, base, t, h = 300.0, 1.0, 1.0e6, 200.0, 1.0
+        a = math.sqrt(die / math.pi) / 1000.0
+        r_1d = 1.0 / (h * base * 1e-6)
+        psi = math.sqrt(math.pi) * k * a * (
+            spreading_resistance_K_per_W(die, base, t, k, h) - r_1d)
+        exact_isoflux = 8.0 / (3.0 * math.pi ** 1.5)
+        assert psi == pytest.approx(1.0 / math.sqrt(math.pi), rel=0.01), psi
+        assert psi > exact_isoflux, 'the correlation must not be optimistic against the exact value'
+        assert psi < 1.25 * exact_isoflux
+
+    def test_it_breaks_the_one_over_area_scaling(self):
+        """The whole point. 9.08x the die area must not give 1/9.08 the resistance."""
+        small = spreading_resistance_K_per_W(91.0, 1825.0, 2.0, self.K_CU, self.H)
+        large = spreading_resistance_K_per_W(826.0, 1825.0, 2.0, self.K_CU, self.H)
+        area_ratio = 826.0 / 91.0
+        assert small > large, 'a smaller die still runs hotter, just not proportionally'
+        assert small / large < 0.5 * area_ratio, (
+            'resistance ratio {:.2f} is still tracking the area ratio {:.2f}'
+            .format(small / large, area_ratio))
+
+    def test_a_fixed_footprint_does_not_scale_with_the_die(self):
+        """A cold plate is sized by the socket. Scaling it with the die reintroduces 1/area."""
+        assert base_area_from_footprint(91.0) == pytest.approx(DEFAULT_BASE_FOOTPRINT_MM2)
+        assert base_area_from_footprint(826.0) == pytest.approx(DEFAULT_BASE_FOOTPRINT_MM2)
+
+    def test_a_die_bigger_than_the_plate_still_gets_a_legal_base(self):
+        assert base_area_from_footprint(5000.0) == pytest.approx(5000.0)
+
+    def test_a_base_smaller_than_its_die_is_refused(self):
+        with pytest.raises(ValueError):
+            spreading_resistance_K_per_W(826.0, 100.0, 2.0, self.K_CU, self.H)
+
+    def test_a_thicker_base_always_helps(self):
+        r = [spreading_resistance_K_per_W(300.0, 1825.0, t, self.K_CU, self.H)
+             for t in (0.5, 1.0, 2.0, 4.0, 8.0)]
+        assert r == sorted(r, reverse=True), r
+
+    def test_base_area_has_an_interior_optimum_and_that_is_not_a_bug(self):
+        """Widening the plate at fixed thickness eventually costs more than it buys.
+
+        A wide thin plate spreads badly: tau = t/b falls as the base grows, so past some size the
+        spreading term rises faster than the convective term falls. This is the reason you cannot
+        rescue a small die by bolting on a bigger cold plate without also making it thicker, and
+        it is pinned so nobody later 'fixes' the non-monotonicity.
+        """
+        areas = (300.0, 600.0, 1200.0, 2400.0, 4800.0, 9600.0)
+        r = [spreading_resistance_K_per_W(300.0, b, 2.0, self.K_CU, self.H) for b in areas]
+        assert min(r) < r[0] and min(r) < r[-1], r
+        assert r != sorted(r, reverse=True), 'expected a minimum, not monotone decay'
+
+    def test_the_simscale_geometry_is_recorded_with_its_ratios(self):
+        """Provenance: these are the bases the CFD actually meshed, not a chosen ratio."""
+        for key, g in SIMSCALE_BASE_GEOMETRY.items():
+            base = g['base_mm'][0] * g['base_mm'][1]
+            ratio = math.sqrt(base) / g['die_side_mm']
+            assert 2.0 < ratio < 4.0, '{}: implied base_spread {:.2f}'.format(key, ratio)
+
+
+class TestStagedSpreading:
+    """A real package spreads twice: die -> lid -> cold plate.
+
+    Charging the second spreader as a slab over the lid's area throws away its overhang, which is
+    the larger of the two opportunities.
+    """
+
+    LID = {'area_mm2': 1825.0, 'thickness_mm': 3.0, 'k_W_mK': 390.0}
+    PLATE = {'area_mm2': 13916.0, 'thickness_mm': 2.0, 'k_W_mK': 300.0}
+
+    def test_a_single_stage_is_exactly_the_single_stage_function(self):
+        """The general form has to contain the special case, or one of them is wrong."""
+        staged = staged_spreading_resistance_K_per_W(71.0, [self.LID], 0.05)
+        direct = spreading_resistance_K_per_W(
+            71.0, self.LID['area_mm2'], self.LID['thickness_mm'], self.LID['k_W_mK'],
+            1.0 / (0.05 * self.LID['area_mm2'] * 1e-6))
+        assert staged == pytest.approx(direct, rel=1e-12)
+
+    def test_stages_must_grow_outward(self):
+        """A spreader smaller than what feeds it is a mis-ordered list, not a design."""
+        with pytest.raises(ValueError):
+            staged_spreading_resistance_K_per_W(71.0, [self.PLATE, self.LID], 0.05)
+
+    def test_a_second_stage_adds_resistance_at_fixed_external_cooling(self):
+        """Counter-intuitive but right: another interface to cross costs something.
+
+        The second stage pays for itself through the much larger area the *convection* then acts
+        over -- which is a property of the cooler, not of this function. Compared at the same
+        r_external, more stages can only add.
+        """
+        one = staged_spreading_resistance_K_per_W(71.0, [self.LID], 0.12)
+        two = staged_spreading_resistance_K_per_W(71.0, [self.LID, self.PLATE], 0.12)
+        assert two > one
+
+    def test_a_thicker_or_more_conductive_plate_always_helps(self):
+        base = staged_spreading_resistance_K_per_W(71.0, [self.LID, self.PLATE], 0.12)
+        thick = dict(self.PLATE, thickness_mm=6.0)
+        conductive = dict(self.PLATE, k_W_mK=2000.0)
+        assert staged_spreading_resistance_K_per_W(71.0, [self.LID, thick], 0.12) < base
+        assert staged_spreading_resistance_K_per_W(71.0, [self.LID, conductive], 0.12) < base
+
+    def test_contact_resistance_is_charged_over_its_own_stage(self):
+        """Grease between lid and plate acts over the LID, which is what makes moving it correct."""
+        clean = staged_spreading_resistance_K_per_W(71.0, [self.LID], 0.12)
+        greasy = dict(self.LID, contact_r_K_per_W=0.030e-3 / (4.0 * 1825.0e-6))
+        assert staged_spreading_resistance_K_per_W(71.0, [greasy], 0.12) > clean
+
+    def test_better_external_cooling_always_lowers_the_total(self):
+        r = [staged_spreading_resistance_K_per_W(71.0, [self.LID, self.PLATE], x)
+             for x in (0.30, 0.20, 0.12, 0.05)]
+        assert r == sorted(r, reverse=True), r

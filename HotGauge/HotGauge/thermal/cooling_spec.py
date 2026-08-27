@@ -600,3 +600,158 @@ def external_r_for_total(total_r_K_per_W, r_package_K_per_W):
             'reaches this junction temperature through this package'
             .format(r_package_K_per_W, total_r_K_per_W))
     return ext
+
+
+# ---------------------------------------------------------------------------
+# Spreading resistance: why a small die is not simply a scaled-down large one
+# ---------------------------------------------------------------------------
+#: Contact-base overhang implied by the SimScale study's own CAD, as a linear ratio to the die
+#: side. Read off ``docs/SimScale/Scripts``, which built the geometry the CFD actually meshed:
+#:
+#: * ``Chip_core_fin_larger_box.py`` / ``Chip_core_fin_groups.py`` -- 20 mm chip, 40 x 60 mm base
+#:   => 2400 mm^2, equivalent side 49.0 mm, ratio **2.45**
+#: * ``Chip_fin_box.py`` -- 10 mm chip, 25 x 50 mm base => 1250 mm^2, side 35.4 mm, ratio **3.54**
+#:
+#: The two disagree because the base is close to a FIXED physical size across both models -- a
+#: socket-sized cold plate -- while the die is not. That is how real coolers are built and it is
+#: the whole reason a small die does better than 1/area would predict. Quoting a single ratio
+#: reintroduces the bug it is meant to fix: if the base scales with the die, every resistance is
+#: proportional to 1/area again and the model still cannot tell a 91 mm^2 part from an 826 mm^2
+#: one. Prefer :func:`base_area_from_footprint`; the ratios are recorded for provenance.
+SIMSCALE_BASE_GEOMETRY = {
+    'chip_core_fin_larger_box': {'die_side_mm': 20.0, 'base_mm': (40.0, 60.0),
+                                 'fin_base_mm': (60.0, 100.0)},
+    'chip_fin_box': {'die_side_mm': 10.0, 'base_mm': (25.0, 50.0),
+                     'fin_base_mm': (40.0, 100.0)},
+}
+
+#: Contact-base footprint [mm^2] to assume when nothing better is known, taken as the midpoint of
+#: the two SimScale bases (2400 and 1250 mm^2). Absolute, not a ratio -- see above.
+DEFAULT_BASE_FOOTPRINT_MM2 = 1825.0
+
+
+def base_area_from_footprint(die_area_mm2, footprint_mm2=DEFAULT_BASE_FOOTPRINT_MM2):
+    """Contact-base area for a die, as a fixed footprint clamped to at least the die.
+
+    A cold plate is sized by the socket, not by the die, so this does not scale with
+    ``die_area_mm2`` -- that is the point. The clamp only stops a die larger than the plate from
+    producing a base smaller than its own source, which would be geometrically impossible rather
+    than merely pessimistic.
+    """
+    return max(float(footprint_mm2), float(die_area_mm2))
+
+
+def spreading_resistance_K_per_W(die_area_mm2, base_area_mm2, base_thickness_mm,
+                                 k_W_mK, h_base_W_m2K):
+    """Source-to-ambient resistance of a die-sized source on a larger, cooled base [K/W].
+
+    The Lee/Song/Moran/Yovanovich constriction-resistance correlation for a circular-equivalent
+    source coaxial on a disc of finite thickness with a convective back face
+    (*Constriction/Spreading Resistance Model for Electronics Packaging*, 1995). It returns the
+    **total** resistance from the source into ambient: the spreading term plus the one-dimensional
+    conduction and convection over the full base area.
+
+    Why this rather than another stack layer
+    ----------------------------------------
+    3D-ICE gives every layer exactly the die footprint -- ``chip length``/``width`` come from the
+    floorplan and there is no way to declare an overhang on the conventional ``top heat sink``
+    (the grammar accepts only a heat transfer coefficient and a temperature; a real spreader
+    exists only on the *pluggable* sink, which cannot be steady-solved). So a 2 mm slab of sink
+    metal in the stack is a column of metal the width of the die, and the whole package budget
+    comes out proportional to 1/area. Measured: 0.0402 K/W on 826 mm^2 and 0.3648 on 91 mm^2 --
+    9.08x for 9.08x the area, the exact signature of no lateral relief. That is why the acceptance
+    gate reproduces an 826 mm^2 accelerator and fails a 91 mm^2 CPU.
+
+    Folding the base into the boundary resistance instead gets the area dependence right, because
+    the spreading term depends on the *ratio* of die to base and not on die area alone. What it
+    does not do is resolve lateral gradients inside the base -- this is a lumped term. The die's
+    own silicon spreading is still solved by 3D-ICE, which is where the within-die peak comes
+    from, so the approximation is in the package rather than in the answer being asked for.
+
+    Accuracy
+    --------
+    Exact in the ``base == die`` limit, where it collapses to ``t/(kA) + 1/(hA)`` -- arithmetic,
+    with no fitted constant able to hide. In the opposite corner (a vanishing source on a thick,
+    weakly-cooled base) it tends to a dimensionless ``psi`` of ``1/sqrt(pi) = 0.564`` against the
+    exact isoflux half-space value of ``8/(3 pi^1.5) = 0.479``, i.e. it runs ~18% conservative
+    there. That corner is the correlation's worst case and is far from any real package, but the
+    direction matters: this model errs toward *more* resistance, never less.
+
+    Parameters are in mm, mm^2, W/(m K) and W/(m^2 K); the result is K/W.
+    """
+    die_area_mm2 = float(die_area_mm2)
+    base_area_mm2 = float(base_area_mm2)
+    if die_area_mm2 <= 0 or base_area_mm2 <= 0:
+        raise ValueError('areas must be positive')
+    if base_area_mm2 < die_area_mm2 - 1e-9:
+        raise ValueError('base area {:.1f} mm^2 is smaller than the die it carries ({:.1f} mm^2)'
+                         .format(base_area_mm2, die_area_mm2))
+    if k_W_mK <= 0 or h_base_W_m2K <= 0:
+        raise ValueError('conductivity and htc must be positive')
+
+    a = math.sqrt(die_area_mm2 / math.pi) / 1000.0        # equivalent source radius [m]
+    b = math.sqrt(base_area_mm2 / math.pi) / 1000.0       # equivalent base radius   [m]
+    t = float(base_thickness_mm) / 1000.0
+    k = float(k_W_mK)
+    h = float(h_base_W_m2K)
+
+    eps = a / b
+    tau = t / b
+    bi = h * b / k
+    lam = math.pi + 1.0 / (math.sqrt(math.pi) * eps)
+    # tanh saturates for a thick base; guard the ratio rather than letting it overflow.
+    tl = math.tanh(lam * tau)
+    phi = (tl + lam / bi) / (1.0 + (lam / bi) * tl)
+    # Both terms carry the 1/sqrt(pi). Dropping it from the second one inflates the spreading
+    # term by sqrt(pi) = 1.77 and is invisible in the eps -> 1 check, because that term vanishes
+    # there. The half-space limit below is what catches it.
+    psi = ((eps * tau) + (1.0 - eps) ** 1.5 * phi) / math.sqrt(math.pi)
+
+    r_spread = psi / (math.sqrt(math.pi) * k * a)
+    r_1d = 1.0 / (h * base_area_mm2 * 1e-6)
+    return r_spread + r_1d
+
+
+def staged_spreading_resistance_K_per_W(die_area_mm2, stages, r_external_K_per_W):
+    """Source-to-ambient resistance through a chain of successively larger spreaders [K/W].
+
+    Why one stage is not enough
+    ---------------------------
+    A real package spreads twice. The die feeds a lid a few centimetres across; the lid feeds a
+    cold plate several times larger again. Charging the second one as a *slab over the lid's
+    area* -- which is what a single-stage model does with everything above the base -- throws away
+    its overhang entirely, and that is the larger of the two spreading opportunities.
+
+    Measured consequence: single-stage put the Ryzen point's required external cooling at
+    0.046 K/W against a typical tower's 0.10-0.15, i.e. still demanding a better cooler than
+    exists. The missing stage is the cold plate's own overhang.
+
+    Parameters
+    ----------
+    die_area_mm2 : the source.
+    stages : list, **from the die outward**. Each is a dict with ``area_mm2``, ``thickness_mm``,
+        ``k_W_mK`` and optionally ``contact_r_K_per_W`` -- the interface resistance sitting on top
+        of that stage (grease, solder), charged over that stage's own area.
+    r_external_K_per_W : the convective and caloric resistance out of the last stage.
+
+    Computed from the outside in, because each stage's spreading depends on how easily heat leaves
+    its far face, which is everything beyond it.
+    """
+    areas = [float(die_area_mm2)] + [float(s['area_mm2']) for s in stages]
+    for i, a in enumerate(areas[:-1]):
+        if areas[i + 1] < a - 1e-9:
+            raise ValueError('stage {} ({:.1f} mm^2) is smaller than what feeds it ({:.1f} mm^2); '
+                             'stages must be ordered from the die outward'
+                             .format(i, areas[i + 1], a))
+    r = float(r_external_K_per_W)
+    if r <= 0:
+        raise ValueError('external resistance must be positive')
+    for i in range(len(stages) - 1, -1, -1):
+        st = stages[i]
+        contact = float(st.get('contact_r_K_per_W', 0.0))
+        # spreading_resistance_K_per_W already adds 1/(h*A_base), so feeding it an h that encodes
+        # everything downstream makes the return value the running total from this stage outward.
+        h = 1.0 / ((r + contact) * float(st['area_mm2']) * 1e-6)
+        r = spreading_resistance_K_per_W(areas[i], st['area_mm2'], st['thickness_mm'],
+                                         st['k_W_mK'], h)
+    return r

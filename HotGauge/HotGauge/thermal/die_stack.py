@@ -51,6 +51,27 @@ up through ``source_depth_um`` of silicon, then across the bond. Burial depth be
 constraint on how much a tile can pull, and pixel pitch becomes a real constraint on where it can
 pull from. See :mod:`HotGauge.thermal.mr_array` for the tile floorplan and for projecting a plan
 expressed over processor blocks onto the tiles above them.
+
+This is settled, not a modelling choice
+---------------------------------------
+The extraction is **never co-located with the transistors**. It is always at the interface between
+the top of the die and the sink above it, because that is how the part attaches to a real chip: a
+cold plate that mounts on top of a direct-die package. Integrating the array into the die itself
+is a separate question that may get investigated later; it is not what is being built, and no
+default here may quietly assume it. The co-located arrangement remains reachable only as an
+explicit upper bound (``examples/mr_placement_probe.py``, ``where='source'``) and its numbers are
+not device numbers.
+
+Two consequences are load-bearing for every comparison this project makes:
+
+* **The photonic stack and the convection control differ in one layer and nothing else.** Both
+  carry the same SINK -- same fan, same cold plate, same everything above the die. Direct-die with
+  ``mr_layer`` puts 30 um of pixel array where the 30 um of thermal grease (``TIM``) otherwise
+  sits, and that substitution is the entire difference. ``test_die_stack.py`` asserts it, because
+  a comparison that also moved the sink or the die would not be measuring the cooler.
+* **The active layer sits at the same depth in both arms.** ``source_depth_um`` defaults to
+  200 um direct-die and stays a free parameter, so die thinning can be swept deliberately -- but
+  sweeping it in one arm and not the other would attribute silicon to the cooler.
 """
 
 import os
@@ -85,10 +106,23 @@ MATERIALS = {
 MR_PIXEL_MATERIALS = ('GAAS', 'SI3N4', 'THERMAL_GREASE')
 
 #: The historical die: 400 um of silicon with the active layer 360 um below the top surface.
-#: Kept as the default so that a lidded build reproduces skylake.stk exactly.
+#: These are the **lidded** defaults and they must not move: a default lidded build has to
+#: reproduce skylake.stk layer-for-layer, which is what makes every direct-die number a
+#: comparison against the back catalogue rather than a fresh start.
+#: ``test_die_stack.py::test_lidded_reproduces_legacy_template`` pins that.
 DEFAULT_DIE_UM = 400.0
 DEFAULT_SOURCE_DEPTH_UM = 360.0
 DEFAULT_SOURCE_UM = 20.0
+
+#: The **direct-die** defaults, which are the device as it will actually be built (see the module
+#: note above). The active layer sits 200 um below the cooled surface -- in the historical die's
+#: uniform layering that falls between ``die[1]`` and ``die[2]`` -- with the usual 20 um of
+#: silicon left below it. Burial depth stays a free parameter because die thinning is an
+#: experiment we have to be able to run, not a fixed assumption.
+DEFAULT_DIRECT_SOURCE_DEPTH_UM = 200.0
+DEFAULT_BELOW_SOURCE_UM = 20.0
+DEFAULT_DIRECT_DIE_UM = (DEFAULT_DIRECT_SOURCE_DEPTH_UM + DEFAULT_SOURCE_UM
+                         + DEFAULT_BELOW_SOURCE_UM)
 
 #: Sub-layer thicknesses above the source in the historical file, top-down. The mesh is graded:
 #: coarse at the back surface, fine approaching the transistors, because that is where the
@@ -126,10 +160,21 @@ def _assert_lexer_safe(text):
 
 
 def _fmt(x):
-    """3D-ICE tolerates plain decimals; keep them short so the file stays readable."""
+    """3D-ICE tolerates plain decimals; keep them short so the file stays readable.
+
+    Geometry only -- microns and cell sizes. The heat-transfer coefficient and ambient have their
+    own formats, which matters because ``%f`` on a 1e-7 htc would write ``0.000000``.
+
+    Non-integers get six decimals rather than four significant figures. At the historical 360 um
+    burial the graded layers are round numbers (100/80/80/60/40) and the choice never showed;
+    at an arbitrary depth they are not, and ``%.4g`` made the layer thicknesses **in the file**
+    sum to something other than the die thickness the spec believes in. That is a formatting
+    artifact, but it surfaced as a real disagreement between ``StackSpec.resistance_budget`` and
+    the budget parsed back off disk, so it is fixed at the source rather than tolerated.
+    """
     if abs(x - round(x)) < 1e-9:
         return '{:.0f}'.format(x)
-    return '{:.4g}'.format(x)
+    return '{:.6f}'.format(x)
 
 
 def graded_above(depth_um, n=5, ratio=0.6, legacy_ok=True):
@@ -151,9 +196,13 @@ def graded_above(depth_um, n=5, ratio=0.6, legacy_ok=True):
         raise ValueError('n must be >= 1')
     weights = [ratio ** i for i in range(n)]          # thickest first = nearest the back surface
     total = sum(weights)
-    out = [depth_um * w / total for w in weights]
-    # Absorb rounding into the topmost (coarsest) layer so the sum is exact.
-    out[0] += depth_um - sum(out)
+    # Quantise to the precision _fmt will write at, so the layers in the rendered file are the
+    # same numbers as the layers in the spec. Without this the two agree only when the split
+    # happens to land on round numbers, which is exactly the historical 360 um case.
+    out = [round(depth_um * w / total, 6) for w in weights]
+    # Absorb the residual into the topmost (coarsest) layer so the sum is exact -- it is the
+    # largest, so it takes the correction with the least relative distortion.
+    out[0] = round(out[0] + depth_um - sum(out), 6)
     return out
 
 
@@ -196,11 +245,12 @@ class StackSpec(object):
     solvable file on its own.
     """
 
-    def __init__(self, package='direct_die', die_um=DEFAULT_DIE_UM,
-                 source_depth_um=DEFAULT_SOURCE_DEPTH_UM, source_um=DEFAULT_SOURCE_UM,
+    def __init__(self, package='direct_die', die_um=None,
+                 source_depth_um=None, source_um=DEFAULT_SOURCE_UM,
                  n_above=5, grading_ratio=0.6,
                  mr_layer=False, mr_powered=False, mr_material='GAAS', mr_um=30.0,
                  grease_um=30.0, spreader_um=3000.0, solder_um=200.0, sink_um=2000.0,
+                 sink_in_stack=True, package_in_boundary=False,
                  cell_um=50.0, htc_3dice=1.0e-7, ambient_K=303.15, name=None):
         if package not in ('direct_die', 'lidded'):
             raise ValueError('package must be direct_die or lidded, got {!r}'.format(package))
@@ -214,6 +264,14 @@ class StackSpec(object):
             raise ValueError('an MR pixel layer only makes sense direct-die; a lidded package '
                              'puts solder and 3 mm of copper between the pixels and the silicon')
         self.package = package
+        # Die geometry defaults are per-package and deliberately different. Lidded must stay on
+        # the historical 400/360 so the legacy template still reproduces; direct-die is the real
+        # device and gets the 200 um burial depth. Passing either explicitly overrides both.
+        if die_um is None:
+            die_um = DEFAULT_DIE_UM if package == 'lidded' else DEFAULT_DIRECT_DIE_UM
+        if source_depth_um is None:
+            source_depth_um = (DEFAULT_SOURCE_DEPTH_UM if package == 'lidded'
+                               else DEFAULT_DIRECT_SOURCE_DEPTH_UM)
         self.die_um = float(die_um)
         self.source_depth_um = float(source_depth_um)
         self.source_um = float(source_um)
@@ -233,13 +291,38 @@ class StackSpec(object):
         self.spreader_um = float(spreader_um)
         self.solder_um = float(solder_um)
         self.sink_um = float(sink_um)
+        # Whether the cold-plate base is a LAYER in the stack or lives in the boundary condition.
+        #
+        # As a layer it is a column of metal exactly the width of the die, because 3D-ICE gives
+        # every layer the floorplan footprint -- so the package budget comes out proportional to
+        # 1/area and the model cannot tell a 91 mm^2 part from an 826 mm^2 one. There is no way to
+        # declare an overhang instead: the grammar's conventional `top heat sink` takes only a
+        # coefficient and a temperature, and the pluggable sink that does carry spreader geometry
+        # cannot be steady-solved.
+        #
+        # With sink_in_stack=False the slab is omitted and the boundary carries the base --
+        # spreading, conduction and convection -- via
+        # HotGauge.thermal.sink_models.SpreadingSink. Pair the two: a SpreadingSink over a stack
+        # that still has its slab double-counts the base, and the double count is invisible
+        # because it only makes every part run hot.
+        self.sink_in_stack = bool(sink_in_stack)
+        # The wider version of the same correction. `sink_in_stack=False` moves only the cold
+        # plate out; on a LIDDED part the dominant spreader is the IHS, not the sink, and a 3 mm
+        # copper lid modelled as a die-width column is most of why a small part comes out too
+        # hot. `package_in_boundary=True` keeps only the layers that are genuinely die-sized --
+        # the die attach on a lidded part, the pixel array or its grease equivalent direct-die --
+        # and hands the rest to SpreadingSink.
+        self.package_in_boundary = bool(package_in_boundary)
+        if self.package_in_boundary:
+            self.sink_in_stack = False
         self.cell_um = float(cell_um)
         self.htc_3dice = float(htc_3dice)
         self.ambient_K = float(ambient_K)
-        self.name = name or ('{}_{:.0f}um_src{:.0f}{}'
+        self.name = name or ('{}_{:.0f}um_src{:.0f}{}{}'
                              .format(package, self.die_um, self.source_depth_um,
                                      '_mrp' if self.mr_powered else
-                                     '_mr' if self.mr_layer else ''))
+                                     '_mr' if self.mr_layer else '',
+                                     '' if self.sink_in_stack else '_extsink'))
 
     def die_layers(self):
         return die_layers(self.die_um, self.source_depth_um, self.source_um,
@@ -251,10 +334,12 @@ class StackSpec(object):
         Direct-die is the whole point of this module: the sink base sits on the pixel array,
         which sits on bare silicon. There is no lid, no die attach, and no polymer TIM.
         """
-        out = [('SINK', 'SINK_LAYER', self.sink_um, 'HEATSINK_METAL')]
+        out = ([('SINK', 'SINK_LAYER', self.sink_um, 'HEATSINK_METAL')]
+               if self.sink_in_stack else [])
         if self.package == 'lidded':
-            out.append(('GREASE', 'GREASE_LAYER', self.grease_um, 'THERMAL_GREASE'))
-            out.append(('HSP', 'HSP_LAYER', self.spreader_um, 'COPPER'))
+            if not self.package_in_boundary:
+                out.append(('GREASE', 'GREASE_LAYER', self.grease_um, 'THERMAL_GREASE'))
+                out.append(('HSP', 'HSP_LAYER', self.spreader_um, 'COPPER'))
             out.append(('SOLDER', 'SOLDER_LAYER', self.solder_um, 'SOLDER_TIM'))
         elif self.mr_layer:
             # A powered array is emitted as a die element, not a layer, so it is reported here
@@ -263,6 +348,32 @@ class StackSpec(object):
         else:
             out.append(('TIM', 'TIM_LAYER', self.grease_um, 'THERMAL_GREASE'))
         return out
+
+    def boundary_base(self):
+        """``(thickness_mm, k_W_mK)`` of the layer the heat spreads into, or None.
+
+        Whatever is physically doing the spreading: the copper lid on a lidded part, the cold
+        plate direct-die. Only meaningful when that layer has been taken out of the stack, since
+        3D-ICE would otherwise model it as a column the width of the die.
+        """
+        if not (self.package_in_boundary or not self.sink_in_stack):
+            return None
+        if self.package == 'lidded' and self.package_in_boundary:
+            return (self.spreader_um / 1000.0, MATERIALS['COPPER'][0])
+        return (self.sink_um / 1000.0, MATERIALS['HEATSINK_METAL'][0])
+
+    def boundary_series_layers(self):
+        """Layers above the spreading base, as ``(name, thickness_mm, k)``.
+
+        These act over the **base** area rather than the die's, which is the whole reason they
+        were moved: 30 um of grease is 0.082 K/W across a 91 mm^2 die and 0.004 K/W across an
+        1825 mm^2 cold plate.
+        """
+        if self.package == 'lidded' and self.package_in_boundary:
+            out = [('GREASE', self.grease_um / 1000.0, MATERIALS['THERMAL_GREASE'][0])]
+            out.append(('SINK', self.sink_um / 1000.0, MATERIALS['HEATSINK_METAL'][0]))
+            return out
+        return []
 
     def materials_used(self):
         used = {'SILICON'}
@@ -373,7 +484,7 @@ def render_stack_text(spec):
         # anti-Stokes process removes -- so extraction happens here, above the silicon, and a
         # watt made in the transistors has to cross source_depth_um of it to be taken away.
         A('die MR_DIE :')
-        A('   source {:<6s}{} ; // photonic cooling tiles, negative power'
+        A('   source {:<6s} {} ; // photonic cooling tiles, negative power'
           .format(_fmt(spec.mr_um), spec.mr_material))
         A('')
     A('// Listed top-down. The active layer sits {} um below the top surface of a {} um die;'
@@ -383,7 +494,12 @@ def render_stack_text(spec):
     depth = 0.0
     for dl in spec.die_layers():
         depth += dl['height_um']
-        A('   {:<7s}{:<6s}{} ; // {} um below the top surface'
+        # The explicit space is load-bearing: '{:<6s}' pads a short number but does not
+        # truncate a long one, so a height whose text runs to six characters ran straight into
+        # the material name and produced '86.745316SILICON' -- a .stk 3D-ICE cannot parse and
+        # our own reader silently skipped. Latent since the field was added; only round burial
+        # depths ever rendered short enough to hide it.
+        A('   {:<7s}{:<6s} {} ; // {} um below the top surface'
           .format(dl['kind'], _fmt(dl['height_um']), dl['material'], _fmt(depth)))
     A('')
 
@@ -440,6 +556,12 @@ _SPEC_KEYS = {
     'source_depth': ('source_depth_um', float), 'active': ('source_um', float),
     'cell': ('cell_um', float), 'n_above': ('n_above', int), 'ratio': ('grading_ratio', float),
     'grease': ('grease_um', float), 'sink': ('sink_um', float), 'mr_um': ('mr_um', float),
+    # Where the cold-plate base lives. 'sink_in_stack=0' takes it out of the stack so a
+    # SpreadingSink can carry it with a real overhang; without these the flags are unreachable
+    # from the thirteen drivers that take --stack.
+    'mr_powered': ('mr_powered', lambda v: bool(int(v))),
+    'sink_in_stack': ('sink_in_stack', lambda v: bool(int(v))),
+    'package_in_boundary': ('package_in_boundary', lambda v: bool(int(v))),
 }
 
 SPEC_PREFIX = 'spec:'
@@ -453,7 +575,9 @@ def parse_spec_string(name):
     """``spec:package=direct_die,mr=GAAS,src=120`` -> :class:`StackSpec`.
 
     ``mr=<material>`` switches the pixel layer on and chooses its bulk material; ``mr=none``
-    (the default) leaves it off. An unknown key is an error rather than a silent no-op -- a
+    (the default) leaves it off. ``mr_powered=0`` makes it an inert slab instead of a die with
+    its own tile floorplan -- the powered form is the default, because an unpowered array is a
+    thermal tax with no benefit and is almost never what a caller means. An unknown key is an error rather than a silent no-op -- a
     typo'd sweep parameter that quietly does nothing is exactly how a study comes back with
     twelve identical results and no one notices.
     """
@@ -471,6 +595,10 @@ def parse_spec_string(name):
             else:
                 kw['mr_layer'] = True
                 kw['mr_material'] = v.upper()
+                # Powered by default. An unpowered array is emitted as a plain LAYER with no
+                # floorplan, so nothing can carry a cooling plan -- and the failure is silent
+                # unless something downstream checks, which is why session_powers() does.
+                kw.setdefault('mr_powered', True)
             continue
         if k not in _SPEC_KEYS:
             raise ValueError('unknown stack spec key {!r}; known keys are {}'
@@ -480,11 +608,74 @@ def parse_spec_string(name):
     return StackSpec(**kw)
 
 
+def stack_for_spreading(name):
+    """The same stack, with the cold-plate slab taken out so the boundary can carry it.
+
+    ``--spreading`` means "the base is in the boundary with its real overhang", and a stack that
+    still declares the slab would then count it twice -- silently, as a part that simply runs
+    hot. Rather than make every caller remember to write ``sink_in_stack=0``, the flag amends the
+    spec, which is the only reading of it that is not a mistake.
+
+    A stack that already has the slab out comes back unchanged. A plain template name is refused:
+    the checked-in templates all carry their slab and none of them records a base geometry to
+    spread into, so there is nothing to amend and guessing would be inventing a package.
+    """
+    if not is_spec_string(name):
+        raise ValueError(
+            'the spreading boundary needs a generated stack so its base geometry is known, but '
+            'got the template name {!r}. Use a spec string, e.g. '
+            '--stack spec:package=direct_die,mr=GAAS'.format(name))
+    body = name[len(SPEC_PREFIX):].strip()
+    parts = [p for p in body.split(',') if p.strip()]
+    kept = [p for p in parts if p.split('=', 1)[0].strip() != 'sink_in_stack']
+    kept.append('sink_in_stack=0')
+    return SPEC_PREFIX + ','.join(kept)
+
+
+#: Every field that changes the rendered stack. The filename hash is taken over these, so
+#: adding a StackSpec field without adding it here reintroduces the collision below.
+_SPEC_IDENTITY_FIELDS = (
+    'package', 'die_um', 'source_depth_um', 'source_um', 'cell_um', 'n_above', 'grading_ratio',
+    'mr_layer', 'mr_powered', 'mr_material', 'mr_um',
+    'grease_um', 'sink_um', 'spreader_um', 'solder_um',
+    'sink_in_stack', 'package_in_boundary', 'ambient_K', 'htc_3dice',
+)
+
+
+def spec_identity(spec):
+    """A complete, stable string identifying everything that changes the rendered stack."""
+    return ';'.join('{}={!r}'.format(f, getattr(spec, f)) for f in _SPEC_IDENTITY_FIELDS)
+
+
 def spec_string_filename(spec):
-    """A deterministic, inspectable filename for a rendered spec."""
-    return 'gen_{}_die{:.0f}_src{:.0f}_act{:.0f}_{}_cell{:.0f}.stk'.format(
+    """A deterministic, inspectable filename for a rendered spec.
+
+    Readable prefix plus a hash of the FULL specification, and the hash is not decoration.
+
+    The prefix alone used to be the whole name, and it covers only package, die, burial, active
+    thickness, pixel material and grid. So these three -- with four, three and one package layer
+    respectively -- all rendered to ``gen_lidded_die400_src360_act20_notim_cell50.stk``::
+
+        spec:package=lidded
+        spec:package=lidded,sink_in_stack=0
+        spec:package=lidded,sink_in_stack=0,package_in_boundary=1
+
+    Within one process that is merely wasteful, because ``render_spec_string`` rewrites the file
+    before use. Across the concurrent streams of the catalogue re-run it is a correctness hazard:
+    two processes whose specs differ only in a boundary flag share a path in ``_generated``, and
+    one can rewrite the file while the other is reading it. The session cache would not catch it
+    -- it fingerprints the file's CONTENTS, so it would faithfully factorise whatever it was
+    handed.
+
+    ``--spreading`` made this reachable rather than theoretical: ``stack_for_spreading`` produces
+    exactly ``spec:...,sink_in_stack=0`` from ``spec:...``, so a sweep mixing spreading and
+    non-spreading points collides on every single stack.
+    """
+    import hashlib
+    h = hashlib.sha1(spec_identity(spec).encode('utf-8')).hexdigest()[:8]
+    return 'gen_{}_die{:.0f}_src{:.0f}_act{:.0f}_{}_cell{:.0f}_{}.stk'.format(
         spec.package, spec.die_um, spec.source_depth_um, spec.source_um,
-        spec.mr_material.lower() if spec.mr_layer else 'notim', spec.cell_um)
+        spec.mr_material.lower() if spec.mr_layer else 'notim', spec.cell_um, h)
 
 
 def render_spec_string(name, out_dir):

@@ -57,10 +57,15 @@ from HotGauge.thermal import get_stack_template, ICEThermalSolver, run_leakage_f
 from HotGauge.thermal.ice_server import ICESessionCache, shared_cache
 from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           render_stack_with_sink)
+from HotGauge.thermal.sink_models import spreading_sink_for_stack, MicrochannelSink
+from HotGauge.thermal.die_stack import stack_for_spreading
 from HotGauge.thermal.stack_models import coarsen_stack_grid
 from HotGauge.thermal.cooling_spec import (CoolingSpec, CoolingSpecSink, air_spec,
                                            solve_flow_for_peak, velocity_is_plausible)
-from HotGauge.thermal.microrefrigeration import MRParams, run_mr_clipping, mr_accounting
+from HotGauge.thermal.mr_array import (wiring_for_stack, stack_carries_an_array,
+                                       DEFAULT_PITCH_UM, device_pitch_range_um)
+from HotGauge.thermal.microrefrigeration import (MRParams, run_mr_clipping, mr_accounting,
+                                                 DEFAULT_H_MAX_W_PER_MM2, DEFAULT_DT_MAX_K, DEFAULT_ETA_ASF, DEFAULT_LASER_WALLPLUG, DEFAULT_LPC_EFFICIENCY)
 from HotGauge.thermal.accelerator_floorplan import (
     GA100_AREAS, GA100_POWER_SPLIT, DEFAULT_BOOST_POWER_RATIO, ga100_geometry,
     ga100_consistency, ga100_floorplan, ga100_block_powers, block_areas_mm2,
@@ -160,7 +165,7 @@ def main():
     ap.add_argument('--boost-power-ratio', type=float, default=None,
                     help='power multiplier for a boosted SM (ASSUMED; default %.2f). Load-bearing '
                          'for the occupancy result -- sweep it' % DEFAULT_BOOST_POWER_RATIO)
-    ap.add_argument('--dt-max-K', type=float, default=10.0,
+    ap.add_argument('--dt-max-K', type=float, default=DEFAULT_DT_MAX_K,
                     help='MR device capability, for the plateau and clip-one figures')
     # --- MR: what a rescue actually costs on this die ---
     ap.add_argument('--mr', action='store_true',
@@ -169,10 +174,10 @@ def main():
                          'cheap to clip on a 78 C die is a solution to no problem')
     ap.add_argument('--mr-target-C', type=float, default=98.0)
     ap.add_argument('--mr-iter', type=int, default=25)
-    ap.add_argument('--mr-h-max', type=float, default=10.0)
-    ap.add_argument('--eta-asf', type=float, default=0.20)
-    ap.add_argument('--eta-laser', type=float, default=0.70)
-    ap.add_argument('--eta-lpc', type=float, default=0.90)
+    ap.add_argument('--mr-h-max', type=float, default=DEFAULT_H_MAX_W_PER_MM2)
+    ap.add_argument('--eta-asf', type=float, default=DEFAULT_ETA_ASF)
+    ap.add_argument('--eta-laser', type=float, default=DEFAULT_LASER_WALLPLUG)
+    ap.add_argument('--eta-lpc', type=float, default=DEFAULT_LPC_EFFICIENCY)
     ap.add_argument('--spot-min-um', type=float, default=10.0)
     ap.add_argument('--spot-policy', default='dilute')
     ap.add_argument('--split-sensitivity', default=None,
@@ -193,12 +198,36 @@ def main():
     ap.add_argument('--cooling-target-C', type=float, default=90.0,
                     help='lumped peak the flow is solved to hold, when no flow is given. The real '
                          'peak comes from the coupled solve; this only CHOOSES the operating point')
+    ap.add_argument('--microchannel', action='store_true',
+                    help='direct-die MICROCHANNEL cold plate instead of a finned water block or '
+                         'an air sink. Anchored on a measured reference (1020 W/cm^2 at <69 C '
+                         'and <120 kPa; see sink_models.MICROCHANNEL_REF). This is what a '
+                         'direct-die accelerator is really cooled by -- CoolingSpec\'s water '
+                         'path is a finned base sized for the die and comes out ~3.6x worse')
+    ap.add_argument('--dt-fluid-K', type=float, default=10.0,
+                    help='coolant temperature rise across the die for --microchannel; sets the '
+                         'flow, and therefore the pump power. The reference rig runs ~2 K, which '
+                         'is far more flow than a practical loop')
     ap.add_argument('--inlet-C', type=float, default=35.0)
     ap.add_argument('--cfm', type=float, default=88.0)
     ap.add_argument('--r-th', type=float, default=None,
                     help='use a fixed thermal resistance [K/W] instead of an air sink')
     ap.add_argument('--ambient-K', type=float, default=308.15)
+    ap.add_argument('--spreading', action='store_true',
+                    help='take the cold-plate slab OUT of the stack and fold it into the boundary '
+                         'as a real overhanging base (P0.4). A slab in the stack is a column of '
+                         'metal the width of the die, so the package budget comes out as 1/area '
+                         '-- 15.5x across the die sizes here, against 2.6x with the overhang. '
+                         'Amends the --stack spec with sink_in_stack=0. STRONGLY preferred for '
+                         'anything quotable; off by default so results predating it reproduce.')
+    ap.add_argument('--base-mm2', type=float, default=None,
+                    help='cold-plate footprint [mm^2] for --spreading. Default: the socket '
+                         'footprint (a fixed AREA, not a ratio of the die)')
     ap.add_argument('--stack', default='skylake')
+    ap.add_argument('--pitch-um', type=float, default=DEFAULT_PITCH_UM,
+                    help='cooling tile pitch; the array is a second powered die')
+    ap.add_argument('--no-array', action='store_true',
+                    help='legacy in-source-layer placement -- an upper bound, not the device')
     ap.add_argument('--tech-node', type=int, default=7)
     ap.add_argument('--leakage-cal',
                     # The measured McPAT curve lives HERE. I first defaulted this to
@@ -321,11 +350,33 @@ def main():
         cooling_note['velocity_plausible'] = ok
         cooling_note['velocity_note'] = vmsg
         sink = CoolingSpecSink(spec, realised_W)
+    elif args.microchannel:
+        # Direct-die microchannel cold plate, anchored on a measured reference point. This is
+        # what a direct-die accelerator is actually cooled by; CoolingSpec's water path models a
+        # finned base sized for the die, which is a water block and ~3.6x worse.
+        sink = MicrochannelSink(area_mm2, realised_W, dT_fluid_K=args.dt_fluid_K,
+                                inlet_C=args.inlet_C, ambient_K=args.ambient_K)
+        cooling_note = {'kind': 'microchannel', 'r_th_K_per_W': sink.r_th_K_per_W,
+                        'r_conv_K_per_W': sink.r_conv_K_per_W,
+                        'r_caloric_K_per_W': sink.r_caloric_K_per_W,
+                        'flow_m3s': sink.flow_m3s, 'dp_Pa': sink.pressure_drop_Pa,
+                        'pump_W': sink.parasitic_power_W(),
+                        'flux_ratio_vs_reference': sink.flux_ratio,
+                        'inlet_C': args.inlet_C, 'dT_fluid_K': args.dt_fluid_K}
+        print('  cooling  : {}'.format(sink.describe()))
+        print('             pump power is CHANNELS ONLY -- a floor. The manifold, plenum and '
+              'facility loop are not modelled;\n             the LCEstimator CDU figure is '
+              '~7 W/device for the whole loop.')
     else:
         sink = (ThermalResistanceSink(args.r_th, area_m2, ambient_K=args.ambient_K)
                 if args.r_th is not None
                 else BaffledFinSink(args.cfm, area_m2, ambient_K=args.ambient_K))
-    stack = render_stack_with_sink(get_stack_template(args.stack), sink,
+    stack_name = args.stack
+    if args.spreading:
+        stack_name = stack_for_spreading(stack_name)
+        sink = spreading_sink_for_stack(stack_name, sink, area_mm2,
+                                        base_area_mm2=args.base_mm2)
+    stack = render_stack_with_sink(get_stack_template(stack_name), sink,
                                   os.path.join(args.out_dir, 'ga100.stk'))
     coarsen_stack_grid(stack, args.cell_um)
     # ONE cache for the whole run. This must be created outside every loop: the cache is what
@@ -335,6 +386,32 @@ def main():
     # On the GA100 die that is 288 s per iteration instead of 288 s once.
     session = _session(args.no_server)
 
+    # The cooling array, if this stack carries one. Built HERE rather than inside `if args.mr`,
+    # because a stack that declares an array die needs its tile floorplan for EVERY solve, not
+    # only the ones with a laser plan. Without that:
+    #
+    #   * the baseline solve below cannot render the stack at all -- {mr_flp_file} is unfilled --
+    #     so the array arms would only be reachable with --mr; and
+    #   * the `array_idle` arm would be unreachable, which is the one that separates the GaAs
+    #     substitution from the laser. On the first three-arm runs the unpowered array alone
+    #     rescued a die that had no steady state under grease, so an on/off comparison books
+    #     that packaging gain as a photonics result.
+    #
+    # Zero-power tiles at construction; the planner replaces them if --mr runs.
+    #
+    # `want_array` is `--mr or the stack has one`, which keeps BOTH silent failures loud without
+    # breaking a plain baseline run:
+    #   * --mr on a stack with no array die is refused, naming the fix -- a plan computed and
+    #     projected onto tiles that do not exist lands nowhere and reads as a cooler that does
+    #     not work;
+    #   * a stack that DOES declare an array gets wired whether or not a laser plan is asked
+    #     for, which is what makes the unpowered arm reachable;
+    #   * a baseline run on a single-die stack is untouched, exactly as before.
+    wiring = None if args.no_array else wiring_for_stack(
+        stack, flp_path, os.path.join(args.out_dir, 'mr_array'),
+        want_array=bool(args.mr) or stack_carries_an_array(stack),
+        pitch_um=args.pitch_um, cell_um=args.cell_um)
+
     solver = ICEThermalSolver(stack, flp_path, args.tech_node,
                               run_base_dir=os.path.join(args.out_dir, 'solve'),
                               initial_temp=args.ambient_K, num_cores=1,
@@ -343,9 +420,13 @@ def main():
                               # The trace's keys ARE this floorplan's element names, so the
                               # McPAT rename/L3-split/IMC path must be skipped -- there are no
                               # cores here to split an L3 across.
-                              already_dice_named=True)
+                              already_dice_named=True,
+                              **(wiring.solver_kwargs() if wiring else {}))
 
-    if cooling_note:
+    if cooling_note and cooling_note.get('kind') == 'microchannel':
+        # Already reported at construction; the fin-stack fields below do not exist for it.
+        pass
+    elif cooling_note:
         print('  cooling  : {} sized for this die -- base {:.0f} mm, {} fins, {:.4g} m^3/s'.format(
             args.cooling_fluid, cooling_note['base_side_mm'], cooling_note['n_fins'],
             cooling_note['flow_m3s']))
@@ -382,7 +463,8 @@ def main():
                                           'mr{:02d}'.format(counter['n'])),
                 initial_temp=args.ambient_K, num_cores=1, single_thread=True, mode='steady',
                 session_cache=session,
-                already_dice_named=True),
+                already_dice_named=True,
+                **(wiring.solver_kwargs() if wiring else {})),
                 model=leak_model, T_ref=t_ref, num_cores=1, tol_K=args.tol,
                 max_iter=args.max_iter, relax=args.relax, t_floor_K=T_FLOOR_K,
                 bridge_aggregates=False,
@@ -396,6 +478,7 @@ def main():
                        spot_min_um=args.spot_min_um, spot_policy=args.spot_policy)
         mres = run_mr_clipping(trace, solve_fn, geom, mrp, name_map=lambda u: u,
                                max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
+                               **(wiring.planner_kwargs() if wiring else {}),
                                status_fn=lambda: {
                                    'diverged': bool((holder.get('last') or {}).get('diverged')),
                                    'unconverged': bool(
@@ -465,6 +548,22 @@ def main():
         # populated (they sit at the floor) and the '__' bookkeeping keys.
         temps_C = {b: float(np.ravel(v)[-1]) - 273.15 for b, v in temps.items()
                    if float(np.ravel(v)[-1]) > T_FLOOR_K and not b.startswith('__')}
+    else:
+        temps_C = {}
+
+    if not temps_C:
+        # A point can fail damping verification and come back with a field that is entirely at
+        # the floor. That is an UNQUOTABLE RESULT, not a crash: tier_analysis_by_class raises
+        # 'no blocks to rank' on an empty field, and letting that propagate killed the point and
+        # everything the caller wanted to write about it. Report it and move on -- the run
+        # already carries `unconverged` and `verify_spread_K` saying why.
+        out['tiers'] = None
+        out['clip_curve'] = None
+        out['no_field'] = True
+        print('\n  NO USABLE FIELD: every block sat at the solver floor, so there is nothing to '
+              'rank.\n  This point is unconverged ({}), not a crash -- recorded as unquotable.'
+              .format('diverged' if res.get('diverged') else 'failed damping verification'))
+    else:
         t = tier_analysis_by_class(temps_C, classes, args.dt_max_K)
         out['tiers'] = {k: v for k, v in t.items() if k != 'rows'}
         out['clip_curve'] = t['rows']

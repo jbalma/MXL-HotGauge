@@ -109,7 +109,7 @@ class IRDSVFModel(object):
     """
 
     def __init__(self, year=2024, anchor='wireloaded', alpha=DEFAULT_ALPHA,
-                 overdrive=DEFAULT_OVERDRIVE):
+                 overdrive=DEFAULT_OVERDRIVE, vt_shift_mV=0.0):
         if year not in IRDS_NODES:
             raise ValueError('no IRDS node for {!r}; have {}'.format(year, sorted(IRDS_NODES)))
         if anchor not in ANCHORS:
@@ -124,7 +124,10 @@ class IRDSVFModel(object):
         self.anchor = anchor
         self.alpha = float(alpha)
         self.vdd = float(node['vdd'])
-        self.vt = float(node['vt'])
+        self.vt_nominal = float(node['vt'])
+        self.vt_shift_mV = float(vt_shift_mV)
+        self.vt = self.vt_nominal - self.vt_shift_mV / 1000.0
+        self.ss_mV_dec = float(node['ss_mV_dec'])
         self.f_anchor = float(node['f_' + anchor])
         self.dyn_mW_per_GHz = float(node['dyn_mW_per_GHz'])
         self.overdrive = float(overdrive)
@@ -132,8 +135,52 @@ class IRDSVFModel(object):
         self.v_min = self.vt * 1.25          # below this the delay law is meaningless
         if self.vdd <= self.vt:
             raise ValueError('node {} has vdd <= vt'.format(year))
-        self._k = self.f_anchor * self.vdd / (self.vdd - self.vt) ** self.alpha
+        if self.vt <= 0:
+            raise ValueError('vt_shift_mV={} drives Vt to {:.4f} V, which is not a device'
+                             .format(vt_shift_mV, self.vt))
+        # k is a property of the TECHNOLOGY, so it is calibrated on the node's NOMINAL Vt and
+        # then held fixed while Vt moves. Re-fitting k to the shifted Vt would force the curve
+        # back through the same anchor point and the lever would buy exactly nothing -- the
+        # low-Vt device would be defined to be no faster, which is the opposite of the physics.
+        self._k = self.f_anchor * self.vdd / (self.vdd - self.vt_nominal) ** self.alpha
         self.calibrated = False
+
+    # -- the threshold-voltage lever -----------------------------------------------------
+    @property
+    def leakage_multiplier(self):
+        """Subthreshold leakage relative to the nominal-Vt device: ``10**(dVt / SS)``.
+
+        The cost side of the low-Vt trade, taken from **the node's own subthreshold swing**
+        rather than assumed. Lowering Vt by one decade of SS multiplies I_off by ten; at the
+        2024 node's 82 mV/dec a 50 mV drop is 4.07x.
+
+        This is the number a cooler has to pay back. Leakage is exponential in temperature and
+        this project has a calibrated curve of that (``leakage_calibration/``), so the kelvin
+        required is a measured quantity rather than an argument -- see
+        :meth:`cooling_K_to_offset` and ``docs/LADDER_GEN0.md``.
+        """
+        return 10.0 ** (self.vt_shift_mV / self.ss_mV_dec)
+
+    def cooling_K_to_offset(self, local_doubling_K):
+        """Kelvin of cooling that undoes this Vt shift's leakage cost.
+
+        ``local_doubling_K`` is how far the die must cool to halve leakage AT THE OPERATING
+        TEMPERATURE, read off the calibrated model -- it is strongly temperature dependent
+        (~10 K at 360-400 K, ~300 K at 320 K), so the caller must supply it for the regime it
+        is asking about rather than taking a constant. Below ~330 K the answer is correctly
+        enormous: a part that is already cool gains nothing from being cooled further, which is
+        the honest boundary of the whole claim.
+        """
+        import math
+        if self.vt_shift_mV <= 0:
+            return 0.0
+        return math.log2(self.leakage_multiplier) * float(local_doubling_K)
+
+    def clock_gain(self, V=None):
+        """Fractional clock gained at fixed supply, against the nominal-Vt device."""
+        V = self.vdd if V is None else float(V)
+        base = self._k * (V - self.vt_nominal) ** self.alpha / V
+        return self.frequency(V) / base - 1.0
 
     # -- the curve ---------------------------------------------------------------------
     def frequency(self, V):
