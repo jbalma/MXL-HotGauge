@@ -1,0 +1,63 @@
+{
+  "cores": 34,
+  "power_W": 116.4,
+  "target_C": 78.0,
+  "rows": [
+    {
+      "pitch_um": 100.0,
+      "die_mm2": 101.09708178335318,
+      "n_hot": 226,
+      "n_addressable": 95,
+      "p_hot_W": 54.08175151368996,
+      "p_addressable_W": 49.55835864204299,
+      "frac_hot_addressable": 0.42035398230088494,
+      "frac_power_addressable": 0.9163600892160095,
+      "pixels_hot_only": 1995,
+      "pixels_full_die": 10168,
+      "delivery_efficiency": 0.9559307682174868,
+      "laser_overhead": 1.0461008613256466
+    },
+    {
+      "pitch_um": 25.0,
+      "die_mm2": 101.09708178335318,
+      "n_hot": 226,
+      "n_addressable": 158,
+      "p_hot_W": 54.08175151368996,
+      "p_addressable_W": 51.71339281158699,
+      "frac_hot_addressable": 0.6991150442477876,
+      "frac_power_addressable": 0.9562078032642221,
+      "pixels_hot_only": 24174,
+      "pixels_full_die": 162360,
+      "delivery_efficiency": 0.9999688610012833,
+      "laser_overhead": 1.000031139968384
+    },
+    {
+      "pitch_um": 10.0,
+      "die_mm2": 101.09708178335318,
+      "n_hot": 226,
+      "n_addressable": 183,
+      "p_hot_W": 54.08175151368996,
+      "p_addressable_W": 53.76336861068116,
+      "frac_hot_addressable": 0.8097345132743363,
+      "frac_power_addressable": 0.9941129328452278,
+      "pixels_hot_only": 141924,
+      "pixels_full_die": 1013103,
+      "delivery_efficiency": 1.0,
+      "laser_overhead": 1.0
+    },
+    {
+      "pitch_um": 1.0,
+      "die_mm2": 101.09708178335318,
+      "n_hot": 226,
+      "n_addressable": 226,
+      "p_hot_W": 54.08175151368996,
+      "p_addressable_W": 54.08175151368996,
+      "frac_hot_addressable": 1.0,
+      "frac_power_addressable": 1.0,
+      "pixels_hot_only": 13742296,
+      "pixels_full_die": 101199507,
+      "delivery_efficiency": 1.0,
+      "laser_overhead": 1.0
+    }
+  ]
+}
