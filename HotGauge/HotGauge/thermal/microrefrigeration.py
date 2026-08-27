@@ -241,7 +241,8 @@ class MRParams(object):
                     ', budget<={:.2f} W'.format(self.max_total_W)))
 
 
-def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floor_K=200.0):
+def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floor_K=200.0,
+                  die_power_W=None):
     """Heat to remove per block [W] to clip everything above ``params.target_K``.
 
     block_temps_K       : {block: T_K}
@@ -254,6 +255,11 @@ def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floo
         q_need = (T - target) / sensitivity        (what would clip it)
         q_H    = h_max * area                      (cooling-density ceiling)
         q_dT   = dt_max / sensitivity              (temperature-lift ceiling)
+
+    All three of those are **device** limits. ``die_power_W`` adds the one **physical** limit:
+    in steady state the array cannot remove more heat than the die generates without driving it
+    below the coolant, which is a refrigeration regime this model does not claim. Passing it is
+    strongly recommended -- see the note on the cap below for what it prevents.
 
     Returns ``(plan, detail)`` where plan is ``{block: q_W}`` (positive = heat removed) and
     detail records, per block, which limit bound it -- so a disappointing result can be traced
@@ -309,6 +315,57 @@ def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floo
                        'achievable_dT_K': q * s}
 
     # A laser budget is spent on the blocks with the largest excess first: the hottest block
+    # sets the clock, so the marginal watt is worth most there.
+    #
+    # TWO different caps can bind here and they mean opposite things:
+    #
+    #   max_total_W -- a BUDGET the caller chose. Hitting it is a result: the plan wanted more
+    #                  than it was allowed.
+    #   die_power_W -- CONSERVATION, and hitting it is a BUG SIGNAL. In steady state the array
+    #                  cannot remove more heat than the die generates without driving the die
+    #                  below the coolant temperature, which is a refrigeration regime this model
+    #                  does not claim and cannot price.
+    #
+    # Why the conservation cap exists (added 27 Aug 2026). The first iteration of the descent
+    # sizes its plan from an ASSUMED sensitivity of 1.0 K/W, because nothing has been measured
+    # yet. Under the legacy envelope (h_max 10 W/mm^2, dt_max 10 K) the device caps quietly
+    # restrained that first plan -- h_max bound 396 of 400 blocks on a representative near-cliff
+    # field. Correcting the envelope to its demonstrated values (250 W/mm^2, 45 K) removed that
+    # restraint: on the same field the first plan went from 841 W to **9405 W**, sized by
+    # `excess / s` with `s` a guess, against a die dissipating 79 W. Applied to the trace it
+    # produced blocks at 3838 K and a coupled solve with no damping-independent answer, which is
+    # what zeroed the MR arm of every clock study (docs/evidence/clock_search_mr_arm_defect.json).
+    #
+    # The cap is GLOBAL, not per block. A per-block bound of q <= p_block is the wrong physics:
+    # the array sits above the silicon, so a tile cools a thermal NEIGHBOURHOOD and legitimately
+    # removes more than the block underneath dissipates -- measured, the working margin plans
+    # remove 0.108 W per engaged block against a 0.070 W mean block power. Only the total is
+    # conserved.
+    # CONSERVATION first, and it SCALES rather than reallocating. The two caps need different
+    # arithmetic because they answer different questions. A budget is a spending decision, so
+    # "hottest block first" is right: the marginal watt is worth most where the peak is. A
+    # conservation violation is not a spending decision -- the plan's SHAPE came from the physics
+    # and only its total is impossible, so the honest correction is to scale the whole plan and
+    # leave the shape alone. Reallocating greedily under a conservation cap would concentrate the
+    # entire die's power onto the two hottest blocks, which is a second pathology replacing the
+    # first: on the field above that put 39.5 W on a single block.
+    if die_power_W is not None and plan:
+        total = sum(plan.values())
+        if total > die_power_W:
+            scale = die_power_W / total
+            plan = {b: q * scale for b, q in plan.items()}
+            for blk in plan:
+                detail[blk]['limit'] = detail[blk]['limit'] + '+die_power_scaled'
+                detail[blk]['q_W'] = plan[blk]
+                detail[blk]['die_power_scale'] = scale
+            LOGGER.warning(
+                'MR plan wanted %.1f W from a die dissipating %.1f W (%.0fx) and was scaled by '
+                '%.3g to conserve energy. This is NOT a budget being hit: a plan that large means '
+                'it was sized from an untrustworthy sensitivity, so treat the result as suspect '
+                'rather than merely trimmed.', total, die_power_W, total / max(die_power_W, 1e-9),
+                scale)
+
+    # A laser BUDGET is then spent on the blocks with the largest excess first: the hottest block
     # sets the clock, so the marginal watt is worth most there.
     if params.max_total_W is not None and plan:
         total = sum(plan.values())
@@ -461,7 +518,8 @@ def estimate_sensitivity(temps_before_K, temps_after_K, plan, floor=1e-6):
     return out
 
 
-def envelope_plan(block_geom, params, sensitivity_K_per_W, blocks=None, t_floor_K=200.0):
+def envelope_plan(block_geom, params, sensitivity_K_per_W, blocks=None, t_floor_K=200.0,
+                  die_power_W=None):
     """The most cooling the device can apply to each block, ignoring how much is needed.
 
     Obtained by asking ``clipping_plan`` about an unboundedly hot die, so ``q_need`` never binds
@@ -475,7 +533,8 @@ def envelope_plan(block_geom, params, sensitivity_K_per_W, blocks=None, t_floor_
     """
     names = list(blocks if blocks is not None else block_geom)
     hot = {b: params.target_K + 1.0e6 for b in names}
-    return clipping_plan(hot, block_geom, params, sensitivity_K_per_W, t_floor_K=t_floor_K)
+    return clipping_plan(hot, block_geom, params, sensitivity_K_per_W, t_floor_K=t_floor_K,
+                         die_power_W=die_power_W)
 
 
 def _relax_plan_toward_target(plan, envelope, temps, params, sens, relax, t_floor_K):
@@ -564,7 +623,8 @@ class CoolingApplication(object):
 def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
                     initial_sensitivity=None, max_iter=6, tol_K=1.0, relax=0.7,
                     t_floor_K=200.0, status_fn=None, plan_mode='auto',
-                    tiles=None, tile_blocks=None, set_mr_powers=None):
+                    tiles=None, tile_blocks=None, set_mr_powers=None, die_power_W=None,
+                    calibrate=True, calibration_fraction=0.02):
     """Plan MR cooling against the solver. See :func:`_run_mr_clipping_dispatch` for the loop.
 
     This wrapper exists to do one thing the loop must not be trusted to remember at each of its
@@ -581,13 +641,25 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
     result = _run_mr_clipping_dispatch(
         trace, thermal_solve_fn, block_geom, params, name_map,
         initial_sensitivity=initial_sensitivity, max_iter=max_iter, tol_K=tol_K, relax=relax,
-        t_floor_K=t_floor_K, status_fn=status_fn, plan_mode=plan_mode, apply_plan=apply_plan)
+        t_floor_K=t_floor_K, status_fn=status_fn, plan_mode=plan_mode, apply_plan=apply_plan,
+        die_power_W=die_power_W, calibrate=calibrate,
+        calibration_fraction=calibration_fraction)
     result['placement'] = apply_plan.placement
     result['tile_plan'] = apply_plan.last_tile_plan
+    # NOTE: this deliberately does NOT re-apply the reported plan on the way out.
+    #
+    # An earlier version of this fix did, reasoning that the array should be left in the state the
+    # accounting describes. ArrayWiring's own guard refused it, and the guard was right: applying
+    # a plan that no solver will ever read is a no-op that only sets up the *next* caller to be
+    # confused ("plan generation 2, last read 1"). The invariant is enforced at ENTRY instead --
+    # every planning call zeroes the array before solving its baseline -- which is both sufficient
+    # and honest: the last plan applied is always the one that was solved to produce the
+    # temp_trace being returned.
     return result
 
 
 def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_map,
+                              die_power_W=None, calibrate=True, calibration_fraction=0.02,
                               initial_sensitivity=None, max_iter=6, tol_K=1.0, relax=0.7,
                               t_floor_K=200.0, status_fn=None, plan_mode='auto',
                               apply_plan=None):
@@ -652,6 +724,20 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
     # overshoot stand forever: the loop would see nothing above target, declare success, and
     # report a laser budget several times larger than needed. Overspending must be corrected,
     # not just under-spending.
+    # START FROM ZERO COOLING. The exit hook below leaves the array matching the plan this call
+    # REPORTS, which is right for the caller -- but it means the next call inherits that plan, and
+    # a baseline solved with the previous call's cooling still applied is not a baseline.
+    #
+    # In clock_headroom the wiring is built once per ARM and reused across every step of the clock
+    # bisection, so this is exactly the path taken. Symptom, measured 27 Aug 2026 at r_th 0.3
+    # AFTER the exit hook was added: array_on reported 4.7188 GHz at 71.0 C on 167.6 W with
+    # 0.000 W removed, while array_idle -- same stack, lower clock, 61.7 W -- sat at 85.0 C. A
+    # baseline cannot be cooler than the same die at lower power unless something is cooling it.
+    #
+    # Zeroing at entry and re-applying at exit are the two halves of one invariant: the array's
+    # state is always the plan the accounting describes, and every planning call measures from
+    # the unpowered array.
+    apply_plan({})
     base_temps = thermal_solve_fn(trace)
     base_status = _status()
     # Status of the solve that produced the field we would REPORT, as distinct from "any solve
@@ -668,10 +754,50 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
             trace, thermal_solve_fn, block_geom, params, name_map, sens,
             max_iter=max_iter, tol_K=tol_K, relax=relax, t_floor_K=t_floor_K,
             status_fn=_status, base_temps=base_temps, base_status=base_status,
-            apply_plan=apply_plan)
+            apply_plan=apply_plan, die_power_W=die_power_W)
 
     base_hot = {b: float(np.ravel(t)[-1]) for b, t in base_temps.items()
                 if float(np.ravel(t)[-1]) > max(t_floor_K, params.target_K)}
+
+    # MEASURE the sensitivity before sizing anything from it.
+    #
+    # The descent used to start from `sens.setdefault(b, 1.0)` -- an assumed 1.0 K/W -- and size
+    # its first plan from that guess. Under the legacy envelope the device caps hid the problem:
+    # h_max bound 396 of 400 blocks on a near-cliff field, so the first plan was restrained by
+    # the device rather than by the guess. With the envelope corrected to its demonstrated values
+    # that restraint is gone and `q_need = excess / s` binds instead, so the guess sets the plan
+    # directly. The conservation cap above stops it running to kilowatts; this stops it being a
+    # guess at all.
+    #
+    # The probe is a small, PROPORTIONAL removal over the hot blocks -- proportional because the
+    # secant estimate is per block and a uniform probe would over-drive the small ones. Its size
+    # is a fraction of die power, which is the only scale available that is a property of the
+    # workload rather than of the device. One extra solve per planning call.
+    if base_hot and calibrate and die_power_W and thermal_solve_fn is not None:
+        excess = {b: base_hot[b] - params.target_K for b in base_hot}
+        tot_excess = sum(excess.values())
+        if tot_excess > 0:
+            probe_W = calibration_fraction * float(die_power_W)
+            probe = {b: probe_W * excess[b] / tot_excess for b in base_hot}
+            probe_temps = thermal_solve_fn(apply_plan(probe))
+            probe_status = _status()
+            measured = estimate_sensitivity(base_temps, probe_temps, probe)
+            if measured and not probe_status.get('diverged'):
+                sens.update(measured)
+                LOGGER.info('sensitivity calibrated on %d of %d hot blocks with a %.3f W probe '
+                            '(%.1f%% of die power); median %.4g K/W',
+                            len(measured), len(base_hot), probe_W,
+                            100.0 * calibration_fraction,
+                            float(np.median(list(measured.values()))))
+            else:
+                # A probe that diverges says the operating point is already unstable, which is
+                # information -- but it is not a sensitivity, so nothing is learned and the
+                # fallback below applies. Saying so beats silently reverting to the guess.
+                LOGGER.warning('sensitivity calibration probe failed (%s); falling back to the '
+                               'assumed 1.0 K/W for %d blocks, so this plan is sized from a '
+                               'guess and the conservation cap is the only thing bounding it',
+                               'diverged' if probe_status.get('diverged') else 'no positive dT/dq',
+                               len(base_hot))
 
     if not base_hot:
         return {'plan': {}, 'detail': {}, 'temp_trace': base_temps, 'sensitivity': sens,
@@ -680,13 +806,16 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
                 'accounting': mr_accounting({}, params),
                 'reason': 'nothing above target; no cooling needed'}
 
+    # Whatever the calibration probe could not measure falls back to the assumed 1.0 K/W. That
+    # fallback is now BOUNDED rather than load-bearing: the conservation cap in clipping_plan
+    # stops a guessed sensitivity producing an impossible plan.
     for b in base_hot:
         sens.setdefault(b, 1.0)
 
     plan, detail, temps = {}, {}, base_temps
     for it in range(max_iter):
         new_plan, detail = clipping_plan(base_hot, block_geom, params, sens,
-                                         t_floor_K=t_floor_K)
+                                         t_floor_K=t_floor_K, die_power_W=die_power_W)
         if not new_plan:
             return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
                     'result_unconverged': bool(result_status.get('unconverged')),
@@ -772,7 +901,7 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
 def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_map, sens,
                               max_iter=6, tol_K=1.0, relax=0.7, t_floor_K=200.0,
                               status_fn=None, base_temps=None, base_status=None,
-                              bisect_iters=8, apply_plan=None):
+                              bisect_iters=8, apply_plan=None, die_power_W=None):
     """MR sizing anchored on the device envelope rather than on an uncooled baseline.
 
     Used when the bare die has no steady state, where the baseline the original scheme plans
@@ -792,7 +921,8 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
     for b in block_geom:
         sens.setdefault(b, 1.0)
 
-    envelope, detail = envelope_plan(block_geom, params, sens, t_floor_K=t_floor_K)
+    envelope, detail = envelope_plan(block_geom, params, sens, t_floor_K=t_floor_K,
+                                     die_power_W=die_power_W)
     if not envelope:
         return {'plan': {}, 'detail': detail, 'temp_trace': base_temps, 'sensitivity': sens,
                 'result_unconverged': bool(result_status.get('unconverged')),

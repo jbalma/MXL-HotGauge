@@ -64,6 +64,7 @@ from HotGauge.power.dram import (stacked_dram_model, dram_block_powers, dram_lim
                                  DEFAULT_REFRESH_BREAK_K, DEFAULT_DRAM_LIMIT_K)
 from HotGauge.power.clock_search import emphasise_units
 from HotGauge.thermal.utils import K_to_C
+from HotGauge.thermal.microrefrigeration import DEFAULT_DT_MAX_K
 
 T_FLOOR_K = 200.0
 
@@ -97,7 +98,10 @@ def main():
     ap.add_argument('--trace-dir', default=os.path.join(_REPO, 'mcpat_runs', '7nm',
                                                         'linpack_3.8GHz'))
     ap.add_argument('--stack', default='skylake')
-    ap.add_argument('--density', type=float, default=1.00,
+    # 0.60 W/mm^2: the stacked-memory working point on the CORRECTED --spreading boundary
+    # (scripts/array_config.sh, DENSITY_STACKED, which is the authority). Was 1.00, chosen for
+    # the pre-correction boundary.
+    ap.add_argument('--density', type=float, default=0.60,
                     help='LOGIC die average power density [W/mm^2]')
     ap.add_argument('--cfm', type=float, default=88.0)
     ap.add_argument('--r-th', type=float, default=None)
@@ -130,7 +134,11 @@ def main():
     # --- design shape (composes with design G) ---
     ap.add_argument('--emphasise', default=None)
     ap.add_argument('--emphasis-factor', type=float, default=4.0)
-    ap.add_argument('--dt-max', type=float, default=10.0)
+    # Same device parameter as everywhere else, and the same correction: this defaulted to a
+    # hardcoded 10.0 (the unsourced legacy envelope) until 27 Aug 2026. It sets the plateau
+    # width this driver reports, so a plateau measured at one dt_max cannot be compared with one
+    # measured at another.
+    ap.add_argument('--dt-max', type=float, default=DEFAULT_DT_MAX_K)
     # --- solver ---
     ap.add_argument('--leakage-cal', default=os.path.join(
         _REPO, 'leakage_calibration', 'leakage_calibration.json'))

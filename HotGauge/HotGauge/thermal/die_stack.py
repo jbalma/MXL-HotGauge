@@ -525,12 +525,42 @@ def render_stack_text(spec):
 
 
 def write_stack(spec, out_path):
-    """Write the rendered stack and return its path."""
+    """Write the rendered stack **atomically** and return its path.
+
+    Atomic because the filename is DETERMINISTIC and therefore shared. A sweep running N points
+    concurrently against the same geometry has every one of them rendering the same path, and a
+    plain ``open(path, 'w')`` truncates the file before it writes it -- so a reader that arrives
+    in between gets a partial stack. Observed 27 Aug 2026 with 8 concurrent tier points on one
+    spec:
+
+        ValueError: Expected exactly one "heat transfer coefficient" in
+        .../gen_direct_die_die240_src200_act20_notim_cell50_c696eeef.stk, found 0.
+        A pluggable stack has none and cannot be used for a steady sink study.
+
+    That message is a *lucky* failure -- the guard happened to be looking at the field the
+    truncation removed. A partial file that still parses would have been a silently wrong
+    geometry, and the deterministic name means the whole sweep would share it.
+
+    Writing to a unique temp file in the same directory and renaming closes it: ``os.replace``
+    is atomic on POSIX, so a concurrent reader sees either the complete previous file or the
+    complete new one, never a half-written one. The rendered bytes are unchanged.
+    """
+    import tempfile
     out_dir = os.path.dirname(os.path.abspath(out_path))
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
-    with open(out_path, 'w') as f:
-        f.write(render_stack_text(spec))
+    text = render_stack_text(spec)
+    fd, tmp = tempfile.mkstemp(dir=out_dir or '.', prefix='.tmp_stack_', suffix='.stk')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(text)
+        os.replace(tmp, out_path)          # atomic on POSIX
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
     LOGGER.info('wrote %s stack: die %.0f um, active layer %.0f um deep, %d package layer(s), '
                 'path to coolant %.0f um -> %s', spec.package, spec.die_um,
                 spec.source_depth_um, len(spec.package_layers()) - 1,

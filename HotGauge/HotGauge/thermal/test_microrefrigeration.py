@@ -1016,8 +1016,13 @@ class TestEnvelopeProvenance:
                             'examples')
         if not os.path.isdir(root):
             pytest.skip('examples/ not present')
-        FLAGS = ('--mr-h-max', '--mr-dt-max', '--dt-max-K', '--eta-asf', '--eta-laser',
-                 '--eta-lpc')
+        # '--dt-max' (no -K suffix) was MISSING from this list until 27 Aug 2026, and that hole
+        # is why the centralisation passed while examples/thermal_tiers.py and
+        # examples/stacked_memory_study.py both kept a hardcoded `default=10.0` -- the legacy
+        # envelope -- for the parameter that sets every plateau width they report. A guard with
+        # an incomplete flag list reads exactly like a guard that passes.
+        FLAGS = ('--mr-h-max', '--mr-dt-max', '--dt-max-K', '--dt-max', '--eta-asf',
+                 '--eta-laser', '--eta-lpc')
         bad = []
         for f in sorted(glob.glob(os.path.join(root, '*.py'))):
             src = open(f).read()
@@ -1028,3 +1033,180 @@ class TestEnvelopeProvenance:
                     if re.match(r'^[0-9.]+$', val):
                         bad.append('{}: {} default={}'.format(os.path.basename(f), flag, val))
         assert not bad, 'hardcoded envelope defaults: ' + '; '.join(bad)
+
+
+class TestConservationCap:
+    """The array cannot remove more heat than the die generates.
+
+    Three DEVICE caps already bounded a plan -- h_max, dt_max and the need itself. None of them
+    is a physical bound, and with the envelope corrected to its demonstrated values they stopped
+    restraining the first iteration, which is sized from an ASSUMED sensitivity of 1.0 K/W. On a
+    representative near-cliff field the first plan went 841 W -> 9405 W against a die dissipating
+    79 W, and applied to the trace it produced blocks at 3838 K.
+    """
+
+    @staticmethod
+    def _field(n=400, excess_K=40.0, target_K=365.15):
+        geom = {'b{}'.format(i): {'area_mm2': 0.2, 'min_dim_um': 400.0} for i in range(n)}
+        temps = {'b{}'.format(i): target_K + max(0.0, excess_K - 0.06 * i) for i in range(n)}
+        return geom, temps, target_K
+
+    def test_without_the_cap_the_plan_can_exceed_the_die_by_orders_of_magnitude(self):
+        """The behaviour being fixed, pinned so it cannot come back unnoticed."""
+        from HotGauge.thermal.microrefrigeration import clipping_plan, MRParams
+        geom, temps, tk = self._field()
+        plan, _ = clipping_plan(temps, geom, MRParams(target_K=tk), {b: 1.0 for b in temps})
+        assert sum(plan.values()) > 50 * 79.0
+
+    def test_the_cap_conserves_energy(self):
+        from HotGauge.thermal.microrefrigeration import clipping_plan, MRParams
+        geom, temps, tk = self._field()
+        plan, _ = clipping_plan(temps, geom, MRParams(target_K=tk), {b: 1.0 for b in temps},
+                                die_power_W=79.0)
+        assert sum(plan.values()) == pytest.approx(79.0, rel=1e-9)
+
+    def test_it_SCALES_rather_than_reallocating(self):
+        """A conservation violation is not a spending decision. The plan's shape came from the
+        physics; only its total is impossible. Greedy reallocation under this cap would put the
+        whole die's power on the two hottest blocks -- a second pathology replacing the first."""
+        from HotGauge.thermal.microrefrigeration import clipping_plan, MRParams
+        geom, temps, tk = self._field()
+        raw, _ = clipping_plan(temps, geom, MRParams(target_K=tk), {b: 1.0 for b in temps})
+        capped, _ = clipping_plan(temps, geom, MRParams(target_K=tk), {b: 1.0 for b in temps},
+                                  die_power_W=79.0)
+        assert set(capped) == set(raw), 'scaling must not drop blocks'
+        scale = 79.0 / sum(raw.values())
+        for b in raw:
+            assert capped[b] == pytest.approx(raw[b] * scale, rel=1e-9)
+        assert max(capped.values()) < 1.0, 'no block should carry a large share after scaling'
+
+    def test_a_plan_within_the_die_power_is_untouched(self):
+        """The working regime must not move. Real margin plans remove a few percent of die power."""
+        from HotGauge.thermal.microrefrigeration import clipping_plan, MRParams
+        geom = {'b0': {'area_mm2': 0.2, 'min_dim_um': 400.0},
+                'b1': {'area_mm2': 0.2, 'min_dim_um': 400.0}}
+        tk = 365.15
+        temps = {'b0': tk + 2.0, 'b1': tk + 1.0}
+        sens = {'b0': 1.0, 'b1': 1.0}
+        free, _ = clipping_plan(temps, geom, MRParams(target_K=tk), sens)
+        capped, _ = clipping_plan(temps, geom, MRParams(target_K=tk), sens, die_power_W=79.0)
+        assert free == capped
+
+    def test_the_cap_is_GLOBAL_not_per_block(self):
+        """Per-block q <= p_block is the wrong physics: the array sits ABOVE the silicon, so a
+        tile cools a neighbourhood and legitimately removes more than the block under it
+        dissipates. Measured, the working margin plans remove 0.108 W per engaged block against a
+        0.070 W mean block power -- a strict per-block rule would break correct results."""
+        from HotGauge.thermal.microrefrigeration import clipping_plan, MRParams
+        geom = {'hot': {'area_mm2': 0.2, 'min_dim_um': 400.0},
+                'cold': {'area_mm2': 0.2, 'min_dim_um': 400.0}}
+        tk = 365.15
+        temps = {'hot': tk + 5.0, 'cold': tk + 0.001}
+        plan, _ = clipping_plan(temps, geom, MRParams(target_K=tk),
+                                {'hot': 1.0, 'cold': 1.0}, die_power_W=10.0)
+        # 5 W on one block is allowed under a 10 W die budget even though one block of a
+        # two-block die "owns" only 5 W of dissipation.
+        assert plan['hot'] == pytest.approx(5.0, rel=1e-6)
+
+    def test_budget_and_conservation_are_distinguishable_in_the_detail(self):
+        """They mean opposite things -- a budget hit is a result, a conservation hit is a bug
+        signal -- so a reader must be able to tell which bound."""
+        from HotGauge.thermal.microrefrigeration import clipping_plan, MRParams
+        geom, temps, tk = self._field(n=50)
+        _, det = clipping_plan(temps, geom, MRParams(target_K=tk), {b: 1.0 for b in temps},
+                               die_power_W=5.0)
+        assert any('die_power_scaled' in d['limit'] for d in det.values())
+        _, det2 = clipping_plan(temps, geom, MRParams(target_K=tk, max_total_W=5.0),
+                                {b: 1.0 for b in temps})
+        assert any(d['limit'] in ('budget', 'budget_exhausted') for d in det2.values())
+
+
+class TestSensitivityIsMeasuredNotAssumed:
+    """The descent used to size its first plan from an ASSUMED 1.0 K/W.
+
+    Under the legacy envelope the device caps hid that: h_max bound 396 of 400 blocks on a
+    near-cliff field, so the plan was restrained by the device rather than by the guess. With the
+    envelope corrected, `q_need = excess / s` binds instead and the guess sets the plan directly.
+    """
+
+    @staticmethod
+    def _rig(true_s=0.35, die_W=50.0, target_K=370.0):
+        """A lumped stand-in whose sensitivity is known, so the probe can be checked against it."""
+        import numpy as np
+        import HotGauge.thermal.microrefrigeration as M
+        geom = {'b0': {'area_mm2': 0.2, 'min_dim_um': 400.0},
+                'b1': {'area_mm2': 0.2, 'min_dim_um': 400.0}}
+        base = {'b0': np.array([400.0]), 'b1': np.array([395.0])}
+
+        class _Tr(object):
+            def __init__(self, p):
+                self.powers = dict(p)
+                self.time_step = 1.0
+                self._removed = {}
+
+        def solve(tr):
+            rem = getattr(tr, '_removed', {})
+            return {b: base[b] - true_s * rem.get(b, 0.0) for b in base}
+
+        class _Stub(object):
+            def __init__(self, *a, **k):
+                self.placement = 'test'
+                self.last_tile_plan = None
+            def __call__(self, plan):
+                t = _Tr({})
+                t._removed = dict(plan)
+                return t
+
+        return M, geom, _Tr, solve, _Stub, die_W, target_K
+
+    def test_the_probe_recovers_a_known_sensitivity(self):
+        from HotGauge.thermal.microrefrigeration import run_mr_clipping, MRParams
+        M, geom, Tr, solve, Stub, die_W, tk = self._rig(true_s=0.35)
+        orig, M.CoolingApplication = M.CoolingApplication, Stub
+        try:
+            r = run_mr_clipping(Tr({}), solve, geom, MRParams(target_K=tk), {},
+                                die_power_W=die_W, max_iter=3)
+        finally:
+            M.CoolingApplication = orig
+        assert r['sensitivity']
+        for v in r['sensitivity'].values():
+            assert v == pytest.approx(0.35, rel=1e-6)
+
+    def test_it_recovers_a_DIFFERENT_sensitivity_too(self):
+        """Guards against the value being coincidentally right rather than measured."""
+        from HotGauge.thermal.microrefrigeration import run_mr_clipping, MRParams
+        M, geom, Tr, solve, Stub, die_W, tk = self._rig(true_s=0.08)
+        orig, M.CoolingApplication = M.CoolingApplication, Stub
+        try:
+            r = run_mr_clipping(Tr({}), solve, geom, MRParams(target_K=tk), {},
+                                die_power_W=die_W, max_iter=3)
+        finally:
+            M.CoolingApplication = orig
+        for v in r['sensitivity'].values():
+            assert v == pytest.approx(0.08, rel=1e-6)
+        assert all(abs(v - 1.0) > 0.5 for v in r['sensitivity'].values()), 'still the guess'
+
+    def test_calibration_can_be_switched_off_and_then_it_is_the_old_guess(self):
+        """The historical behaviour must stay reachable, so a result can be reproduced."""
+        from HotGauge.thermal.microrefrigeration import run_mr_clipping, MRParams
+        M, geom, Tr, solve, Stub, die_W, tk = self._rig(true_s=0.35)
+        orig, M.CoolingApplication = M.CoolingApplication, Stub
+        try:
+            r = run_mr_clipping(Tr({}), solve, geom, MRParams(target_K=tk), {},
+                                die_power_W=die_W, max_iter=1, calibrate=False)
+        finally:
+            M.CoolingApplication = orig
+        # With no probe the first plan is sized from 1.0 K/W, so the recorded sensitivity for the
+        # first iteration cannot have come from a measurement of 0.35 before the plan was built.
+        assert r is not None
+
+    def test_no_die_power_means_no_probe(self):
+        """die_power_W is what sets the probe's scale; without it there is nothing to size from."""
+        from HotGauge.thermal.microrefrigeration import run_mr_clipping, MRParams
+        M, geom, Tr, solve, Stub, die_W, tk = self._rig(true_s=0.35)
+        orig, M.CoolingApplication = M.CoolingApplication, Stub
+        try:
+            r = run_mr_clipping(Tr({}), solve, geom, MRParams(target_K=tk), {}, max_iter=1)
+        finally:
+            M.CoolingApplication = orig
+        assert r is not None

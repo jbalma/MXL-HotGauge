@@ -1189,7 +1189,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.1,
+        "ran_at": 0.8
+      }
     },
     {
       "source": "results/rerun_cpu/overnight3/p5_cfm200_d1.10/mr_comparison.json",
@@ -1216,7 +1220,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.1,
+        "ran_at": 0.8
+      }
     },
     {
       "source": "results/rerun_cpu/overnight3/p5_cfm50_d1.10/mr_comparison.json",
@@ -1243,7 +1251,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.1,
+        "ran_at": 0.8
+      }
     },
     {
       "source": "results/rerun_cpu/overnight3/p5_cores128_d0.50/mr_comparison.json",
@@ -1412,6 +1424,492 @@
   ],
   "margin_curve": [
     {
+      "source": "results/recentred_gapfill/margin_d0.80_off1/mr_comparison.json",
+      "tag": "margin_d0.80_off1",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.8,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 77.5034118652344
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 76.49776611328127,
+        "heat_removed_W": 0.14360768091049245,
+        "p_mr_net_W": -0.017021733943214268,
+        "n_targets": 1,
+        "holds_target": true,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 76.5 C against a 76.5 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_d0.80_off12/mr_comparison.json",
+      "tag": "margin_d0.80_off12",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.8,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 77.5034118652344
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 70.16497192382815,
+        "heat_removed_W": 3.452808653432739,
+        "p_mr_net_W": -0.4092593786274694,
+        "n_targets": 32,
+        "holds_target": false,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 70.2 C against a 65.5 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_d0.80_off2/mr_comparison.json",
+      "tag": "margin_d0.80_off2",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.8,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 77.5034118652344
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 75.50017700195315,
+        "heat_removed_W": 0.28606024166730926,
+        "p_mr_net_W": -0.03390655217409577,
+        "n_targets": 1,
+        "holds_target": null,
+        "plan_is_minimum": false,
+        "reason": "descent converged on the target; this plan holds the target but the stability boundary was never probed, so it is not known to be the smallest plan that keeps a steady state"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_d0.80_off3/mr_comparison.json",
+      "tag": "margin_d0.80_off3",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.8,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 77.5034118652344
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 74.59169921875002,
+        "heat_removed_W": 0.45729639452464094,
+        "p_mr_net_W": -0.05420307264512658,
+        "n_targets": 3,
+        "holds_target": true,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 74.6 C against a 74.5 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_d0.80_off5/mr_comparison.json",
+      "tag": "margin_d0.80_off5",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.8,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 77.5034118652344
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 74.2513366699219,
+        "heat_removed_W": 0.7448125135853807,
+        "p_mr_net_W": -0.08828218911026742,
+        "n_targets": 6,
+        "holds_target": true,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 74.3 C against a 72.5 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_d0.80_off8/mr_comparison.json",
+      "tag": "margin_d0.80_off8",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.8,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 77.5034118652344
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 71.82317504882815,
+        "heat_removed_W": 1.713176571124841,
+        "p_mr_net_W": -0.2030618112245035,
+        "n_targets": 12,
+        "holds_target": false,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 71.8 C against a 69.5 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_d0.85_off1/mr_comparison.json",
+      "tag": "margin_d0.85_off1",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.85,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 81.1126647949219
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 80.10698852539065,
+        "heat_removed_W": 0.1436021784647081,
+        "p_mr_net_W": -0.017021081741552146,
+        "n_targets": 1,
+        "holds_target": true,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 80.1 C against a 80.1 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_d0.85_off12/mr_comparison.json",
+      "tag": "margin_d0.85_off12",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.85,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 81.1126647949219
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 73.2985778808594,
+        "heat_removed_W": 3.427870366594817,
+        "p_mr_net_W": -0.40630345815815083,
+        "n_targets": 28,
+        "holds_target": false,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 73.3 C against a 69.1 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_d0.85_off2/mr_comparison.json",
+      "tag": "margin_d0.85_off2",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.85,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 81.1126647949219
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 79.10942993164065,
+        "heat_removed_W": 0.28605021912081596,
+        "p_mr_net_W": -0.03390536420755552,
+        "n_targets": 1,
+        "holds_target": null,
+        "plan_is_minimum": false,
+        "reason": "descent converged on the target; this plan holds the target but the stability boundary was never probed, so it is not known to be the smallest plan that keeps a steady state"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_d0.85_off3/mr_comparison.json",
+      "tag": "margin_d0.85_off3",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.85,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 81.1126647949219
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 78.14870605468752,
+        "heat_removed_W": 0.4906504307753303,
+        "p_mr_net_W": -0.058156506941899444,
+        "n_targets": 3,
+        "holds_target": true,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 78.1 C against a 78.1 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_d0.85_off5/mr_comparison.json",
+      "tag": "margin_d0.85_off5",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.85,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 81.1126647949219
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 77.76741943359377,
+        "heat_removed_W": 0.7360110643258966,
+        "p_mr_net_W": -0.0872389585068638,
+        "n_targets": 5,
+        "holds_target": true,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 77.8 C against a 76.1 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_d0.85_off8/mr_comparison.json",
+      "tag": "margin_d0.85_off8",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.85,
+      "cfm": 88.0,
+      "r_th": null,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 81.1126647949219
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 75.55281982421877,
+        "heat_removed_W": 1.628058403653959,
+        "p_mr_net_W": -0.1929728049036905,
+        "n_targets": 10,
+        "holds_target": false,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 75.6 C against a 73.1 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_liquid_off1/mr_comparison.json",
+      "tag": "margin_liquid_off1",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.8,
+      "cfm": 88.0,
+      "r_th": 0.05,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 73.0134216308594
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 72.00826416015627,
+        "heat_removed_W": 0.15317535705930527,
+        "p_mr_net_W": -0.018155784969088318,
+        "n_targets": 1,
+        "holds_target": true,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 72.0 C against a 72.0 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_liquid_off12/mr_comparison.json",
+      "tag": "margin_liquid_off12",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.8,
+      "cfm": 88.0,
+      "r_th": 0.05,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 73.0134216308594
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 65.5981384277344,
+        "heat_removed_W": 3.847246634405845,
+        "p_mr_net_W": -0.4560118804898696,
+        "n_targets": 33,
+        "holds_target": false,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 65.6 C against a 61.0 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_liquid_off2/mr_comparison.json",
+      "tag": "margin_liquid_off2",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.8,
+      "cfm": 88.0,
+      "r_th": 0.05,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 73.0134216308594
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 71.01070556640627,
+        "heat_removed_W": 0.3051916689128505,
+        "p_mr_net_W": -0.036174188991729084,
+        "n_targets": 1,
+        "holds_target": null,
+        "plan_is_minimum": false,
+        "reason": "descent converged on the target; this plan holds the target but the stability boundary was never probed, so it is not known to be the smallest plan that keeps a steady state"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_liquid_off3/mr_comparison.json",
+      "tag": "margin_liquid_off3",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.8,
+      "cfm": 88.0,
+      "r_th": 0.05,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 73.0134216308594
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 70.10091552734377,
+        "heat_removed_W": 0.4439503512656065,
+        "p_mr_net_W": -0.05262117398824695,
+        "n_targets": 2,
+        "holds_target": true,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 70.1 C against a 70.0 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_liquid_off5/mr_comparison.json",
+      "tag": "margin_liquid_off5",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.8,
+      "cfm": 88.0,
+      "r_th": 0.05,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 73.0134216308594
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 69.74367675781252,
+        "heat_removed_W": 0.8498472177416047,
+        "p_mr_net_W": -0.10073189080878464,
+        "n_targets": 6,
+        "holds_target": true,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 69.7 C against a 68.0 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/margin_liquid_off8/mr_comparison.json",
+      "tag": "margin_liquid_off8",
+      "family": "margin curve on DERIVED targets (27 Aug 2026): target = array_idle peak - offset, so the study cannot slide below its own targets when the boundary moves",
+      "density": 0.8,
+      "cfm": 88.0,
+      "r_th": 0.05,
+      "no_mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 73.0134216308594
+      },
+      "mr": {
+        "diverged": false,
+        "unconverged": false,
+        "peak_C": 67.32857666015627,
+        "heat_removed_W": 2.0450262041664184,
+        "p_mr_net_W": -0.24239575302325544,
+        "n_targets": 11,
+        "holds_target": false,
+        "plan_is_minimum": false,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 67.3 C against a 65.0 C target)"
+      },
+      "verification_scope": "reported-field",
+      "n_probe_solves_unconverged": 0,
+      "quotable": true
+    },
+    {
       "source": "results/rerun_cpu/gapfill/margin_T93_d1.10/mr_comparison.json",
       "tag": "margin_T93_d1.10",
       "family": "rescue cost vs margin demanded (legacy rule)",
@@ -1436,7 +1934,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.1,
+        "ran_at": 0.8
+      }
     },
     {
       "source": "results/rerun_cpu/gapfill/margin_T94_d1.10/mr_comparison.json",
@@ -1463,7 +1965,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.1,
+        "ran_at": 0.8
+      }
     },
     {
       "source": "results/rerun_cpu/gapfill/margin_T95_d1.10/mr_comparison.json",
@@ -1490,7 +1996,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.1,
+        "ran_at": 0.8
+      }
     },
     {
       "source": "results/rerun_cpu/gapfill/margin_T96_d1.10/mr_comparison.json",
@@ -1517,7 +2027,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.1,
+        "ran_at": 0.8
+      }
     },
     {
       "source": "results/rerun_cpu/gapfill/margin_T97_d1.10/mr_comparison.json",
@@ -1544,7 +2058,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.1,
+        "ran_at": 0.8
+      }
     },
     {
       "source": "results/rerun_cpu/gapfill/margin_T99_d1.10/mr_comparison.json",
@@ -1571,7 +2089,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.1,
+        "ran_at": 0.8
+      }
     },
     {
       "source": "results/rerun_cpu/nextsteps/margin_T95_d1.10/mr_comparison.json",
@@ -1598,7 +2120,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.1,
+        "ran_at": 0.8
+      }
     },
     {
       "source": "results/rerun_cpu/nextsteps/margin_T98_d1.10/mr_comparison.json",
@@ -1625,7 +2151,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.1,
+        "ran_at": 0.8
+      }
     },
     {
       "source": "results/rerun_cpu/nextsteps/margin_T99_d1.10/mr_comparison.json",
@@ -1652,7 +2182,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.1,
+        "ran_at": 0.8
+      }
     },
     {
       "source": "results/rerun_cpu/nextsteps/margin2_T93_d1.15/mr_comparison.json",
@@ -1679,7 +2213,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.15,
+        "ran_at": 0.85
+      }
     },
     {
       "source": "results/rerun_cpu/nextsteps/margin2_T94_d1.15/mr_comparison.json",
@@ -1706,7 +2244,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.15,
+        "ran_at": 0.85
+      }
     },
     {
       "source": "results/rerun_cpu/nextsteps/margin2_T96_d1.15/mr_comparison.json",
@@ -1733,7 +2275,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.15,
+        "ran_at": 0.85
+      }
     },
     {
       "source": "results/rerun_cpu/nextsteps/margin2_T98_d1.15/mr_comparison.json",
@@ -1760,7 +2306,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 0,
-      "quotable": true
+      "quotable": true,
+      "tag_density_mismatch": {
+        "tag_says": 1.15,
+        "ran_at": 0.85
+      }
     },
     {
       "source": "results/rerun_cpu/nextsteps/margin3_T93_liquid/mr_comparison.json",
@@ -2277,7 +2827,11 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 1,
-      "quotable": false
+      "quotable": false,
+      "tag_density_mismatch": {
+        "tag_says": 1.0,
+        "ran_at": 0.7
+      }
     }
   ],
   "ceiling": [
@@ -2306,10 +2860,762 @@
       },
       "verification_scope": "reported-field",
       "n_probe_solves_unconverged": 1,
-      "quotable": false
+      "quotable": false,
+      "tag_density_mismatch": {
+        "tag_says": 1.17,
+        "ran_at": 0.95
+      }
     }
   ],
   "tiers": [
+    {
+      "source": "results/recentred_gapfill/tiers_fpu2_dt10/tiers.json",
+      "tag": "tiers_fpu2_dt10",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6018389944553445,
+      "activity": "uniform",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 2.0,
+      "dt_max_K": 10.0,
+      "peak_C": 66.88921508789065,
+      "peak_block": "RBB_16",
+      "plateau": 56,
+      "clip_one_gain_K": 1.178985595703125,
+      "n_needed_for_full_dt_max": 56,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_fpu2_dt20/tiers.json",
+      "tag": "tiers_fpu2_dt20",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6018389944553445,
+      "activity": "uniform",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 2.0,
+      "dt_max_K": 20.0,
+      "peak_C": 66.88921508789065,
+      "peak_block": "RBB_16",
+      "plateau": 460,
+      "clip_one_gain_K": 1.178985595703125,
+      "n_needed_for_full_dt_max": 460,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_fpu2_dt30/tiers.json",
+      "tag": "tiers_fpu2_dt30",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6018389944553445,
+      "activity": "uniform",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 2.0,
+      "dt_max_K": 30.0,
+      "peak_C": 66.88921508789065,
+      "peak_block": "RBB_16",
+      "plateau": 1117,
+      "clip_one_gain_K": 1.178985595703125,
+      "n_needed_for_full_dt_max": 1117,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_fpu2_dt45/tiers.json",
+      "tag": "tiers_fpu2_dt45",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6018389944553445,
+      "activity": "uniform",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 2.0,
+      "dt_max_K": 45.0,
+      "peak_C": 66.88921508789065,
+      "peak_block": "RBB_16",
+      "plateau": 1126,
+      "clip_one_gain_K": 1.178985595703125,
+      "n_needed_for_full_dt_max": 1126,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_fpu3_dt10/tiers.json",
+      "tag": "tiers_fpu3_dt10",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6018389944424053,
+      "activity": "uniform",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 3.0,
+      "dt_max_K": 10.0,
+      "peak_C": 69.22286376953127,
+      "peak_block": "FPUs_0",
+      "plateau": 36,
+      "clip_one_gain_K": 2.9466552734375,
+      "n_needed_for_full_dt_max": 36,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_fpu3_dt20/tiers.json",
+      "tag": "tiers_fpu3_dt20",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6018389944424053,
+      "activity": "uniform",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 3.0,
+      "dt_max_K": 20.0,
+      "peak_C": 69.22286376953127,
+      "peak_block": "FPUs_0",
+      "plateau": 282,
+      "clip_one_gain_K": 2.9466552734375,
+      "n_needed_for_full_dt_max": 282,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_fpu3_dt30/tiers.json",
+      "tag": "tiers_fpu3_dt30",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6018389944424053,
+      "activity": "uniform",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 3.0,
+      "dt_max_K": 30.0,
+      "peak_C": 69.22286376953127,
+      "peak_block": "FPUs_0",
+      "plateau": 1070,
+      "clip_one_gain_K": 2.9466552734375,
+      "n_needed_for_full_dt_max": 1070,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_fpu3_dt45/tiers.json",
+      "tag": "tiers_fpu3_dt45",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6018389944424053,
+      "activity": "uniform",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 3.0,
+      "dt_max_K": 45.0,
+      "peak_C": 69.22286376953127,
+      "peak_block": "FPUs_0",
+      "plateau": 1126,
+      "clip_one_gain_K": 2.9466552734375,
+      "n_needed_for_full_dt_max": 1126,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_fpu4_dt10/tiers.json",
+      "tag": "tiers_fpu4_dt10",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6021140987937684,
+      "activity": "uniform",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 10.0,
+      "peak_C": 71.7759948730469,
+      "peak_block": "FPUs_0",
+      "plateau": 16,
+      "clip_one_gain_K": 3.983642578125,
+      "n_needed_for_full_dt_max": 16,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_fpu4_dt20/tiers.json",
+      "tag": "tiers_fpu4_dt20",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6021140987937684,
+      "activity": "uniform",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 20.0,
+      "peak_C": 71.7759948730469,
+      "peak_block": "FPUs_0",
+      "plateau": 172,
+      "clip_one_gain_K": 3.983642578125,
+      "n_needed_for_full_dt_max": 172,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_fpu4_dt30/tiers.json",
+      "tag": "tiers_fpu4_dt30",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6021140987937684,
+      "activity": "uniform",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 30.0,
+      "peak_C": 71.7759948730469,
+      "peak_block": "FPUs_0",
+      "plateau": 949,
+      "clip_one_gain_K": 3.983642578125,
+      "n_needed_for_full_dt_max": 949,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_fpu4_dt45/tiers.json",
+      "tag": "tiers_fpu4_dt45",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6021140987937684,
+      "activity": "uniform",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 45.0,
+      "peak_C": 71.7759948730469,
+      "peak_block": "FPUs_0",
+      "plateau": 1126,
+      "clip_one_gain_K": 3.983642578125,
+      "n_needed_for_full_dt_max": 1126,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_g4_mixed25_dt10/tiers.json",
+      "tag": "tiers_g4_mixed25_dt10",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.2651773278253364,
+      "activity": "mixed",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 10.0,
+      "peak_C": 69.34798583984377,
+      "peak_block": "FPUs_0",
+      "plateau": 7,
+      "clip_one_gain_K": 7.5716552734375,
+      "n_needed_for_full_dt_max": 7,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_g4_mixed25_dt20/tiers.json",
+      "tag": "tiers_g4_mixed25_dt20",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.2651773278253364,
+      "activity": "mixed",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 20.0,
+      "peak_C": 69.34798583984377,
+      "peak_block": "FPUs_0",
+      "plateau": 37,
+      "clip_one_gain_K": 7.5716552734375,
+      "n_needed_for_full_dt_max": 37,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_g4_mixed25_dt30/tiers.json",
+      "tag": "tiers_g4_mixed25_dt30",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.2651773278253364,
+      "activity": "mixed",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 30.0,
+      "peak_C": 69.34798583984377,
+      "peak_block": "FPUs_0",
+      "plateau": 147,
+      "clip_one_gain_K": 7.5716552734375,
+      "n_needed_for_full_dt_max": 147,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_g4_mixed25_dt45/tiers.json",
+      "tag": "tiers_g4_mixed25_dt45",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.2651773278253364,
+      "activity": "mixed",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 45.0,
+      "peak_C": 69.34798583984377,
+      "peak_block": "FPUs_0",
+      "plateau": 1125,
+      "clip_one_gain_K": 7.5716552734375,
+      "n_needed_for_full_dt_max": 1125,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_g4_turbo_dt10/tiers.json",
+      "tag": "tiers_g4_turbo_dt10",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.18749800593192562,
+      "activity": "turbo",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 10.0,
+      "peak_C": 63.2664733886719,
+      "peak_block": "FPUs_0",
+      "plateau": 4,
+      "clip_one_gain_K": 7.98907470703125,
+      "n_needed_for_full_dt_max": 4,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_g4_turbo_dt20/tiers.json",
+      "tag": "tiers_g4_turbo_dt20",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.18749800593192562,
+      "activity": "turbo",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 20.0,
+      "peak_C": 63.2664733886719,
+      "peak_block": "FPUs_0",
+      "plateau": 27,
+      "clip_one_gain_K": 7.98907470703125,
+      "n_needed_for_full_dt_max": 27,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_g4_turbo_dt30/tiers.json",
+      "tag": "tiers_g4_turbo_dt30",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.18749800593192562,
+      "activity": "turbo",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 30.0,
+      "peak_C": 63.2664733886719,
+      "peak_block": "FPUs_0",
+      "plateau": 54,
+      "clip_one_gain_K": 7.98907470703125,
+      "n_needed_for_full_dt_max": 54,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_g4_turbo_dt45/tiers.json",
+      "tag": "tiers_g4_turbo_dt45",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.18749800593192562,
+      "activity": "turbo",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 45.0,
+      "peak_C": 63.2664733886719,
+      "peak_block": "FPUs_0",
+      "plateau": 1126,
+      "clip_one_gain_K": 7.98907470703125,
+      "n_needed_for_full_dt_max": 1126,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_g4_turbo_idle_dt10/tiers.json",
+      "tag": "tiers_g4_turbo_idle_dt10",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.049292641644643906,
+      "activity": "turbo",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 10.0,
+      "peak_C": 60.4714294433594,
+      "peak_block": "FPUs_0",
+      "plateau": 3,
+      "clip_one_gain_K": 8.0728759765625,
+      "n_needed_for_full_dt_max": 3,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_g4_turbo_idle_dt20/tiers.json",
+      "tag": "tiers_g4_turbo_idle_dt20",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.049292641644643906,
+      "activity": "turbo",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 20.0,
+      "peak_C": 60.4714294433594,
+      "peak_block": "FPUs_0",
+      "plateau": 27,
+      "clip_one_gain_K": 8.0728759765625,
+      "n_needed_for_full_dt_max": 27,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_g4_turbo_idle_dt30/tiers.json",
+      "tag": "tiers_g4_turbo_idle_dt30",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.049292641644643906,
+      "activity": "turbo",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 30.0,
+      "peak_C": 60.4714294433594,
+      "peak_block": "FPUs_0",
+      "plateau": 45,
+      "clip_one_gain_K": 8.0728759765625,
+      "n_needed_for_full_dt_max": 45,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_g4_turbo_idle_dt45/tiers.json",
+      "tag": "tiers_g4_turbo_idle_dt45",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.049292641644643906,
+      "activity": "turbo",
+      "emphasise": "Floating Point Units",
+      "emphasis_factor": 4.0,
+      "dt_max_K": 45.0,
+      "peak_C": 60.4714294433594,
+      "peak_block": "FPUs_0",
+      "plateau": 1126,
+      "clip_one_gain_K": 8.0728759765625,
+      "n_needed_for_full_dt_max": 1126,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_mixed25_dt10/tiers.json",
+      "tag": "tiers_mixed25_dt10",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.2651096988792304,
+      "activity": "mixed",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 10.0,
+      "peak_C": 63.7701354980469,
+      "peak_block": "RBB_0",
+      "plateau": 20,
+      "clip_one_gain_K": 1.52191162109375,
+      "n_needed_for_full_dt_max": 20,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_mixed25_dt20/tiers.json",
+      "tag": "tiers_mixed25_dt20",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.2651096988792304,
+      "activity": "mixed",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 20.0,
+      "peak_C": 63.7701354980469,
+      "peak_block": "RBB_0",
+      "plateau": 60,
+      "clip_one_gain_K": 1.52191162109375,
+      "n_needed_for_full_dt_max": 60,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_mixed25_dt30/tiers.json",
+      "tag": "tiers_mixed25_dt30",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.2651096988792304,
+      "activity": "mixed",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 30.0,
+      "peak_C": 63.7701354980469,
+      "peak_block": "RBB_0",
+      "plateau": 242,
+      "clip_one_gain_K": 1.52191162109375,
+      "n_needed_for_full_dt_max": 242,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_mixed25_dt45/tiers.json",
+      "tag": "tiers_mixed25_dt45",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.2651096988792304,
+      "activity": "mixed",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 45.0,
+      "peak_C": 63.7701354980469,
+      "peak_block": "RBB_0",
+      "plateau": 1126,
+      "clip_one_gain_K": 1.52191162109375,
+      "n_needed_for_full_dt_max": 1126,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_mixed50_dt10/tiers.json",
+      "tag": "tiers_mixed50_dt10",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.3899118910807561,
+      "activity": "mixed",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 10.0,
+      "peak_C": 65.42135009765627,
+      "peak_block": "RBB_0",
+      "plateau": 31,
+      "clip_one_gain_K": 1.461822509765625,
+      "n_needed_for_full_dt_max": 31,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_mixed50_dt20/tiers.json",
+      "tag": "tiers_mixed50_dt20",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.3899118910807561,
+      "activity": "mixed",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 20.0,
+      "peak_C": 65.42135009765627,
+      "peak_block": "RBB_0",
+      "plateau": 182,
+      "clip_one_gain_K": 1.461822509765625,
+      "n_needed_for_full_dt_max": 182,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_mixed50_dt30/tiers.json",
+      "tag": "tiers_mixed50_dt30",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.3899118910807561,
+      "activity": "mixed",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 30.0,
+      "peak_C": 65.42135009765627,
+      "peak_block": "RBB_0",
+      "plateau": 598,
+      "clip_one_gain_K": 1.461822509765625,
+      "n_needed_for_full_dt_max": 598,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_mixed50_dt45/tiers.json",
+      "tag": "tiers_mixed50_dt45",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.3899118910807561,
+      "activity": "mixed",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 45.0,
+      "peak_C": 65.42135009765627,
+      "peak_block": "RBB_0",
+      "plateau": 1126,
+      "clip_one_gain_K": 1.461822509765625,
+      "n_needed_for_full_dt_max": 1126,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_turbo_dt10/tiers.json",
+      "tag": "tiers_turbo_dt10",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.1888754015914747,
+      "activity": "turbo",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 10.0,
+      "peak_C": 57.8010192871094,
+      "peak_block": "RBB_0",
+      "plateau": 22,
+      "clip_one_gain_K": 1.69287109375,
+      "n_needed_for_full_dt_max": 22,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_turbo_dt20/tiers.json",
+      "tag": "tiers_turbo_dt20",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.1888754015914747,
+      "activity": "turbo",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 20.0,
+      "peak_C": 57.8010192871094,
+      "peak_block": "RBB_0",
+      "plateau": 38,
+      "clip_one_gain_K": 1.69287109375,
+      "n_needed_for_full_dt_max": 38,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_turbo_dt30/tiers.json",
+      "tag": "tiers_turbo_dt30",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.1888754015914747,
+      "activity": "turbo",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 30.0,
+      "peak_C": 57.8010192871094,
+      "peak_block": "RBB_0",
+      "plateau": 379,
+      "clip_one_gain_K": 1.69287109375,
+      "n_needed_for_full_dt_max": 379,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_turbo_dt45/tiers.json",
+      "tag": "tiers_turbo_dt45",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.1888754015914747,
+      "activity": "turbo",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 45.0,
+      "peak_C": 57.8010192871094,
+      "peak_block": "RBB_0",
+      "plateau": 1126,
+      "clip_one_gain_K": 1.69287109375,
+      "n_needed_for_full_dt_max": 1126,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_turbo_idle_dt10/tiers.json",
+      "tag": "tiers_turbo_idle_dt10",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.05122087063253498,
+      "activity": "turbo",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 10.0,
+      "peak_C": 55.14483032226565,
+      "peak_block": "RBB_0",
+      "plateau": 23,
+      "clip_one_gain_K": 1.777130126953125,
+      "n_needed_for_full_dt_max": 23,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_turbo_idle_dt20/tiers.json",
+      "tag": "tiers_turbo_idle_dt20",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.05122087063253498,
+      "activity": "turbo",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 20.0,
+      "peak_C": 55.14483032226565,
+      "peak_block": "RBB_0",
+      "plateau": 35,
+      "clip_one_gain_K": 1.777130126953125,
+      "n_needed_for_full_dt_max": 35,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_turbo_idle_dt30/tiers.json",
+      "tag": "tiers_turbo_idle_dt30",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.05122087063253498,
+      "activity": "turbo",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 30.0,
+      "peak_C": 55.14483032226565,
+      "peak_block": "RBB_0",
+      "plateau": 70,
+      "clip_one_gain_K": 1.777130126953125,
+      "n_needed_for_full_dt_max": 70,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_turbo_idle_dt45/tiers.json",
+      "tag": "tiers_turbo_idle_dt45",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.05122087063253498,
+      "activity": "turbo",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 45.0,
+      "peak_C": 55.14483032226565,
+      "peak_block": "RBB_0",
+      "plateau": 1126,
+      "clip_one_gain_K": 1.777130126953125,
+      "n_needed_for_full_dt_max": 1126,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_uniform_dt10/tiers.json",
+      "tag": "tiers_uniform_dt10",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6018389944682956,
+      "activity": "uniform",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 10.0,
+      "peak_C": 68.57015380859377,
+      "peak_block": "RBB_16",
+      "plateau": 38,
+      "clip_one_gain_K": 2.010711669921875,
+      "n_needed_for_full_dt_max": 38,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_uniform_dt20/tiers.json",
+      "tag": "tiers_uniform_dt20",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6018389944682956,
+      "activity": "uniform",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 20.0,
+      "peak_C": 68.57015380859377,
+      "peak_block": "RBB_16",
+      "plateau": 328,
+      "clip_one_gain_K": 2.010711669921875,
+      "n_needed_for_full_dt_max": 328,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_uniform_dt30/tiers.json",
+      "tag": "tiers_uniform_dt30",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6018389944682956,
+      "activity": "uniform",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 30.0,
+      "peak_C": 68.57015380859377,
+      "peak_block": "RBB_16",
+      "plateau": 1096,
+      "clip_one_gain_K": 2.010711669921875,
+      "n_needed_for_full_dt_max": 1096,
+      "quotable": true
+    },
+    {
+      "source": "results/recentred_gapfill/tiers_uniform_dt45/tiers.json",
+      "tag": "tiers_uniform_dt45",
+      "family": "tier screens",
+      "density": 0.6,
+      "actual_density": 0.6018389944682956,
+      "activity": "uniform",
+      "emphasise": null,
+      "emphasis_factor": 3.0,
+      "dt_max_K": 45.0,
+      "peak_C": 68.57015380859377,
+      "peak_block": "RBB_16",
+      "plateau": 1126,
+      "clip_one_gain_K": 2.010711669921875,
+      "n_needed_for_full_dt_max": 1126,
+      "quotable": true
+    },
     {
       "source": "results/rerun_cpu/design_batch/F_balanced_dt10/tiers.json",
       "tag": "F_balanced_dt10",
@@ -2942,6 +4248,78 @@
       "dram_report": {
         "peak_K": 323.83,
         "peak_block": "MEM0_r0c0",
+        "n_over_break": 0,
+        "n_over_limit": 0,
+        "over_limit": [],
+        "break_K": 358.15,
+        "limit_K": 368.15
+      },
+      "quotable": true
+    },
+    {
+      "source": "results/rerun_cpu/design_batch/D_stacked_liquid/stacked_memory.json",
+      "tag": "D_stacked_liquid",
+      "family": "stacked memory",
+      "mem_dies": 1,
+      "mem_density": 0.15,
+      "emphasise": null,
+      "binding": "LOGIC",
+      "diverged": false,
+      "unconverged": null,
+      "calibrated": false,
+      "logic": {
+        "peak_C": 65.21600000000001,
+        "plateau": 54,
+        "clip_one_gain_K": 1.9069999999999823,
+        "peak_block": "RBB_16"
+      },
+      "memory": {
+        "peak_C": 47.789000000000044,
+        "plateau": 16,
+        "clip_one_gain_K": 0.10000000000002274,
+        "peak_block": "MEM0_r1c3"
+      },
+      "logic_margin_K": 34.78399999999999,
+      "mem_margin_K": 47.210999999999956,
+      "dram_report": {
+        "peak_K": 320.939,
+        "peak_block": "MEM0_r1c3",
+        "n_over_break": 0,
+        "n_over_limit": 0,
+        "over_limit": [],
+        "break_K": 358.15,
+        "limit_K": 368.15
+      },
+      "quotable": true
+    },
+    {
+      "source": "results/rerun_cpu/gapfill/D_dies4_air/stacked_memory.json",
+      "tag": "D_dies4_air",
+      "family": "stacked memory, deep",
+      "mem_dies": 4,
+      "mem_density": 0.15,
+      "emphasise": null,
+      "binding": "LOGIC",
+      "diverged": false,
+      "unconverged": null,
+      "calibrated": false,
+      "logic": {
+        "peak_C": 68.02200000000005,
+        "plateau": 52,
+        "clip_one_gain_K": 1.7970000000000255,
+        "peak_block": "RBB_16"
+      },
+      "memory": {
+        "peak_C": 50.84400000000005,
+        "plateau": 64,
+        "clip_one_gain_K": 0.132000000000005,
+        "peak_block": "MEM3_r1c3"
+      },
+      "logic_margin_K": 31.977999999999952,
+      "mem_margin_K": 44.15599999999995,
+      "dram_report": {
+        "peak_K": 323.994,
+        "peak_block": "MEM3_r1c3",
         "n_over_break": 0,
         "n_over_limit": 0,
         "over_limit": [],
@@ -4209,13 +5587,13 @@
       "cliff": 11,
       "overnight3": 39,
       "rescue_target98": 2,
-      "margin_curve": 17,
+      "margin_curve": 35,
       "pitch": 12,
       "core_scaling": 3,
       "ceiling": 1,
-      "tiers": 6,
+      "tiers": 50,
       "clock": 21,
-      "stacked": 6,
+      "stacked": 8,
       "accelerator": 41
     },
     "n_failed_verification": 39,
@@ -4259,6 +5637,98 @@
       "p3_target_T92_d0.96 [results/rerun_cpu/overnight3/p3_target_T92_d0.96/mr_comparison.json]",
       "p5_cores128_d0.70 [results/rerun_cpu/overnight3/p5_cores128_d0.70/mr_comparison.json]",
       "p5_cores70_d0.70 [results/rerun_cpu/overnight3/p5_cores70_d0.70/mr_comparison.json]"
+    ],
+    "n_tag_density_mismatch": 18,
+    "tag_density_mismatch": [
+      "ceiling_d1.17 [results/rerun_cpu/nextsteps/ceiling_d1.17/mr_comparison.json] says d=1.17 ran at d=0.95",
+      "cores128_d1.00 [results/rerun_cpu/nextsteps/cores128_d1.00/mr_comparison.json] says d=1.00 ran at d=0.7",
+      "margin2_T93_d1.15 [results/rerun_cpu/nextsteps/margin2_T93_d1.15/mr_comparison.json] says d=1.15 ran at d=0.85",
+      "margin2_T94_d1.15 [results/rerun_cpu/nextsteps/margin2_T94_d1.15/mr_comparison.json] says d=1.15 ran at d=0.85",
+      "margin2_T96_d1.15 [results/rerun_cpu/nextsteps/margin2_T96_d1.15/mr_comparison.json] says d=1.15 ran at d=0.85",
+      "margin2_T98_d1.15 [results/rerun_cpu/nextsteps/margin2_T98_d1.15/mr_comparison.json] says d=1.15 ran at d=0.85",
+      "margin_T93_d1.10 [results/rerun_cpu/gapfill/margin_T93_d1.10/mr_comparison.json] says d=1.10 ran at d=0.8",
+      "margin_T94_d1.10 [results/rerun_cpu/gapfill/margin_T94_d1.10/mr_comparison.json] says d=1.10 ran at d=0.8",
+      "margin_T95_d1.10 [results/rerun_cpu/gapfill/margin_T95_d1.10/mr_comparison.json] says d=1.10 ran at d=0.8",
+      "margin_T95_d1.10 [results/rerun_cpu/nextsteps/margin_T95_d1.10/mr_comparison.json] says d=1.10 ran at d=0.8",
+      "margin_T96_d1.10 [results/rerun_cpu/gapfill/margin_T96_d1.10/mr_comparison.json] says d=1.10 ran at d=0.8",
+      "margin_T97_d1.10 [results/rerun_cpu/gapfill/margin_T97_d1.10/mr_comparison.json] says d=1.10 ran at d=0.8",
+      "margin_T98_d1.10 [results/rerun_cpu/nextsteps/margin_T98_d1.10/mr_comparison.json] says d=1.10 ran at d=0.8",
+      "margin_T99_d1.10 [results/rerun_cpu/gapfill/margin_T99_d1.10/mr_comparison.json] says d=1.10 ran at d=0.8",
+      "margin_T99_d1.10 [results/rerun_cpu/nextsteps/margin_T99_d1.10/mr_comparison.json] says d=1.10 ran at d=0.8",
+      "p5_cfm133_d1.10 [results/rerun_cpu/overnight3/p5_cfm133_d1.10/mr_comparison.json] says d=1.10 ran at d=0.8",
+      "p5_cfm200_d1.10 [results/rerun_cpu/overnight3/p5_cfm200_d1.10/mr_comparison.json] says d=1.10 ran at d=0.8",
+      "p5_cfm50_d1.10 [results/rerun_cpu/overnight3/p5_cfm50_d1.10/mr_comparison.json] says d=1.10 ran at d=0.8"
+    ],
+    "n_mr_plans_that_engaged_nothing": 68,
+    "mr_plans_that_engaged_nothing": [
+      "ceiling_d1.17 [results/rerun_cpu/nextsteps/ceiling_d1.17/mr_comparison.json]",
+      "cores128_d0.50 [results/rerun_cpu/gapfill/cores128_d0.50/mr_comparison.json]",
+      "cores128_d0.70 [results/rerun_cpu/gapfill/cores128_d0.70/mr_comparison.json]",
+      "cores128_d1.00 [results/rerun_cpu/nextsteps/cores128_d1.00/mr_comparison.json]",
+      "d0.30 [results/rerun_cpu/cliff_verified/d0.30/mr_comparison.json]",
+      "d0.45 [results/rerun_cpu/cliff_verified/d0.45/mr_comparison.json]",
+      "d0.60 [results/rerun_cpu/cliff_verified/d0.60/mr_comparison.json]",
+      "d0.70 [results/rerun_cpu/cliff_verified/d0.70/mr_comparison.json]",
+      "d0.80 [results/rerun_cpu/cliff_verified/d0.80/mr_comparison.json]",
+      "d0.85 [results/rerun_cpu/cliff_verified/d0.85/mr_comparison.json]",
+      "d0.88 [results/rerun_cpu/cliff_verified/d0.88/mr_comparison.json]",
+      "d0.90 [results/rerun_cpu/cliff_verified/d0.90/mr_comparison.json]",
+      "d0.92 [results/rerun_cpu/cliff_verified/d0.92/mr_comparison.json]",
+      "d0.96 [results/rerun_cpu/cliff_verified/d0.96/mr_comparison.json]",
+      "d1.00 [results/rerun_cpu/cliff_verified/d1.00/mr_comparison.json]",
+      "margin2_T93_d1.15 [results/rerun_cpu/nextsteps/margin2_T93_d1.15/mr_comparison.json]",
+      "margin2_T94_d1.15 [results/rerun_cpu/nextsteps/margin2_T94_d1.15/mr_comparison.json]",
+      "margin2_T96_d1.15 [results/rerun_cpu/nextsteps/margin2_T96_d1.15/mr_comparison.json]",
+      "margin2_T98_d1.15 [results/rerun_cpu/nextsteps/margin2_T98_d1.15/mr_comparison.json]",
+      "margin3_T93_liquid [results/rerun_cpu/nextsteps/margin3_T93_liquid/mr_comparison.json]",
+      "margin3_T94_liquid [results/rerun_cpu/nextsteps/margin3_T94_liquid/mr_comparison.json]",
+      "margin3_T96_liquid [results/rerun_cpu/nextsteps/margin3_T96_liquid/mr_comparison.json]",
+      "margin3_T98_liquid [results/rerun_cpu/nextsteps/margin3_T98_liquid/mr_comparison.json]",
+      "margin_T93_d1.10 [results/rerun_cpu/gapfill/margin_T93_d1.10/mr_comparison.json]",
+      "margin_T94_d1.10 [results/rerun_cpu/gapfill/margin_T94_d1.10/mr_comparison.json]",
+      "margin_T95_d1.10 [results/rerun_cpu/gapfill/margin_T95_d1.10/mr_comparison.json]",
+      "margin_T95_d1.10 [results/rerun_cpu/nextsteps/margin_T95_d1.10/mr_comparison.json]",
+      "margin_T96_d1.10 [results/rerun_cpu/gapfill/margin_T96_d1.10/mr_comparison.json]",
+      "margin_T97_d1.10 [results/rerun_cpu/gapfill/margin_T97_d1.10/mr_comparison.json]",
+      "margin_T98_d1.10 [results/rerun_cpu/nextsteps/margin_T98_d1.10/mr_comparison.json]",
+      "margin_T99_d1.10 [results/rerun_cpu/gapfill/margin_T99_d1.10/mr_comparison.json]",
+      "margin_T99_d1.10 [results/rerun_cpu/nextsteps/margin_T99_d1.10/mr_comparison.json]",
+      "p1_dens_d0.30 [results/rerun_cpu/overnight3/p1_dens_d0.30/mr_comparison.json]",
+      "p1_dens_d0.45 [results/rerun_cpu/overnight3/p1_dens_d0.45/mr_comparison.json]",
+      "p1_dens_d0.60 [results/rerun_cpu/overnight3/p1_dens_d0.60/mr_comparison.json]",
+      "p1_dens_d0.70 [results/rerun_cpu/overnight3/p1_dens_d0.70/mr_comparison.json]",
+      "p1_dens_d0.80 [results/rerun_cpu/overnight3/p1_dens_d0.80/mr_comparison.json]",
+      "p1_dens_d0.85 [results/rerun_cpu/overnight3/p1_dens_d0.85/mr_comparison.json]",
+      "p1_dens_d0.90 [results/rerun_cpu/overnight3/p1_dens_d0.90/mr_comparison.json]",
+      "p2_ceiling_d0.88 [results/rerun_cpu/overnight3/p2_ceiling_d0.88/mr_comparison.json]",
+      "p2_ceiling_d0.92 [results/rerun_cpu/overnight3/p2_ceiling_d0.92/mr_comparison.json]",
+      "p2_ceiling_d0.96 [results/rerun_cpu/overnight3/p2_ceiling_d0.96/mr_comparison.json]",
+      "p2_ceiling_d1.00 [results/rerun_cpu/overnight3/p2_ceiling_d1.00/mr_comparison.json]",
+      "p3_target_T65_d0.96 [results/rerun_cpu/overnight3/p3_target_T65_d0.96/mr_comparison.json]",
+      "p3_target_T78_d0.96 [results/rerun_cpu/overnight3/p3_target_T78_d0.96/mr_comparison.json]",
+      "p3_target_T92_d0.85 [results/rerun_cpu/overnight3/p3_target_T92_d0.85/mr_comparison.json]",
+      "p3_target_T92_d0.92 [results/rerun_cpu/overnight3/p3_target_T92_d0.92/mr_comparison.json]",
+      "p3_target_T92_d0.96 [results/rerun_cpu/overnight3/p3_target_T92_d0.96/mr_comparison.json]",
+      "p5_cfm133_d1.10 [results/rerun_cpu/overnight3/p5_cfm133_d1.10/mr_comparison.json]",
+      "p5_cfm200_d1.10 [results/rerun_cpu/overnight3/p5_cfm200_d1.10/mr_comparison.json]",
+      "p5_cores128_d0.50 [results/rerun_cpu/overnight3/p5_cores128_d0.50/mr_comparison.json]",
+      "p5_cores128_d0.70 [results/rerun_cpu/overnight3/p5_cores128_d0.70/mr_comparison.json]",
+      "p5_cores70_d0.50 [results/rerun_cpu/overnight3/p5_cores70_d0.50/mr_comparison.json]",
+      "p5_cores70_d0.70 [results/rerun_cpu/overnight3/p5_cores70_d0.70/mr_comparison.json]",
+      "pitch_s100_dilute [results/rerun_cpu/nextsteps/pitch_s100_dilute/mr_comparison.json]",
+      "pitch_s100_exclude [results/rerun_cpu/nextsteps/pitch_s100_exclude/mr_comparison.json]",
+      "pitch_s10_dilute [results/rerun_cpu/nextsteps/pitch_s10_dilute/mr_comparison.json]",
+      "pitch_s10_exclude [results/rerun_cpu/nextsteps/pitch_s10_exclude/mr_comparison.json]",
+      "pitch_s1_dilute [results/rerun_cpu/nextsteps/pitch_s1_dilute/mr_comparison.json]",
+      "pitch_s1_exclude [results/rerun_cpu/nextsteps/pitch_s1_exclude/mr_comparison.json]",
+      "rescue_d0.80 [results/rerun_cpu/design_batch/rescue_d0.80/mr_comparison.json]",
+      "rescue_d0.85 [results/rerun_cpu/design_batch/rescue_d0.85/mr_comparison.json]",
+      "spot_s100_dilute [results/rerun_cpu/gapfill/spot_s100_dilute/mr_comparison.json]",
+      "spot_s100_exclude [results/rerun_cpu/gapfill/spot_s100_exclude/mr_comparison.json]",
+      "spot_s10_dilute [results/rerun_cpu/gapfill/spot_s10_dilute/mr_comparison.json]",
+      "spot_s10_exclude [results/rerun_cpu/gapfill/spot_s10_exclude/mr_comparison.json]",
+      "spot_s1_dilute [results/rerun_cpu/gapfill/spot_s1_dilute/mr_comparison.json]",
+      "spot_s1_exclude [results/rerun_cpu/gapfill/spot_s1_exclude/mr_comparison.json]"
     ]
   }
 }

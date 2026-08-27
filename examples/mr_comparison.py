@@ -66,6 +66,7 @@ from HotGauge.thermal.mr_array import (ArrayWiring, wiring_for_stack, DEFAULT_PI
 from HotGauge.power.process_nodes import NODES, describe_assumptions, TRACE_REFERENCE_GHZ
 from HotGauge.power.performance_model import FMaxModel, performance_summary
 from HotGauge.thermal.utils import K_to_C
+from HotGauge.thermal.arm_consistency import check_arm_consistency
 
 T_FLOOR_K = 200.0
 DEFAULT_FLOPS_PER_CYCLE = 32.0
@@ -122,8 +123,16 @@ def arm_stack_spec(args, arm):
 
 
 def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax,
-             area_m2, n_cores, arm, tag):
-    """One (floorplan, arm) point."""
+             area_m2, n_cores, arm, tag, target_C=None):
+    """One (floorplan, arm) point.
+
+    ``target_C`` overrides ``args.mr_target_C`` for this point only. It is how
+    ``--mr-target-offset-K`` works: the target is derived from the CONTROL arm's own measured
+    peak rather than stated as an absolute temperature. See the flag's help for why that
+    matters.
+    """
+    if target_C is None:
+        target_C = args.mr_target_C
     use_mr = (arm == 'array_on')
     stack_spec = arm_stack_spec(args, arm)
     sink = make_sink(args, area_m2)
@@ -185,7 +194,7 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
             ver['n_unconverged'] += 1
         return r['temp_trace']
 
-    mr = MRParams(target_K=args.mr_target_C + 273.15, h_max=args.mr_h_max,
+    mr = MRParams(target_K=target_C + 273.15, h_max=args.mr_h_max,
                   dt_max_K=args.mr_dt_max, eta_asf=args.eta_asf,
                   laser_wallplug=args.eta_laser, lpc_efficiency=args.eta_lpc,
                   spot_min_um=args.spot_min_um, spot_policy=args.spot_policy)
@@ -198,9 +207,13 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
 
     res = None
     if use_mr:
+        # The die power the plan must conserve against -- the one PHYSICAL cap alongside the
+        # three device caps (h_max, dt_max, need). See clipping_plan for why it exists.
+        p_die_W = die_power_of_trace(trace, flp, args.tech_node, num_cores=n_cores)
         res = run_mr_clipping(trace, solve_with_leakage, geom, mr, name_map,
                               max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
                               status_fn=last_status, plan_mode=args.mr_plan_mode,
+                              die_power_W=p_die_W,
                               # No wiring under --no-array: omitting all three of tiles /
                               # tile_blocks / set_mr_powers is what selects the legacy
                               # in-source-layer placement. A HALF-specified array is refused by
@@ -232,6 +245,20 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
     else:
         unconverged = bool(ver['n_unconverged'])
     row = {'tag': tag, 'cores': n_cores, 'arm': arm, 'mr': use_mr,
+           # The target this point was actually planned against, and where it came from. An
+           # absolute target that nothing reaches produces a row that looks like a converged
+           # result and contains no MR at all -- which is what happened to the entire margin
+           # family when --spreading moved the die 12-26 K below targets written for the old
+           # boundary. Stamping both makes that visible in the harvest instead of silent.
+           # Only the planning arm has a target; stamping one on control/array_idle would read
+           # as though they had been held to it.
+           'mr_target_C': (target_C if use_mr else None),
+           'mr_target_source': (None if not use_mr else
+                                ('offset_from_control_peak'
+                                 if (args.mr_target_offset_K is not None
+                                     and target_C != args.mr_target_C)
+                                 else 'absolute')),
+           'mr_target_offset_K': (args.mr_target_offset_K if use_mr else None),
            # Which generation of results this is. 'mr: true/false' no longer identifies a row
            # now that the array can be a real die layer or a subtraction from the trace.
            'placement': (res or {}).get('placement', 'none' if arm == 'control' else 'array_above'),
@@ -359,6 +386,22 @@ def main():
     ap.add_argument('--leakage-cal', default=os.path.join(
         _REPO, 'leakage_calibration', 'leakage_calibration.json'))
     ap.add_argument('--mr-target-C', type=float, default=92.0)
+    ap.add_argument('--mr-target-offset-K', type=float, default=None,
+                    help='derive the MR target from THIS POINT\'s measured unaided peak: '
+                         'target = array_idle peak - OFFSET [K] (array_idle is the unaided '
+                         'state of the arm being planned -- same stack, laser off; the control '
+                         'is a DIFFERENT stack and is cooler by the passive term, so offsetting '
+                         'from it re-creates the same defect), instead of the absolute '
+                         '--mr-target-C. Use this for margin and rescue-cost sweeps. An absolute '
+                         'target silently produces a study that measures nothing when the '
+                         'boundary moves: --spreading dropped the 34-core die to 77.5-81.1 C '
+                         'while the margin sweep still asked for 93-99 C, so 68 of 85 catalogue '
+                         'points returned "nothing above target", removed zero watts and engaged '
+                         'zero blocks -- see docs/evidence/catalogue_naming_and_margin_defects.json. '
+                         'A derived target cannot slide out from under its own study. If the '
+                         'control arm diverges there is no measured peak to offset from, and the '
+                         'point falls back to --mr-target-C with mr_target_source stamped '
+                         'accordingly.')
     ap.add_argument('--eta-asf', type=float, default=DEFAULT_ETA_ASF)
     ap.add_argument('--eta-laser', type=float, default=DEFAULT_LASER_WALLPLUG)
     ap.add_argument('--eta-lpc', type=float, default=DEFAULT_LPC_EFFICIENCY)
@@ -531,10 +574,32 @@ def main():
         name_map = mcpat_flp_name_map(include_core_idx=(n > 1))
 
         pair = {}
+        # Derived targets need the control arm's peak, so control must be solved first. ARMS is
+        # already ordered that way; this asserts it rather than trusting it, because a reordered
+        # --arms would otherwise silently fall back to the absolute target.
+        # The target is offset from the UNAIDED PEAK OF THE ARM BEING PLANNED, which is
+        # array_idle -- the same stack, same array, laser off -- and NOT the control.
+        #
+        # Deriving from the control looks right and is not: the array arm is already cooler than
+        # the control by the passive term (7.4 K at d=0.80), so any offset smaller than that
+        # passive term lands ABOVE the array's own peak and the planner correctly does nothing.
+        # That would reproduce the exact defect this flag exists to remove, one layer down.
+        # Measured while smoke-testing this flag: control 84.9 C, array_idle 77.5 C, so a 3 K
+        # offset from the control gives a target of 81.9 C and engages zero blocks.
+        point_target_C = None
+        if args.mr_target_offset_K is not None:
+            ref = 'array_idle' if 'array_idle' in args.arms else 'control'
+            if ref not in args.arms:
+                raise SystemExit('--mr-target-offset-K needs array_idle (preferred) or control '
+                                 'in --arms to measure from; got --arms {}'
+                                 .format(' '.join(args.arms)))
+            if 'array_on' in args.arms and args.arms.index(ref) > args.arms.index('array_on'):
+                raise SystemExit('--mr-target-offset-K needs {} solved BEFORE array_on; '
+                                 'got --arms {}'.format(ref, ' '.join(args.arms)))
         for arm in args.arms:
             tag = '{}c_{}'.format(n, arm)
             r = evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax,
-                         area_m2, n, arm, tag)
+                         area_m2, n, arm, tag, target_C=point_target_C)
             r.update({'area_mm2': area_m2 * 1e6, 'power_W': power_W})
             rows.append(r)
             pair[arm] = r
@@ -542,6 +607,16 @@ def main():
             # both generations of results are on disk.
             if arm == 'control':
                 pair.setdefault('nomr', r)
+            if args.mr_target_offset_K is not None and arm == ref:
+                if r.get('diverged') or r.get('peak_C') is None:
+                    print('       -> {} has no steady state, so there is no measured peak to '
+                          'offset from; falling back to --mr-target-C {:.1f} C'
+                          .format(ref, args.mr_target_C))
+                else:
+                    point_target_C = r['peak_C'] - args.mr_target_offset_K
+                    print('       -> target derived from the {} peak (the unaided state of the '
+                          'arm being planned): {:.2f} C - {:.1f} K = {:.2f} C'.format(
+                              ref, r['peak_C'], args.mr_target_offset_K, point_target_C))
             elif arm == 'array_on':
                 pair['mr'] = r
             if r['diverged']:
@@ -566,6 +641,13 @@ def main():
         # with GaAs is worth before any light, and the laser term is what the planner buys on
         # top of it. A single "MR delta" credits the laser with both.
         ctrl, idle, on = pair.get('control'), pair.get('array_idle'), pair.get('array_on')
+        # Does the powered arm's TEMPERATURE agree with the cooling it says it applied? A stale
+        # plan left on the array is invisible in every recorded field and shows up only here.
+        # See HotGauge/thermal/arm_consistency.py.
+        if idle and on and not idle.get('diverged') and not on.get('diverged'):
+            check_arm_consistency(idle.get('peak_C'), on.get('peak_C'),
+                                  on.get('heat_removed_W', 0.0),
+                                  label='mr_comparison {}'.format(on.get('tag', '')))
         live = [x for x in (ctrl, idle, on) if x]
         if any(x.get('unconverged') for x in live):
             print('       -> deltas NOT REPORTED: at least one arm failed convergence '

@@ -333,3 +333,54 @@ def test_per_core_scaler_honours_the_vf_model():
     for k in ('Core0/a', 'Core1/a'):
         assert p[k][0] == pytest.approx(g[k][0])
         assert g[k][0] != pytest.approx(plain[k][0])   # the model was used, not silently dropped
+
+
+class TestProbeFailuresMustNotSinkTheAnswer:
+    """The MR planner probes past the stability boundary on purpose. Counting those probes as
+    evidence about the ANSWER is how the MR arm of every clock study came to report its floor.
+
+    Measured across the catalogue before the fix (27 Aug 2026): 9 of 10 ``array_on`` rows
+    returned exactly 2.0000 GHz -- the value of ``--f-lo`` -- with ``limited_by='unverified'``.
+    ``mr_comparison.py`` had already been fixed for the identical defect; ``clock_headroom.py``
+    had taken only the ``diverged`` half of that fix and not the ``unconverged`` half.
+
+    These tests pin the SEMANTICS the drivers depend on, so the asymmetry cannot come back.
+    """
+
+    def test_unverified_is_not_sustainable(self):
+        """The conservative half, and it must stay: 'we could not tell' is not 'yes'."""
+        from HotGauge.power.clock_search import is_sustainable, reason_unsustainable
+        r = {'peak_K': 300.0, 'unconverged': True}
+        assert is_sustainable(r, thermal_limit_K=400.0) is False
+        assert reason_unsustainable(r, thermal_limit_K=400.0) == 'unverified'
+
+    def test_a_converged_result_is_sustainable_regardless_of_how_many_probes_failed(self):
+        """The other half. A result carrying no unconverged flag is an answer, even though the
+        search that produced it visited unstable states to get there -- which is what the
+        envelope descent is FOR."""
+        from HotGauge.power.clock_search import is_sustainable
+        r = {'peak_K': 350.0, 'unconverged': False, 'diverged': False}
+        assert is_sustainable(r, thermal_limit_K=400.0) is True
+
+    def test_the_driver_contract_result_unconverged_exists_on_mr_results(self):
+        """clock_headroom and mr_comparison both key off this field. If run_mr_clipping stopped
+        emitting it, both would silently fall back to counting probes again."""
+        import inspect
+        from HotGauge.thermal import microrefrigeration
+        src = inspect.getsource(microrefrigeration)
+        assert "'result_unconverged'" in src, (
+            'run_mr_clipping must publish result_unconverged: it is the verdict on the RESULT '
+            'rather than on the probes, and two drivers depend on it')
+
+    def test_both_drivers_use_the_result_verdict_not_the_probe_counter(self):
+        """The asymmetry that caused this bug was between two files, so the test spans both."""
+        import os
+        here = os.path.dirname(os.path.abspath(__file__))
+        ex = os.path.join(here, '..', '..', '..', 'examples')
+        if not os.path.isdir(ex):
+            pytest.skip('examples/ not present')
+        for fname in ('clock_headroom.py', 'mr_comparison.py'):
+            src = open(os.path.join(ex, fname)).read()
+            assert "'result_unconverged' in res" in src, (
+                '{} must take its unconverged verdict from the MR result, not from the '
+                'accumulated probe counter'.format(fname))

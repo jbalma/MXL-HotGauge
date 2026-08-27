@@ -226,3 +226,110 @@ class TestSolverPlumbing(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+def test_planner_leaves_the_array_matching_the_plan_it_reports():
+    """CoolingApplication sets tile powers as a SIDE EFFECT and nothing rewinds them.
+
+    An exit that reports a different plan than the last one applied -- 'nothing above target'
+    reports {} -- would leave the array carrying the previous call's cooling, so the caller solves
+    a die cooled by a plan its own accounting says does not exist. In clock_headroom the wiring is
+    built once per arm and reused across every step of the clock bisection, so this leaked between
+    candidate clocks and produced 4.8125 GHz at 62.6 C on 183.9 W with 0.000 W removed, against an
+    array_idle arm that diverged at 3.4531 GHz on 61.7 W.
+    """
+    import numpy as np
+    import HotGauge.thermal.microrefrigeration as M
+    from HotGauge.thermal.microrefrigeration import run_mr_clipping, MRParams
+
+    applied = []                      # every tile-power push, in order
+
+    geom = {'b0': {'area_mm2': 0.2, 'min_dim_um': 400.0}}
+    base = {'b0': np.array([300.0])}  # WELL below target -> 'nothing above target'
+
+    class _Tr(object):
+        def __init__(self):
+            self.powers, self.time_step = {}, 1.0
+
+    def solve(tr):
+        return base
+
+    class _Stub(object):
+        def __init__(self, *a, **k):
+            self.placement, self.last_tile_plan = 'test', None
+        def __call__(self, plan):
+            applied.append(dict(plan))
+            self.last_tile_plan = dict(plan)
+            return _Tr()
+
+    orig, M.CoolingApplication = M.CoolingApplication, _Stub
+    try:
+        res = run_mr_clipping(_Tr(), solve, geom, MRParams(target_K=400.0), {},
+                              die_power_W=50.0, max_iter=2)
+    finally:
+        M.CoolingApplication = orig
+
+    assert res['plan'] == {}, 'nothing was above target, so the reported plan must be empty'
+    assert applied, 'the stub should have seen at least one application'
+    assert applied[-1] == {}, (
+        'the LAST thing applied to the array must be the plan being reported; it was {!r}'
+        .format(applied[-1]))
+
+
+def test_a_second_planning_call_does_not_inherit_the_first_ones_plan():
+    """Zero at entry and re-apply at exit are two halves of ONE invariant.
+
+    The exit hook alone leaves the array holding call N's plan when call N+1 solves its baseline.
+    In clock_headroom the wiring is built once per ARM and reused across every step of the clock
+    bisection, so that is the path actually taken. Symptom, measured 27 Aug 2026 at r_th 0.3 with
+    the exit hook in place but not the entry zeroing: array_on reported 4.7188 GHz at 71.0 C on
+    167.6 W with 0.000 W removed, while array_idle -- same stack, lower clock, 61.7 W -- sat at
+    85.0 C. A baseline cannot be cooler than the same die at lower power unless something is
+    cooling it.
+    """
+    import numpy as np
+    import HotGauge.thermal.microrefrigeration as M
+    from HotGauge.thermal.microrefrigeration import run_mr_clipping, MRParams
+
+    geom = {'b0': {'area_mm2': 0.2, 'min_dim_um': 400.0}}
+    hot = {'b0': np.array([500.0])}      # above target -> a real plan is built
+    cold = {'b0': np.array([300.0])}     # below target -> 'nothing above target'
+    state = {'temps': hot, 'applications': []}
+
+    class _Tr(object):
+        def __init__(self):
+            self.powers, self.time_step = {}, 1.0
+
+    def solve(tr):
+        return state['temps']
+
+    class _Stub(object):
+        def __init__(self, *a, **k):
+            self.placement, self.last_tile_plan, self.current = 'test', None, {}
+
+        def __call__(self, plan):
+            state['applications'].append(dict(plan))
+            self.current = dict(plan)
+            self.last_tile_plan = dict(plan)
+            return _Tr()
+
+    stub = _Stub()
+    orig, M.CoolingApplication = M.CoolingApplication, lambda *a, **k: stub
+    try:
+        r1 = run_mr_clipping(_Tr(), solve, geom, MRParams(target_K=400.0), {},
+                             die_power_W=50.0, max_iter=2)
+        assert r1['plan'], 'call 1 should have planned something'
+        assert stub.current, 'and should leave it applied, matching what it reports'
+
+        state['temps'] = cold
+        state['applications'] = []
+        r2 = run_mr_clipping(_Tr(), solve, geom, MRParams(target_K=400.0), {},
+                             die_power_W=50.0, max_iter=2)
+    finally:
+        M.CoolingApplication = orig
+
+    assert r2['plan'] == {}
+    assert state['applications'], 'call 2 should have applied something'
+    assert state['applications'][0] == {}, (
+        'call 2 must zero the array before solving its baseline rather than inheriting the '
+        'previous plan; it applied {!r}'.format(state['applications'][0]))

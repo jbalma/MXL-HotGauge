@@ -3,7 +3,9 @@
 
 The screening question
 ----------------------
-MR lowers a block by at most ``dt_max`` (10 K on the current device roadmap) and only touches
+MR lowers a block by at most ``dt_max`` (the DEMONSTRATED device capability, 45 K -- see
+``microrefrigeration.DEMONSTRATED``; this file used to say "10 K on the current device roadmap",
+which was the unsourced legacy envelope) and only touches
 blocks above its target. The clock is set by the *peak* block. So cooling the peak does not buy
 ``dt_max`` of headroom -- it buys only as much as the gap to whatever block becomes the peak
 next:
@@ -57,6 +59,8 @@ from HotGauge.thermal.ice_server import ICESessionCache
 from HotGauge.power.clock_search import (scale_cores, single_core_turbo,
                                          mixed_utilisation, emphasise_units)
 from HotGauge.thermal.utils import K_to_C
+from HotGauge.thermal.microrefrigeration import DEFAULT_DT_MAX_K
+from HotGauge.thermal.floorplan_metrics import relative_plateau, peak_to_runner_up_gap
 
 T_FLOOR_K = 200.0
 
@@ -110,13 +114,22 @@ def main():
                     help='cold-plate footprint [mm^2] for --spreading. Default: the socket '
                          'footprint (a fixed AREA, not a ratio of the die)')
     ap.add_argument('--stack', default='skylake')
-    ap.add_argument('--density', type=float, default=1.07)
+    # 0.60 W/mm^2 is the tier-screen working point on the CORRECTED --spreading boundary
+    # (scripts/array_config.sh, DENSITY_STACKED, which is the authority). Was a hardcoded 1.07,
+    # chosen for the pre-correction boundary where the cliff sat at 1.05-1.15; on the current
+    # boundary the cliff is 0.80-0.85 under grease, so 1.07 is past it and returns RUNAWAY.
+    ap.add_argument('--density', type=float, default=0.60)
     ap.add_argument('--cfm', type=float, default=88.0)
     ap.add_argument('--r-th', type=float, default=None)
     ap.add_argument('--ambient-K', type=float, default=SIMSCALE_T0_K)
-    ap.add_argument('--dt-max', type=float, default=10.0,
+    ap.add_argument('--dt-max', type=float, default=DEFAULT_DT_MAX_K,
                     help='the most MR can pull a single block down [K] -- the device roadmap '
-                         'parameter this whole analysis turns on')
+                         'parameter this whole analysis turns on. Defaults to the DEMONSTRATED '
+                         'capability (microrefrigeration.DEFAULT_DT_MAX_K); it defaulted to a '
+                         'hardcoded 10.0 until 27 Aug 2026, which was the unsourced legacy '
+                         'envelope and a hidden ceiling on every plateau width this driver '
+                         'reports. Plateau widths are NOT comparable across dt_max, so sweep it '
+                         'rather than assuming it.')
     ap.add_argument('--top', type=int, default=25)
     # The degeneracy axis. Homogeneous activity is what makes the peak N-fold degenerate and
     # therefore what makes MR look weak; these let a design be screened against workloads that
@@ -288,6 +301,15 @@ def main():
                    'hot_core': args.hot_core,
                    'background': args.background, 'active_fraction': args.active_fraction,
                    'dt_max_K': args.dt_max, 'floorplan': flp,
+                   # Device-INDEPENDENT phase-1 metrics, emitted alongside the dt_max-based ones.
+                   # 'plateau_within_dt_max' below saturates to the whole die once dt_max reaches
+                   # the die's own temperature span -- which the DEMONSTRATED 45 K does -- so it
+                   # carries no information at the real envelope. These two do not depend on any
+                   # device parameter and cannot go stale under one.
+                   # See HotGauge/thermal/floorplan_metrics.py and
+                   # docs/evidence/tier_screens_dt_ladder.json.
+                   'relative_plateau_25pct': relative_plateau(temps, 0.25),
+                   'peak_to_runner_up_gap_K': peak_to_runner_up_gap(temps),
                    'peak_C': t['peak_C'], 'peak_block': t['ranked'][0][0],
                    'plateau_within_dt_max': t['plateau_within_dt_max'],
                    'n_needed_for_full_dt_max': t['n_needed_for_full_dt_max'],

@@ -497,3 +497,54 @@ class TestGeneratedStackFilenamesAreUnique:
             assert _os.path.basename(path) == spec_string_filename(parse_spec_string(n))
         # ...and all three survive on disk together, which is the actual fix.
         assert len([f for f in _os.listdir(d) if f.endswith('.stk')]) == 3
+
+
+def test_write_stack_is_atomic_under_concurrency(tmp_path):
+    """The generated filename is DETERMINISTIC, so concurrent points share it.
+
+    A plain open(path,'w') truncates before writing, so a reader arriving mid-write gets a
+    partial stack. This bit a real sweep: 8 concurrent tier points on one spec produced
+    'Expected exactly one "heat transfer coefficient" ... found 0'. That guard caught it by
+    luck -- a partial file that still parsed would have been a silently wrong geometry shared by
+    the whole sweep.
+
+    Readers must only ever observe a COMPLETE file.
+    """
+    import threading
+    from HotGauge.thermal.die_stack import StackSpec, write_stack, render_stack_text
+
+    spec = StackSpec(package='direct_die')
+    out = str(tmp_path / 'shared.stk')
+    expected = render_stack_text(spec)
+    write_stack(spec, out)                       # seed it so readers always find something
+
+    bad, stop = [], threading.Event()
+
+    def writer():
+        while not stop.is_set():
+            write_stack(spec, out)
+
+    def reader():
+        while not stop.is_set():
+            try:
+                with open(out) as f:
+                    txt = f.read()
+            except FileNotFoundError:
+                bad.append('reader saw NO FILE -- the rename was not atomic')
+                continue
+            if txt != expected:
+                bad.append('reader saw a partial file: {} of {} bytes'
+                           .format(len(txt), len(expected)))
+
+    threads = [threading.Thread(target=writer), threading.Thread(target=reader),
+               threading.Thread(target=reader)]
+    for t in threads:
+        t.start()
+    stop.wait(1.5)
+    stop.set()
+    for t in threads:
+        t.join(timeout=10)
+
+    assert not bad, bad[:3]
+    # and no temp files left behind
+    assert not [p for p in tmp_path.iterdir() if p.name.startswith('.tmp_stack_')]

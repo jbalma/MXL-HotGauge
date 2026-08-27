@@ -228,14 +228,59 @@ VF_MAX_VOLTAGE = 1.4
 #:
 #:     tau_d = beta * C_L * V_DD / (V_DD - V_TH)^alpha
 #:
-#: Fitted to all eight shipped pairs with **max error 0.57%, RMS 0.30%**, so the table really is
-#: one alpha-power curve rather than a set of unrelated operating points. The book quotes alpha
-#: ~1.4 as typical; the fit gives 0.949, i.e. more strongly velocity-saturated, which is the
-#: direction modern short-channel devices move in.
-VF_ALPHA_POWER_FIT = {'k': 7.5810, 'Vth': 0.4795, 'alpha': 0.9490,
-                      'rms_error_frac': 0.0030, 'max_error_frac': 0.0057,
-                      'source': 'fit to configuration.performance.VF_PAIRS; model from '
-                                'Chandrakasan/Bowhill/Fox eq. 4.2'}
+#: **alpha is CONSTRAINED to the physical range, and that constraint binds.** Corrected
+#: 27 Aug 2026; what follows is the reason, because the correction is smaller than the finding.
+#:
+#: Fitted freely, this table wants **alpha = 0.95** -- and it fits beautifully there, 0.28% RMS.
+#: But Gonzalez, Gordon & Horowitz (JSSC 32(8), 1997) put alpha between **1** (complete velocity
+#: saturation) and **2** (none), 1.3-1.5 for a 0.25 um process. alpha < 1 is not a slightly-off
+#: exponent, it is **outside the model's own range**, and it has a visible consequence:
+#: ``f(V) = k(V-Vth)^alpha / V`` has an interior maximum at ``V = Vth/(1-alpha)`` only when
+#: alpha < 1, which is exactly where the shipped fit's spurious "6.43 GHz ceiling at 9.40 V"
+#: came from. A model that reports a maximum achievable clock at 9.4 V is reporting an artefact
+#: of its own exponent.
+#:
+#: Constraining alpha >= 1 pins it **on the boundary**, alpha = 1.0 exactly, and that is the
+#: whole story in one number. Refitted three ways against the same eight pairs:
+#:
+#:     alpha free      k 7.5752  Vth 0.4777  alpha 0.9545   RMS 0.28%  max 0.60%   turns over
+#:     alpha >= 1.0    k 7.5485  Vth 0.4643  alpha 1.0000   RMS 0.74%  max 1.37%   monotonic
+#:     alpha = 1.4     k 6.7144  Vth 0.3313  alpha 1.4      RMS 4.93%  max 9.20%   monotonic
+#:
+#: So the data actively resist the physical range: the textbook's typical 1.4 misfits by 4.9%
+#: RMS, seventeen times worse than the free fit. **The honest conclusion is not "we had the
+#: wrong exponent" but "the alpha-power law is the wrong model for this table."** A single
+#: device's delay law does not saturate at the top the way these pairs do (0.1 GHz per ~50 mV
+#: above 1.19 V, against 1.5 GHz per 200 mV at the bottom). That shape is what a **product bin
+#: table** looks like -- reliability-limited guardbanding at the top of the range -- not what a
+#: transistor does. It is the clearest evidence in the repository that VF_PAIRS is a binning
+#: artefact rather than a device curve, and therefore why a defensible product V/F curve needs
+#: product data rather than a better fit.
+#:
+#: The constrained fit is the default because its only job is to say **how fast the cost of
+#: clock rises past the table's top**, and for that a monotonic curve inside the physical range
+#: is right and a turnover is a lie. Nothing in the solve path uses either fit -- only
+#: ``frequency_for_voltage`` and ``voltage_for_frequency_extrapolated`` do -- so this correction
+#: cannot move any historical result.
+VF_ALPHA_POWER_FIT = {'k': 7.5485, 'Vth': 0.4643, 'alpha': 1.0000,
+                      'rms_error_frac': 0.0074, 'max_error_frac': 0.0137,
+                      'alpha_constrained': True,
+                      'alpha_bound_binds': True,
+                      'source': 'fit to configuration.performance.VF_PAIRS with alpha >= 1; '
+                                'model from Chandrakasan/Bowhill/Fox eq. 4.2, physical range '
+                                'for alpha from Gonzalez/Gordon/Horowitz JSSC 32(8) 1997'}
+
+#: The unconstrained fit, kept so the superseded numbers can be reproduced rather than merely
+#: asserted. These are the constants this module shipped until 27 Aug 2026. They are
+#: **unphysical** (alpha < 1) and are retained for provenance only -- do not use them to price a
+#: clock. Reproducing the documented artefact: ``Vth/(1-alpha)`` = 9.40 V, at which the curve
+#: peaks at 6.43 GHz.
+VF_ALPHA_POWER_FIT_UNCONSTRAINED = {'k': 7.5810, 'Vth': 0.4795, 'alpha': 0.9490,
+                                    'rms_error_frac': 0.0030, 'max_error_frac': 0.0057,
+                                    'alpha_constrained': False,
+                                    'source': 'SUPERSEDED 27 Aug 2026: free fit to '
+                                              'configuration.performance.VF_PAIRS, alpha below '
+                                              'the physical floor of 1'}
 
 
 def frequency_for_voltage(V, fit=None):
@@ -250,13 +295,20 @@ def voltage_for_frequency_extrapolated(f_GHz, fit=None):
 
     Provided for one purpose: to show how fast the cost of clock rises past the table's top, so
     that "the search stopped at 5.0 GHz" can be reported as a device limit rather than as an
-    artefact of our lookup. On the shipped curve
+    artefact of our lookup. On the corrected (alpha >= 1) curve
 
-        5.00 GHz -> 1.40 V     5.50 GHz -> 1.82 V     6.00 GHz -> 2.74 V
+        5.00 GHz -> 1.38 V     5.50 GHz -> 1.71 V     6.00 GHz -> 2.26 V     6.50 GHz -> 3.34 V
 
-    and a 7 nm part does not operate at 1.8 V, let alone 2.7 V -- that is oxide-breakdown
+    and a 7 nm part does not operate at 1.7 V, let alone 2.3 V -- that is oxide-breakdown
     territory, not a slower chip. **Do not use this to extend a clock search.** The table ends
     where the device does; a search that runs past it is not measuring silicon.
+
+    The superseded unconstrained fit gave 1.82 / 2.74 V and declared 6.5 GHz *unreachable at any
+    voltage*. That last verdict was an artefact: alpha < 1 puts a maximum in the curve, so
+    "unreachable" meant "above the fit's own turnover", not "beyond the device". The corrected
+    curve reaches 6.5 GHz at an impossible 3.34 V, which is the same conclusion stated in units
+    that mean something. Pass ``fit=VF_ALPHA_POWER_FIT_UNCONSTRAINED`` to reproduce the old
+    numbers.
     """
     from scipy.optimize import brentq
     fit = fit or VF_ALPHA_POWER_FIT

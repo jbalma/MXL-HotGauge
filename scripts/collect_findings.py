@@ -17,6 +17,7 @@ import os
 import sys
 import json
 import glob
+import re
 import argparse
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -225,7 +226,12 @@ def main():
         # decided by the any-solve rule, which condemned them for probe failures rather than for
         # the field they reported. Both are collected -- the tag says which -- so a reader can see
         # that the re-measurement agreed rather than taking it on trust.
-        'margin_curve': (collect_mr_comparison(R('gapfill', 'margin_*', 'mr_comparison.json'),
+        'margin_curve': (collect_mr_comparison(R('margin_*', 'mr_comparison.json'),
+                                               'margin curve on DERIVED targets (27 Aug 2026): '
+                                               'target = array_idle peak - offset, so the study '
+                                               'cannot slide below its own targets when the '
+                                               'boundary moves')
+                         + collect_mr_comparison(R('gapfill', 'margin_*', 'mr_comparison.json'),
                                                'rescue cost vs margin demanded (legacy rule)')
                          + collect_mr_comparison(R('nextsteps', 'margin_*',
                                                    'mr_comparison.json'),
@@ -269,6 +275,38 @@ def main():
                                              'GA100 floorplan'),
     }
 
+    # A tag that encodes a density it did not run at is a naming defect that reads as a data
+    # defect: the tag is what every figure caption, summary and handbook sentence quotes, so
+    # "margin_T95_d1.10" at 0.80 W/mm^2 misattributes by 39%. Sixteen tags drifted this way when
+    # the grids were re-centred onto the measured cliff and the point NAMES were not
+    # (docs/evidence/catalogue_naming_and_margin_defects.json). This cannot prevent the drift,
+    # but it makes the harvest refuse to report it silently.
+    mislabelled = []
+    for k, v in findings.items():
+        if not isinstance(v, list):
+            continue
+        for e in v:
+            m = re.search(r'd([01]\.\d\d)(?:\D|$)', e.get('tag') or '')
+            d = e.get('density')
+            if m and d is not None and abs(float(m.group(1)) - float(d)) > 1e-6:
+                e['tag_density_mismatch'] = {'tag_says': float(m.group(1)), 'ran_at': float(d)}
+                mislabelled.append('{} [{}] says d={} ran at d={}'.format(
+                    e.get('tag'), e.get('source'), m.group(1), d))
+
+    # An MR plan that engaged nothing is not a result about MR, it is a result about the TARGET.
+    # 68 of 85 catalogue points returned "nothing above target" after --spreading moved the die
+    # 12-26 K below targets written for the old boundary, and every one of them looks like a
+    # converged row. Counting them here is what turns that from invisible into obvious.
+    inert = []
+    for k, v in findings.items():
+        if not isinstance(v, list):
+            continue
+        for e in v:
+            mr = e.get('mr')
+            if isinstance(mr, dict) and 'heat_removed_W' in mr:
+                if not (mr.get('heat_removed_W') or 0.0) > 0.0:
+                    inert.append('{} [{}]'.format(e.get('tag'), e.get('source')))
+
     counts, unquotable = {}, []
     for k, v in findings.items():
         if isinstance(v, list):
@@ -278,8 +316,18 @@ def main():
             # and "margin_T95_d1.10 failed" would not say WHICH one.
             unquotable += ['{} [{}]'.format(e.get('tag'), e.get('source'))
                            for e in v if e.get('quotable') is False]
-    findings['summary'] = {'counts': counts, 'n_failed_verification': len(unquotable),
-                           'failed_verification': sorted(set(unquotable))}
+    findings['summary'] = {
+        'counts': counts,
+        'n_failed_verification': len(unquotable),
+        'failed_verification': sorted(set(unquotable)),
+        # See the two comment blocks above for why these are reported rather than left to be
+        # noticed. Neither is a solver failure; both make a row mean something other than it
+        # appears to.
+        'n_tag_density_mismatch': len(mislabelled),
+        'tag_density_mismatch': sorted(set(mislabelled)),
+        'n_mr_plans_that_engaged_nothing': len(inert),
+        'mr_plans_that_engaged_nothing': sorted(set(inert)),
+    }
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     with open(args.out, 'w') as f:
@@ -291,6 +339,14 @@ def main():
     print('  {} entries failed verification and are flagged unquotable'.format(len(unquotable)))
     if unquotable:
         print('    ' + ', '.join(sorted(set(unquotable))[:10]))
+    if mislabelled:
+        print('  ** {} entries carry a TAG THAT LIES about its density -- trust the field, not '
+              'the tag **'.format(len(mislabelled)))
+        for m in sorted(set(mislabelled))[:8]:
+            print('    ' + m)
+    if inert:
+        print('  {} MR plans engaged NOTHING ("nothing above target"): the target, not the '
+              'cooling, is what those rows measure'.format(len(inert)))
     return 0
 
 

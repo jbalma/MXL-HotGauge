@@ -168,3 +168,78 @@ def test_cooling_that_clears_the_trip_point_beats_the_guardband_gain():
     a = performance_summary([363.15], m, f_nominal_GHz=4.0, throttle_K=373.15)
     gain_below = a['f_effective_GHz'] - just_under['f_effective_GHz']
     assert gain_crossing > 5 * gain_below
+
+
+# ---------------------------------------------------------------------------
+# The alpha-power V/F fit, and why alpha is constrained
+# ---------------------------------------------------------------------------
+class TestVFAlphaPowerFit:
+    """alpha < 1 is outside the model's own physical range, and it showed.
+
+    Gonzalez, Gordon & Horowitz (JSSC 32(8), 1997) bound alpha between 1 (complete velocity
+    saturation) and 2 (none). The shipped fit had alpha = 0.949, and the visible consequence was
+    a curve that TURNS OVER: f(V) = k(V-Vth)^alpha / V has an interior maximum at Vth/(1-alpha)
+    only when alpha < 1, which is where the reported "6.43 GHz ceiling at 9.40 V" came from.
+    """
+
+    def test_alpha_is_inside_the_physical_range(self):
+        from HotGauge.power.performance_model import VF_ALPHA_POWER_FIT
+        assert 1.0 <= VF_ALPHA_POWER_FIT['alpha'] <= 2.0
+
+    def test_the_corrected_curve_does_not_turn_over(self):
+        """Monotonic in V over any range anyone could apply to a part, and well past it."""
+        from HotGauge.power.performance_model import frequency_for_voltage, VF_ALPHA_POWER_FIT
+        vs = np.linspace(VF_ALPHA_POWER_FIT['Vth'] + 0.01, 12.0, 4000)
+        f = np.array([frequency_for_voltage(v) for v in vs])
+        assert np.all(np.diff(f) > 0), 'corrected V/F fit is not monotonic'
+
+    def test_the_superseded_fit_is_kept_and_still_reproduces_its_artefact(self):
+        """Provenance, not nostalgia: the withdrawn number must be reproducible on demand."""
+        from HotGauge.power.performance_model import (VF_ALPHA_POWER_FIT_UNCONSTRAINED as U,
+                                                      frequency_for_voltage,
+                                                      voltage_for_frequency_extrapolated)
+        assert U['alpha'] < 1.0 and U['alpha_constrained'] is False
+        v_star = U['Vth'] / (1.0 - U['alpha'])
+        assert v_star == pytest.approx(9.40, abs=0.02)
+        assert frequency_for_voltage(v_star, U) == pytest.approx(6.43, abs=0.02)
+        # and the documented supply demands
+        assert voltage_for_frequency_extrapolated(5.5, U) == pytest.approx(1.82, abs=0.01)
+        assert voltage_for_frequency_extrapolated(6.0, U) == pytest.approx(2.74, abs=0.01)
+
+    def test_6_5_GHz_was_unreachable_only_because_of_the_turnover(self):
+        """The old fit called 6.5 GHz impossible at ANY voltage. That was the artefact talking.
+
+        The corrected curve reaches it -- at 3.34 V, which is oxide breakdown. Same verdict,
+        stated in units that mean something instead of as a property of the exponent.
+        """
+        from HotGauge.power.performance_model import (VF_ALPHA_POWER_FIT_UNCONSTRAINED as U,
+                                                      voltage_for_frequency_extrapolated)
+        with pytest.raises(ValueError):
+            voltage_for_frequency_extrapolated(6.5, U)
+        assert voltage_for_frequency_extrapolated(6.5) == pytest.approx(3.34, abs=0.02)
+
+    def test_the_table_still_ends_at_a_device_limit_not_a_data_limit(self):
+        """The correction must NOT be read as 'the 5 GHz ceiling was wrong'. It was right.
+
+        5.0 GHz needs ~1.38 V, the top of the table; 5.5 needs 1.71 and 6.0 needs 2.26. A
+        vf_clamped verdict stays a RESULT -- voltage-limited, not thermally limited.
+        """
+        from HotGauge.power.performance_model import (voltage_for_frequency_extrapolated,
+                                                      VF_MAX_VOLTAGE)
+        assert voltage_for_frequency_extrapolated(5.0) <= VF_MAX_VOLTAGE
+        assert voltage_for_frequency_extrapolated(5.5) > VF_MAX_VOLTAGE
+        assert voltage_for_frequency_extrapolated(6.0) > 2.0
+
+    def test_the_fit_is_worse_than_the_free_one_and_that_is_the_finding(self):
+        """The constraint BINDS: alpha lands exactly on 1.0, and the fit degrades to match.
+
+        If the table were a device delay curve, the physical range would contain it. It does not
+        -- which is the evidence that VF_PAIRS is a product BIN table (reliability-limited
+        guardbanding at the top of the range), not a transistor's V/F curve.
+        """
+        from HotGauge.power.performance_model import (VF_ALPHA_POWER_FIT as F,
+                                                      VF_ALPHA_POWER_FIT_UNCONSTRAINED as U)
+        assert F['alpha'] == pytest.approx(1.0), 'the alpha >= 1 bound should be active'
+        assert F['alpha_bound_binds'] is True
+        assert F['rms_error_frac'] > U['rms_error_frac']
+        assert F['rms_error_frac'] < 0.01, 'still a good fit -- under 1% RMS'

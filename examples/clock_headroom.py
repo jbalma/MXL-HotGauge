@@ -82,6 +82,7 @@ from HotGauge.power.clock_search import (scale_trace_for_clock, find_max_sustain
                                          single_core_turbo, emphasise_units, VF_TABLE_MAX_GHZ)
 from HotGauge.power.performance_model import FMaxModel, performance_summary
 from HotGauge.thermal.utils import K_to_C
+from HotGauge.thermal.arm_consistency import check_arm_consistency
 
 T_FLOOR_K = 200.0
 DEFAULT_FLOPS_PER_CYCLE = 32.0
@@ -238,9 +239,16 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
                'placement': apply_plan.placement, 'tile_plan': apply_plan.last_tile_plan,
                'reason': 'distributed plan at a fixed budget (control arm)'}
     elif use_mr:
+        # The die power the plan must conserve against. Three DEVICE caps already bound the
+        # plan (h_max, dt_max, need); this is the one PHYSICAL cap -- the array cannot remove
+        # more heat than the die makes without driving it below the coolant. It is what stops a
+        # first-iteration plan sized from an assumed sensitivity running to kilowatts. See
+        # clipping_plan and docs/evidence/clock_search_mr_arm_defect.json.
+        p_die_W = die_power_of_trace(trace, flp, args.tech_node, num_cores=n_cores)
         res = run_mr_clipping(trace, solve_with_leakage, geom, mr, name_map,
                               max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
                               status_fn=last_status, plan_mode=args.mr_plan_mode,
+                              die_power_W=p_die_W,
                               **(wiring.planner_kwargs() if wiring else {}))
         temps, acc = res['temp_trace'], res['accounting']
     else:
@@ -257,8 +265,28 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
         field_diverged = bool(res.get('temp_trace_diverged'))
     else:
         field_diverged = bool(last.get('diverged'))
+
+    # ...and the SAME correction for `unconverged`, which was missing until 27 Aug 2026 while the
+    # `diverged` half above was already here. That asymmetry silently zeroed the MR arm of every
+    # clock study in the project.
+    #
+    # `state['unconverged']` counts EVERY solve the MR loop makes, and the envelope descent
+    # deliberately probes past the stability boundary to bracket its answer -- so for an MR point
+    # that counter is essentially always non-zero. is_sustainable() treats unconverged as NOT
+    # sustainable (correctly: "we could not tell" must not become "yes"), so every candidate clock
+    # was rejected as 'unverified' and the bisection collapsed to --f-lo. Measured across the
+    # catalogue before the fix: 9 of 10 array_on rows reported exactly 2.0000 GHz, the search
+    # floor, with limited_by='unverified'.
+    #
+    # run_mr_clipping already publishes `result_unconverged` -- the verdict on the RESULT rather
+    # than on the probes -- which is what mr_comparison.py has used since the same bug was found
+    # there ("it hid roughly fifteen good measurements, including every pixel-pitch point").
+    if use_mr and res is not None and 'result_unconverged' in res:
+        field_unconverged = bool(res['result_unconverged'])
+    else:
+        field_unconverged = bool(state['unconverged'])
     out = {'f_GHz': f_GHz, 'diverged': field_diverged or temps is None,
-           'unconverged': bool(state['unconverged']),
+           'unconverged': field_unconverged,
            'n_unconverged_solves': state['unconverged'], 'n_solves': state['n_solves'],
            'worst_peak_spread_K': state['worst_spread_K'],
            'vf_clamped': scale_info['vf_clamped'],
@@ -319,6 +347,17 @@ def report_arm_deltas(rows, args):
     elif idle is not None and ctl is None:
         print('{}      -> PASSIVE: the grease control has NO sustainable clock; the unpowered '
               'array alone reaches {:.3f} GHz'.format(pad, idle))
+
+    # Before any laser term is printed: does the powered arm's TEMPERATURE agree with the
+    # cooling it says it applied? A stale plan left on the array by a previous evaluation is
+    # invisible in every recorded field and shows up only as this arithmetic. See
+    # HotGauge/thermal/arm_consistency.py for the case that motivated it.
+    if idle is not None and on is not None:
+        check_arm_consistency(by_arm.get('array_idle', {}).get('peak_C'),
+                              by_arm.get('array_on', {}).get('peak_C'),
+                              by_arm['array_on'].get('heat_removed_W', 0.0),
+                              label='clock_headroom {}'.format(
+                                  by_arm['array_on'].get('cooling', '')))
 
     base = idle if idle is not None else ctl
     if on is not None and base:
