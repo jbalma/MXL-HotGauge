@@ -1,0 +1,53 @@
+{
+ "BUSES": {
+  "Area": 0.393596,
+  "Bus/Area": 0.393596
+ },
+ "Core": {
+  "Area": 6.926373441396038,
+  "Execution Unit/Area": 3.152035753810312,
+  "Execution Unit/Complex ALUs/Area": 0.18585912298212695,
+  "Execution Unit/Floating Point Units/Area": 0.9681318495636164,
+  "Execution Unit/Instruction Scheduler/Area": 1.2743511814015338,
+  "Execution Unit/Instruction Scheduler/FP Instruction Window/Area": 0.1921314324339044,
+  "Execution Unit/Instruction Scheduler/Instruction Window/Area": 0.59962388623909,
+  "Execution Unit/Instruction Scheduler/ROB/Area": 0.48259586272853944,
+  "Execution Unit/Integer ALUs/Area": 0.3717182459642539,
+  "Execution Unit/Register Files/Area": 0.31518051905842015,
+  "Execution Unit/Register Files/Floating Point RF/Area": 0.11723311911284234,
+  "Execution Unit/Register Files/Integer RF/Area": 0.19794739994557783,
+  "Execution Unit/Results Broadcast Bus/Area Overhead": 0.03214687384036125,
+  "Instruction Fetch Unit/Area": 2.3270535498343077,
+  "Instruction Fetch Unit/Branch Predictor/Area": 0.0994885040404679,
+  "Instruction Fetch Unit/Branch Predictor/Chooser/Area": 0.03197413937258811,
+  "Instruction Fetch Unit/Branch Predictor/Global Predictor/Area": 0.03197413937258811,
+  "Instruction Fetch Unit/Branch Predictor/L1_Local Predictor/Area": 0.018226501708409597,
+  "Instruction Fetch Unit/Branch Predictor/L2_Local Predictor/Area": 0.009248814332762808,
+  "Instruction Fetch Unit/Branch Predictor/RAS/Area": 0.008064909254119266,
+  "Instruction Fetch Unit/Branch Target Buffer/Area": 0.49496078243380254,
+  "Instruction Fetch Unit/Instruction Buffer/Area": 0.01428486183804003,
+  "Instruction Fetch Unit/Instruction Cache/Area": 0.30199999999999994,
+  "Instruction Fetch Unit/Instruction Decoder/Area": 1.381502021771383,
+  "L2/Area": 0.6280373364296904,
+  "Load Store Unit/Area": 1.251814857561167,
+  "Load Store Unit/Data Cache/Area": 0.30200000000000005,
+  "Load Store Unit/LoadQ/Area": 0.08843140943614239,
+  "Load Store Unit/StoreQ/Area": 0.10554248446660924,
+  "Memory Management Unit/Area": 0.20437056587809058,
+  "Memory Management Unit/Dtlb/Area": 0.09298404049915752,
+  "Memory Management Unit/Itlb/Area": 0.06539180972258275,
+  "Renaming Unit/Area": 0.211944731511782,
+  "Renaming Unit/FP Front End RAT/Area": 0.09638784043380812,
+  "Renaming Unit/Free List/Area": 0.02346530111661002,
+  "Renaming Unit/Int Front End RAT/Area": 0.0663168059732993
+ },
+ "NUCA": {
+  "Area": 2.81071
+ },
+ "Processor": {
+  "Area": 44.6668,
+  "Total Cores/Area": 55.4109875311683,
+  "Total L3s/Area": 2.81071,
+  "Total NoCs/Area": 0.393596
+ }
+}
