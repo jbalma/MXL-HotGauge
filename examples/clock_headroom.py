@@ -233,7 +233,12 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
             blocks=(wiring.blocks if wiring else None),
             set_mr_powers=(wiring.set_mr_powers if wiring else None))
         temps = solve_with_leakage(apply_plan(plan))
-        acc = mr_accounting(plan, mr, detail=plan_detail)
+        # `[!]` Recovery is Carnot-limited by the junction the heat is lifted FROM, and that is a
+        # result of the solve rather than an input to the planner -- so it is read back here.
+        _Th = _peak_K_for_accounting(temps)
+        acc = mr_accounting(plan, mr, detail=plan_detail,
+                            T_h_K=(_Th if ARGS.recovery_at_junction else None),
+                            T_0_K=ARGS.T0_K)
         res = {'plan': plan, 'converged': True, 'temp_trace': temps,
                'temp_trace_diverged': bool((state['last'] or {}).get('diverged')),
                'placement': apply_plan.placement, 'tile_plan': apply_plan.last_tile_plan,
@@ -249,6 +254,13 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
                               max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
                               status_fn=last_status, plan_mode=args.mr_plan_mode,
                               die_power_W=p_die_W,
+                              # `[!]` Without this the MR arm's accounting falls back to the
+                              # first-law ledger even when --recovery-at-junction is set: the
+                              # direct mr_accounting call above is only the control arm's. Missing
+                              # it reported a net-GENERATING loop (-23 W) at 373 K, where the
+                              # second-law value is +120 W.
+                              recovery_at_junction=args.recovery_at_junction,
+                              T_0_K=args.T0_K,
                               **(wiring.planner_kwargs() if wiring else {}))
         temps, acc = res['temp_trace'], res['accounting']
     else:
@@ -256,7 +268,7 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
         # whole passive term. wiring already holds a zeroed plan, so nothing more is needed
         # here; the solver_kwargs above carry it.
         temps = solve_with_leakage(trace)
-        acc = mr_accounting({}, mr)
+        acc = mr_accounting({}, mr)   # empty plan: nothing lifted, so no recovery term
 
     last = state['last'] or {}
     # See the note in examples/mr_comparison.py: for an MR point the MR loop's own verdict is
@@ -399,6 +411,23 @@ def _parse_vf_source(spec):
         raise SystemExit('--vf-source: {}'.format(e))
 
 
+
+#: Set in main() so the nested solve callbacks can see the CLI without threading it through every
+#: signature. Read-only by convention.
+ARGS = None
+
+
+def _peak_K_for_accounting(temps, t_floor_K=200.0):
+    """Peak die temperature [K] from a temp trace, for the Carnot factor of the recovery term."""
+    import numpy as _np
+    vals = []
+    for v in (temps.values() if hasattr(temps, 'values') else temps):
+        a = _np.ravel(v)
+        if a.size:
+            vals.append(float(_np.max(a)))
+    vals = [v for v in vals if v > t_floor_K]
+    return max(vals) if vals else float('nan')
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -540,8 +569,16 @@ def main():
     ap.add_argument('--flops-per-cycle', type=float, default=DEFAULT_FLOPS_PER_CYCLE)
     ap.add_argument('--derate-per-K', type=float, default=0.001)
     ap.add_argument('--no-server', action='store_true')
+    ap.add_argument('--recovery-at-junction', action='store_true',
+                    help='bound the LPC recovery by the Carnot factor of the junction the heat is '
+                         'lifted from (v91 eq. 1.14-1.16). Without it the ledger uses the phi -> 1 '
+                         'limit, which overstates recovery at every finite temperature')
+    ap.add_argument('--T0-K', type=float, default=295.0,
+                    help='sink temperature for the Carnot factor, with --recovery-at-junction')
     ap.add_argument('--out-dir', default=None)
     args = ap.parse_args()
+    global ARGS
+    ARGS = args
     args.out_dir = os.path.abspath(args.out_dir or os.path.join(os.getcwd(), 'clock_headroom'))
     os.makedirs(args.out_dir, exist_ok=True)
     args.session_cache = None if args.no_server else ICESessionCache()

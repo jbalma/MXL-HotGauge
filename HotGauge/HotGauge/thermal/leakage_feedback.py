@@ -899,3 +899,76 @@ def run_leakage_feedback(baseline_trace, leakage_ref, thermal_solve_fn, model=No
     result.update({'verified': verified, 'unconverged': not verified,
                    'peak_spread_K': spread, 'verification': levels})
     return result
+
+
+def rebalance_trace_by_block_area(trace, floorplan, reference_floorplan, name_map=None):
+    """Rescale each unit's power so every block keeps its power DENSITY from ``reference_floorplan``.
+
+    Why this is needed, and it is not a convenience
+    -----------------------------------------------
+    A McPAT trace and a McPAT floorplan are internally consistent: the area a unit gets and the
+    power it dissipates come from the same model. Replace the AREAS with published ones -- which
+    is exactly what the floorplan-pack rebuild does -- and that consistency breaks, because the
+    pack publishes no per-block power for any part and so cannot supply matching powers.
+
+    Left alone the failure is spectacular rather than subtle. McPAT's core carries a large
+    un-itemised area *and* a large un-itemised power, which the shipped tiler renders as one
+    ``core_other`` slab: 15.85 mm^2 dissipating 22.2 W on the 34-core baseline, 1.4 W/mm^2. The
+    published Golden Cove decomposition closes to 1.35%, so the rebuilt floorplan shrinks that
+    slab 32x while the trace still hands it 38% of the die's power -- **28 W/mm^2**, and six of
+    seven rebuilt floorplans had no steady state at a die average of 0.60 W/mm^2.
+
+    So a rule is needed, and there are only two honest ones:
+
+    * **hold each block's POWER** -- the same work in less area. Physically meaningful, but it
+      requires McPAT's power for a block to be right when McPAT's area for that block is wrong by
+      up to 30x, which is not a thing one input can be without the other.
+    * **hold each block's power DENSITY**, which is this function. The die then dissipates the
+      same watts per mm^2 of each kind of structure and only the *arrangement* changes -- which
+      is what a floorplan sweep claims to vary and, before this, did not.
+
+    Neither is free of assumption and this one says so: it means these floorplans compare
+    **geometry at constant activity density**, not activity. An ISA comparison that needs
+    per-block activity needs per-block power the pack does not have.
+
+    ``reference_floorplan`` must carry the same block names as ``floorplan`` (both come from the
+    shipped tiler, so they do). Blocks absent from the reference are left alone and counted in
+    the returned metadata rather than silently dropped.
+
+    Returns ``(rebalanced_trace, meta)``.
+    """
+    from HotGauge.power.traces import BasicPowerTrace
+    from HotGauge.thermal.ICE import Floorplan
+    name_map = name_map or mcpat_flp_name_map(include_core_idx=True)
+
+    def _areas(path):
+        fp = Floorplan.from_file(path) if isinstance(path, str) else path
+        return {e.name: (e.width * e.height) / 1.0e6 for e in fp.elements}
+
+    new = _areas(floorplan)
+    ref = _areas(reference_floorplan)
+
+    factors, unmatched, by_unit = {}, [], {}
+    powers = {}
+    for unit, series in trace.powers.items():
+        block = name_map(unit)
+        if block is None or block not in new or block not in ref or ref[block] <= 0:
+            if block is not None and (block not in ref or block not in new):
+                unmatched.append(block)
+            powers[unit] = np.asarray(series, dtype=float)
+            continue
+        f = new[block] / ref[block]
+        factors[block] = f
+        by_unit[unit] = f
+        powers[unit] = np.asarray(series, dtype=float) * f
+
+    meta = {'n_blocks_rescaled': len(factors),
+            'n_units_rescaled': len(by_unit),
+            'n_units_left_alone': len(trace.powers) - len(by_unit),
+            'factors_by_unit': by_unit,
+            'blocks_not_in_both': sorted(set(unmatched)),
+            'min_factor': min(factors.values()) if factors else None,
+            'max_factor': max(factors.values()) if factors else None,
+            'rule': 'each block keeps the W/mm^2 it has on the reference floorplan',
+            'reference': reference_floorplan if isinstance(reference_floorplan, str) else '<obj>'}
+    return BasicPowerTrace(powers, trace.time_step), meta

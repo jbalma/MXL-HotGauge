@@ -106,6 +106,47 @@ plain `skylake` stack works without it, so this failure only appears on plugin s
   about at runtime; needs an 8-core floorplan to fix.
 - **L3 leakage** now feeds back via `bridge_aggregates=True` (+45 %). Do NOT also bridge
   `NUCA` — it restates `Processor/Total L3s`.
+- **Published block areas, and the three ways to read them wrongly.**
+  `HotGauge/HotGauge/thermal/pack_areas.py` reads
+  `docs/chip_design_lit/MXL-HotGauge-Floorplan-Pack/`. Each trap returns a plausible wrong
+  answer, so each has a guard: `block_areas.csv` **mixes hierarchy levels** (a naive sum of
+  Golden Cove's rows is +9.55 %; use `non_overlapping_blocks()`), `manifest.csv:category` is
+  `die_floorplan_annotated` **not** the folder name, and the V/F voltage column is `voltage_v`.
+  **The pack's images are SemiAnalysis subscriber content and third-party die shots — numbers
+  derived from them may be published, the plates may not.**
+- `HotGauge/HotGauge/thermal/core_templates.py` — Golden Cove / Redwood Cove as a **placed**
+  floorplan built from published areas, arrangement read off the annotated plate, `source_image`
+  per block, closure asserted in the constructor. The `accelerator_floorplan.py` pattern applied
+  to a CPU core. `rescale_error_vs_published()` is the measured error bar on "scale a template by
+  area ratio": **22 % worst block, 14 % mean**.
+- **Replacing McPAT's areas breaks McPAT's powers, and the pack cannot supply new ones.** Areas
+  and powers are outputs of one model; the pack publishes areas and **no per-block power for any
+  part**. McPAT's un-itemised core power lands on the tiler's `core_other` slab (38 % of die
+  power), and a published mix shrinks that slab 32×. Use
+  `mr_comparison.py --power-follows-area <reference flp dir>` on any floorplan whose areas did
+  not come from McPAT — it holds each block's **W/mm²** so only the arrangement changes. Without
+  it the slab reaches 28 W/mm² and the die has no steady state.
+- **`AVX_512_AREA_VS_FPU` is baked into `DERIVED_UNITS` at import**, so an area JSON cannot reach
+  it — which is why every ISA variant silently carried the x86 value until 28 Aug 2026. Pass
+  `generate_ncore_floorplans.py --vector-multiple`. The shipped constant (1.981) is 4.8× the
+  value the Golden Cove plate gives (0.413) and is **deliberately left alone**: the back
+  catalogue rests on it, and the corrected core is the `x86_golden_cove` variant instead.
+- **The objective now has a second axis: exergy.** `HotGauge/HotGauge/thermal/exergy.py` —
+  `phi = 1 - T0/Th`, the LPC ceiling (1.13), the self-powering condition (1.15). Heat lifted from a
+  HOTTER source is worth more, so "cool everything" is not automatically right. **The temperature
+  that belongs in phi is the EXTRACTOR's, not the junction's** — measured, the junction overstates
+  phi by at most 8.2%, peaking near 2 W/mm^2, so junction temperatures are usable but the choice
+  must be recorded (`exergy_map(..., temperature_is=...)`). See `docs/POWER_RECOVERY_PLAN.md`.
+- **Do not propose a monolithic hot/cold zoned die — it was measured and it does not work.**
+  40 W of removal on a 60.7 W die buys **1.24 K** of gradient against the 150 K the architecture
+  asks for. Two independent methods (closed-form `thermal_zones.py` and a 3D-ICE solve) agree to
+  1.71x. Two separate failure modes: coarse tile pitch cannot *address* the zones (2000 um is 170x
+  worse than 100 um) and lateral conduction shorts them anyway. The cold zone has to be a separate
+  **die**.
+- **McPAT rejects temperatures outside 300-400 K** — *"Temperature must be between 300 and 400
+  Kelvin and multiple of 10"*. The architecture template spans 150-600 K, so **both** of its
+  interesting zones are outside the model. Our leakage curve stops at 310 K and clamps below;
+  anything quoted for a colder zone is the clamp, not physics.
 - `examples/leakage_feedback_smoketest.py` — staged end-to-end validation harness.
 - `examples/inspect_feedback_iters.py` — post-mortem per-iteration diagnostics.
 - Tests colocated with modules: `python -m pytest HotGauge/HotGauge/power/test_leakage.py

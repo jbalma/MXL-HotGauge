@@ -146,7 +146,13 @@ def evaluate(args, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax, are
     if mr_W > 0:
         res = run_mr_clipping(trace, solve_with_leakage, geom, mr, name_map,
                               max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
-                              **(wiring.planner_kwargs() if wiring else {}))
+                              **(wiring.planner_kwargs() if wiring else {}),
+            # `[!]` Carnot-bound the LPC recovery at the junction the
+            # heat is lifted from (v91 eq. 1.14-1.16). Without it the
+            # ledger uses the phi -> 1 limit and can report a loop that
+            # generates net power, which the second law forbids.
+            recovery_at_junction=args.recovery_at_junction,
+            T_0_K=args.T0_K)
         temps, acc = res['temp_trace'], res['accounting']
     else:
         temps = solve_with_leakage(trace)
@@ -183,6 +189,12 @@ def evaluate(args, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax, are
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('--recovery-at-junction', action='store_true',
+                    help='bound the LPC recovery by the Carnot factor of the junction the heat is '
+                         'lifted from (v91 eq. 1.14-1.16). Without it the ledger uses the '
+                         'phi -> 1 limit, which overstates recovery at every finite temperature')
+    ap.add_argument('--T0-K', type=float, default=295.0,
+                    help='sink temperature for the Carnot factor, with --recovery-at-junction')
     ap.add_argument('--trace-dir', default='mcpat_runs/7nm/linpack_3.8GHz')
     ap.add_argument('--flp-template', default=os.path.join(
         _HERE, 'floorplans', 'outputs', 'skylake7nm_8core_3_3D-ICE_template.flp'))

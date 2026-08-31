@@ -63,6 +63,12 @@ T_FLOOR_K = 200.0
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('--recovery-at-junction', action='store_true',
+                    help='bound the LPC recovery by the Carnot factor of the junction the heat is '
+                         'lifted from (v91 eq. 1.14-1.16). Without it the ledger uses the '
+                         'phi -> 1 limit, which overstates recovery at every finite temperature')
+    ap.add_argument('--T0-K', type=float, default=295.0,
+                    help='sink temperature for the Carnot factor, with --recovery-at-junction')
     ap.add_argument('--cores', type=int, default=34)
     ap.add_argument('--node', default='7nm')
     ap.add_argument('--tech-node', type=int, default=7)
@@ -194,7 +200,19 @@ def main():
 
         res = run_mr_clipping(trace, solve, geom, mr, name_map,
                               max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
-                              **(wiring.planner_kwargs() if wiring else {}))
+                              **(wiring.planner_kwargs() if wiring else {}),
+
+            # `[!]` Carnot-bound the LPC recovery at the junction the
+
+            # heat is lifted from (v91 eq. 1.14-1.16). Without it the
+
+            # ledger uses the phi -> 1 limit and can report a loop that
+
+            # generates net power, which the second law forbids.
+
+            recovery_at_junction=args.recovery_at_junction,
+
+            T_0_K=args.T0_K)
         first = seen['first'] or {}
         base_peak = first.get('peak_K')
         # How many blocks the plan was sized against, and how big it came out.

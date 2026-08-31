@@ -50,6 +50,7 @@ from HotGauge.thermal.ICE import Floorplan
 from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power, die_power_of_trace,
                                                mcpat_flp_name_map, replicate_trace_cores,
                                                load_calibrated_leakage_model,
+                                               rebalance_trace_by_block_area,
                                                mcpat_tref_from_trace_dir)
 from HotGauge.thermal.die_stack import DEFAULT_DIRECT_SOURCE_DEPTH_UM
 from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
@@ -63,6 +64,9 @@ from HotGauge.thermal.microrefrigeration import (MRParams, run_mr_clipping, mr_a
 from HotGauge.thermal.ice_server import ICESessionCache
 from HotGauge.thermal.mr_array import (ArrayWiring, wiring_for_stack, DEFAULT_PITCH_UM,
                                        device_pitch_range_um)
+from HotGauge.power.clock_search import (scale_cores, single_core_turbo,
+                                         mixed_utilisation, emphasise_units)
+from HotGauge.thermal.floorplan_metrics import relative_plateau, peak_to_runner_up_gap
 from HotGauge.power.process_nodes import NODES, describe_assumptions, TRACE_REFERENCE_GHZ
 from HotGauge.power.performance_model import FMaxModel, performance_summary
 from HotGauge.thermal.utils import K_to_C
@@ -214,6 +218,8 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
                               max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
                               status_fn=last_status, plan_mode=args.mr_plan_mode,
                               die_power_W=p_die_W,
+                              recovery_at_junction=args.recovery_at_junction,
+                              T_0_K=args.T0_K,
                               # No wiring under --no-array: omitting all three of tiles /
                               # tile_blocks / set_mr_powers is what selects the legacy
                               # in-source-layer placement. A HALF-specified array is refused by
@@ -308,6 +314,20 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
                                compute_power_W=p_chip, cooling_power_W=p_cool,
                                throttle_K=args.throttle_C + 273.15, t_floor_K=T_FLOOR_K)
     g = perf['f_effective_GHz'] * args.flops_per_cycle * n_cores
+    # The floorplan METRICS, stamped on the same row as the MR benefit. LADDER_GEN0 section 3
+    # asks for a regression of measured benefit against these; computing them here is what makes
+    # the two joinable at all, and it costs nothing -- the temperature field is already in hand.
+    # They are properties of the DESIGN AND WORKLOAD, so the meaningful ones are those from the
+    # unpowered arms; they are stamped on every arm so a reader can see the cooling move them.
+    finals_C = {b: K_to_C(v) for b, v in finals.items() if v > T_FLOOR_K}
+    metrics = {}
+    if len(finals_C) >= 2:
+        rp = relative_plateau(finals_C, 0.25)
+        metrics = {'relative_plateau_25pct': rp['n_blocks'],
+                   'relative_plateau_share': rp['share'],
+                   'die_span_K': rp['span_K'],
+                   'peak_to_runner_up_gap_K': peak_to_runner_up_gap(finals_C)}
+    row.update(metrics)
     row.update({'diverged': False, 'peak_C': K_to_C(hot_K), 'peak_block': hot_name,
                 'p_chip_W': p_chip, 'heat_removed_W': acc['heat_removed_W'],
                 'p_mr_net_W': p_mr_net, 'p_cool_W': p_cool, 'p_total_W': p_chip + p_cool,
@@ -385,6 +405,27 @@ def main():
     ap.add_argument('--ambient-K', type=float, default=SIMSCALE_T0_K)
     ap.add_argument('--leakage-cal', default=os.path.join(
         _REPO, 'leakage_calibration', 'leakage_calibration.json'))
+    # --- workload shape, mirroring examples/thermal_tiers.py so the two are joinable ---
+    ap.add_argument('--power-follows-area', default=None, metavar='FLP_DIR',
+                    help='hold every block\'s power DENSITY at its value on the reference '
+                         'floorplan directory given, instead of holding its power. REQUIRED for '
+                         'floorplans whose block areas did not come from McPAT (the pack-rebuilt '
+                         'ISA variants): the trace and the areas are otherwise two inconsistent '
+                         'models, and the core_other slab alone reaches 28 W/mm^2. Omit for '
+                         'McPAT-derived floorplans, where the trace already matches the areas.')
+    ap.add_argument('--activity', default='uniform', choices=('uniform', 'turbo', 'mixed'),
+                    help='per-core activity: uniform (every core saturated -- the most hostile '
+                         'assumption for MR), turbo (one core saturated), mixed')
+    ap.add_argument('--hot-core', type=int, default=0)
+    ap.add_argument('--background', type=float, default=0.25,
+                    help='activity of the non-saturated cores')
+    ap.add_argument('--active-fraction', type=float, default=0.5, help='for --activity mixed')
+    ap.add_argument('--emphasise', default=None,
+                    help="McPAT unit substring to concentrate a core's power into, e.g. "
+                         "'Floating Point Units' (accelerator-style core)")
+    ap.add_argument('--emphasis-factor', type=float, default=3.0)
+    ap.add_argument('--activity-scope', default='iso-per-core',
+                    choices=('iso-per-core', 'iso-density'))
     ap.add_argument('--mr-target-C', type=float, default=92.0)
     ap.add_argument('--mr-target-offset-K', type=float, default=None,
                     help='derive the MR target from THIS POINT\'s measured unaided peak: '
@@ -462,11 +503,22 @@ def main():
     # fixed relax values 1.0 -> 0.0125, and the peak that went with it moved 17 K; with
     # backtracking the same cliff lands at 11.227-11.229 from starting relax 1.0, 0.5 or 0.1 --
     # a 0.01% spread. That is the whole point: the answer no longer depends on the knob.
+    ap.add_argument('--no-leakage-extrapolation', action='store_true',
+                    help='clamp the calibrated leakage curve at its top measured temperature '
+                         '(400 K) instead of extrapolating an Arrhenius tail above it. The tail '
+                         'is uncertain by ~2.5x there and can blow a large block up in a single '
+                         'iteration; clamping is the conservative comparison')
     ap.add_argument('--relax', type=float, default=0.5,
                     help='STARTING under-relaxation; the loop tightens it automatically')
     ap.add_argument('--no-server', action='store_true',
                     help='use the one-shot Emulator instead of a persistent '
                          '3D-ICE session (~150x slower; for cross-checking)')
+    ap.add_argument('--recovery-at-junction', action='store_true',
+                    help='bound the LPC recovery by the Carnot factor of the junction the heat is '
+                         'lifted from (v91 eq. 1.14-1.16). Without it the ledger uses the '
+                         'phi -> 1 limit and can report a net-generating loop')
+    ap.add_argument('--T0-K', type=float, default=295.0,
+                    help='sink temperature for the Carnot factor, with --recovery-at-junction')
     ap.add_argument('--out-dir', default=None)
     args = ap.parse_args()
     args.out_dir = os.path.abspath(args.out_dir or os.path.join(os.getcwd(), 'mr_compare'))
@@ -501,8 +553,17 @@ def main():
             args.node_obj.dynamic_power_factor(), TRACE_REFERENCE_GHZ))
 
     if os.path.isfile(args.leakage_cal):
-        leak_model, t_ref = load_calibrated_leakage_model(args.leakage_cal, extrapolate=True)
-        leak_src = 'MEASURED McPAT curve + Arrhenius tail above 400 K'
+        # `[!]` Above the measured range (top 400 K) the Arrhenius tail can hand a large block a
+        # very large leakage in ONE step, before any relaxation damps it. On the 34-core die that
+        # shows up as the un-itemised `core_other` slab -- 15.85 mm^2, 15.7 % of the die -- hitting
+        # thousands of kelvin on iteration 1 at high density, which is a numerical blow-up rather
+        # than a physical runaway. --no-leakage-extrapolation clamps at the top measured point
+        # instead, so the two can be compared and the artefact separated from the physics.
+        leak_model, t_ref = load_calibrated_leakage_model(
+            args.leakage_cal, extrapolate=not args.no_leakage_extrapolation)
+        leak_src = ('MEASURED McPAT curve, CLAMPED above 400 K'
+                    if args.no_leakage_extrapolation
+                    else 'MEASURED McPAT curve + Arrhenius tail above 400 K')
     else:
         leak_model = LeakageModel.exponential(15.0)
         t_ref = mcpat_tref_from_trace_dir(args.trace_dir) or 330.0
@@ -561,12 +622,77 @@ def main():
 
         base = replicate_trace_cores(base0, n, n_src=args.trace_cores) \
             if n > args.trace_cores else base0
-        trace, scale, _ = scale_trace_to_die_power(base, flp, args.tech_node, power_W,
-                                                   num_cores=n)
+
+        # POWER ON A FLOORPLAN WHOSE AREAS DID NOT COME FROM McPAT.
+        #
+        # A McPAT trace and a McPAT floorplan agree by construction -- the area a unit gets and
+        # the power it dissipates are outputs of the same model. The floorplan-pack rebuild
+        # replaces the AREAS with published ones and the pack publishes no per-block power for
+        # any part, so that agreement has to be restored by an explicit rule rather than assumed.
+        #
+        # Without one the failure is not subtle: McPAT's un-itemised core area and its
+        # un-itemised core power both land on the `core_other` slab -- 15.85 mm^2 at 1.4 W/mm^2
+        # on the baseline -- and a floorplan that shrinks the slab to the published 1.35% while
+        # the trace still hands it 38% of die power puts 28 W/mm^2 on it. Six of seven rebuilt
+        # floorplans had no steady state at a 0.60 W/mm^2 die average because of that one block.
+        #
+        # --power-follows-area holds each block's power DENSITY at its value on the reference
+        # floorplan, so only the ARRANGEMENT changes. See
+        # leakage_feedback.rebalance_trace_by_block_area for why that is the honest rule and what
+        # it costs: these floorplans then compare geometry at constant activity density, not
+        # activity.
+        rebalance_meta = None
+        if args.power_follows_area:
+            ref_flp = floorplan_path(args.power_follows_area, args.node, n)
+            if not os.path.isfile(ref_flp):
+                raise SystemExit('--power-follows-area: no {}-core floorplan under {}'
+                                 .format(n, args.power_follows_area))
+            base, rebalance_meta = rebalance_trace_by_block_area(base, flp, ref_flp)
+            print('  power    : each block holds its W/mm^2 from {} '
+                  '({} blocks rescaled, x{:.3f} to x{:.3f})'.format(
+                      os.path.relpath(ref_flp, _REPO), rebalance_meta['n_blocks_rescaled'],
+                      rebalance_meta['min_factor'], rebalance_meta['max_factor']))
+
+        # WORKLOAD SHAPE. Identical construction to examples/thermal_tiers.py -- deliberately, so
+        # a shape screened there and a shape measured here are the same input. That equality is
+        # the whole point: the tier screens produce the floorplan METRICS and this driver produces
+        # the MR BENEFIT, and LADDER_GEN0 section 3 asks for a regression of one against the other.
+        # Until 27 Aug 2026 those two datasets could not be joined, because the 11 shapes existed
+        # only in the control-arm screens and every one of the 35 catalogue points with a measured
+        # MR benefit ran at uniform activity on the same die.
+        #
+        # Emphasis is applied to the per-core mix BEFORE any activity map or normalisation, so it
+        # composes with them and does not change core power on its own.
+        if args.emphasise:
+            base = emphasise_units(base, args.emphasise, args.emphasis_factor)
+        activity_map = None
+        if args.activity == 'turbo':
+            activity_map = single_core_turbo(n, args.hot_core, args.background)
+        elif args.activity == 'mixed':
+            activity_map = mixed_utilisation(n, args.active_fraction, args.background)
+
+        if activity_map is not None and args.activity_scope == 'iso-density':
+            base = scale_cores(base, activity_map)
+            trace, scale, _ = scale_trace_to_die_power(base, flp, args.tech_node, power_W,
+                                                       num_cores=n)
+        else:
+            # iso-per-core: normalise the SATURATED die to --density first, then quiet the cores,
+            # so an idle core dissipates less and die power lands below the target. That is what a
+            # real part does, and it is the right comparison for an activity study.
+            trace, scale, _ = scale_trace_to_die_power(base, flp, args.tech_node, power_W,
+                                                       num_cores=n)
+            if activity_map is not None:
+                trace = scale_cores(trace, activity_map)
         leak_ref = {}
         if os.path.isfile(split):
             with open(split) as f:
                 leak_ref = {u: float(v[1]) * scale for u, v in json.load(f).items()}
+            if rebalance_meta is not None:
+                # The leakage reference is a per-unit power and has to move with the trace it
+                # references. Leaving it un-rebalanced would drive the feedback loop from one
+                # floorplan's areas and the temperatures from another's, which is silent.
+                f_by_unit = rebalance_meta['factors_by_unit']
+                leak_ref = {u: v * f_by_unit.get(u, 1.0) for u, v in leak_ref.items()}
 
         fp = Floorplan.from_file(flp)
         geom = {e.name: {'area_mm2': (e.width * e.height) / 1.0e6,

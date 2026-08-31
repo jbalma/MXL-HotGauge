@@ -229,12 +229,31 @@ def main():
     ap.add_argument('--force', action='store_true',
                     help='overwrite existing floorplans (refused by default -- regenerating '
                          'the shipped 7-core yields a DIFFERENT file, 235 blocks vs 228)')
+    ap.add_argument('--vector-multiple', type=float, default=None,
+                    help='AVX512-accelerator area as a multiple of the base FPU, overriding '
+                         'configuration.mcpat.AVX_512_AREA_VS_FPU for this run. Omit to leave '
+                         'the shipped value untouched, which is the default and keeps every '
+                         'existing output byte-identical. This exists because the constant is '
+                         'baked into DERIVED_UNITS at import, so an area JSON cannot reach it: '
+                         'until 28 Aug 2026 every ISA variant declared a vector multiple and '
+                         'silently got the x86 one (AVXs/FPUs = 1.981 in all six).')
     args = ap.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
     print('N-core floorplan generation')
     print('  detail level : {}   nodes: {}'.format(args.detail, ', '.join(args.nodes)))
     print('  output       : {}\n'.format(args.output_dir))
+
+    if args.vector_multiple is not None:
+        # DERIVED_UNITS is consulted inside load_14nm_stats, so the override has to be installed
+        # before it runs. Rebinding the entry (rather than mutating the namedtuple) keeps the
+        # shipped constant itself untouched for anything else in the process.
+        from HotGauge.configuration import mcpat as _mc
+        _base = _mc.DERIVED_UNITS['AVX_FPU/AVX512 Accelerator'][0].base
+        _mc.DERIVED_UNITS['AVX_FPU/AVX512 Accelerator'] = [
+            _mc.SourceComponent(_base, args.vector_multiple)]
+        print('  vector       : AVX512 accelerator at {:.4f}x the base FPU (shipped default is '
+              '{:.4f}x)'.format(args.vector_multiple, _mc.AVX_512_AREA_VS_FPU))
 
     raw_stats = fp.load_14nm_stats(args.area_json)
     split_level_stats = fp.split_levels(raw_stats)

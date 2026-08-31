@@ -967,11 +967,37 @@ class TestEnvelopeProvenance:
     outside the assumed 10 K.
     """
 
-    def test_capability_matches_the_bench(self):
+    def test_capability_matches_its_stated_source(self):
+        """The default must equal a SOURCED figure, and the source must be named.
+
+        Refreshed 30 Aug 2026: h_max now traces to v91 Table 8.2 rather than Draft_5 s6.4.1. The
+        old provenance is kept as its own constant so every pre-30-Aug result still reproduces --
+        that is the point of the guard, not an exception to it.
+        """
         from HotGauge.thermal.microrefrigeration import (DEFAULT_H_MAX_W_PER_MM2,
+                                                         V91_H_MAX_RANGE_W_PER_MM2,
+                                                         LEGACY_H_MAX_W_PER_MM2_DRAFT5,
                                                          DEFAULT_DT_MAX_K, DEMONSTRATED)
-        assert DEFAULT_H_MAX_W_PER_MM2 == DEMONSTRATED['h_max_W_per_mm2'] == 250.0
+        # current default traces to v91 Table 8.2, and takes the CONSERVATIVE end of its range
+        assert DEFAULT_H_MAX_W_PER_MM2 == V91_H_MAX_RANGE_W_PER_MM2[0] == 1000.0
+        assert DEFAULT_H_MAX_W_PER_MM2 < V91_H_MAX_RANGE_W_PER_MM2[1]
+        # the superseded provenance is preserved, not deleted
+        assert LEGACY_H_MAX_W_PER_MM2_DRAFT5 == DEMONSTRATED['h_max_W_per_mm2'] == 250.0
+        # dt_max has NO v91 replacement and must not be quietly scaled to match h_max
         assert DEFAULT_DT_MAX_K == DEMONSTRATED['dt_max_K'] == 45.0
+
+    def test_the_envelope_refresh_is_a_real_change_of_regime(self):
+        """h_max moved 4x at the low end and 40x at the high end. Guard the magnitude.
+
+        This is not a tweak: the measured 34-core rescue failed on the ENVELOPE rather than on
+        cost, so a factor this size is expected to move recorded verdicts. The test exists so the
+        refresh cannot be silently reverted to the Yb:YLF-era figure.
+        """
+        from HotGauge.thermal.microrefrigeration import (DEFAULT_H_MAX_W_PER_MM2,
+                                                         V91_H_MAX_RANGE_W_PER_MM2,
+                                                         LEGACY_H_MAX_W_PER_MM2_DRAFT5)
+        assert DEFAULT_H_MAX_W_PER_MM2 / LEGACY_H_MAX_W_PER_MM2_DRAFT5 == 4.0
+        assert V91_H_MAX_RANGE_W_PER_MM2[1] / LEGACY_H_MAX_W_PER_MM2_DRAFT5 == 40.0
 
     def test_efficiency_targets_are_above_what_is_demonstrated(self):
         """They are targets. The test exists so nobody quotes them as measurements."""
@@ -982,7 +1008,13 @@ class TestEnvelopeProvenance:
         assert DEFAULT_LPC_EFFICIENCY > DEMONSTRATED['lpc_efficiency']
 
     def test_the_target_envelope_is_net_generating(self):
-        """breakeven_ratio > 1 at the targets -- a different regime, not a better number."""
+        """breakeven_ratio > 1 at the targets -- a different regime, not a better number.
+
+        `[!]` ``breakeven_ratio`` is the FIRST-LAW ledger and is the phi -> 1 limit; a loop it
+        calls net-generating is not necessarily permitted by the second law. See
+        ``test_shipped_defaults_do_not_self_power_at_any_survivable_temperature``. This test
+        guards the first-law property deliberately, because the recorded catalogue used it.
+        """
         from HotGauge.thermal.microrefrigeration import MRParams, LEGACY_ENVELOPE
         target = MRParams(target_K=358.15)
         legacy = MRParams(target_K=358.15, **LEGACY_ENVELOPE)
@@ -1210,3 +1242,58 @@ class TestSensitivityIsMeasuredNotAssumed:
         finally:
             M.CoolingApplication = orig
         assert r is not None
+
+
+# ---------------------------------------------------------------------------
+# The two loop models must not drift apart again.
+#
+# `MRParams.breakeven_ratio` and `exergy.loop_gain` are two statements of the same loop, and
+# before 30 August 2026 they disagreed: the first omitted the Carnot factor on the anti-Stokes
+# term, which made it the phi -> 1 limit and reported the shipped defaults as net-generating.
+# `eta_AS` in eq. (1.15) IS `eta_asf` here, so the correspondence below is an identity, not a
+# calibration.
+# ---------------------------------------------------------------------------
+
+def test_breakeven_ratio_at_matches_exergy_loop_gain():
+    """The second-law forms are the same equation and must agree to machine precision."""
+    from HotGauge.thermal import exergy as EX
+    from HotGauge.thermal.microrefrigeration import MRParams
+    p = MRParams(313.15)
+    eta_c = p.lpc_efficiency * p.collection_efficiency
+    for T_h in (310.0, 350.0, 400.0, 500.0, 700.0, 1000.0):
+        mr = p.breakeven_ratio_at(T_h, 295.0)
+        ex = EX.loop_gain(p.laser_wallplug, eta_c, p.eta_asf, T_h, 295.0)
+        assert abs(mr - ex) < 1e-12, (T_h, mr, ex)
+
+
+def test_first_law_ratio_is_the_infinite_temperature_limit():
+    """`breakeven_ratio` is `breakeven_ratio_at(T_h -> inf)`, which is why it overstates."""
+    from HotGauge.thermal.microrefrigeration import MRParams
+    p = MRParams(313.15)
+    assert p.breakeven_ratio_at(1e12, 295.0) == pytest.approx(p.breakeven_ratio, rel=1e-9)
+    # and it is strictly optimistic at every finite temperature
+    for T_h in (310.0, 400.0, 1000.0):
+        assert p.breakeven_ratio_at(T_h, 295.0) < p.breakeven_ratio
+
+
+def test_shipped_defaults_do_not_self_power_at_any_survivable_temperature():
+    """The headline this reconciliation overturned: 1.032 first-law vs < 1 everywhere real."""
+    from HotGauge.thermal.microrefrigeration import MRParams
+    p = MRParams(313.15)
+    assert p.breakeven_ratio > 1.0            # what the old ledger reported
+    for T_h in (350.0, 500.0, 1000.0):        # what the second law permits
+        assert p.breakeven_ratio_at(T_h, 295.0) < 1.0
+
+
+def test_mr_accounting_flags_whether_it_is_second_law_bounded():
+    from HotGauge.thermal.microrefrigeration import MRParams, mr_accounting
+    p = MRParams(313.15)
+    plan = {'blk': 2.0}
+    loose = mr_accounting(plan, p)
+    tight = mr_accounting(plan, p, T_h_K=350.0)
+    assert loose['second_law_bounded'] is False and loose['T_h_K'] is None
+    assert tight['second_law_bounded'] is True and tight['T_h_K'] == 350.0
+    # the optimistic ledger recovers more, and only it can report net generation
+    assert tight['recovered_W'] < loose['recovered_W']
+    assert loose['net_generating'] is True
+    assert tight['net_generating'] is False

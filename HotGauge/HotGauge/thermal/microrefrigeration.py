@@ -76,12 +76,34 @@ LOGGER = logging.getLogger(__name__)
 #: and parasitic load, and this model does not answer it -- it applies the figure per tile. If
 #: that turns out to be the binding constraint, it will show up as the plan hitting h_max, which
 #: run_mr_clipping already reports.
-DEFAULT_H_MAX_W_PER_MM2 = 250.0
+#: `[!]` REFRESHED 30 Aug 2026 against v91 Table 8.2. The previous 250.0 is the Yb:YLF-era figure
+#: from Draft_5 s6.4.1 and it understated the current platforms by 4-40x. v91 gives 1e3-1e4 W/mm^2
+#: for BOTH current extractor platforms (SMILES-R640-in-polymer and direct-bandgap GaAs/GaInP),
+#: which is also where v91 Figure 1.6 puts hot-spot DEMAND -- so supply now meets demand where it
+#: previously fell short by that factor.
+#:
+#: The default is the LOW end of the published range, deliberately: 1e3 vs 1e4 is a 10x lever and
+#: picking the top of a range as a default is how an optimistic number becomes load-bearing. Sweep
+#: it with --mr-h-max rather than assuming either end.
+DEFAULT_H_MAX_W_PER_MM2 = 1000.0
+#: v91 Table 8.2, both current platforms. Use as a sweep range, not as a point estimate.
+V91_H_MAX_RANGE_W_PER_MM2 = (1.0e3, 1.0e4)
+#: The Yb:YLF-era value every result before 30 Aug 2026 was computed with. Retained so those
+#: results still reproduce exactly: --mr-h-max 250
+LEGACY_H_MAX_W_PER_MM2_DRAFT5 = 250.0
 #: Previous value, retained so a pre-26-Aug result can be reproduced: --mr-h-max 10
 LEGACY_H_MAX_W_PER_MM2 = 10.0
 
 #: Maximum temperature lift the stage can sustain [K]. **Demonstrated**, Draft_5 s6.4.1:
 #: "Temperature reduction: 45 C below conventional cooling baseline".
+#:
+#: `[!]` UNRESOLVED as of 30 Aug 2026. This is the OTHER Yb:YLF-era envelope figure, and unlike
+#: h_max above, **v91 does not supply a replacement** -- a search of the materials and device
+#: chapters found no maximum-lift figure. It is left at 45.0 K deliberately rather than scaled by
+#: guesswork, because it is load-bearing: the measured 34-core rescue failed on exactly this
+#: constraint ("envelope insufficient: dt_max binds ... this is the device's temperature lift, not
+#: its cost"), so an invented value would manufacture the result it is meant to test.
+#: **This is an open question for the device team, and it is the single blocking input.**
 DEFAULT_DT_MAX_K = 45.0
 #: Previous value, retained for reproduction: --mr-dt-max 10
 LEGACY_DT_MAX_K = 10.0
@@ -109,6 +131,56 @@ DEMONSTRATED = {
     'laser_wallplug': 0.75,        # s3.5.4, 70-75 % demonstrated at 900-1000 nm
     'lpc_efficiency': 0.87,        # s3.5.4, "up to 87 % demonstrated in GaAs/SiC"
     'source': 'docs/photonic_cooling/Draft_5__Photonic_cooling_of_chips_v12___Provisional_Version.pdf',
+}
+
+#: `[!]` SUPERSEDED BY v91 CHAPTER 8. The Yb:YLF numbers above are the old rare-earth platform and
+#: are no longer the design target: at 1-10 W/mm^2 they are two to three orders of magnitude below
+#: what the current platforms reach. Do NOT quote eta_asf = 0.035 or "0.02 demonstrated" as the
+#: state of the art -- both refer to Yb:YLF.
+#:
+#: Platform table is v91 Table 8.2; the anti-Stokes ladder is v91 Table 8.1. Note the notation:
+#: Table 8.1's "eta_c" is the PER-PHOTON anti-Stokes shift, which v91 Table 1.1 renames; the
+#: composite is eta_ASF = eta_abs * eta_EQE * (per-photon shift).
+PLATFORMS_V91 = {
+    'smiles_r640_polymer': {
+        'cooling_density_W_per_mm2': (1e3, 1e4),
+        'eta_EQE': 0.99,                 # red-tail pump, Nt >= 1e-2 M
+        'per_photon_shift': {680: 0.124, 700: 0.157, 720: 0.190, 740: 0.223},
+        'eta_asf_tabulated': 0.123,      # 680 nm design point, eta_abs -> 1 via Purcell
+        'eta_asf_best_tabulated': 0.221,  # 740 nm
+        'T_range_K': (250.0, 400.0),
+        'note': 'v91 s8.3.2/8.3.3. Solution-processable, substrate-agnostic, room temperature. '
+                'Matches direct-bandgap semiconductor cooling density. SMILES = Small-Molecule '
+                'Ionic Isolation Lattices (NOT the chemical-notation format).',
+    },
+    'gaas_gainp_epitaxy': {
+        'cooling_density_W_per_mm2': (1e3, 1e4),
+        'eta_EQE': 0.99,                 # low-temperature; 0.96 at 850 nm room temperature
+        'eta_asf_tabulated': None,
+        'T_range_K': (77.0, 400.0),
+        'note': 'v91 s8.2.1 Table 8.2. Monolithic with a co-designed multi-junction LPC; cost is '
+                'MBE/MOCVD lattice-matched growth and a substrate form-factor constraint.',
+    },
+    'yb_ylf_crystal': {
+        'cooling_density_W_per_mm2': (1.0, 10.0),
+        'eta_EQE': 0.97,
+        'T_range_K': (150.0, 300.0),
+        'note': 'v91 Table 8.2. LEGACY for compute tiles -- 2-3 orders of magnitude below the '
+                'platforms above. Still the right choice for the COLD zone (150-300 K), where '
+                'eta_EQE is unchanged or improved on cooling.',
+    },
+}
+
+#: v91 s8.4: a heterogeneous-thermal die does NOT use one extractor material across its area.
+#: Each zone's extractor is selected for that zone's target T_j. This is the material-side
+#: counterpart of the s10.8 architectural template, and it is what closes the eta_ASF(T_h) gap
+#: this project had recorded as unmodelled.
+ZONE_EXTRACTORS_V91 = {
+    'cold_storage':      {'T_K': (150.0, 300.0), 'materials': ('Yb:YLF', 'Yb:silica')},
+    'warm_interconnect': {'T_K': (300.0, 400.0), 'materials': ('Yb:YLF', 'Yb:ZBLAN', 'fluoride glass')},
+    'hot_compute':       {'T_K': (400.0, 600.0), 'materials': ('Ho3+:fluoride', 'Tm3+:fluoride',
+                                                               'Cr3+:colquiriite')},
+    'exotic_hot_corner': {'T_K': (600.0, 1000.0), 'materials': ('SiC:Er', 'GaN:Yb')},
 }
 
 #: The previous defaults, as one dict, so a driver can offer --legacy-envelope and a test can
@@ -225,9 +297,42 @@ class MRParams(object):
 
         Collection loss multiplies it. With eta_LPC 0.90 and eta_laser 0.70, breakeven needs
         ``eta_ASF >= 0.587`` -- i.e. **the extractor, not the LPC, is the binding constraint**.
+
+        `[!]` **This is a FIRST-LAW ledger and it is an upper bound, not an operating point.**
+        It credits the whole fluorescence stream ``(1 + eta_ASF)`` as convertible to electricity
+        at ``eta_LPC``, with no Carnot penalty on the heat-derived part. The second-law form is
+        equation (1.15) in ``HotGauge.thermal.exergy``::
+
+            loop_gain = eta_L * eta_c * (1 + eta_AS * phi)      phi = 1 - T_0/T_h
+
+        and ``eta_AS`` there is this same ``eta_asf``. The two expressions differ by exactly the
+        factor ``phi`` multiplying ``eta_ASF``, so **this property is the phi -> 1 limit**, which
+        requires ``T_h -> infinity``. At any finite die temperature it overstates recovery, and at
+        the shipped defaults it overstates it enough to flip the verdict: this returns 1.032
+        ("net-generating") where the second-law value at 350 K is 0.821 and does not reach 1.0 at
+        any temperature reachable by silicon.
+
+        Use :meth:`breakeven_ratio_at` for a physical number. This property is kept because every
+        result recorded before 30 August 2026 was computed with it.
         """
         return (self.lpc_efficiency * self.collection_efficiency
                 * (1.0 + self.eta_asf) * self.laser_wallplug)
+
+    def breakeven_ratio_at(self, T_h_K, T_0_K=295.0):
+        """Second-law-bounded recovered power per watt drawn, at source temperature ``T_h_K``.
+
+        Equation (1.15): ``eta_L * eta_c * (1 + eta_AS * phi)``. Identical to
+        :attr:`breakeven_ratio` except that the anti-Stokes term is weighted by the Carnot factor
+        of the heat actually being lifted, which is the physics :attr:`breakeven_ratio` omits.
+
+        ``T_h_K`` is the temperature the heat is lifted FROM -- the junction, not the ambient.
+        """
+        T_h = float(T_h_K)
+        if T_h <= 0.0:
+            raise ValueError('T_h_K must be positive, got {}'.format(T_h_K))
+        phi = 1.0 - float(T_0_K) / T_h
+        return (self.lpc_efficiency * self.collection_efficiency
+                * (1.0 + self.eta_asf * phi) * self.laser_wallplug)
 
     def __repr__(self):
         rec = ('eta_LPC={:.2f}, eta_ASF={:.2f}, eta_laser={:.2f} -> breakeven ratio {:.3f}'
@@ -414,7 +519,8 @@ def apply_cooling_to_trace(trace, plan, name_map):
     return BasicPowerTrace(powers, trace.time_step)
 
 
-def mr_accounting(plan, params, compute_power_W=None, detail=None):
+def mr_accounting(plan, params, compute_power_W=None, detail=None, T_h_K=None,
+                  T_0_K=295.0):
     """Laser power, LPC recovery, and net cost -- the MXL-Photonic-Cooling-Power-Analysis model.
 
     Implements the spreadsheet's formulation exactly (validated against its MVP-1/2/3 cases)::
@@ -459,7 +565,11 @@ def mr_accounting(plan, params, compute_power_W=None, detail=None):
     gross = (q_billed / cop_elec) if cop_elec > 0 else 0.0
 
     if params.recover:
-        ratio = params.breakeven_ratio
+        # `[!]` params.breakeven_ratio is the phi -> 1 (infinite-T_h) limit. Passing T_h_K uses
+        # the second-law form, eq. (1.15). The default is unchanged so that every result recorded
+        # before 30 August 2026 still reproduces exactly -- but it is flagged in the output.
+        ratio = (params.breakeven_ratio if T_h_K is None
+                 else params.breakeven_ratio_at(T_h_K, T_0_K))
         recovered = ratio * gross
         optical_in = params.laser_wallplug * gross
         # Heat carried out is what was actually removed from the die, not what was billed.
@@ -488,7 +598,12 @@ def mr_accounting(plan, params, compute_power_W=None, detail=None):
            'self_sustaining': bool(ratio >= 1.0),
            'recovery_fraction': (recovered / gross) if gross > 0 else 0.0,
            'effective_cop': (q_total / net) if net > 0 else float('inf'),
-           'first_law_ok': bool(first_law_ok)}
+           'first_law_ok': bool(first_law_ok),
+           # Whether the recovery term respects the second law, or is the phi -> 1 upper bound.
+           'second_law_bounded': bool(T_h_K is not None),
+           'T_h_K': (float(T_h_K) if T_h_K is not None else None),
+           'phi': (1.0 - float(T_0_K) / float(T_h_K)) if T_h_K is not None else None,
+           'breakeven_ratio_first_law_limit': params.breakeven_ratio if params.recover else 0.0}
     if compute_power_W is not None:
         out['compute_power_W'] = float(compute_power_W)
         out['total_power_W'] = float(compute_power_W) + net
@@ -624,7 +739,8 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
                     initial_sensitivity=None, max_iter=6, tol_K=1.0, relax=0.7,
                     t_floor_K=200.0, status_fn=None, plan_mode='auto',
                     tiles=None, tile_blocks=None, set_mr_powers=None, die_power_W=None,
-                    calibrate=True, calibration_fraction=0.02):
+                    calibrate=True, calibration_fraction=0.02,
+                    recovery_at_junction=False, T_0_K=295.0):
     """Plan MR cooling against the solver. See :func:`_run_mr_clipping_dispatch` for the loop.
 
     This wrapper exists to do one thing the loop must not be trusted to remember at each of its
@@ -646,6 +762,27 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
         calibration_fraction=calibration_fraction)
     result['placement'] = apply_plan.placement
     result['tile_plan'] = apply_plan.last_tile_plan
+    if recovery_at_junction:
+        # `[!]` The LPC recovery term is Carnot-limited by the temperature the heat is lifted
+        # FROM, and that temperature is an OUTPUT of the solve rather than an input to the
+        # planner -- so it is applied here, once, rather than at each of the dispatch's return
+        # sites. Without it the accounting uses MRParams.breakeven_ratio, which is the phi -> 1
+        # (infinite-T_h) limit and can report a net-generating loop the second law forbids.
+        # See docs/evidence/loop_model_reconciliation.json.
+        # Computed inline rather than importing leakage_feedback.peak_temp_K: this module is
+        # imported BY that one, and the cycle is not worth a four-line helper.
+        _vals = []
+        for _v in (result.get('temp_trace') or {}).values():
+            _a = np.ravel(_v)
+            if _a.size:
+                _m = float(np.max(_a))
+                if _m > t_floor_K:
+                    _vals.append(_m)
+        T_h = max(_vals) if _vals else float('nan')
+        if np.isfinite(T_h) and T_h > 0.0 and result.get('plan'):
+            result['accounting'] = mr_accounting(result['plan'], params,
+                                                 detail=result.get('detail'),
+                                                 T_h_K=float(T_h), T_0_K=T_0_K)
     # NOTE: this deliberately does NOT re-apply the reported plan on the way out.
     #
     # An earlier version of this fix did, reasoning that the array should be left in the state the

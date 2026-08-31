@@ -131,6 +131,13 @@ def main():
                          'pump light). Electrical COP = eta_asf * eta_laser.')
     ap.add_argument('--eta-laser', type=float, default=DEFAULT_LASER_WALLPLUG, help='laser wall-plug efficiency')
     ap.add_argument('--eta-lpc', type=float, default=DEFAULT_LPC_EFFICIENCY, help='LPC cell efficiency')
+    ap.add_argument('--recovery-at-junction', action='store_true',
+                    help='bound the LPC recovery by the Carnot factor of the junction the heat is '
+                         'actually lifted from (eq. 1.15). Without it the ledger uses the '
+                         'phi -> 1 limit, which overstates recovery at every finite temperature '
+                         'and at the shipped defaults reports a net-generating loop')
+    ap.add_argument('--T0-K', type=float, default=295.0,
+                    help='sink temperature for the Carnot factor, with --recovery-at-junction')
     ap.add_argument('--no-recovery', action='store_true',
                     help='disable LPC recovery (for before/after comparison)')
     ap.add_argument('--mr-h-max', type=float, default=DEFAULT_H_MAX_W_PER_MM2, help='W/mm^2 cooling density cap')
@@ -267,6 +274,15 @@ def main():
         last = getattr(solve_with_leakage, 'last', None)
         m_div = bool(last.get('diverged')) if last else True
         m_peak = die_peak(res['temp_trace'])
+        if args.recovery_at_junction and not m_div and np.isfinite(m_peak):
+            # `[!]` The recovery term is Carnot-limited by the temperature the heat is lifted
+            # FROM, and that temperature is a result of the solve rather than an input to the
+            # planner -- so the accounting is recomputed here rather than threaded through it.
+            # Without this the ledger uses MRParams.breakeven_ratio, which is the phi -> 1
+            # (infinite-T_h) limit and can report a net-generating loop the second law forbids.
+            # See docs/evidence/loop_model_reconciliation.json.
+            acc = mr_accounting(res['plan'], mr, detail=res.get('detail'),
+                                T_h_K=float(m_peak), T_0_K=args.T0_K)
         m_cmp = (die_power_of_trace(last['power_trace'], args.flp_template, args.tech_node,
                                     num_cores=args.num_cores)
                  if last and not m_div else float('nan'))

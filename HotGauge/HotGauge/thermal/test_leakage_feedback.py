@@ -20,7 +20,8 @@ from HotGauge.thermal.leakage_feedback import (mcpat_flp_name_map, load_leakage_
                                                assert_steady_supported,
                                                SteadyStateUnsupportedError,
                                                mcpat_tref_from_trace_dir,
-                                               load_calibrated_leakage_model)
+                                               load_calibrated_leakage_model,
+                                               rebalance_trace_by_block_area)
 from HotGauge.power.leakage import LeakageModel
 
 TREF = 360.0
@@ -516,3 +517,79 @@ def test_without_a_usable_name_map_nothing_is_bridged():
     nm = aggregate_aware_name_map(include_core_idx=False, num_cores=1)
     for block in ('SM0_DP', 'HBM_PHY_B0', 'L2_12', 'MEMCTRL_T1'):
         assert nm(block) is None, block
+
+
+# ---------------------------------------------------------------------------
+# rebalance_trace_by_block_area -- the rule a non-McPAT floorplan needs
+# ---------------------------------------------------------------------------
+class TestRebalanceTraceByBlockArea:
+    """A McPAT trace and a McPAT floorplan agree by construction; published areas break that.
+
+    The failure this guards against is not subtle and it is not a temperature: McPAT's
+    un-itemised core power lands on the tiler's ``core_other`` slab, a published decomposition
+    shrinks that slab ~32x, and 3D-ICE is then asked to solve a 28 W/mm^2 block. Six of seven
+    rebuilt floorplans reported thermal runaway -- one of them at 0.20 W/mm^2 die average, which
+    no die does.
+    """
+
+    @staticmethod
+    def _flp(tmpdir, name, blocks):
+        """A minimal 3D-ICE floorplan: {block: (x_um, y_um, w_um, h_um)}."""
+        import os
+        path = os.path.join(str(tmpdir), name)
+        with open(path, 'w') as f:
+            for b, (x, y, w, h) in blocks.items():
+                f.write('{} :\n\tposition {:.3f}, {:.3f} ;\n\tdimension {:.3f}, {:.3f} ;\n'
+                        '\tpower values 0.0;\n'.format(b, x, y, w, h))
+        return path
+
+    def _pair(self, tmpdir):
+        # Same two blocks; the second floorplan halves one and doubles the other.
+        ref = self._flp(tmpdir, 'ref.flp',
+                        {'iALU_0': (0, 0, 1000, 1000), 'DCache_0': (1000, 0, 1000, 1000)})
+        new = self._flp(tmpdir, 'new.flp',
+                        {'iALU_0': (0, 0, 2000, 1000), 'DCache_0': (2000, 0, 500, 1000)})
+        return ref, new
+
+    def _trace(self):
+        from HotGauge.power.traces import BasicPowerTrace
+        return BasicPowerTrace({'Core0/Execution Unit/Integer ALUs': np.array([2.0]),
+                                'Core0/Load Store Unit/Data Cache': np.array([4.0]),
+                                'Processor/Total L3s': np.array([9.0])}, 1.0)
+
+    def test_each_block_keeps_its_reference_power_density(self, tmpdir):
+        ref, new = self._pair(tmpdir)
+        out, meta = rebalance_trace_by_block_area(self._trace(), new, ref)
+        # iALU doubled in area -> doubled power; DCache halved -> halved.
+        assert float(out.powers['Core0/Execution Unit/Integer ALUs'][0]) == pytest.approx(4.0)
+        assert float(out.powers['Core0/Load Store Unit/Data Cache'][0]) == pytest.approx(2.0)
+        assert meta['n_blocks_rescaled'] == 2
+        assert meta['min_factor'] == pytest.approx(0.5)
+        assert meta['max_factor'] == pytest.approx(2.0)
+
+    def test_an_identical_floorplan_is_a_no_op(self, tmpdir):
+        """The x86 baseline runs through this path in the sweep and must come out unchanged."""
+        ref, _ = self._pair(tmpdir)
+        trace = self._trace()
+        out, meta = rebalance_trace_by_block_area(trace, ref, ref)
+        for u, v in trace.powers.items():
+            assert float(out.powers[u][0]) == pytest.approx(float(v[0]))
+        assert meta['max_factor'] == pytest.approx(1.0)
+
+    def test_units_with_no_floorplan_block_are_left_alone_not_dropped(self, tmpdir):
+        """``Processor/Total L3s`` is an aggregate with no single block; silently zeroing it
+        would remove real die power."""
+        ref, new = self._pair(tmpdir)
+        out, meta = rebalance_trace_by_block_area(self._trace(), new, ref)
+        assert float(out.powers['Processor/Total L3s'][0]) == pytest.approx(9.0)
+        assert meta['n_units_left_alone'] == 1
+
+    def test_the_per_unit_factors_are_returned_so_the_leakage_reference_can_follow(self, tmpdir):
+        """The leakage reference is a per-unit power. Leaving it un-rebalanced would drive the
+        feedback loop from one floorplan's areas and the temperatures from another's."""
+        ref, new = self._pair(tmpdir)
+        _, meta = rebalance_trace_by_block_area(self._trace(), new, ref)
+        f = meta['factors_by_unit']
+        assert f['Core0/Execution Unit/Integer ALUs'] == pytest.approx(2.0)
+        assert f['Core0/Load Store Unit/Data Cache'] == pytest.approx(0.5)
+        assert 'Processor/Total L3s' not in f
