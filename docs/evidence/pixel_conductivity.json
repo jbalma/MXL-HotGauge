@@ -1,0 +1,142 @@
+{
+ "note": "Does the pixel layer's own thermal conductivity confound the laser-cooling result, and should it be matched to the grease it replaces? Two identical runs differ only in mr_material: GAAS at 55 W/(m K), the device as built, and THERMAL_GREASE at 4, a counterfactual array with the incumbent TIM's conductivity. Same stack, same 200 um burial, same tiles, same plans, same hottest block (L3_4). Linear solves, no leakage feedback, uniform synthetic 100 W power map on the 7-core die -- so these are geometry and conductivity only.",
+ "driver": "examples/die_average_cooling.py --mr-material {GAAS,THERMAL_GREASE}",
+ "burial_um": 200.0,
+ "pitch_um": 500.0,
+ "die_W": 100.0,
+ "n_tiles": 204,
+ "floorplan": "skylake10nm_7core_0_3D-ICE_template.flp",
+ "passive_term": {
+  "note": "What the array is worth BEFORE any light. The k=4 arm is also the convection control: a 30 um grease layer under the same sink is exactly the incumbent stack.",
+  "grease_baseline_C": 101.731,
+  "gaas_baseline_C": 80.35500000000002,
+  "passive_gain_K": 21.376
+ },
+ "rows": [
+  {
+   "strategy": "hotspot",
+   "watts": 3.0,
+   "gaas_peak_C": 78.35900000000004,
+   "grease_peak_C": 98.97300000000001,
+   "gaas_d_peak_K": -1.995999999999981,
+   "grease_d_peak_K": -2.7579999999999814,
+   "active_effectiveness_ratio": 1.3818,
+   "device_advantage_K": 20.614
+  },
+  {
+   "strategy": "hotspot",
+   "watts": 10.0,
+   "gaas_peak_C": 75.99800000000005,
+   "grease_peak_C": 95.34700000000004,
+   "gaas_d_peak_K": -4.356999999999971,
+   "grease_d_peak_K": -6.383999999999958,
+   "active_effectiveness_ratio": 1.4652,
+   "device_advantage_K": 19.349
+  },
+  {
+   "strategy": "hotspot",
+   "watts": 30.0,
+   "gaas_peak_C": 73.31400000000002,
+   "grease_peak_C": 92.00400000000002,
+   "gaas_d_peak_K": -7.040999999999997,
+   "grease_d_peak_K": -9.726999999999975,
+   "active_effectiveness_ratio": 1.3815,
+   "device_advantage_K": 18.69
+  },
+  {
+   "strategy": "top5",
+   "watts": 3.0,
+   "gaas_peak_C": 76.99700000000001,
+   "grease_peak_C": 96.95300000000003,
+   "gaas_d_peak_K": -3.358000000000004,
+   "grease_d_peak_K": -4.777999999999963,
+   "active_effectiveness_ratio": 1.4229,
+   "device_advantage_K": 19.956
+  },
+  {
+   "strategy": "top5",
+   "watts": 10.0,
+   "gaas_peak_C": 76.166,
+   "grease_peak_C": 94.99800000000005,
+   "gaas_d_peak_K": -4.189000000000021,
+   "grease_d_peak_K": -6.732999999999947,
+   "active_effectiveness_ratio": 1.6073,
+   "device_advantage_K": 18.832
+  },
+  {
+   "strategy": "top5",
+   "watts": 30.0,
+   "gaas_peak_C": 73.80700000000002,
+   "grease_peak_C": 92.53400000000005,
+   "gaas_d_peak_K": -6.548000000000002,
+   "grease_d_peak_K": -9.196999999999946,
+   "active_effectiveness_ratio": 1.4046,
+   "device_advantage_K": 18.727
+  },
+  {
+   "strategy": "uniform",
+   "watts": 3.0,
+   "gaas_peak_C": 79.40300000000002,
+   "grease_peak_C": 100.584,
+   "gaas_d_peak_K": -0.9519999999999982,
+   "grease_d_peak_K": -1.1469999999999914,
+   "active_effectiveness_ratio": 1.2048,
+   "device_advantage_K": 21.181
+  },
+  {
+   "strategy": "uniform",
+   "watts": 10.0,
+   "gaas_peak_C": 77.18200000000002,
+   "grease_peak_C": 97.906,
+   "gaas_d_peak_K": -3.173000000000002,
+   "grease_d_peak_K": -3.8249999999999886,
+   "active_effectiveness_ratio": 1.2055,
+   "device_advantage_K": 20.724
+  },
+  {
+   "strategy": "uniform",
+   "watts": 30.0,
+   "gaas_peak_C": 70.834,
+   "grease_peak_C": 90.25600000000003,
+   "gaas_d_peak_K": -9.521000000000015,
+   "grease_d_peak_K": -11.474999999999966,
+   "active_effectiveness_ratio": 1.2052,
+   "device_advantage_K": 19.422
+  },
+  {
+   "strategy": "proportional",
+   "watts": 3.0,
+   "gaas_peak_C": 79.11900000000003,
+   "grease_peak_C": 100.19500000000005,
+   "gaas_d_peak_K": -1.23599999999999,
+   "grease_d_peak_K": -1.5359999999999445,
+   "active_effectiveness_ratio": 1.2427,
+   "device_advantage_K": 21.076
+  },
+  {
+   "strategy": "proportional",
+   "watts": 10.0,
+   "gaas_peak_C": 76.23700000000002,
+   "grease_peak_C": 96.61000000000001,
+   "gaas_d_peak_K": -4.117999999999995,
+   "grease_d_peak_K": -5.120999999999981,
+   "active_effectiveness_ratio": 1.2436,
+   "device_advantage_K": 20.373
+  },
+  {
+   "strategy": "proportional",
+   "watts": 30.0,
+   "gaas_peak_C": 68.00800000000004,
+   "grease_peak_C": 86.368,
+   "gaas_d_peak_K": -12.34699999999998,
+   "grease_d_peak_K": -15.363,
+   "active_effectiveness_ratio": 1.2443,
+   "device_advantage_K": 18.36
+  }
+ ],
+ "finding": {
+  "active_term": "A LOW-conductivity pixel layer extracts MORE peak reduction per watt removed -- 1.21x for uniform, 1.24x for proportional, 1.38-1.61x for the targeted strategies. A high-k layer is nearly isothermal and well coupled to the sink, so a negative source in it is partly satisfied by drawing heat from the sink rather than from the die. Low k localises the extraction over the silicon.",
+  "total": "The device still wins decisively. At 30 W proportional the GaAs array reaches 68.01 C against the k-matched array's 86.37 C -- 18.36 K better -- because the 21.38 K passive term dwarfs the 24% it gives up on the active term. Measured against the convection control, total benefit is 33.72 K for GaAs versus 15.36 K k-matched, a factor of 2.2.",
+  "implication": "Pixel-layer conductivity is therefore a DESIGN VARIABLE with a genuine optimum, not a nuisance parameter to be normalised away: it trades the passive path against active coupling in opposite directions. Matching it to the grease would make the laser-cooling term look 24% better while making the part 18 K worse. Attribution is better handled with three arms -- convection control, array unpowered, array powered -- which isolates the laser term against the unpowered array without ever modelling a device nobody is building."
+ }
+}

@@ -1,0 +1,109 @@
+{
+  "note": "ARM- and RISC-V-class floorplans, built 27 Aug 2026. The project's goal is core designs across multiple ISAs and until now every floorplan in it was one microarchitecture. These also unblock the two phase-1 metrics the workload regression could not test.",
+  "module": "HotGauge/HotGauge/thermal/isa_floorplans.py",
+  "driver": "examples/generate_isa_floorplans.py -- re-weights the area JSON and hands it to the SHIPPED tiler unchanged",
+  "THE_ISA_ARGUMENT_HAD_TO_BE_RESTATED_FIRST": "In the model we use the instruction decoder is 0.173 of a 5.18 mm^2 core -- 3.34%. Nothing thermally interesting follows from a 3% block, so 'x86 decode is complex' cannot carry an architecture result, which docs/PHASE0_CHECKLIST.md already warned. What can carry it is where the rest of the area went, and two axes dominate: VECTOR WIDTH -- the x86 baseline carries an AVX-512 accelerator at 1.98x the base FPU area, so vector hardware is ~3x the scalar FP block -- and CORE SIZE AT CONSTANT POWER, since a smaller core dissipating the same watts runs at higher density.",
+  "variants": [
+    {
+      "key": "x86_skylake",
+      "label": "Skylake-class x86 (the baseline)",
+      "vector_isa": "AVX-512",
+      "core_area_scale": 1.0,
+      "vector_multiple": 1.9810072416144315,
+      "sram_scale": 1.0,
+      "calibrated": false
+    },
+    {
+      "key": "arm_v1",
+      "label": "Neoverse V1-class ARM (wide vector)",
+      "vector_isa": "SVE 2x256b",
+      "core_area_scale": 0.71,
+      "vector_multiple": 1.6,
+      "sram_scale": 1.0,
+      "calibrated": false
+    },
+    {
+      "key": "arm_n2",
+      "label": "Neoverse N2-class ARM (compact server core)",
+      "vector_isa": "NEON 2x128b",
+      "core_area_scale": 0.42,
+      "vector_multiple": 0.5,
+      "sram_scale": 1.0,
+      "calibrated": false
+    },
+    {
+      "key": "riscv_p670",
+      "label": "SiFive P670-class RISC-V (compute density)",
+      "vector_isa": "RVV",
+      "core_area_scale": 0.3,
+      "vector_multiple": 0.8,
+      "sram_scale": 0.85,
+      "calibrated": false
+    }
+  ],
+  "provenance": {
+    "arm_n2": {
+      "provenance": "Arm Hot Chips 33: N2 is 1.15-1.4 mm^2 for core + L2 at 7 nm. Against a 7 nm-scaled Skylake-class core that is a large compaction, and the compactness rather than the ISA is what matters thermally.",
+      "assumptions": "0.42 is a ratio inferred from published core+L2 area against our scaled baseline, NOT a measured per-unit breakdown. The 0.50 vector multiple assumes NEON 2x128b costs about a quarter of AVX-512 per the width ratio and about half the baseline multiple once the shared FP datapath is accounted for -- an estimate, and the first thing to challenge."
+    },
+    "arm_v1": {
+      "provenance": "Arm: V1 is ~70% larger than N1 at the same L1/L2 sizes, and the difference is principally SVE 2x256b against NEON 2x128b. 0.42 x 1.70 = 0.71.",
+      "assumptions": "The 70% is a whole-core figure; attributing it to the vector block is the assumption. 1.60 places SVE 2x256b below AVX-512 (1.98) on the grounds of comparable throughput at better area efficiency, which is a judgement."
+    },
+    "riscv_p670": {
+      "provenance": "SiFive: P670 reaches Cortex-A78-class performance in roughly half the area (5 nm part, comparisons quoted at 7 nm), with the RISC-V Vector extension.",
+      "assumptions": "0.30 chains two published ratios -- P670 against A78, and A78-class against our baseline -- so its uncertainty compounds. 0.85 SRAM reflects a smaller private cache budget in a density-first core, which is inferred from the compute-density claim rather than stated by SiFive."
+    }
+  },
+  "sources": [
+    "Arm Hot Chips 33 / V1-N2 platform briefings: V1 ~70% larger than N1 at equal L1/L2; N2 1.15-1.4 mm^2 core+L2 at 7 nm",
+    "SiFive: P670 reaches Cortex-A78-class performance in roughly half the area, RVV"
+  ],
+  "honest_limits": {
+    "no_die_shots": "ZERO ARM or RISC-V die shots exist in docs/chip_design_lit/die_images/ (0 of 59), so unlike accelerator_floorplan.py nothing here is measured off one. Every ratio is read from published RELATIVE claims. calibrated=False.",
+    "area_only": "These re-weight AREA. The power trace remains the Skylake-class one, redistributed by area, so any result depending on ARM-specific ACTIVITY is not answerable with this and must not be claimed from it.",
+    "L3_is_not_scaled": "core_area_scale scales the core; the shared L3 is a separate design decision and is left alone. So the DIE ratio (0.48 for arm_n2) is larger than the CORE ratio (0.42) -- deliberate, and stated because it would otherwise look like an arithmetic error."
+  },
+  "THE_TWO_METRICS_THAT_WERE_UNTESTABLE_NOW_VARY": {
+    "why_this_matters": "power_density_concentration and thermal_aspect were CONSTANT across all 33 points of the workload regression, because that sweep varied the workload on one die. They could not be validated or dropped. They now have something to vary against.",
+    "measured_with_uniform_power": "Power is held uniform on purpose: it isolates the GEOMETRY these metrics describe, with no solve and no trace.",
+    "rows": [
+      {
+        "floorplan": "x86_skylake",
+        "blocks": 1126,
+        "die_mm2": 101.1,
+        "gini": 0.8105,
+        "top_decile_share": 0.7886,
+        "largest_block_aspect": 0.0611
+      },
+      {
+        "floorplan": "arm_v1",
+        "blocks": 1126,
+        "die_mm2": 70.2,
+        "gini": 0.8355,
+        "top_decile_share": 0.7975,
+        "largest_block_aspect": 0.0677
+      },
+      {
+        "floorplan": "arm_n2",
+        "blocks": 1126,
+        "die_mm2": 48.4,
+        "gini": 0.8522,
+        "top_decile_share": 0.8126,
+        "largest_block_aspect": 0.0755
+      },
+      {
+        "floorplan": "riscv_p670",
+        "blocks": 1126,
+        "die_mm2": 38.6,
+        "gini": 0.8615,
+        "top_decile_share": 0.8171,
+        "largest_block_aspect": 0.0831
+      }
+    ],
+    "result": "Both order monotonically with core compaction: Gini 0.811 -> 0.835 -> 0.852 -> 0.861 and top-decile share 0.789 -> 0.817 as the core shrinks from x86 through arm_v1 and arm_n2 to riscv_p670. A more compact core concentrates power density, the direction the registered prediction expects.",
+    "caveat": "thermal_aspect here uses the LARGEST block as a stand-in for the hot one, because identifying the actual hot block needs a solve. All four sit near an edge (0.061-0.083), so this proxy is weak and the metric is not yet properly exercised."
+  },
+  "registered_prediction": "Stated before the solves, so it can fail: (1) a compact core at constant die power has a NARROWER plateau and larger die span, having less SRAM per watt to buffer it; (2) a wide-vector core concentrates power in the execute cluster, so the peak stands further clear of the runner-up; (3) therefore both should be BETTER MR targets than the x86 baseline -- lower cost in watts for the same demanded margin -- because the validated regression says cost rises with plateau width (rho +0.84). If (3) fails while (1) and (2) hold, the metrics do not transfer across floorplans and the regression that validated them was workload-specific. That would be worth more than a confirmation.",
+  "next": "Run the shape-benefit sweep against these four floorplans -- it tests the two geometric metrics properly and tests whether the validated ones transfer across floorplans."
+}

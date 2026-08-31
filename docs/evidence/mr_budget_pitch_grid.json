@@ -1,0 +1,504 @@
+{
+ "note": "Test 6g: does the budget cliff move with tile pitch?\n\n    scripts/mr_budget_pitch_sweep.sh <jobid>\n    python examples/mr_budget_pitch_grid.py\n\nTest 6e found efficacy flat to the target block's own power and then a cliff, caused by the aimed\nblock ceasing to be the die peak. The obvious hypothesis was that a COARSE tile, which spans the\ntarget and its neighbours, cools the runner-up as well and so delays or removes the migration --\nmaking fine and coarse pitch a genuine trade rather than better and worse, with a crossing point\nthat would be a design number.\n\n**Half right, and the half that fails is the half that mattered.** Coarse pitch DOES delay the\ncliff, monotonically -- 50 and 200 um migrate after 16 W, 500 um after 24 W, and 2000 um has not\nmigrated at all by 45 W, the top of the ladder. So the collateral-cooling mechanism is real, large,\nand exactly as hypothesised. But the delay is bought with plateau height and it never pays for\nitself: fine pitch wins at EVERY budget measured, including the ones where it has cliffed and the\ncoarse pitch has not (1.030 against 0.899 K/W at 45 W). The best coarse pitch only draws level\nonce fine has already cliffed (1.396 against 1.395 K/W at 32 W), and by then both are bulk cooling\nrather than aiming.\n\nSo there is no crossing point and no trade to design around. What the grid does establish is that\nthe two variables are close to separable:\n\n  * pitch is a hardware choice and it sets the HEIGHT of the efficacy plateau;\n  * pitch ALSO moves where that plateau ends, substantially -- but in the opposite direction, and\n    the height term dominates at every budget measured.\n\nAn array vendor therefore cannot buy their way past a bad power map with tile geometry in either\ndirection -- finer or coarser.",
+ "driver": "scripts/mr_budget_pitch_sweep.sh + examples/tile_pitch_sweep.py",
+ "fixed": {
+  "floorplan": "skylake10nm_7core_0_3D-ICE_template.flp",
+  "target": "L3_4",
+  "concentrate": 4.0,
+  "die_W": 100.0,
+  "target_block_W": 16.0,
+  "burial_um": 200.0,
+  "cell_um": 50.0
+ },
+ "grid": {
+  "50.0": [
+   {
+    "budget_W": 1.0,
+    "peak_C": 111.60300000000001,
+    "peak_drop_K": 1.8540000000000418,
+    "K_per_W_lifted": 1.8540000000000418,
+    "target_C": 111.60300000000001,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 0.0,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.0625
+   },
+   {
+    "budget_W": 2.0,
+    "peak_C": 109.74900000000002,
+    "peak_drop_K": 3.708000000000027,
+    "K_per_W_lifted": 1.8540000000000134,
+    "target_C": 109.74900000000002,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 0.0,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.125
+   },
+   {
+    "budget_W": 3.0,
+    "peak_C": 107.89600000000002,
+    "peak_drop_K": 5.5610000000000355,
+    "K_per_W_lifted": 1.8536666666666786,
+    "target_C": 107.89600000000002,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 0.0,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.1875
+   },
+   {
+    "budget_W": 5.0,
+    "peak_C": 104.18900000000002,
+    "peak_drop_K": 9.268000000000029,
+    "K_per_W_lifted": 1.853600000000006,
+    "target_C": 104.18900000000002,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 0.0,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.3125
+   },
+   {
+    "budget_W": 8.0,
+    "peak_C": 98.62700000000001,
+    "peak_drop_K": 14.830000000000041,
+    "K_per_W_lifted": 1.8537500000000051,
+    "target_C": 98.62700000000001,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 0.0,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.5
+   },
+   {
+    "budget_W": 12.0,
+    "peak_C": 91.21200000000005,
+    "peak_drop_K": 22.245000000000005,
+    "K_per_W_lifted": 1.8537500000000005,
+    "target_C": 91.21200000000005,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 0.0,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.75
+   },
+   {
+    "budget_W": 16.0,
+    "peak_C": 83.79700000000003,
+    "peak_drop_K": 29.660000000000025,
+    "K_per_W_lifted": 1.8537500000000016,
+    "target_C": 83.79700000000003,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 0.0,
+    "target_is_peak": true,
+    "budget_over_block_power": 1.0
+   },
+   {
+    "budget_W": 24.0,
+    "peak_C": 69.89100000000002,
+    "peak_drop_K": 43.56600000000003,
+    "K_per_W_lifted": 1.8152500000000014,
+    "target_C": 68.97800000000001,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 0.0,
+    "target_is_peak": false,
+    "budget_over_block_power": 1.5
+   },
+   {
+    "budget_W": 32.0,
+    "peak_C": 68.82400000000001,
+    "peak_drop_K": 44.63300000000004,
+    "K_per_W_lifted": 1.3947812500000012,
+    "target_C": 54.35500000000002,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 0.0,
+    "target_is_peak": false,
+    "budget_over_block_power": 2.0
+   },
+   {
+    "budget_W": 45.0,
+    "peak_C": 67.09400000000005,
+    "peak_drop_K": 46.363,
+    "K_per_W_lifted": 1.0302888888888888,
+    "target_C": 39.649,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 0.0,
+    "target_is_peak": false,
+    "budget_over_block_power": 2.8125
+   }
+  ],
+  "200.0": [
+   {
+    "budget_W": 1.0,
+    "peak_C": 111.63100000000003,
+    "peak_drop_K": 1.8260000000000218,
+    "K_per_W_lifted": 1.8260000000000218,
+    "target_C": 111.63100000000003,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 1.6793117346982835,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.0625
+   },
+   {
+    "budget_W": 2.0,
+    "peak_C": 109.805,
+    "peak_drop_K": 3.6520000000000437,
+    "K_per_W_lifted": 1.8260000000000218,
+    "target_C": 109.805,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 1.6793117346982835,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.125
+   },
+   {
+    "budget_W": 3.0,
+    "peak_C": 107.97800000000001,
+    "peak_drop_K": 5.479000000000042,
+    "K_per_W_lifted": 1.8263333333333474,
+    "target_C": 107.97800000000001,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 1.6793117346982835,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.1875
+   },
+   {
+    "budget_W": 5.0,
+    "peak_C": 104.32600000000002,
+    "peak_drop_K": 9.131000000000029,
+    "K_per_W_lifted": 1.8262000000000058,
+    "target_C": 104.32600000000002,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 1.6793117346982835,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.3125
+   },
+   {
+    "budget_W": 8.0,
+    "peak_C": 98.84700000000004,
+    "peak_drop_K": 14.610000000000014,
+    "K_per_W_lifted": 1.8262500000000017,
+    "target_C": 98.84700000000004,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 1.6793117346982835,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.5
+   },
+   {
+    "budget_W": 12.0,
+    "peak_C": 91.543,
+    "peak_drop_K": 21.914000000000044,
+    "K_per_W_lifted": 1.8261666666666703,
+    "target_C": 91.543,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 1.6793117346982835,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.75
+   },
+   {
+    "budget_W": 16.0,
+    "peak_C": 84.238,
+    "peak_drop_K": 29.21900000000005,
+    "K_per_W_lifted": 1.8261875000000032,
+    "target_C": 84.238,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 1.6793117346982835,
+    "target_is_peak": true,
+    "budget_over_block_power": 1.0
+   },
+   {
+    "budget_W": 24.0,
+    "peak_C": 69.88800000000003,
+    "peak_drop_K": 43.56900000000002,
+    "K_per_W_lifted": 1.8153750000000006,
+    "target_C": 69.62800000000004,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 1.6793117346982835,
+    "target_is_peak": false,
+    "budget_over_block_power": 1.5
+   },
+   {
+    "budget_W": 32.0,
+    "peak_C": 68.82000000000005,
+    "peak_drop_K": 44.637,
+    "K_per_W_lifted": 1.39490625,
+    "target_C": 55.422000000000025,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 1.6793117346982835,
+    "target_is_peak": false,
+    "budget_over_block_power": 2.0
+   },
+   {
+    "budget_W": 45.0,
+    "peak_C": 67.08800000000002,
+    "peak_drop_K": 46.36900000000003,
+    "K_per_W_lifted": 1.0304222222222228,
+    "target_C": 40.85500000000002,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 1.6793117346982835,
+    "target_is_peak": false,
+    "budget_over_block_power": 2.8125
+   }
+  ],
+  "500.0": [
+   {
+    "budget_W": 1.0,
+    "peak_C": 111.72200000000004,
+    "peak_drop_K": 1.7350000000000136,
+    "K_per_W_lifted": 1.7350000000000136,
+    "target_C": 111.72200000000004,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 2.205875583713847,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.0625
+   },
+   {
+    "budget_W": 2.0,
+    "peak_C": 109.98600000000005,
+    "peak_drop_K": 3.4710000000000036,
+    "K_per_W_lifted": 1.7355000000000018,
+    "target_C": 109.98600000000005,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 2.205875583713847,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.125
+   },
+   {
+    "budget_W": 3.0,
+    "peak_C": 108.25100000000003,
+    "peak_drop_K": 5.206000000000017,
+    "K_per_W_lifted": 1.7353333333333392,
+    "target_C": 108.25100000000003,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 2.205875583713847,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.1875
+   },
+   {
+    "budget_W": 5.0,
+    "peak_C": 104.78000000000003,
+    "peak_drop_K": 8.677000000000021,
+    "K_per_W_lifted": 1.7354000000000043,
+    "target_C": 104.78000000000003,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 2.205875583713847,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.3125
+   },
+   {
+    "budget_W": 8.0,
+    "peak_C": 99.57300000000004,
+    "peak_drop_K": 13.884000000000015,
+    "K_per_W_lifted": 1.7355000000000018,
+    "target_C": 99.57300000000004,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 2.205875583713847,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.5
+   },
+   {
+    "budget_W": 12.0,
+    "peak_C": 92.63100000000003,
+    "peak_drop_K": 20.826000000000022,
+    "K_per_W_lifted": 1.7355000000000018,
+    "target_C": 92.63100000000003,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 2.205875583713847,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.75
+   },
+   {
+    "budget_W": 16.0,
+    "peak_C": 85.69,
+    "peak_drop_K": 27.767000000000053,
+    "K_per_W_lifted": 1.7354375000000033,
+    "target_C": 85.69,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 2.205875583713847,
+    "target_is_peak": true,
+    "budget_over_block_power": 1.0
+   },
+   {
+    "budget_W": 24.0,
+    "peak_C": 71.80600000000004,
+    "peak_drop_K": 41.65100000000001,
+    "K_per_W_lifted": 1.7354583333333338,
+    "target_C": 71.80600000000004,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 2.205875583713847,
+    "target_is_peak": true,
+    "budget_over_block_power": 1.5
+   },
+   {
+    "budget_W": 32.0,
+    "peak_C": 68.80100000000004,
+    "peak_drop_K": 44.656000000000006,
+    "K_per_W_lifted": 1.3955000000000002,
+    "target_C": 58.38300000000004,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 2.205875583713847,
+    "target_is_peak": false,
+    "budget_over_block_power": 2.0
+   },
+   {
+    "budget_W": 45.0,
+    "peak_C": 67.06200000000001,
+    "peak_drop_K": 46.39500000000004,
+    "K_per_W_lifted": 1.0310000000000008,
+    "target_C": 43.400000000000034,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 2.205875583713847,
+    "target_is_peak": false,
+    "budget_over_block_power": 2.8125
+   }
+  ],
+  "2000.0": [
+   {
+    "budget_W": 1.0,
+    "peak_C": 112.48000000000002,
+    "peak_drop_K": 0.9770000000000323,
+    "K_per_W_lifted": 0.9770000000000323,
+    "target_C": 112.48000000000002,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 12.38136617955514,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.0625
+   },
+   {
+    "budget_W": 2.0,
+    "peak_C": 111.50300000000004,
+    "peak_drop_K": 1.9540000000000077,
+    "K_per_W_lifted": 0.9770000000000039,
+    "target_C": 111.50300000000004,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 12.38136617955514,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.125
+   },
+   {
+    "budget_W": 3.0,
+    "peak_C": 110.52600000000001,
+    "peak_drop_K": 2.93100000000004,
+    "K_per_W_lifted": 0.9770000000000133,
+    "target_C": 110.52600000000001,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 12.38136617955514,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.1875
+   },
+   {
+    "budget_W": 5.0,
+    "peak_C": 108.572,
+    "peak_drop_K": 4.885000000000048,
+    "K_per_W_lifted": 0.9770000000000095,
+    "target_C": 108.572,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 12.38136617955514,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.3125
+   },
+   {
+    "budget_W": 8.0,
+    "peak_C": 105.64100000000002,
+    "peak_drop_K": 7.816000000000031,
+    "K_per_W_lifted": 0.9770000000000039,
+    "target_C": 105.64100000000002,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 12.38136617955514,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.5
+   },
+   {
+    "budget_W": 12.0,
+    "peak_C": 101.73200000000003,
+    "peak_drop_K": 11.725000000000023,
+    "K_per_W_lifted": 0.9770833333333352,
+    "target_C": 101.73200000000003,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 12.38136617955514,
+    "target_is_peak": true,
+    "budget_over_block_power": 0.75
+   },
+   {
+    "budget_W": 16.0,
+    "peak_C": 97.82400000000001,
+    "peak_drop_K": 15.633000000000038,
+    "K_per_W_lifted": 0.9770625000000024,
+    "target_C": 97.82400000000001,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 12.38136617955514,
+    "target_is_peak": true,
+    "budget_over_block_power": 1.0
+   },
+   {
+    "budget_W": 24.0,
+    "peak_C": 90.01000000000005,
+    "peak_drop_K": 23.447000000000003,
+    "K_per_W_lifted": 0.9769583333333335,
+    "target_C": 90.01000000000005,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 12.38136617955514,
+    "target_is_peak": true,
+    "budget_over_block_power": 1.5
+   },
+   {
+    "budget_W": 32.0,
+    "peak_C": 82.19800000000004,
+    "peak_drop_K": 31.259000000000015,
+    "K_per_W_lifted": 0.9768437500000005,
+    "target_C": 82.19800000000004,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 12.38136617955514,
+    "target_is_peak": true,
+    "budget_over_block_power": 2.0
+   },
+   {
+    "budget_W": 45.0,
+    "peak_C": 72.99400000000003,
+    "peak_drop_K": 40.46300000000002,
+    "K_per_W_lifted": 0.8991777777777783,
+    "target_C": 72.99400000000003,
+    "base_peak_C": 113.45700000000005,
+    "collateral_area_ratio": 12.38136617955514,
+    "target_is_peak": true,
+    "budget_over_block_power": 2.8125
+   }
+  ]
+ },
+ "per_pitch": [
+  {
+   "pitch_um": 50.0,
+   "plateau_K_per_W": 1.8540000000000418,
+   "collateral_area_ratio": 0.0,
+   "migrates_after_W": 16.0,
+   "migrates_after_x_block": 1.0,
+   "K_per_W_past_cliff": 1.0302888888888888,
+   "n_budgets": 10
+  },
+  {
+   "pitch_um": 200.0,
+   "plateau_K_per_W": 1.8260000000000218,
+   "collateral_area_ratio": 1.6793117346982835,
+   "migrates_after_W": 16.0,
+   "migrates_after_x_block": 1.0,
+   "K_per_W_past_cliff": 1.0304222222222228,
+   "n_budgets": 10
+  },
+  {
+   "pitch_um": 500.0,
+   "plateau_K_per_W": 1.7350000000000136,
+   "collateral_area_ratio": 2.205875583713847,
+   "migrates_after_W": 24.0,
+   "migrates_after_x_block": 1.5,
+   "K_per_W_past_cliff": 1.0310000000000008,
+   "n_budgets": 10
+  },
+  {
+   "pitch_um": 2000.0,
+   "plateau_K_per_W": 0.9770000000000323,
+   "collateral_area_ratio": 12.38136617955514,
+   "migrates_after_W": 45.0,
+   "migrates_after_x_block": 2.8125,
+   "K_per_W_past_cliff": null,
+   "n_budgets": 10
+  }
+ ],
+ "THE_DELAY_IS_REAL_AND_NOT_WORTH_BUYING": "Coarse tiles cool the runner-up as well as the target, and they do delay the migration that causes the cliff -- monotonically, and by a lot: 50 and 200 um migrate after 16 W, 500 um after 24 W, and 2000 um has not migrated at all by 45 W, the top of the ladder. The hypothesised mechanism is real and large. But the delay is bought with plateau height and it never pays for itself. Fine pitch wins at EVERY budget measured -- including 45 W, where fine has already cliffed to 1.030 K/W and coarse, still aiming, manages only 0.899. The coarsest pitch starts 1.90x lower (1.854 against 0.977 K/W), and the best coarse pitch draws level only once fine has cliffed (1.396 against 1.395 K/W at 32 W), by which point both are bulk cooling rather than aiming. There is no crossing point worth designing around.",
+ "PITCH_AND_PLAN_SIZE_ARE_NEARLY_SEPARABLE": "Pitch sets the HEIGHT of the efficacy plateau and it also moves WHERE that plateau ends -- but the two move in opposite directions and the height term dominates everywhere measured. That is the useful form of the result: the cliff is not a hard floorplan property that hardware cannot touch, but no tile geometry buys past a bad power map, because every rung of delay costs more plateau than it returns. Choose pitch for efficacy, size the plan from the runner-up gap, and re-aim rather than over-drive.",
+ "WHAT_THIS_DOES_NOT_SHOW": "One shape (--concentrate 4.0 on L3_4) and one burial depth, single-target plans, linear solves without leakage feedback. The uniform-workload case is known to order pitches the OTHER way (tile_pitch_uniform.json), so this grid describes the concentrated regime only."
+}

@@ -1,0 +1,62 @@
+{
+ "note": "Viable operating envelope for the GA100 direct-die on a water cold plate, measured 26 Aug 2026 to re-centre the accelerator arm of the catalogue. The old sweep points (400 W and 700 W on 88 CFM air) are far past the cliff and return nothing but RUNAWAY.",
+ "configuration": {
+  "die_mm2": 826.0,
+  "stack": "spec:package=direct_die,mr=none,src=200,cell=100",
+  "spreading": true,
+  "cooling": "water cold plate, CoolingSpec-sized",
+  "boundary_K_per_W": 0.0549,
+  "inlet_C": 30.0,
+  "target_C": 85.0,
+  "leak_fraction": 0.25
+ },
+ "rows": [
+  {
+   "die_W": 100,
+   "density_W_per_mm2": 0.121,
+   "peak_C": 46.0,
+   "peak_block": "MEMCTRL_B0",
+   "plateau_within_10K": 367
+  },
+  {
+   "die_W": 150,
+   "density_W_per_mm2": 0.182,
+   "peak_C": 54.23,
+   "peak_block": "MEMCTRL_B0",
+   "plateau_within_10K": 344
+  },
+  {
+   "die_W": 200,
+   "density_W_per_mm2": 0.242,
+   "peak_C": 62.92,
+   "peak_block": "MEMCTRL_B0",
+   "plateau_within_10K": 234
+  },
+  {
+   "die_W": 300,
+   "density_W_per_mm2": 0.363,
+   "peak_C": null,
+   "diverged": true
+  }
+ ],
+ "result": {
+  "cliff_W": [
+   200,
+   300
+  ],
+  "cliff_W_per_mm2": [
+   0.242,
+   0.363
+  ],
+  "comment": "The GA100 has no steady state above ~250 W on this cold plate. A real H100 runs at 700 W, so the model is a long way from the part -- that gap is a finding to chase, not something to configure around."
+ },
+ "what_was_ruled_out": [
+  "Package: the OLD lidded skylake stack runs away at 400 W too.",
+  "The spreading correction: runs away with and without --spreading.",
+  "Cooling class: water at 0.0549 K/W -- half the air boundary -- still runs away at 400 W.",
+  "Leakage fraction: still runs away at 0.10, against the assumed 0.25."
+ ],
+ "what_remains": "The cause established so far is commit 0f91991 (20 Aug), which made leakage feedback live on the accelerator after 43 studies had been constant-power solves -- see accelerator_runaway_cause.json. What is NOT yet established is why the coupled solve is this steep: none of the four levers above moves the cliff, which points at the GA100 power map itself (MEMCTRL_B0 sets the peak at 1.47 W/mm^2 on an 8.3 mm^2 block, from an ASSUMED class split) rather than at the cooling. That is the next thing to test.",
+ "pump_power_caveat": "The flow solver bottoms out at 1e-05 m^3/s and reports 0 W of pump power with \"face velocity 0.02 m/s below the plausible water range\". That flow is right per device -- the LCEstimator CDU is 0.02 m^3/s across ~1950 devices, i.e. 1.0e-05 each -- so the implausibility is the COLD PLATE GEOMETRY, not the flow. CoolingSpec sizes a finned base for the die; a real GPU cold plate is microchannel. Capturing honest pump power needs the microchannel geometry from docs/chip_design_lit/design_physics/.",
+ "SUPERSEDED": "26 Aug 2026 by microchannel_coldplate.json. The cliff measured here is a property of the FINNED WATER BLOCK this run used, not of the GA100. On a direct-die microchannel cold plate the same die runs 64 C at 700 W. The measurements below stand; the conclusion drawn from them does not."
+}

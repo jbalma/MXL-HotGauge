@@ -1,0 +1,63 @@
+{
+ "note": "How big is the cold-zone prize, under each hypothesis about where the low-temperature leakage floor sits? Written 29 Aug 2026. This is the single number the architecture argument is most uncertain about -- ~50x -- and it needs no compute to bound.",
+ "why_it_matters_MORE_after_Test_1": "Test 1 showed a monolithic die cannot hold a two-temperature gradient: 40 W of removal on a 60.7 W die buys 1.24 K against the 150 K asked for. That pushes the cold zone onto its own DIE -- and on a separate cache die you do not need a gradient at all, you cool the whole thing uniformly. So Test 1 does not kill the cold zone; it moves it somewhere the gradient problem does not exist, and makes the leakage-floor question the deciding number rather than a secondary one.",
+ "measured_baseline": {
+  "source": "McPAT block_powers_split, project trace (linpack, 7nm, T_ref 330 K)",
+  "die_dynamic_W": 2.6062,
+  "die_static_W": 1.3812,
+  "static_fraction_pct": 34.64,
+  "cache_leakage_W": 1.2784,
+  "cache_share_of_all_leakage_pct": 92.6,
+  "comment": "the leakage is already concentrated in cache -- L3 alone is 89% of it"
+ },
+ "bounds": [
+  {
+   "hypothesis": "A: our calibrated curve, 350->310 K (all it can see)",
+   "leakage_reduction_x": 1.73,
+   "cache_leakage_saved_W": 0.5398,
+   "all_leakage_saved_W": 0.5832,
+   "die_power_saved_pct_cache_only": 13.54,
+   "die_power_saved_pct_all": 14.63,
+   "static_fraction_after_pct": 23.44,
+   "note": "the curve clamps below 310 K, so this is the whole defensible span"
+  },
+  {
+   "hypothesis": "B: book realistic, 350->200 K",
+   "leakage_reduction_x": 100.0,
+   "cache_leakage_saved_W": 1.2657,
+   "all_leakage_saved_W": 1.3674,
+   "die_power_saved_pct_cache_only": 31.74,
+   "die_power_saved_pct_all": 34.29,
+   "static_fraction_after_pct": 0.53,
+   "note": "Section 10.8 \"realistic 100-200x\""
+  },
+  {
+   "hypothesis": "B: book realistic upper",
+   "leakage_reduction_x": 200.0,
+   "cache_leakage_saved_W": 1.2721,
+   "all_leakage_saved_W": 1.3743,
+   "die_power_saved_pct_cache_only": 31.9,
+   "die_power_saved_pct_all": 34.47,
+   "static_fraction_after_pct": 0.26,
+   "note": "Section 10.8 upper end"
+  },
+  {
+   "hypothesis": "B*: ideal subthreshold 2^15",
+   "leakage_reduction_x": 32768.0,
+   "cache_leakage_saved_W": 1.2784,
+   "all_leakage_saved_W": 1.3812,
+   "die_power_saved_pct_cache_only": 32.06,
+   "die_power_saved_pct_all": 34.64,
+   "static_fraction_after_pct": 0.0,
+   "note": "the book itself discounts this as unreachable"
+  }
+ ],
+ "THE_SPREAD": {
+  "our_curve_says": "13.5% of die power",
+  "book_says": "31.7-31.9% of die power",
+  "ratio": 2.3,
+  "reading": "both hypotheses agree the prize is BOUNDED by the static fraction -- you cannot save more leakage than there is. The book's 100-200x and the ideal 2^15 differ by 3 orders of magnitude in reduction but only ~1% in die power saved, because both have already taken essentially all of it. The DECISION-RELEVANT gap is between our curve and the book: 13.5% against 31.7% of die power."
+ },
+ "what_would_settle_it": "PTM SPICE cards (ptm.asu.edu, free, 7nm among others) give leakage vs temperature over any range. McPAT cannot: it rejects input outside 300-400 K. One evening's work, and it converts the largest uncertainty in the architecture argument into a measured curve.",
+ "the_honest_position_today": "our own calibrated curve supports a cold-zone prize of ~14% of die power, not the ~32% the book's numbers imply. Neither is authoritative -- ours is McPAT's model below its own calibration range, and the book's is a discounted textbook exponential. The disagreement should be stated, not resolved by picking the flattering one."
+}

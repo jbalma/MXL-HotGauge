@@ -1,0 +1,53 @@
+{
+ "note": "what the burial depth is worth, as a function of WHERE the cooling is applied. Linear solves, no leakage feedback: only geometry moves.  RUN ON L2_4 ON PURPOSE: the production path ranks L2_4 hottest (it reports block AVERAGES; this probe reports block MAXIMA and ranks L3_4). Kept as the control for docs/evidence/burial_depth_through_planner.json -- it shows that the 67% in mr_placement_burial_depth.json is specific to L3_4 and to the maximum reduction, not a die-wide constant.",
+ "driver": "examples/mr_placement_probe.py",
+ "target": "L2_4",
+ "target_um": [
+  734.396,
+  1452.683
+ ],
+ "die_W": 100.0,
+ "mr_W": 3.0,
+ "pitch_um": 500.0,
+ "cell_um": 100.0,
+ "coverage": {
+  "n_tiles": 204,
+  "n_engaged": 8,
+  "n_material": 8,
+  "engaged_area_um2": 2100000.0,
+  "effective_area_um2": 2100000.0,
+  "requested_area_um2": 1066844.5844679999,
+  "collateral_area_ratio": 1.9684216713226328,
+  "collateral_any_overlap": 1.9684216713226328,
+  "W_requested": 3.0,
+  "W_projected": 3.0
+ },
+ "rows": [
+  {
+   "burial_um": 360.0,
+   "no_mr_C": 81.23600000000005,
+   "source_C": 73.29400000000004,
+   "pixels_C": 76.28700000000003,
+   "gain_source_K": -7.942000000000007,
+   "gain_pixels_K": -4.949000000000012
+  },
+  {
+   "burial_um": 100.0,
+   "no_mr_C": 76.142,
+   "source_C": 69.32300000000004,
+   "pixels_C": 70.54400000000004,
+   "gain_source_K": -6.81899999999996,
+   "gain_pixels_K": -5.597999999999956
+  },
+  {
+   "burial_um": 20.0,
+   "no_mr_C": 75.04400000000004,
+   "source_C": 68.81,
+   "pixels_C": 69.55000000000001,
+   "gain_source_K": -6.234000000000037,
+   "gain_pixels_K": -5.494000000000028
+  }
+ ],
+ "span_source_K": 1.70799999999997,
+ "span_pixels_K": 0.6489999999999441
+}

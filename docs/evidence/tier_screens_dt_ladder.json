@@ -1,0 +1,427 @@
+{
+  "note": "The tier screens, re-run 27 Aug 2026 on the corrected --spreading boundary at the re-centred density (0.60 W/mm^2) and ACROSS THE dt_max LADDER. These twelve shapes had no batch script, were never in the P0.5 catalogue plan, and existed only at the superseded boundary -- see findings_harvest_correction.json. They now have a script: scripts/recentred_gapfill.sh. Two of generation 0's five phase-1 floorplan metrics come from here (docs/LADDER_GEN0.md section 3), and this re-run changes what one of them can be.",
+  "configuration": {
+    "cores": 34,
+    "density_W_per_mm2": 0.6,
+    "cfm": 88,
+    "burial_um": 200,
+    "stack": "spec:package=direct_die,mr=none,src=200,cell=50",
+    "spreading": true,
+    "n_blocks": 1126
+  },
+  "why_dt_max_was_swept": "examples/thermal_tiers.py hardcoded --dt-max 10.0 -- the unsourced LEGACY envelope -- until 27 Aug 2026, against a DEMONSTRATED 45 K. dt_max defines the plateau metric, so every plateau this driver has ever reported was measured at a hidden ceiling. Sweeping it turns an assumption into a measurement.",
+  "FINDING_1_the_plateau_metric_degenerates_at_the_demonstrated_envelope": {
+    "what": "At dt_max = 45 K EVERY workload shape returns plateau = the whole die (1126 of 1126 blocks, one shape 1125). At dt_max = 10 K the same shapes span 4 to 56 blocks -- a 14x spread, and a genuinely discriminating screen.",
+    "why": "The die's OWN temperature spread is 31.9-45.0 K, i.e. smaller than or equal to the demonstrated 45 K lift. 'Blocks within dt_max of the peak' therefore evaluates to 'all blocks', always, and the metric carries no information.",
+    "consequence_for_gen_0": "docs/LADDER_GEN0.md section 3 lists 'plateau width at dt_max' as one of five phase-1 floorplan metrics, 'produced by the tier screens'. At the demonstrated envelope it is UNUSABLE as a floorplan discriminator and must be redefined or dropped. A workable redefinition: plateau within a fraction of the die's own temperature range, or within the per-tile achievable dT rather than the device maximum.",
+    "and_it_agrees_with_something_measured_independently": "The die-average strategy study found that at large budgets proportional extraction beats hotspot clipping, because a targeted plan can only pull the peak to the runner-up's level. This is the same statement from the other side: once lift is large relative to the die's spread, 'which blocks are within reach' stops being the question and 'where to spend the watts' becomes it."
+  },
+  "FINDING_2_clip_one_gain_is_independent_of_dt_max": {
+    "what": "Clip-one gain is IDENTICAL to six decimal places across the entire dt_max ladder for every shape.",
+    "why": "gain = T[0] - max(T[0] - dt_max, T[1]). Whenever the runner-up lies within dt_max of the peak -- which it always does here, since the die's whole spread is <= 45 K -- this reduces to T[0] - T[1], the peak-to-runner-up gap, in which dt_max does not appear.",
+    "consequence_for_gen_0": "The two metrics LADDER_GEN0 attributes to the tier screens are not two independent metrics at this envelope: 'clip-one gain' IS 'peak-to-runner-up gap'. The good news is that this one is robust, device-independent and discriminating -- 1.18 K (fpu2) to 8.07 K (g4_turbo_idle), a 6.8x spread across shapes.",
+    "peak_to_runner_up_gap_by_shape_K": {
+      "fpu2": 1.179,
+      "fpu3": 2.9467,
+      "fpu4": 3.9836,
+      "g4_mixed25": 7.5717,
+      "g4_turbo": 7.9891,
+      "g4_turbo_idle": 8.0729,
+      "mixed25": 1.5219,
+      "mixed50": 1.4618,
+      "turbo": 1.6929,
+      "turbo_idle": 1.7771,
+      "uniform": 2.0107
+    }
+  },
+  "rows": [
+    {
+      "shape": "fpu2",
+      "dt": 10,
+      "peak": 66.889,
+      "die_spread_K": 31.872,
+      "plateau": 56,
+      "clip_one_gain_K": 1.179,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "fpu2",
+      "dt": 20,
+      "peak": 66.889,
+      "die_spread_K": 31.872,
+      "plateau": 460,
+      "clip_one_gain_K": 1.179,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "fpu2",
+      "dt": 30,
+      "peak": 66.889,
+      "die_spread_K": 31.872,
+      "plateau": 1117,
+      "clip_one_gain_K": 1.179,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "fpu2",
+      "dt": 45,
+      "peak": 66.889,
+      "die_spread_K": 31.872,
+      "plateau": 1126,
+      "clip_one_gain_K": 1.179,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "fpu3",
+      "dt": 10,
+      "peak": 69.223,
+      "die_spread_K": 35.114,
+      "plateau": 36,
+      "clip_one_gain_K": 2.9467,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "fpu3",
+      "dt": 20,
+      "peak": 69.223,
+      "die_spread_K": 35.114,
+      "plateau": 282,
+      "clip_one_gain_K": 2.9467,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "fpu3",
+      "dt": 30,
+      "peak": 69.223,
+      "die_spread_K": 35.114,
+      "plateau": 1070,
+      "clip_one_gain_K": 2.9467,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "fpu3",
+      "dt": 45,
+      "peak": 69.223,
+      "die_spread_K": 35.114,
+      "plateau": 1126,
+      "clip_one_gain_K": 2.9467,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "fpu4",
+      "dt": 10,
+      "peak": 71.776,
+      "die_spread_K": 38.322,
+      "plateau": 16,
+      "clip_one_gain_K": 3.9836,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "fpu4",
+      "dt": 20,
+      "peak": 71.776,
+      "die_spread_K": 38.322,
+      "plateau": 172,
+      "clip_one_gain_K": 3.9836,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "fpu4",
+      "dt": 30,
+      "peak": 71.776,
+      "die_spread_K": 38.322,
+      "plateau": 949,
+      "clip_one_gain_K": 3.9836,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "fpu4",
+      "dt": 45,
+      "peak": 71.776,
+      "die_spread_K": 38.322,
+      "plateau": 1126,
+      "clip_one_gain_K": 3.9836,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "g4_mixed25",
+      "dt": 10,
+      "peak": 69.348,
+      "die_spread_K": 45.045,
+      "plateau": 7,
+      "clip_one_gain_K": 7.5717,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "g4_mixed25",
+      "dt": 20,
+      "peak": 69.348,
+      "die_spread_K": 45.045,
+      "plateau": 37,
+      "clip_one_gain_K": 7.5717,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "g4_mixed25",
+      "dt": 30,
+      "peak": 69.348,
+      "die_spread_K": 45.045,
+      "plateau": 147,
+      "clip_one_gain_K": 7.5717,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "g4_mixed25",
+      "dt": 45,
+      "peak": 69.348,
+      "die_spread_K": 45.045,
+      "plateau": 1125,
+      "clip_one_gain_K": 7.5717,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "g4_turbo",
+      "dt": 10,
+      "peak": 63.266,
+      "die_spread_K": 39.069,
+      "plateau": 4,
+      "clip_one_gain_K": 7.9891,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "g4_turbo",
+      "dt": 20,
+      "peak": 63.266,
+      "die_spread_K": 39.069,
+      "plateau": 27,
+      "clip_one_gain_K": 7.9891,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "g4_turbo",
+      "dt": 30,
+      "peak": 63.266,
+      "die_spread_K": 39.069,
+      "plateau": 54,
+      "clip_one_gain_K": 7.9891,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "g4_turbo",
+      "dt": 45,
+      "peak": 63.266,
+      "die_spread_K": 39.069,
+      "plateau": 1126,
+      "clip_one_gain_K": 7.9891,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "g4_turbo_idle",
+      "dt": 20,
+      "peak": 60.471,
+      "die_spread_K": 40.263,
+      "plateau": 27,
+      "clip_one_gain_K": 8.0729,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "g4_turbo_idle",
+      "dt": 30,
+      "peak": 60.471,
+      "die_spread_K": 40.263,
+      "plateau": 45,
+      "clip_one_gain_K": 8.0729,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "g4_turbo_idle",
+      "dt": 45,
+      "peak": 60.471,
+      "die_spread_K": 40.263,
+      "plateau": 1126,
+      "clip_one_gain_K": 8.0729,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "mixed25",
+      "dt": 10,
+      "peak": 63.77,
+      "die_spread_K": 38.539,
+      "plateau": 20,
+      "clip_one_gain_K": 1.5219,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "mixed25",
+      "dt": 20,
+      "peak": 63.77,
+      "die_spread_K": 38.539,
+      "plateau": 60,
+      "clip_one_gain_K": 1.5219,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "mixed25",
+      "dt": 30,
+      "peak": 63.77,
+      "die_spread_K": 38.539,
+      "plateau": 242,
+      "clip_one_gain_K": 1.5219,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "mixed25",
+      "dt": 45,
+      "peak": 63.77,
+      "die_spread_K": 38.539,
+      "plateau": 1126,
+      "clip_one_gain_K": 1.5219,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "mixed50",
+      "dt": 10,
+      "peak": 65.421,
+      "die_spread_K": 39.82,
+      "plateau": 31,
+      "clip_one_gain_K": 1.4618,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "mixed50",
+      "dt": 20,
+      "peak": 65.421,
+      "die_spread_K": 39.82,
+      "plateau": 182,
+      "clip_one_gain_K": 1.4618,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "mixed50",
+      "dt": 30,
+      "peak": 65.421,
+      "die_spread_K": 39.82,
+      "plateau": 598,
+      "clip_one_gain_K": 1.4618,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "mixed50",
+      "dt": 45,
+      "peak": 65.421,
+      "die_spread_K": 39.82,
+      "plateau": 1126,
+      "clip_one_gain_K": 1.4618,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "turbo",
+      "dt": 10,
+      "peak": 57.801,
+      "die_spread_K": 33.617,
+      "plateau": 22,
+      "clip_one_gain_K": 1.6929,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "turbo",
+      "dt": 20,
+      "peak": 57.801,
+      "die_spread_K": 33.617,
+      "plateau": 38,
+      "clip_one_gain_K": 1.6929,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "turbo",
+      "dt": 30,
+      "peak": 57.801,
+      "die_spread_K": 33.617,
+      "plateau": 379,
+      "clip_one_gain_K": 1.6929,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "turbo",
+      "dt": 45,
+      "peak": 57.801,
+      "die_spread_K": 33.617,
+      "plateau": 1126,
+      "clip_one_gain_K": 1.6929,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "turbo_idle",
+      "dt": 10,
+      "peak": 55.145,
+      "die_spread_K": 34.92,
+      "plateau": 23,
+      "clip_one_gain_K": 1.7771,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "turbo_idle",
+      "dt": 20,
+      "peak": 55.145,
+      "die_spread_K": 34.92,
+      "plateau": 35,
+      "clip_one_gain_K": 1.7771,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "turbo_idle",
+      "dt": 30,
+      "peak": 55.145,
+      "die_spread_K": 34.92,
+      "plateau": 70,
+      "clip_one_gain_K": 1.7771,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "turbo_idle",
+      "dt": 45,
+      "peak": 55.145,
+      "die_spread_K": 34.92,
+      "plateau": 1126,
+      "clip_one_gain_K": 1.7771,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "uniform",
+      "dt": 10,
+      "peak": 68.57,
+      "die_spread_K": 32.712,
+      "plateau": 38,
+      "clip_one_gain_K": 2.0107,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "uniform",
+      "dt": 20,
+      "peak": 68.57,
+      "die_spread_K": 32.712,
+      "plateau": 328,
+      "clip_one_gain_K": 2.0107,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "uniform",
+      "dt": 30,
+      "peak": 68.57,
+      "die_spread_K": 32.712,
+      "plateau": 1096,
+      "clip_one_gain_K": 2.0107,
+      "n_blocks": 1126
+    },
+    {
+      "shape": "uniform",
+      "dt": 45,
+      "peak": 68.57,
+      "die_spread_K": 32.712,
+      "plateau": 1126,
+      "clip_one_gain_K": 2.0107,
+      "n_blocks": 1126
+    }
+  ],
+  "caveat": "These are single-arm control-stack screens (grease, no array), which is what a floorplan METRIC should be: a property of the design and the workload, measured before any cooling is applied. They are not MR results and must not be quoted as any."
+}

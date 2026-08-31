@@ -1,0 +1,75 @@
+{
+  "note": "The ISA comparison at constant DIE POWER, 27 Aug 2026 -- the experiment the registered prediction should have specified. scripts/isa_constant_power.sh, 24 points attempted.",
+  "why": "The constant-DENSITY sweep let a smaller die dissipate less power, so it came out cooler and flatter and the prediction was falsified against a confound rather than against physics. Holding total watts fixed makes the compaction real.",
+  "rows": [
+    {
+      "floorplan": "x86_skylake",
+      "die_W": 25,
+      "density_W_per_mm2": 0.247,
+      "outcome": "converged",
+      "control_peak_C": 39.94,
+      "array_idle_peak_C": 37.68,
+      "relative_plateau_25pct": 19,
+      "cost_W_at_3K": 1.067
+    },
+    {
+      "floorplan": "arm_v1",
+      "die_W": 25,
+      "density_W_per_mm2": 0.356,
+      "outcome": "converged",
+      "control_peak_C": 41.89,
+      "array_idle_peak_C": 38.92,
+      "relative_plateau_25pct": 53,
+      "cost_W_at_3K": 1.206
+    },
+    {
+      "floorplan": "arm_n2",
+      "die_W": 25,
+      "density_W_per_mm2": 0.517,
+      "outcome": "NO STEADY STATE"
+    },
+    {
+      "floorplan": "riscv_p670",
+      "die_W": 25,
+      "density_W_per_mm2": 0.648,
+      "outcome": "NO STEADY STATE"
+    },
+    {
+      "floorplan": "x86_skylake",
+      "die_W": 40,
+      "density_W_per_mm2": 0.396,
+      "outcome": "converged",
+      "control_peak_C": 51.97,
+      "array_idle_peak_C": 48.36,
+      "relative_plateau_25pct": 17,
+      "cost_W_at_3K": 0.66
+    },
+    {
+      "floorplan": "arm_v1",
+      "die_W": 40,
+      "density_W_per_mm2": 0.57,
+      "outcome": "converged",
+      "control_peak_C": 55.19,
+      "array_idle_peak_C": 50.27,
+      "relative_plateau_25pct": 58,
+      "cost_W_at_3K": 0.942
+    },
+    {
+      "floorplan": "arm_n2",
+      "die_W": 40,
+      "density_W_per_mm2": 0.826,
+      "outcome": "NO STEADY STATE"
+    },
+    {
+      "floorplan": "riscv_p670",
+      "die_W": 40,
+      "density_W_per_mm2": 1.036,
+      "outcome": "NO STEADY STATE"
+    }
+  ],
+  "RESULT": "HALF THE SWEEP HAS NO STEADY STATE. At constant power the two most compact dies -- arm_n2 (48.4 mm^2) and riscv_p670 (38.6 mm^2) -- diverge at BOTH power levels, including 25 W where their densities are only 0.517 and 0.648 W/mm^2, comfortably under the 0.80-0.85 W/mm^2 grease cliff measured on the x86 die.",
+  "why_they_fail_below_the_x86_cliff": "Because the cliff is not a property of density alone. A compact die is penalised TWICE. Its power density is higher at the same watts -- 2.1x for arm_n2 -- and the spreading boundary it sees is WORSE, because that boundary scales with die area (docs/evidence/spreading_boundary_by_die.json: 0.553 K/W on the 53 mm^2 die against 0.325 on the 101 mm^2 one and 0.108 on the 826 mm^2 GA100). Roughly 2.1x the density into roughly 1.8x the boundary resistance is about 3.7x the temperature rise, which is why they run away.",
+  "the_honest_reading": "This is a statement about COMPACTION AT A FIXED COOLER, which is as much a packaging result as an architecture one. It does NOT say ARM or RISC-V cores are thermally unviable -- a real compact part would be cooled differently, and the area-dependent boundary is the term that would change. What it does say is that at constant power, shrinking the die is thermally expensive in a way that density alone does not capture, and that any ISA comparison holding watts fixed has to model the cooler per die area or it is measuring the wrong thing.",
+  "taken_with_the_constant_density_sweep": "The two together bracket the answer. At constant DENSITY a compact die is cooler, flatter and MORE expensive to cool per kelvin of margin (isa_benefit_prediction_test.json). At constant POWER it has no steady state at all. Neither supports the original prediction that compact cores are better MR targets, and they fail it for different reasons -- which is worth more than a single falsification.",
+  "what_it_cost": "24 points attempted, 12 converged, about 20 minutes."
+}

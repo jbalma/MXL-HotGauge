@@ -1,0 +1,21 @@
+{
+ "note": "Why every accelerator point in the re-run returns RUNAWAY, and why that is CORRECT. Investigated 26 Aug 2026 after the first re-run attempt produced 24/24 runaways.",
+ "the_question": "a400_air is recorded in FINDINGS.json at 88.1 C, converged. The same point now has no steady state. Three candidate causes were tested and two eliminated.",
+ "tested": [
+  {
+   "configuration": "lidded skylake stack, no spreading -- EXACTLY what the old catalogue ran",
+   "result": "RUNAWAY at 0.484 W/mm^2"
+  },
+  {
+   "configuration": "direct-die stack, no spreading -- the baseline package",
+   "result": "RUNAWAY at 0.484 W/mm^2"
+  },
+  {
+   "configuration": "direct-die stack, --spreading -- the corrected boundary",
+   "result": "RUNAWAY at 0.484 W/mm^2"
+  }
+ ],
+ "conclusion": "Neither the package change nor the spreading correction causes it: the OLD stack runs away too. The cause is the leakage-feedback fix. Commit 0f91991 (20 Aug 2026) -- \"Leakage feedback was inert on the accelerator: 43 studies were constant-power solves\" -- and the accelerator results in FINDINGS.json are dated 17-18 Aug, i.e. BEFORE it. Those 88.1 C numbers are constant-power solves. Commit ac9229d the same day, \"Handbook: withdraw every accelerator temperature, keep the geometry\", already withdrew them.",
+ "what_follows": "With working leakage feedback the GA100 at 400 W on 88 CFM air has no steady state, and at 700 W still less. That is the correct current answer, not a regression. But it means the accelerator sweep points -- 400 W and 700 W on air -- are all past the cliff, so re-running them unchanged produces nothing but RUNAWAY rows. They need re-centring onto a viable operating envelope: --r-th 0.05 (liquid class) or --cooling-fluid water, or lower die power.",
+ "do_not": "Do not treat FINDINGS.json\"s accelerator family as a baseline for the ladder or the handbook. It is void by the project\"s own adjudication and its temperatures were already withdrawn."
+}

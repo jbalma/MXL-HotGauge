@@ -1,0 +1,105 @@
+{
+  "note": "Two floorplans built from PUBLISHED MICROARCHITECTURE instead of press area ratios, 28 Aug 2026, and the transfer test they made possible. The second result drops a metric built the day before.",
+  "why_the_open_RISC_V_lists_did_not_serve": "Checked all three suggested sources -- openhwgroup/core-v-cores, riscv/learn's open implementations, and the GitHub riscv-cores collection. The population is overwhelmingly 32-bit IN-ORDER embedded and educational. CVA6 is the ceiling: 6-stage, dual-issue, in-order, RV64 -- roughly Cortex-A55 tier, three performance classes below an HPC target. The out-of-order entries (riscy-OOO, lizard, RSD) are academic. Using any of them as an HPC building block would be WORSE than press ratios, because it would carry the authority of real synthesisable RTL while representing the wrong class of machine. (One correction to the GitHub collection's own summary: it lists Rocket Chip as out-of-order. Rocket is 5-stage IN-ORDER; BOOM is the OoO core in that ecosystem.)",
+  "what_replaced_them": {
+    "arm_a64fx": "Fujitsu A64FX -- the machine the HPC question is actually about, Fugaku silicon. 7 nm, 48 compute + 4 assistant cores in 4 CMGs of 12, 8.786 G transistors, Armv8.2-A with 512-bit SVE, 64 KB L1I + 64 KB L1D per core, 8 MB L2 per CMG, HBM2 at 1 TB/s.",
+    "riscv_xiangshan": "XiangShan Kunminghu (v3) from ICT/CAS -- out-of-order superscalar RV64, RVA-23, explicitly server/data-centre targeted, taped out, fully open. 64 KB L1I, up to 64 KB L1D, up to 1 MB unified L2, RVV 1.0 VLEN 128b x 2."
+  },
+  "the_provenance_upgrade": "The first cut assumed a core_area_scale from press ratios ('V1 is ~70% larger than N1'). These two assume NO area ratio at all. sram_scale is DERIVED from real per-core cache capacity against this project's own McPAT configuration (32/32/512 KB, from leakage_calibration/mcpat_T330.xml) -- A64FX (64+64+683)/(32+32+512) = 1.41, XiangShan (64+64+1024)/576 = 2.00 -- and vector_multiple from real vector width. Core area is now an OUTPUT: 102.1 mm^2 and 117.3 mm^2 against the 101.1 mm^2 baseline. The weakest assumption in the first cut is gone.",
+  "a_defect_the_tiler_caught": "Scaling an SRAM leaf without propagating to its ancestors overflows the shipped tiler's assertion that children fit inside their parent. It could not appear until a variant scaled SRAM UP -- the earlier ones only shrank it or left it alone -- so the first A64FX build failed loudly. Fixed by propagating the delta up the unit tree.",
+  "measured": [
+    {
+      "v": "x86_skylake",
+      "plateau": 17,
+      "gap": 1.9952392578125,
+      "span": 30.45550537109375,
+      "depth": 11.945098876953125,
+      "c3": 0.4908240115673555,
+      "c8": 2.615843640508074,
+      "kpw3": 6.055341351583182,
+      "kpw8": 2.263743998340331,
+      "retained": 0.373842508110376
+    },
+    {
+      "v": "arm_a64fx",
+      "plateau": 44,
+      "gap": 1.648590087890625,
+      "span": 29.41497802734375,
+      "depth": 8.7017822265625,
+      "c3": 0.65624026210504,
+      "c8": 2.6669677094420523,
+      "kpw3": 4.070512410029192,
+      "kpw8": 2.0421507460979584,
+      "retained": 0.5016937771928603
+    },
+    {
+      "v": "riscv_xiangshan",
+      "plateau": 52,
+      "gap": 0.1051025390625,
+      "span": 35.843231201171875,
+      "depth": 10.471923828125,
+      "c3": 0.7586101402298429,
+      "c8": 2.170848331894947,
+      "kpw3": 3.681048170413247,
+      "kpw8": 2.5094062091606064,
+      "retained": 0.6817096905523222
+    },
+    {
+      "v": "arm_v1",
+      "plateau": 59,
+      "gap": 0.070281982421875,
+      "span": 21.105804443359375,
+      "depth": 5.550811767578125,
+      "c3": 0.9209934756426481,
+      "c8": 3.311786638931667,
+      "kpw3": 2.341188661425983,
+      "kpw8": 1.7065327508853032,
+      "retained": 0.7289172286721565
+    },
+    {
+      "v": "arm_n2",
+      "plateau": 54,
+      "gap": 0.539520263671875,
+      "span": 18.52447509765625,
+      "depth": 5.029388427734375,
+      "c3": 0.8503257303204281,
+      "c8": 3.3110645684134488,
+      "kpw3": 2.1292750860259697,
+      "kpw8": 1.8126313691396714,
+      "retained": 0.851290366865056
+    },
+    {
+      "v": "riscv_p670",
+      "plateau": 71,
+      "gap": 0.0,
+      "span": 15.957733154296875,
+      "depth": 3.729705810546875,
+      "c3": 1.34885523491459,
+      "c8": 4.057290069451312,
+      "kpw3": 1.91274572916427,
+      "kpw8": 1.5062360510724042,
+      "retained": 0.7874732266324386
+    }
+  ],
+  "RESULT_1_relative_plateau_transfers_a_THIRD_time": {
+    "rho_vs_cost": {
+      "11 workloads, 1 floorplan": 0.843,
+      "4 floorplans": 1.0,
+      "6 floorplans": 1.0
+    },
+    "verdict": "The one durable predictor in the set. Three independent datasets, two kinds of variation, consistent sign and magnitude."
+  },
+  "RESULT_2_hot_region_depth_FAILS_the_transfer_test_and_is_dropped": {
+    "measured": {
+      "11 workloads, 1 floorplan": 0.8,
+      "6 floorplans": -0.886
+    },
+    "normalised_by_span_does_not_rescue_it": {
+      "11 workloads": 0.718,
+      "6 floorplans": -0.829
+    },
+    "verdict": "THE SIGN REVERSES. LADDER_GEN0 section 3's own rule -- any metric that does not predict is dropped -- applies to a metric built the previous day. It is kept, documented and tested as a WITHIN-FLOORPLAN workload diagnostic, and must not be used to compare designs.",
+    "why": "Across floorplans the quantity mostly tracks the die's absolute temperature SCALE, which is set by area and power rather than by the shape of the distribution. Within one floorplan the span is roughly fixed and it does measure shape.",
+    "and_it_is_not_alone": "relative_plateau ALSO reverses when regressed against retained efficiency (-0.647 on workloads, +0.829 on floorplans). So saturation behaviour appears NOT to be predictable from the temperature distribution alone by any of these metrics -- it seems to need the absolute thermal scale too. Only plateau-vs-COST survives."
+  }
+}

@@ -1,0 +1,58 @@
+{
+ "note": "Resistance budget for the four published acceptance points, before and after moving the package spreader out of the 3D-ICE stack and into the boundary. Analytic budgets only -- no 3D-ICE solve yet, so this establishes FEASIBILITY, not that the gate passes. 25 Aug 2026.",
+ "why": "As stack layers the lid and cold plate are columns exactly the width of the die, so the package budget scales as 1/area. On the 71 mm^2 Ryzen that gave 0.4675 K/W against a published junction-to-ambient of 0.3962 -- the package alone exceeded the entire budget, leaving a negative share for the cooler. That is not a tuning error, it is impossible, and it is why two of four points could not be reached at any flow.",
+ "method": "Lee/Song/Moran/Yovanovich constriction correlation, cooling_spec.spreading_resistance_K_per_W, wrapped by sink_models.SpreadingSink. The stack keeps only genuinely die-sized layers (die attach); the lid becomes the spreading base and grease and cold plate act over the base area.",
+ "spreading_base": "Sized as a fixed LID footprint (~1825 mm^2), not by cooler class. The cooler class sizes the FINS, which is right for convection and wrong for spreading: a 3 mm copper lid cannot spread to the 118 mm extent of a tower cooler. Using the fin extent demanded a 0.0028 K/W cooler for the Ryzen point, which is not a thing that exists.",
+ "rows": [
+  {
+   "point": "H100_AIR",
+   "die_mm2": 814.0,
+   "published_r_th": 0.1074468085106383,
+   "old_package_r": 0.0408,
+   "new_stack_r": 0.0139,
+   "boundary_budget": 0.0935,
+   "spreading_base_mm2": 1825.0,
+   "required_external_r": 0.0638,
+   "cooler_fin_base_mm2": 7326.0,
+   "feasible": true
+  },
+  {
+   "point": "H100_LIQUID",
+   "die_mm2": 814.0,
+   "published_r_th": 0.06622516556291391,
+   "old_package_r": 0.0408,
+   "new_stack_r": 0.0139,
+   "boundary_budget": 0.0523,
+   "spreading_base_mm2": 1825.0,
+   "required_external_r": 0.0252,
+   "cooler_fin_base_mm2": 7326.0,
+   "feasible": true
+  },
+  {
+   "point": "RYZEN_7500F_AIR",
+   "die_mm2": 71.0,
+   "published_r_th": 0.3962121212121212,
+   "old_package_r": 0.4675,
+   "new_stack_r": 0.1596,
+   "boundary_budget": 0.2366,
+   "spreading_base_mm2": 1825.0,
+   "required_external_r": 0.0462,
+   "cooler_fin_base_mm2": 13916.0,
+   "feasible": true
+  },
+  {
+   "point": "RYZEN_7500F_LIQUID",
+   "die_mm2": 71.0,
+   "published_r_th": 0.3651162790697674,
+   "old_package_r": 0.4675,
+   "new_stack_r": 0.1596,
+   "boundary_budget": 0.2055,
+   "spreading_base_mm2": 1825.0,
+   "required_external_r": 0.0241,
+   "cooler_fin_base_mm2": 13916.0,
+   "feasible": true
+  }
+ ],
+ "open": "Ryzen still requires ~0.046 K/W of external cooling against a typical tower's 0.10-0.15. The suspected cause is that the cold plate is modelled as a series slab at LID area rather than as a second spreading stage at its own larger footprint; a two-stage die -> lid -> cold plate model should relax it. The correlation is also ~18% conservative in its worst corner. Neither is resolved here.",
+ "status": "feasibility established; the gate itself has not been re-run"
+}

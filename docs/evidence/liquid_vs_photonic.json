@@ -1,0 +1,224 @@
+{
+ "note": "Test 6: liquid against photonic, scored on NET system power rather than temperature.\n\n    python examples/liquid_vs_photonic.py\n\nThe bounded comparison the ranked list asks for, in the form the power-recovery framing gives it.\nScored on temperature alone a microchannel plate wins comfortably -- 0.0153 K/W measured, against\nan array whose whole budget is a few watts. But that scoring ignores the asymmetry that matters:\n\n    **liquid cooling can only ever SPEND power. Photonic cooling can spend it and give some back.**\n\nSo the comparison is net system power, `P_die + P_cool - P_recovered`, and the recovery term is\nbounded by the second law at the temperature the die actually runs (eq. 1.13). That makes the\nanswer depend on `T_h` -- which is the architecture argument's whole point, and the reason this\ntest is worth running under the new framing when it was marginal under the old one.\n\nBounded, in the sense the ranked list meant\n--------------------------------------------\nEvery efficiency here is a stated input with a stated range, not a fitted value, and the result is\nreported as a band. The point is to find *where the crossover sits and how sensitive it is*, not\nto claim a number. Two of the four photonic efficiencies (`eta_AS`, `eta_P_int`) are the ones the\nwhole result turns on, and they are swept.\n\n`[!]` What this is not\n-----------------------\nNot a solve. Thermal resistances come from measured references already in the repository; this is\nthe loop-level power ledger sitting on top of them. The die temperature it uses for `T_h` is the\none those resistances imply, and the LPC ceiling is an upper bound -- so the photonic column is\noptimistic by construction and should be read as \"the best this could be\", against liquid's\n\"roughly what this is\".",
+ "die_W": 250.0,
+ "T0_K": 295.0,
+ "ambient_K": 300.0,
+ "fraction_removed": 0.25,
+ "eta_L": 0.85,
+ "eta_c": 0.92,
+ "conventional": {
+  "air_88cfm": {
+   "R_th_K_per_W": 0.325,
+   "T_h_K": 381.25,
+   "P_cool_W": 145.0,
+   "P_net_system_W": 395.0,
+   "phi_at_T_h": 0.22622950819672127
+  },
+  "cold_plate_liquid": {
+   "R_th_K_per_W": 0.05,
+   "T_h_K": 312.5,
+   "P_cool_W": 12.5,
+   "P_net_system_W": 262.5,
+   "phi_at_T_h": 0.05600000000000005
+  },
+  "microchannel_direct_die": {
+   "R_th_K_per_W": 0.0153,
+   "T_h_K": 303.825,
+   "P_cool_W": 30.0,
+   "P_net_system_W": 280.0,
+   "phi_at_T_h": 0.029046326010038648
+  }
+ },
+ "photonic_hybrid": [
+  {
+   "eta_AS": 0.02,
+   "eta_P_int": 0.3,
+   "T_h_K": 312.5,
+   "P_in_W": 3996.16368286445,
+   "P_rec_W": 938.55,
+   "net_system_W": 3316.9886828644503,
+   "vs_liquid_W": 3054.4886828644503,
+   "loop_gain": 0.78287584,
+   "self_powering": false
+  },
+  {
+   "eta_AS": 0.02,
+   "eta_P_int": 0.6,
+   "T_h_K": 312.5,
+   "P_in_W": 3996.16368286445,
+   "P_rec_W": 1877.1,
+   "net_system_W": 2378.43868286445,
+   "vs_liquid_W": 2115.93868286445,
+   "loop_gain": 0.78287584,
+   "self_powering": false
+  },
+  {
+   "eta_AS": 0.2,
+   "eta_P_int": 0.3,
+   "T_h_K": 312.5,
+   "P_in_W": 399.6163682864449,
+   "P_rec_W": 94.8,
+   "net_system_W": 564.1913682864449,
+   "vs_liquid_W": 301.6913682864449,
+   "loop_gain": 0.7907584000000001,
+   "self_powering": false
+  },
+  {
+   "eta_AS": 0.2,
+   "eta_P_int": 0.6,
+   "T_h_K": 312.5,
+   "P_in_W": 399.6163682864449,
+   "P_rec_W": 189.6,
+   "net_system_W": 469.39136828644496,
+   "vs_liquid_W": 206.89136828644496,
+   "loop_gain": 0.7907584000000001,
+   "self_powering": false
+  },
+  {
+   "eta_AS": 0.5,
+   "eta_P_int": 0.3,
+   "T_h_K": 312.5,
+   "P_in_W": 159.846547314578,
+   "P_rec_W": 38.550000000000004,
+   "net_system_W": 380.671547314578,
+   "vs_liquid_W": 118.17154731457799,
+   "loop_gain": 0.803896,
+   "self_powering": false
+  },
+  {
+   "eta_AS": 0.5,
+   "eta_P_int": 0.6,
+   "T_h_K": 312.5,
+   "P_in_W": 159.846547314578,
+   "P_rec_W": 77.10000000000001,
+   "net_system_W": 342.121547314578,
+   "vs_liquid_W": 79.62154731457798,
+   "loop_gain": 0.803896,
+   "self_powering": false
+  },
+  {
+   "eta_AS": 1.0,
+   "eta_P_int": 0.3,
+   "T_h_K": 312.5,
+   "P_in_W": 79.923273657289,
+   "P_rec_W": 19.800000000000004,
+   "net_system_W": 319.498273657289,
+   "vs_liquid_W": 56.99827365728902,
+   "loop_gain": 0.8257920000000001,
+   "self_powering": false
+  },
+  {
+   "eta_AS": 1.0,
+   "eta_P_int": 0.6,
+   "T_h_K": 312.5,
+   "P_in_W": 79.923273657289,
+   "P_rec_W": 39.60000000000001,
+   "net_system_W": 299.698273657289,
+   "vs_liquid_W": 37.19827365728901,
+   "loop_gain": 0.8257920000000001,
+   "self_powering": false
+  }
+ ],
+ "best_photonic": {
+  "eta_AS": 1.0,
+  "eta_P_int": 0.6,
+  "T_h_K": 312.5,
+  "P_in_W": 79.923273657289,
+  "P_rec_W": 39.60000000000001,
+  "net_system_W": 299.698273657289,
+  "vs_liquid_W": 37.19827365728901,
+  "loop_gain": 0.8257920000000001,
+  "self_powering": false
+ },
+ "crossover_sweep": [
+  {
+   "T_h_K": 312.5,
+   "phi": 0.05600000000000005,
+   "P_rec_W": 39.60000000000001,
+   "net_system_W": 299.698273657289,
+   "vs_liquid_W": 37.19827365728901,
+   "loop_gain": 0.8257920000000001,
+   "beats_liquid": false,
+   "self_powering": false
+  },
+  {
+   "T_h_K": 350.0,
+   "phi": 0.15714285714285714,
+   "P_rec_W": 43.39285714285714,
+   "net_system_W": 295.90541651443186,
+   "vs_liquid_W": 33.40541651443186,
+   "loop_gain": 0.9048857142857142,
+   "beats_liquid": false,
+   "self_powering": false
+  },
+  {
+   "T_h_K": 400.0,
+   "phi": 0.26249999999999996,
+   "P_rec_W": 47.34375,
+   "net_system_W": 291.954523657289,
+   "vs_liquid_W": 29.454523657288973,
+   "loop_gain": 0.987275,
+   "beats_liquid": false,
+   "self_powering": false
+  },
+  {
+   "T_h_K": 450.0,
+   "phi": 0.34444444444444444,
+   "P_rec_W": 50.41666666666668,
+   "net_system_W": 288.88160699062234,
+   "vs_liquid_W": 26.381606990622345,
+   "loop_gain": 1.0513555555555556,
+   "beats_liquid": false,
+   "self_powering": true
+  },
+  {
+   "T_h_K": 500.0,
+   "phi": 0.41000000000000003,
+   "P_rec_W": 52.875000000000014,
+   "net_system_W": 286.423273657289,
+   "vs_liquid_W": 23.923273657288973,
+   "loop_gain": 1.1026200000000002,
+   "beats_liquid": false,
+   "self_powering": true
+  },
+  {
+   "T_h_K": 550.0,
+   "phi": 0.4636363636363636,
+   "P_rec_W": 54.88636363636364,
+   "net_system_W": 284.41191002092535,
+   "vs_liquid_W": 21.911910020925347,
+   "loop_gain": 1.1445636363636364,
+   "beats_liquid": false,
+   "self_powering": true
+  },
+  {
+   "T_h_K": 600.0,
+   "phi": 0.5083333333333333,
+   "P_rec_W": 56.5625,
+   "net_system_W": 282.735773657289,
+   "vs_liquid_W": 20.235773657288973,
+   "loop_gain": 1.1795166666666668,
+   "beats_liquid": false,
+   "self_powering": true
+  },
+  {
+   "T_h_K": 700.0,
+   "phi": 0.5785714285714285,
+   "P_rec_W": 59.19642857142858,
+   "net_system_W": 280.1018450858604,
+   "vs_liquid_W": 17.60184508586042,
+   "loop_gain": 1.2344428571428572,
+   "beats_liquid": false,
+   "self_powering": true
+  }
+ ],
+ "crossover_T_h_K": null,
+ "eta_used_for_crossover": {
+  "eta_AS": 1.0,
+  "eta_P_int": 0.6
+ },
+ "verdict": "At a die temperature set by a liquid cold plate (312 K), photonic cooling costs MORE net system power than the liquid loop alone in every configuration swept: the best case is +37.2 W against liquid. The reason is structural rather than a matter of efficiency -- phi at 312 K is only 0.056, so the recovery term cannot pay for the laser. The loop gain reaches 0.83 at best, against the 1.0 it needs.",
+ "SELF_POWERING_IS_NOT_THE_SAME_AS_WINNING": "The loop crosses into self-powering at T_h = 450 K -- loop gain 1.05, so it recovers enough to run its own laser -- and it STILL costs more net system power than the liquid loop, by +26.4 W. Even at 700 K it is +17.6 W worse. The two are different claims and it would be easy to conflate them: self-powering says the loop pays for ITSELF; it does not say the loop is a cheaper way to move heat than a pump. It is not. Photonic net COP here is about 3; a liquid cold plate moving 250 W for 12.5 W is about 20.",
+ "what_would_change_it": "The recovery term scales with phi, and phi is set by T_h. Good cooling is therefore SELF-DEFEATING for recovery: the better the cold plate, the colder the die, the less its waste heat is worth. Run the compute hot on purpose and the recovery term grows -- which is what Section 10.8 proposes and what Test 1 says a monolithic die cannot deliver.",
+ "THE_HONEST_CONCLUSION_FOR_THE_FRAMING": "Exergy recovery ALONE does not make photonic cooling competitive with liquid on system power, at any temperature in the swept range, under the most favourable efficiencies swept. The case for photonic cooling has to rest on what liquid cannot do at all -- spatial selectivity at sub-100-um resolution, per-tile targeting, and the thermal-limit rescue the catalogue already measures -- with recovery as a term that improves the ledger rather than one that carries it. Presenting recovery as the headline would invite exactly the comparison above, and it does not survive it."
+}

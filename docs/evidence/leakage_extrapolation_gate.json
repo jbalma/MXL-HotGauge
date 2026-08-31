@@ -1,0 +1,55 @@
+{
+ "note": "Why every high-density run in this campaign is uninterpretable, and what would fix it.\nThe leakage table is calibrated 310-400 K (McPAT cannot be run hotter). Above 400 K the model\neither extrapolates an Arrhenius tail or clamps, and the two disagree without bound.",
+ "T_ref_K": 330.0,
+ "multipliers": [
+  {
+   "T_K": 350,
+   "extrapolated": 1.5976097629128705,
+   "clamped": 1.5976097629128705
+  },
+  {
+   "T_K": 400,
+   "extrapolated": 36.09929048234699,
+   "clamped": 36.09929048234699
+  },
+  {
+   "T_K": 420,
+   "extrapolated": 120.03446169965105,
+   "clamped": 36.09929048234699
+  },
+  {
+   "T_K": 450,
+   "extrapolated": 600.441418883366,
+   "clamped": 36.09929048234699
+  },
+  {
+   "T_K": 500,
+   "extrapolated": 5819.948865458266,
+   "clamped": 36.09929048234699
+  },
+  {
+   "T_K": 600,
+   "extrapolated": 184366.48630358095,
+   "clamped": 36.09929048234699
+  },
+  {
+   "T_K": 800,
+   "extrapolated": 15615642.198534245,
+   "clamped": 36.09929048234699
+  },
+  {
+   "T_K": 1000,
+   "extrapolated": 247844972.57422316,
+   "clamped": 36.09929048234699
+  }
+ ],
+ "calibrated_range_K": [
+  310,
+  400
+ ],
+ "THE_RUNAWAY_IS_THE_EXTRAPOLATION": "The extrapolated leakage multiplier is 36x at 400 K, 600x at 450, 5820x at 500 and 1.8e5 at 600. Inside a feedback loop that is unbounded positive gain: a block that nudges past 400 K gains enough leakage to jump to 500 K, which multiplies again. The observed signature matches exactly -- core_other_0 reaching 17381 K on ITERATION 1, which no physical thermal runaway does. It is an extrapolation artefact, not a cooling result.",
+ "AND_CLAMPING_IS_NOT_THE_ANSWER_EITHER": "Clamped, the multiplier is frozen at 36.1x however hot the block gets, and the code warns that \"runaway is suppressed and results in that range are not trustworthy\". So extrapolated, everything diverges; clamped, nothing does. Neither setting can decide the question -- they bracket it.",
+ "WHAT_THIS_MEANS_FOR_HIGH_DENSITY": "Above 400 K this toolchain cannot determine whether a die runs away. Every density at or above ~1.8 W/mm^2 on these floorplans puts some block past 400 K, so the entire high-density regime -- including the dt_max and h_max questions and any claim about where the array gives out -- is outside the calibration. Results there should be reported as BRACKETED, never as measured.",
+ "A_REFINEMENT_OF_THE_McPAT_FINDING": "This project recorded that McPAT is not in the temperature loop, so its 300-400 K domain does not bound the operating temperature. That is still true of the POWER MAP -- McPAT runs once at T_ref = 360 K. But the leakage TABLE the loop scales with is built from McPAT runs over 310-400 K, so McPAT's ceiling does bound the trustworthy range, indirectly and through the calibration. The earlier statement was right about the mechanism and too generous about the consequence.",
+ "THE_FIX_IS_ALREADY_THE_TOP_OPEN_ITEM": "PTM SPICE cards extend the leakage calibration above 400 K. That was already identified as the highest-value open item for the COLD zone (where the curve clamps at 310 K and the prize is uncertain 2.3x). It is now also the gate on the entire hot-logic and high-density programme. One calibration campaign unblocks both ends, and nothing above 400 K is quotable until it is done."
+}

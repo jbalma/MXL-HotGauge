@@ -1,0 +1,22 @@
+{
+ "note": "Three defects the first full catalogue run surfaced, all pre-existing or systemic, all found by running rather than by inspection. Recorded 27 Aug 2026.",
+ "defects": [
+  {
+   "what": "Only --out-dir was re-rooted out of the enumeration scratch tree.",
+   "symptom": "followon_study.sh's whole generational family (Study B, 14/10/7 nm) died five points into a healthy stream with --trace-dir /tmp/catalogue_rerun_XXXX/mcpat_runs/10nm/linpack_3.8GHz. The batch scripts build EVERY path from $REPO, and the enumeration copy repoints $REPO -- so inputs leak as well as outputs.",
+   "fix": "scripts/catalogue_rerun.py::_reroot_paths now re-roots outputs at the results tree and INPUTS at the real repo. The plan guard rejects any surviving \"catalogue_rerun_\" path in any argument, not just --out-dir."
+  },
+  {
+   "what": "stacked_memory_study could not run at all, and had not since 20 August 2026.",
+   "symptom": "3D-ICE parse error four lines into memory0.flp: \"power values {powers[MEM0_r0c0]};\". Commit b7d762e correctly changed the memory floorplan from a literal \"power values 0.0;\" to a placeholder -- a literal passes through str.format untouched and the die then solves carrying no power, which is the bug that commit was fixing for the accelerator. But NOTHING filled the memory templates: ICESim fills the processor die and the tile array, and the memory dies are neither.",
+   "fix": "stack_models.MemoryFloorplans keeps the templates in memory and re-renders them per solve, exactly as ArrayWiring does for the tiles. Verified: the floorplan now reads \"power values 0.237164;\" and the parse error is gone.",
+   "note": "The bank powers were already reaching the power VECTOR. They just never reached the floorplan FILE, which 3D-ICE parses separately -- so this was invisible to every check that looked at the trace."
+  },
+  {
+   "what": "A point that fails damping verification crashed the accelerator driver.",
+   "symptom": "ValueError: no blocks to rank. When verification fails the field can come back entirely at the solver floor; tier_analysis_by_class then has nothing to rank and raises, taking the point and its output with it. 24 accelerator points hit this.",
+   "fix": "accelerator_study now records tiers=None, no_field=True and prints why. An unconverged point is an unquotable RESULT, not a crash -- the run already carries `unconverged` and `verify_spread_K` saying so."
+  }
+ ],
+ "also_added": "scripts/sweep_runner.py --redo / skip-if-present. A 20-hour catalogue will be interrupted and will contain points that fail for reasons worth fixing; without point-level restart every fix costs a full re-solve of everything that already worked. It skips a point whose driver output is already on disk."
+}

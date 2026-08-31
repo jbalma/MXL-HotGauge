@@ -1,0 +1,88 @@
+{
+ "note": "P0.4 acceptance gate, run 26 August 2026 with the spreading boundary WIRED and at the model inputs as they already stood. No input was adjusted to make a point pass; see \"not_tuned\" below.",
+ "command": "examples/validate_published.py --point <PT> --stack spec:package=lidded,sink_in_stack=0,package_in_boundary=1 --spreading",
+ "result": "2 of 4",
+ "rows": [
+  {
+   "point": "H100_AIR",
+   "published_C": [
+    54.0,
+    72.0
+   ],
+   "implied_r_th_peak": 0.1074468085106383,
+   "r_package_K_per_W": 0.05416584109746389,
+   "r_boundary_K_per_W": 0.05328096741317441,
+   "r_external_K_per_W": 0.026458990411092925,
+   "flow_m3s": 0.13121138572692873,
+   "wall_plug_W": 259.862179068718,
+   "peak_C": 60.99443969726565,
+   "diverged": false,
+   "ok": true,
+   "verdict": "PASS: predicted 61.0 C against a published 54-72 C",
+   "stack": "spec:package=lidded,sink_in_stack=0,package_in_boundary=1",
+   "spreading": true,
+   "base_mm2": 1825.0
+  },
+  {
+   "point": "RYZEN_7500F_AIR",
+   "published_C": [
+    74.9,
+    76.3
+   ],
+   "implied_r_th_peak": 0.3962121212121212,
+   "r_package_K_per_W": 0.12229072828039345,
+   "r_boundary_K_per_W": 0.27392139293172774,
+   "r_external_K_per_W": 0.09978607278838644,
+   "flow_m3s": 0.009719261121749877,
+   "wall_plug_W": 21.974631965091103,
+   "peak_C": null,
+   "diverged": true,
+   "ok": false,
+   "verdict": "FAIL: model predicts thermal runaway where Ryzen 5 7500F, Thermalright Peerless Assassin 120 SE, Prime95 runs stably at 75-76 C. A part that ships in volume does not run away.",
+   "stack": "spec:package=lidded,sink_in_stack=0,package_in_boundary=1",
+   "spreading": true,
+   "base_mm2": 1825.0
+  },
+  {
+   "point": "RYZEN_7500F_LIQUID",
+   "published_C": [
+    69.5,
+    71.1
+   ],
+   "implied_r_th_peak": 0.3651162790697674,
+   "r_package_K_per_W": 0.12241863295487546,
+   "r_boundary_K_per_W": 0.24269764611489195,
+   "r_external_K_per_W": 0.0714341986033609,
+   "flow_m3s": 1.0000931313261389e-05,
+   "wall_plug_W": 4.3178029474986705e-06,
+   "peak_C": 64.16115722656252,
+   "diverged": false,
+   "ok": true,
+   "verdict": "PASS: predicted 64.2 C against a published 70-71 C",
+   "stack": "spec:package=lidded,sink_in_stack=0,package_in_boundary=1",
+   "spreading": true,
+   "base_mm2": 1825.0
+  },
+  {
+   "point": "H100_LIQUID",
+   "published_C": [
+    41,
+    50
+   ],
+   "implied_r_th_peak": 0.06622516556291391,
+   "r_external_K_per_W": 0.0037,
+   "ok": false,
+   "diverged": null,
+   "peak_C": null,
+   "verdict": "INFEASIBLE: no water flow in the datacenter_module class reaches the 0.0037 K/W of external resistance left after the stack and the spreading. Not a tuning failure -- the package eats almost all of a very tight liquid budget."
+  }
+ ],
+ "what_the_spreading_fixed": "The Ryzen package was 0.4675 K/W against a published 0.3962 junction-to-ambient budget -- the package alone exceeded the WHOLE budget, leaving a negative share for the cooler, which is impossible rather than mis-tuned. With the lid and cold plate in the boundary with their real overhang it is 0.1223 K/W, a 31% share, and both Ryzen points now have a feasible external budget. That was the blocking failure and it is gone.",
+ "what_still_fails": {
+  "RYZEN_7500F_AIR": "The external budget is now feasible (0.0998 K/W) but the COUPLED SOLVE runs away -- and \"diverged\" here means diverged at every damping the backtracking tried, so it is the model's answer rather than a numerical artefact. The failure has moved from an impossible package to a leakage runaway, which is a different and more tractable problem. Two readings, and they are not exclusive: (a) the modelled cliff is too low -- the catalogue puts the 34-core die's cliff at 1.05-1.15 W/mm^2 and this point is 132 W over 90.6 mm^2 = 1.46 W/mm^2, so a part that ships in volume sits past the modelled cliff; (b) the power map is a stand-in -- 132 W spread by AREA over a 14-core skylake floorplan is not a Zen4 CCD, and the real part concentrates its power differently over a smaller die. (a) would be a falsification of the cliff position, which is a headline result elsewhere in this project; (b) would make this point unusable as a gate until a real floorplan exists. Distinguishing them needs a Zen4 floorplan, not a parameter change.",
+  "H100_LIQUID": "Needs 0.0037 K/W of external resistance after the stack (0.054) and the spreading have taken their share of a 0.0662 K/W published budget. No flow in the datacenter_module class reaches it. The liquid points are where the package share hurts most, because the budget is small enough that the package is nearly all of it."
+ },
+ "not_tuned": "Four package inputs behind this gate remain unvalidated: die-attach solder thickness and conductivity, and cold-plate thickness and conductivity. docs/evidence/staged_spreading.json shows that moving all four in the favourable direction is worth -0.228 K/W and would land Ryzen at 0.385 against a published 0.396. NONE of them was touched for this run. Adopting them because they close the gate is tuning against the acceptance test, which is the exact failure the gate exists to prevent. See package_input_provenance.json for what is actually known about them.",
+ "weak_pass_flagged": "RYZEN_7500F_LIQUID passes at 64.2 C against a published 70-71 C. That is 5.8 K BELOW the bottom of the range, inside the 8.0 K ACCEPT_BELOW_MIN_K tolerance -- so it is a legitimate pass, not a borderline one, and check_peak is right to accept it. But it is on the OPTIMISTIC edge, and its flow solver bottomed out at 1e-05 m^3/s and 0 W at the wall, meaning the minimum flow already cleared the requirement. One of the gate's two passes therefore carries no information about whether the cooler model is right at the operating point -- only that the package no longer eats the budget. Report it as 'passes, running 5.8 K cold with the cooler at the solver floor', not as a clean pass.",
+ "how_to_report": "2 of 4. H100_AIR is a clean pass (61.0 C, mid-range). RYZEN_7500F_LIQUID passes 5.8 K cold with its cooler at the solver floor. RYZEN_7500F_AIR fails on a leakage runaway and H100_LIQUID is infeasible. The result that matters is not the score: it is that the Ryzen package fell from 0.4675 K/W -- more than its entire 0.3962 K/W junction-to-ambient budget, an impossibility rather than a mis-tuning -- to 0.1223 K/W, a 31% share."
+}

@@ -1,0 +1,45 @@
+{
+ "note": "The BASELINE CONFIGURATION: direct die, copper heatsink on top, and the only change between arms is 30 um of thermal grease replaced by 30 um of photonic tile array. No lid, no solder, no copper IHS. Compared at a FIXED PHYSICAL COOLER -- the same h = 2000 W/(m^2 K) in every column -- so only the model of the sink base changes. Analytic budgets, 25 Aug 2026.",
+ "the_artifact": "As shipped, the 2 mm heatsink base is a stack LAYER at the die footprint and 3D-ICE applies the convective boundary over that same footprint. So the cooling scales as 1/A_die: at h = 2000 the convective term alone is 9.40 K/W on a 53 mm^2 die and 0.61 K/W on an 826 mm^2 one. That is the grey sink base in the handbook figure, and it dominates everything else in the stack.",
+ "the_fix": "Take the base out of the stack and give it its overhang in the boundary: the die spreads into an 1825 mm^2 copper base and the cooler acts over THAT area. StackSpec(sink_in_stack=False) + sink_models.SpreadingSink.",
+ "result": {
+  "slab_spread_across_15.5x_die_area": 15.53,
+  "overhang_spread_across_15.5x_die_area": 2.59,
+  "comment": "Without the overhang the total tracks 1/area almost exactly -- 15.5x the die area gives 15.5x less resistance. With it the same range gives 2.6x, which is what a real cooler does."
+ },
+ "arm_delta_is_untouched": "The grease-vs-array difference is IDENTICAL in both models (0.131 K/W on the 7-core die either way), because the 30 um layer sits at the die footprint in both. The overhang fixes the absolute scale and the die-size dependence; it does not move the photonic result. That separation is worth keeping: the cooling claim does not rest on the sink model.",
+ "fixed_cooler_h_W_m2K": 2000.0,
+ "base_area_mm2": 1825.0,
+ "rows": [
+  {
+   "floorplan": "skylake_7core",
+   "die_mm2": 53.2,
+   "grease_slab_r": 9.7024,
+   "grease_overhang_r": 0.8396,
+   "array_slab_r": 9.5717,
+   "array_overhang_r": 0.7089,
+   "delta_slab": 0.1307,
+   "delta_overhang": 0.1307
+  },
+  {
+   "floorplan": "skylake_34core",
+   "die_mm2": 101.2,
+   "grease_slab_r": 5.1005,
+   "grease_overhang_r": 0.6473,
+   "array_slab_r": 5.0317,
+   "array_overhang_r": 0.5786,
+   "delta_slab": 0.0688,
+   "delta_overhang": 0.0687
+  },
+  {
+   "floorplan": "ga100",
+   "die_mm2": 826.0,
+   "grease_slab_r": 0.6249,
+   "grease_overhang_r": 0.3237,
+   "array_slab_r": 0.6165,
+   "array_overhang_r": 0.3153,
+   "delta_slab": 0.0084,
+   "delta_overhang": 0.0084
+  }
+ ]
+}

@@ -1,0 +1,92 @@
+{
+ "note": "Where the thermal cliff sits on the 34-core die at 88 CFM AFTER the --spreading boundary correction. Measured because the catalogue re-run inherited density grids chosen for the OLD boundary, and a sweep centred past the cliff returns RUNAWAY for everything -- the failure scripts/overnight_study.sh records from a previous attempt: \"almost every point past the cliff and RUNAWAY for nearly all of them, which told us nothing\".",
+ "driver": "examples/mr_comparison.py --arms control array_idle --spreading, via sweep_runner",
+ "configuration": {
+  "cores": 34,
+  "die_mm2": 101.2,
+  "cfm": 88,
+  "ambient_K": 293.0,
+  "pitch_um": 500,
+  "burial_um": 200,
+  "spreading": true,
+  "boundary_K_per_W": 0.3247,
+  "boundary_K_per_W_before": 0.0764
+ },
+ "result": {
+  "cliff_W_per_mm2": [
+   0.8,
+   1.0
+  ],
+  "cliff_before_W_per_mm2": [
+   1.05,
+   1.15
+  ],
+  "comment": "The cliff moved DOWN by roughly 0.25 W/mm^2. At 0.80 the die holds at 84.9 C; at 1.00 it has no steady state. The old grids sampled 0.60-1.25 with most points at 1.05-1.25 -- almost entirely past the new cliff."
+ },
+ "passive_term": "The grease->GaAs substitution grows steadily with density: 1.8 K at 0.20 W/mm^2 to 7.4 K at 0.80, with the laser OFF. It is the packaging term alone.",
+ "rows": [
+  {
+   "density_W_per_mm2": 0.2,
+   "die_W": 20.2,
+   "control_C": 36.10640869140627,
+   "control_diverged": false,
+   "array_idle_C": 34.27279052734377,
+   "array_idle_diverged": false,
+   "passive_K": 1.8336181640625
+  },
+  {
+   "density_W_per_mm2": 0.3,
+   "die_W": 30.4,
+   "control_C": 44.21871337890627,
+   "control_diverged": false,
+   "array_idle_C": 41.47380981445315,
+   "array_idle_diverged": false,
+   "passive_K": 2.744903564453125
+  },
+  {
+   "density_W_per_mm2": 0.4,
+   "die_W": 40.5,
+   "control_C": 52.33162841796877,
+   "control_diverged": false,
+   "array_idle_C": 48.67485961914065,
+   "array_idle_diverged": false,
+   "passive_K": 3.656768798828125
+  },
+  {
+   "density_W_per_mm2": 0.5,
+   "die_W": 50.6,
+   "control_C": 60.44942626953127,
+   "control_diverged": false,
+   "array_idle_C": 55.87722167968752,
+   "array_idle_diverged": false,
+   "passive_K": 4.57220458984375
+  },
+  {
+   "density_W_per_mm2": 0.6,
+   "die_W": 60.7,
+   "control_C": 68.57015380859377,
+   "control_diverged": false,
+   "array_idle_C": 63.08284912109377,
+   "array_idle_diverged": false,
+   "passive_K": 5.4873046875
+  },
+  {
+   "density_W_per_mm2": 0.8,
+   "die_W": 81.0,
+   "control_C": 84.92205200195315,
+   "control_diverged": false,
+   "array_idle_C": 77.5034118652344,
+   "array_idle_diverged": false,
+   "passive_K": 7.41864013671875
+  },
+  {
+   "density_W_per_mm2": 1.0,
+   "die_W": 101.2,
+   "control_C": null,
+   "control_diverged": true,
+   "array_idle_C": null,
+   "array_idle_diverged": true,
+   "passive_K": null
+  }
+ ]
+}

@@ -1,0 +1,46 @@
+{
+  "note": "The clock passive term -- what swapping 30 um of thermal grease for 30 um of GaAs is worth in SUSTAINABLE CLOCK, with the laser off -- measured across three cooling classes on 27 Aug 2026. This is the half of the clock study that is NOT affected by the array_on defect (clock_search_mr_arm_defect.json), because neither the control nor the array_idle arm runs the MR planner. The array_on column is included ONLY to show that it is void.",
+  "driver": "examples/clock_headroom.py, 34-core 7nm, 88 CFM path, --spreading, 500 um pitch, 200 um burial",
+  "rows": [
+    {
+      "r_th_K_per_W": 0.05,
+      "control_GHz": 4.015625,
+      "control_limited_by": "thermal_runaway",
+      "array_idle_GHz": 4.203125,
+      "array_idle_limited_by": "thermal_runaway",
+      "passive_MHz": 187.5,
+      "passive_pct": 4.67,
+      "array_on_GHz": 2.0,
+      "array_on_limited_by": "unverified",
+      "array_on_usable": false
+    },
+    {
+      "r_th_K_per_W": 0.3,
+      "control_GHz": 3.3125,
+      "control_limited_by": "thermal_runaway",
+      "array_idle_GHz": 3.453125,
+      "array_idle_limited_by": "thermal_runaway",
+      "passive_MHz": 140.6,
+      "passive_pct": 4.25,
+      "array_on_GHz": 2.0,
+      "array_on_limited_by": "unverified",
+      "array_on_usable": false
+    },
+    {
+      "r_th_K_per_W": 1.0,
+      "control_GHz": 2.328125,
+      "control_limited_by": "thermal_runaway",
+      "array_idle_GHz": 2.421875,
+      "array_idle_limited_by": "thermal_runaway",
+      "passive_MHz": 93.8,
+      "passive_pct": 4.03,
+      "array_on_GHz": 2.0,
+      "array_on_limited_by": "unverified",
+      "array_on_usable": false
+    }
+  ],
+  "result": "The passive term is real, consistent and MONOTONE IN THE COOLER: +94 MHz (+4.0%) at 1.00 K/W, +141 MHz (+4.2%) at 0.30, +188 MHz (+4.7%) at 0.05. A materials substitution alone, before any light, is worth roughly 4-5% of sustainable clock, and it is worth MORE on a better cooler -- which is the opposite of the usual intuition that a good sink leaves nothing for anything else to do.",
+  "why_that_direction": "The passive term is a series resistance reduction between the active layer and the coolant. Its value in kelvin is roughly fixed, but the CLOCK those kelvin buy rises as the rest of the path improves, because near the runaway boundary a fixed temperature saving converts into more frequency when the die is not already deep in leakage feedback.",
+  "what_is_NOT_here": "The laser term. Every array_on row reports 2.0000 GHz -- exactly --f-lo -- with limited_by='unverified'. Those are not measurements and must not be quoted or differenced. See clock_search_mr_arm_defect.json.",
+  "caveat": "Every f_sustainable here is limited_by='thermal_runaway', i.e. these are runaway boundaries rather than throttle points, and they are computed on the shipped VF_PAIRS table -- which the same day's work established is a product BIN table asking about twice a modern node's supply (vf_curve_correction.json). Comparisons between arms through the same table are sound; the absolute GHz are not a product prediction."
+}

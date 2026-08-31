@@ -46,6 +46,7 @@ sys.path.insert(0, os.path.join(_REPO, 'HotGauge'))
 from HotGauge.power import BasicPowerTrace, LeakageModel
 from HotGauge.configuration import load_block_powers
 from HotGauge.thermal import get_stack_template, ICEThermalSolver, run_leakage_feedback
+from HotGauge.thermal.rbb import amortize_rbb, add_rbb_argument
 from HotGauge.thermal.ICE import Floorplan
 from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power, die_power_of_trace,
                                                mcpat_flp_name_map, replicate_trace_cores,
@@ -353,6 +354,7 @@ def main():
     ap.add_argument('--trace-dir', default=os.path.join(_REPO, 'mcpat_runs', '7nm',
                                                         'linpack_3.8GHz'))
     ap.add_argument('--tech-node', type=int, default=7)
+    add_rbb_argument(ap)
     ap.add_argument('--trace-cores', type=int, default=8)
     ap.add_argument('--stack', default='auto',
                     help="'auto' builds a direct-die stack per arm -- 30 um grease for the "
@@ -599,6 +601,7 @@ def main():
     print('-' * len(hdr))
 
     rows = []
+    rbb_meta = None   # set per core count below; None only if --cores is empty
     for n in args.cores:
         flp = floorplan_path(args.flp_dir, args.node, n)
         if args.node_obj is not None and args.native_density:
@@ -694,6 +697,16 @@ def main():
                 f_by_unit = rebalance_meta['factors_by_unit']
                 leak_ref = {u: v * f_by_unit.get(u, 1.0) for u, v in leak_ref.items()}
 
+        # `[!]` RBB policy: applied ONCE here, on the baseline trace, after every other trace
+        # transform and before the feedback loop, the planner and the accounting -- so all three
+        # see one power map. Trace and leakage reference move together; rescale_trace rebuilds
+        # power as `series - leak + leak*scale(T)`, so a zeroed series with a live leakage entry
+        # would re-inject the bus with a negative power below T_ref. See HotGauge.thermal.rbb.
+        trace, leak_ref, rbb_meta = amortize_rbb(
+            trace, flp, policy=args.rbb_policy, leakage_ref=leak_ref or None,
+            span=args.rbb_span, name_map=mcpat_flp_name_map(include_core_idx=(n > 1)))
+        leak_ref = leak_ref or {}
+
         fp = Floorplan.from_file(flp)
         geom = {e.name: {'area_mm2': (e.width * e.height) / 1.0e6,
                          'min_dim_um': float(min(e.width, e.height))} for e in fp.elements}
@@ -726,7 +739,10 @@ def main():
             tag = '{}c_{}'.format(n, arm)
             r = evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax,
                          area_m2, n, arm, tag, target_C=point_target_C)
-            r.update({'area_mm2': area_m2 * 1e6, 'power_W': power_W})
+            r.update({'area_mm2': area_m2 * 1e6, 'power_W': power_W,
+                      # Stamped per row: results from the two RBB policies are not comparable
+                      # and a row that does not say which one it came from is unusable.
+                      'rbb_policy': args.rbb_policy})
             rows.append(r)
             pair[arm] = r
             # Back-compatible aliases so the summarisers and collect_findings keep working while
@@ -819,6 +835,7 @@ def main():
 
     with open(os.path.join(args.out_dir, 'mr_comparison.json'), 'w') as f:
         json.dump({'density': args.density, 'cfm': args.cfm, 'r_th': args.r_th,
+                   'rbb_policy': args.rbb_policy, 'rbb': rbb_meta,
                    'f_nominal_GHz': args.f_nominal, 'node': args.node,
                    # The array configuration at the top level as well as per row. The rows are
                    # authoritative, but a summariser deciding whether two result files are

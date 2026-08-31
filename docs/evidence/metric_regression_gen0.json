@@ -1,0 +1,229 @@
+{
+  "note": "The regression LADDER_GEN0 section 3 has asked for since the ladder was written, run for the first time on 27 Aug 2026. It regresses MEASURED MR benefit against the phase-1 floorplan metrics across 11 workload shapes x 3 demanded margins, and applies section 3's own rule: any metric that does not predict is dropped.",
+  "why_it_could_not_be_run_before": "The predictors and the response had never been measured on the same points. The 11 shapes existed only in the CONTROL-ARM tier screens, and all 35 catalogue points with a measured MR benefit ran at uniform activity on the same die, varying only density, target and pitch. examples/mr_comparison.py gained the shaping flags (copied from thermal_tiers, deliberately, so the inputs are provably identical) and now stamps the metrics on every row.",
+  "dataset": {
+    "points": 33,
+    "usable": 33,
+    "shapes": 11,
+    "margins_K": [
+      3,
+      5,
+      8
+    ],
+    "density_W_per_mm2": 0.6,
+    "cores": 34,
+    "driver": "scripts/shape_benefit.sh"
+  },
+  "FINDING_0_the_obvious_response_variable_is_wrong": "benefit_K correlates 0.956 with the DEMANDED margin, because the planner holds the derived target by construction. Benefit is an input, not an outcome. The response that means anything is COST: how much heat must be removed to buy that margin.",
+  "FINDING_1_the_replacement_metric_is_the_strongest_predictor": {
+    "result": "relative_plateau_25pct -- built this morning to replace the dt_max plateau, which degenerates at the demonstrated envelope -- predicts cost at EVERY margin with consistent sign and magnitude: rho +0.843 / +0.825 / +0.852 at 3 / 5 / 8 K, p = 0.0011 / 0.0018 / 0.0009.",
+    "interpretation": "A wide plateau costs more watts for the same margin, which is the mechanism the tier screens were always supposed to capture and could not once dt_max reached the die's own span.",
+    "verdict": "KEEP -- and it is the metric to lead with"
+  },
+  "FINDING_2_peak_to_runner_up_gap_is_weaker_and_fails_at_large_margin": {
+    "result": "rho -0.682 / -0.682 / -0.582 against cost; at 8 K margin p = 0.060, NOT significant.",
+    "interpretation": "The gap only sees the top two blocks. That is enough when the plan cools one block and stops, and progressively less as the margin demanded pushes the plan into the plateau.",
+    "verdict": "KEEP but DEMOTE -- valid at small margins, unreliable at large ones"
+  },
+  "FINDING_3_an_incidental_metric_predicts_as_well_as_a_named_one": {
+    "result": "die_span_K: rho -0.655 / -0.682 / -0.736, significant at all three margins.",
+    "note": "It was stamped for context, not proposed as a metric. It matches or beats the peak-to-runner-up gap. Section 3's list was not exhaustive.",
+    "verdict": "PROMOTE to candidate"
+  },
+  "FINDING_4_a_saturation_split_that_NO_current_metric_predicts": {
+    "what": "Efficiency retained from 3 K to 8 K of margin splits the shapes cleanly in two: six shapes retain 97.7-100% and five retain 37.4-53.5%. There is almost nothing in between.",
+    "table": {
+      "fpu2": {
+        "plateau": 33,
+        "gap": 1.46,
+        "K_per_W_at_3K": 4.92,
+        "K_per_W_at_8K": 2.23,
+        "retained": 0.453
+      },
+      "fpu3": {
+        "plateau": 28,
+        "gap": 2.33,
+        "K_per_W_at_3K": 8.22,
+        "K_per_W_at_8K": 3.69,
+        "retained": 0.449
+      },
+      "fpu4": {
+        "plateau": 12,
+        "gap": 3.29,
+        "K_per_W_at_3K": 10.77,
+        "K_per_W_at_8K": 4.66,
+        "retained": 0.433
+      },
+      "g4_mixed25": {
+        "plateau": 10,
+        "gap": 7.41,
+        "K_per_W_at_3K": 10.71,
+        "K_per_W_at_8K": 10.7,
+        "retained": 1.0
+      },
+      "g4_turbo_idle": {
+        "plateau": 3,
+        "gap": 7.63,
+        "K_per_W_at_3K": 10.66,
+        "K_per_W_at_8K": 10.66,
+        "retained": 1.0
+      },
+      "g4_turbo": {
+        "plateau": 3,
+        "gap": 7.56,
+        "K_per_W_at_3K": 10.7,
+        "K_per_W_at_8K": 10.68,
+        "retained": 0.998
+      },
+      "mixed25": {
+        "plateau": 16,
+        "gap": 1.49,
+        "K_per_W_at_3K": 8.57,
+        "K_per_W_at_8K": 8.43,
+        "retained": 0.985
+      },
+      "mixed50": {
+        "plateau": 27,
+        "gap": 1.44,
+        "K_per_W_at_3K": 6.16,
+        "K_per_W_at_8K": 3.3,
+        "retained": 0.535
+      },
+      "turbo_idle": {
+        "plateau": 19,
+        "gap": 1.72,
+        "K_per_W_at_3K": 8.54,
+        "K_per_W_at_8K": 8.34,
+        "retained": 0.977
+      },
+      "turbo": {
+        "plateau": 15,
+        "gap": 1.65,
+        "K_per_W_at_3K": 8.55,
+        "K_per_W_at_8K": 8.39,
+        "retained": 0.981
+      },
+      "uniform": {
+        "plateau": 17,
+        "gap": 2.0,
+        "K_per_W_at_3K": 6.06,
+        "K_per_W_at_8K": 2.26,
+        "retained": 0.374
+      }
+    },
+    "relative_plateau_predicts_it_weakly": {
+      "rho": -0.642,
+      "p": 0.0334
+    },
+    "peak_to_runner_up_gap_does_NOT": {
+      "rho": 0.383,
+      "p": 0.2454
+    },
+    "and_it_is_not_monotone_in_plateau": "turbo (plateau 15), mixed25 (16) and turbo_idle (19) retain ~98%, while fpu4 (plateau 12) retains 43%. A narrower plateau does not guarantee graceful scaling, so this is structure the current metrics do not capture.",
+    "verdict": "A THIRD metric is needed, and this says what it should measure: not how wide the plateau is, but how quickly the cost per kelvin degrades as the plan is pushed into it. That is a property of the temperature distribution's SHAPE below the peak, which none of the four current metrics looks at."
+  },
+  "WHAT_THIS_SWEEP_COULD_NOT_TEST": "It varied WORKLOAD, not FLOORPLAN: one die, one floorplan, 34 cores throughout. So power_density_concentration and thermal_aspect -- the two metrics built this morning from LADDER_GEN0's 'not built' list -- are CONSTANT across all 33 points and remain completely untested. Testing them needs floorplan variants: the 7/70/128-core dies, or the ARM and RISC-V floorplans that do not yet exist.",
+  "regressions": {
+    "3": {
+      "relative_plateau_25pct": {
+        "vs_cost_W": {
+          "rho": 0.843,
+          "p": 0.0011
+        },
+        "vs_efficiency_K_per_W": {
+          "rho": -0.843,
+          "p": 0.0011
+        }
+      },
+      "peak_to_runner_up_gap_K": {
+        "vs_cost_W": {
+          "rho": -0.682,
+          "p": 0.0208
+        },
+        "vs_efficiency_K_per_W": {
+          "rho": 0.682,
+          "p": 0.0208
+        }
+      },
+      "die_span_K": {
+        "vs_cost_W": {
+          "rho": -0.655,
+          "p": 0.0289
+        },
+        "vs_efficiency_K_per_W": {
+          "rho": 0.655,
+          "p": 0.0289
+        }
+      }
+    },
+    "5": {
+      "relative_plateau_25pct": {
+        "vs_cost_W": {
+          "rho": 0.825,
+          "p": 0.0018
+        },
+        "vs_efficiency_K_per_W": {
+          "rho": -0.834,
+          "p": 0.0014
+        }
+      },
+      "peak_to_runner_up_gap_K": {
+        "vs_cost_W": {
+          "rho": -0.682,
+          "p": 0.0208
+        },
+        "vs_efficiency_K_per_W": {
+          "rho": 0.627,
+          "p": 0.0388
+        }
+      },
+      "die_span_K": {
+        "vs_cost_W": {
+          "rho": -0.682,
+          "p": 0.0208
+        },
+        "vs_efficiency_K_per_W": {
+          "rho": 0.727,
+          "p": 0.0112
+        }
+      }
+    },
+    "8": {
+      "relative_plateau_25pct": {
+        "vs_cost_W": {
+          "rho": 0.852,
+          "p": 0.0009
+        },
+        "vs_efficiency_K_per_W": {
+          "rho": -0.834,
+          "p": 0.0014
+        }
+      },
+      "peak_to_runner_up_gap_K": {
+        "vs_cost_W": {
+          "rho": -0.582,
+          "p": 0.0604
+        },
+        "vs_efficiency_K_per_W": {
+          "rho": 0.627,
+          "p": 0.0388
+        }
+      },
+      "die_span_K": {
+        "vs_cost_W": {
+          "rho": -0.736,
+          "p": 0.0098
+        },
+        "vs_efficiency_K_per_W": {
+          "rho": 0.727,
+          "p": 0.0112
+        }
+      }
+    }
+  },
+  "measured_efficiency_range_K_per_W": {
+    "min": 2.23,
+    "max": 10.77,
+    "note": "The arm-consistency check's soft ceiling was 10 K/W, derived from UNIFORM-workload data (best measured 1.119 K/W in die_average_strategies.json). Concentrated shapes legitimately reach 10.77 K/W, so that ceiling was too tight and fired on real results. It is raised to 25 K/W on this measured basis -- about 2.3x the highest value now observed -- rather than tuned until the warnings stopped."
+  }
+}

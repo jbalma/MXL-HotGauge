@@ -1,0 +1,49 @@
+{
+ "note": "Does dt_max or h_max gate the high-density case? Measured by exhaustion at density 2.00 W/mm^2, the first point where the array arm failed. Answer: NEITHER. The failure is not an envelope limit at all.",
+ "dt_max_sweep": {
+  "dt20": {
+   "diverged": true,
+   "reason": "envelope insufficient: no steady state even at full MR capability"
+  },
+  "dt80": {
+   "diverged": true,
+   "reason": "envelope insufficient: no steady state even at full MR capability"
+  },
+  "dt150": {
+   "diverged": true,
+   "reason": "envelope insufficient: no steady state even at full MR capability"
+  },
+  "dt45": {
+   "diverged": true,
+   "reason": "envelope insufficient: no steady state even at full MR capability"
+  }
+ },
+ "h_max_sweep": {
+  "h3000": {
+   "diverged": true,
+   "reason": "envelope insufficient: no steady state even at full MR capability"
+  },
+  "h1000": {
+   "diverged": true,
+   "reason": "envelope insufficient: no steady state even at full MR capability"
+  },
+  "h250": {
+   "diverged": true,
+   "reason": "envelope insufficient: no steady state even at full MR capability"
+  },
+  "h10000": {
+   "diverged": true,
+   "reason": "envelope insufficient: no steady state even at full MR capability"
+  }
+ },
+ "bulk_floor_density_W_per_mm2": {
+  "air_0.325_target_92C": 1.9810409967540112,
+  "air_0.325_limit_100C": 2.224300060054581,
+  "cold_plate_0.05_target_92C": 12.876766478901073,
+  "microchannel_0.0153_target_92C": 42.08093620555906
+ },
+ "THE_ANSWER_IS_NEITHER": "dt_max was swept 20-150 K (3.3x the shipped value) and h_max 250-10000 W/mm^2 (40x, spanning the whole v91 range). Every single point diverged, identically. The high-density failure is therefore NOT gated by either envelope parameter, and the pending verdicts that were expected to move if dt_max moved do not move at all -- at density, on this package.",
+ "WHY_NOT_AN_ENVELOPE_LIMIT": "The MR target is 92 C. The array clips PEAKS; it cannot pull a die below its own bulk average. On 88 CFM air the bulk average reaches 92 C at 1.98 W/mm^2, and the failing point is 2.00 -- just past it. The target is unreachable in principle there, so no amount of temperature lift or intensity ceiling changes the outcome. The solver reports \"envelope insufficient\", which is misleading in this case: the envelope is not the binding constraint, the package is.",
+ "A_CORRECTION_TO_THE_RECORD": "This supersedes the earlier reading, recorded the same night, that density 2.00 was \"a genuine array-envelope result\" because it sat below the 2.22 W/mm^2 bulk line. That line was computed against the 100 C junction limit; the run targets 92 C, whose line is 1.98. The point was always above its own floor.",
+ "THE_DESIGN_RULE_THIS_GIVES": "Reachable density = (T_target - T_ambient) / (R_th * A). It is exact, it needs no simulation, and it bounds where an array can help at all: 1.98 W/mm^2 on 88 CFM air, 12.88 on a cold plate, 42.1 on direct-die microchannel. The array extends performance WITHIN that bound by clipping the peak; it cannot extend the bound itself. Choosing the package sets the ceiling; choosing the array sets how much of it you can actually use."
+}

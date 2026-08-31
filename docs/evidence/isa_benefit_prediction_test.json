@@ -1,0 +1,69 @@
+{
+  "note": "The registered prediction from isa_floorplans.json, TESTED 27 Aug 2026 across the four floorplans. It FAILED -- and the metric it was built on survived, which is the more useful of the two outcomes and the one this sweep existed to distinguish.",
+  "design": "12 points: 4 floorplans x 3 demanded margins. Everything except GEOMETRY held fixed -- same density (0.60 W/mm^2), same margins, same 500 um pitch, same 200 um burial, same uniform activity. scripts/isa_benefit.sh.",
+  "measured": [
+    {
+      "floorplan": "x86_skylake",
+      "core_area_scale": 1.0,
+      "relative_plateau_25pct": 17,
+      "peak_to_runner_up_gap_K": 1.995,
+      "die_span_K": 30.46,
+      "unaided_peak_C": 63.08,
+      "cost_W_at_3K": 0.491,
+      "cost_W_at_5K": 1.037,
+      "cost_W_at_8K": 2.616
+    },
+    {
+      "floorplan": "arm_v1",
+      "core_area_scale": 0.71,
+      "relative_plateau_25pct": 59,
+      "peak_to_runner_up_gap_K": 0.07,
+      "die_span_K": 21.11,
+      "unaided_peak_C": 51.88,
+      "cost_W_at_3K": 0.921,
+      "cost_W_at_5K": 1.801,
+      "cost_W_at_8K": 3.312
+    },
+    {
+      "floorplan": "arm_n2",
+      "core_area_scale": 0.42,
+      "relative_plateau_25pct": 54,
+      "peak_to_runner_up_gap_K": 0.54,
+      "die_span_K": 18.52,
+      "unaided_peak_C": 46.66,
+      "cost_W_at_3K": 0.85,
+      "cost_W_at_5K": 1.739,
+      "cost_W_at_8K": 3.311
+    },
+    {
+      "floorplan": "riscv_p670",
+      "core_area_scale": 0.3,
+      "relative_plateau_25pct": 71,
+      "peak_to_runner_up_gap_K": 0.0,
+      "die_span_K": 15.96,
+      "unaided_peak_C": 42.93,
+      "cost_W_at_3K": 1.349,
+      "cost_W_at_5K": 2.578,
+      "cost_W_at_8K": 4.057
+    }
+  ],
+  "PREDICTION_1_FALSIFIED": {
+    "predicted": "a compact core has a NARROWER plateau and a LARGER span",
+    "measured": "plateau 17 -> 59 -> 54 -> 71 and span 30.5 -> 21.1 -> 18.5 -> 16.0 K as the core shrinks. Both are the OPPOSITE of the prediction: compact dies are WIDER-plateaued and MORE thermally uniform.",
+    "rho_span_vs_core_scale": 1.0,
+    "why_I_was_wrong": "The reasoning assumed constant die POWER -- less SRAM per watt to buffer the heat. The sweep holds constant density, so a smaller die dissipates LESS TOTAL POWER: unaided peaks fall 63.1 -> 51.9 -> 46.7 -> 42.9 C. A cooler die is a flatter die. The confound was built into the experiment by holding the wrong quantity fixed, and it is mine, not the model's."
+  },
+  "PREDICTION_2_NOT_SUPPORTED": {
+    "predicted": "a wide-vector core stands further clear of its runner-up",
+    "measured": "gap 2.00 (x86, AVX-512) then 0.54 (arm_n2), 0.07 (arm_v1), 0.00 (riscv_p670). x86 does have much the largest gap, but the ordering does NOT follow vector width -- arm_v1 carries the widest non-x86 vector and has essentially none.",
+    "what_it_exposes": "Scaling the whole core uniformly PRESERVES the unit mix, so the variants inherit a highly degenerate peak: three of four have a gap under 0.6 K. That is a limitation of area re-weighting as a method, not a finding about ARM or RISC-V, and it should be fixed before any vector-width claim is made from these floorplans."
+  },
+  "PREDICTION_3_FALSIFIED_and_this_is_the_important_one": {
+    "predicted": "compact and wide-vector cores are BETTER MR targets -- lower cost per margin",
+    "measured": "cost at 3 K: x86 0.491 W, arm_n2 0.850, arm_v1 0.921, riscv_p670 1.349. The x86 baseline is the CHEAPEST to cool and the most compact die is the most expensive -- 2.7x. The same ordering holds at 5 K and 8 K.",
+    "BUT_THE_METRIC_WAS_RIGHT": "rho(relative_plateau, cost) = +1.000 at every one of the three margins. The metric ordered the cost perfectly. What failed was my architectural reasoning about which way the plateau would go -- not the relationship between plateau and cost."
+  },
+  "THE_RESULT_THAT_MATTERS": "The metric TRANSFERS ACROSS FLOORPLANS. relative_plateau_25pct predicted cost at rho +0.84 across eleven workloads on one die (metric_regression_gen0.json) and at rho +1.00 across four floorplans at one workload. That is the question the workload regression could not answer -- whether a predictor validated on eleven workloads was merely describing that floorplan -- and the answer is no. A metric that survives its designer's prediction being wrong is better evidence than one that agrees with it.",
+  "what_this_does_NOT_say": "It is NOT a finding that ARM or RISC-V cores are poor MR targets. The variants re-weight AREA with the Skylake-class power trace redistributed over it, at constant density -- so what was actually measured is that SMALLER DIES AT CONSTANT DENSITY RUN COOLER AND FLATTER, which is close to a tautology once stated. The ISA-relevant question needs constant TOTAL POWER, or a real per-ISA activity mix, and neither is in this sweep.",
+  "the_obvious_next_experiment": "Repeat at constant DIE POWER rather than constant density. That isolates the compaction effect the prediction was actually about, and it is the experiment the prediction should have specified. Cheap: 12 more points."
+}

@@ -1,0 +1,183 @@
+{
+ "note": "Which limit is binding: the package moving bulk heat, or the array clipping the peak?\n\n    python examples/bulk_vs_hotspot_limit.py\n\nThe density ladder produces two very different kinds of failure and they look identical in the\noutput -- both report \"no steady state\". Separating them decides whether a result is evidence\nabout the ARRAY or evidence about the PACKAGE, and the distinction is not subtle once stated:\n\n    the array clips the peak; it does not move bulk heat off the die.\n\nEvery watt the array lifts still has to leave through the package, plus the array's own optical\nload. So there is a density above which the die exceeds its junction limit on the DIE AVERAGE\nalone, before any hotspot is considered. Above that line no array of any capability helps, and a\ndiverged run there says nothing about the array at all -- it says the package is wrong for that\ndensity.\n\nBelow the line the die is hotspot-limited, and a diverged run IS about the array: its intensity\nceiling, its temperature lift, or its spatial reach.\n\nWhy this matters for reading the campaign\n-----------------------------------------\nOn 88 CFM of air the bulk line sits at 2.22 W/mm^2 for the 34-core die. The campaign's diverged\npoints at 2.40 and above are therefore **package** results and must not be quoted as array\nlimits. The point at 2.00 is below the line -- bulk-only would sit at 92.7 C -- so its failure is\na genuine array-envelope result, and it is the one the dt_max and h_max sweeps were run to\nexplain.\n\nThe architecture conclusion follows directly, and it is stronger than the one it replaces: at\nhigh density the answer is neither cooler alone. The package must take the bulk -- which liquid\ndoes to 14 W/mm^2 and air does not past 2.2 -- and the array must take the peak, which no bulk\ncooler can reach. That is a division of labour, not a competition.",
+ "area_mm2": 101.19,
+ "ambient_K": 300.0,
+ "Tj_max_K": 373.15,
+ "rows": [
+  {
+   "density_W_per_mm2": 1.15,
+   "P_die_W": 116.36849999999998,
+   "coolers": {
+    "air_88cfm": {
+     "R_th": 0.325,
+     "T_bulk_K": 337.8197625,
+     "bulk_limited": false
+    },
+    "cold_plate_liquid": {
+     "R_th": 0.05,
+     "T_bulk_K": 305.818425,
+     "bulk_limited": false
+    },
+    "microchannel_direct_die": {
+     "R_th": 0.0153,
+     "T_bulk_K": 301.78043805,
+     "bulk_limited": false
+    }
+   }
+  },
+  {
+   "density_W_per_mm2": 1.6,
+   "P_die_W": 161.904,
+   "coolers": {
+    "air_88cfm": {
+     "R_th": 0.325,
+     "T_bulk_K": 352.6188,
+     "bulk_limited": false
+    },
+    "cold_plate_liquid": {
+     "R_th": 0.05,
+     "T_bulk_K": 308.0952,
+     "bulk_limited": false
+    },
+    "microchannel_direct_die": {
+     "R_th": 0.0153,
+     "T_bulk_K": 302.4771312,
+     "bulk_limited": false
+    }
+   }
+  },
+  {
+   "density_W_per_mm2": 2.0,
+   "P_die_W": 202.38,
+   "coolers": {
+    "air_88cfm": {
+     "R_th": 0.325,
+     "T_bulk_K": 365.7735,
+     "bulk_limited": false
+    },
+    "cold_plate_liquid": {
+     "R_th": 0.05,
+     "T_bulk_K": 310.119,
+     "bulk_limited": false
+    },
+    "microchannel_direct_die": {
+     "R_th": 0.0153,
+     "T_bulk_K": 303.096414,
+     "bulk_limited": false
+    }
+   }
+  },
+  {
+   "density_W_per_mm2": 2.4,
+   "P_die_W": 242.856,
+   "coolers": {
+    "air_88cfm": {
+     "R_th": 0.325,
+     "T_bulk_K": 378.9282,
+     "bulk_limited": true
+    },
+    "cold_plate_liquid": {
+     "R_th": 0.05,
+     "T_bulk_K": 312.1428,
+     "bulk_limited": false
+    },
+    "microchannel_direct_die": {
+     "R_th": 0.0153,
+     "T_bulk_K": 303.7156968,
+     "bulk_limited": false
+    }
+   }
+  },
+  {
+   "density_W_per_mm2": 2.8,
+   "P_die_W": 283.332,
+   "coolers": {
+    "air_88cfm": {
+     "R_th": 0.325,
+     "T_bulk_K": 392.0829,
+     "bulk_limited": true
+    },
+    "cold_plate_liquid": {
+     "R_th": 0.05,
+     "T_bulk_K": 314.1666,
+     "bulk_limited": false
+    },
+    "microchannel_direct_die": {
+     "R_th": 0.0153,
+     "T_bulk_K": 304.3349796,
+     "bulk_limited": false
+    }
+   }
+  },
+  {
+   "density_W_per_mm2": 3.2,
+   "P_die_W": 323.808,
+   "coolers": {
+    "air_88cfm": {
+     "R_th": 0.325,
+     "T_bulk_K": 405.2376,
+     "bulk_limited": true
+    },
+    "cold_plate_liquid": {
+     "R_th": 0.05,
+     "T_bulk_K": 316.1904,
+     "bulk_limited": false
+    },
+    "microchannel_direct_die": {
+     "R_th": 0.0153,
+     "T_bulk_K": 304.9542624,
+     "bulk_limited": false
+    }
+   }
+  },
+  {
+   "density_W_per_mm2": 4.0,
+   "P_die_W": 404.76,
+   "coolers": {
+    "air_88cfm": {
+     "R_th": 0.325,
+     "T_bulk_K": 431.547,
+     "bulk_limited": true
+    },
+    "cold_plate_liquid": {
+     "R_th": 0.05,
+     "T_bulk_K": 320.238,
+     "bulk_limited": false
+    },
+    "microchannel_direct_die": {
+     "R_th": 0.0153,
+     "T_bulk_K": 306.192828,
+     "bulk_limited": false
+    }
+   }
+  },
+  {
+   "density_W_per_mm2": 6.0,
+   "P_die_W": 607.14,
+   "coolers": {
+    "air_88cfm": {
+     "R_th": 0.325,
+     "T_bulk_K": 497.32050000000004,
+     "bulk_limited": true
+    },
+    "cold_plate_liquid": {
+     "R_th": 0.05,
+     "T_bulk_K": 330.35699999999997,
+     "bulk_limited": false
+    },
+    "microchannel_direct_die": {
+     "R_th": 0.0153,
+     "T_bulk_K": 309.289242,
+     "bulk_limited": false
+    }
+   }
+  }
+ ],
+ "bulk_limit_density_W_per_mm2": {
+  "air_88cfm": 2.224300060054581,
+  "cold_plate_liquid": 14.457950390354775,
+  "microchannel_direct_die": 47.24820389004828
+ },
+ "HOW_TO_READ_A_DIVERGED_RUN": "Above the bulk line a diverged array arm is a PACKAGE result and says nothing about the array. Below it, a diverged array arm is an ARRAY result -- intensity ceiling, temperature lift, or spatial reach. The campaign's 2.40+ points on air are above the line (2.22 W/mm^2) and must not be quoted as array limits; the 2.00 point is below it, bulk-only 92.7 C, and is a genuine envelope result.",
+ "THE_DIVISION_OF_LABOUR": "At high density neither cooler suffices alone, and that is the architecture claim. The package must move the bulk -- a cold plate stays under the limit to 14.5 W/mm^2 and direct-die microchannel to 47.2, where 88 CFM of air gives out at 2.22. The array must take the peak, which no bulk cooler can reach at all because its resistance is set by the whole die rather than by the hot block. Pairing them is not a compromise between two options; it is the only combination that addresses both terms."
+}

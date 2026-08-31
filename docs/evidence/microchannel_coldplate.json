@@ -1,0 +1,37 @@
+{
+ "note": "The accelerator runaway is RESOLVED, and the cause was the cold-plate MODEL, not the GA100 power map. Supersedes the conclusion in accelerator_water_envelope.json, which read a finned-water-block result as a property of the die.",
+ "what_was_wrong": "CoolingSpec's water path builds a FINNED BASE sized for the die -- a water block. On the 826 mm^2 GA100 it returns 0.055 K/W and bottoms its own flow solver out at a face velocity it then flags as unbuildable. On that boundary the die has no steady state above ~250 W, which is why every accelerator point in the first re-run attempt returned RUNAWAY. A direct-die accelerator is not cooled by a water block.",
+ "the_fix": "sink_models.MicrochannelSink -- a direct-die microchannel cold plate anchored on a MEASURED reference: 1020 W/cm^2 background flux dissipated at <69 C above inlet and <120 kPa, at a channel mass flux of 2100 kg/(m^2 s), with hotspot fluxes to 2700 W/cm^2 raising the hotspot only 16 C. Channels are 15-33 um wide and 35-470 um deep, etched into the back of the die.",
+ "source": "docs/chip_design_lit/design_physics/microchannel-hotspot-limits-1-s2.0-S0017931017340309-am.pdf",
+ "measured_through_the_coupled_solve": [
+  {
+   "die_W": 400,
+   "r_th_K_per_W": 0.0207,
+   "peak_C": 51.38,
+   "peak_block": "MEMCTRL_B0",
+   "converged": true
+  },
+  {
+   "die_W": 700,
+   "r_th_K_per_W": 0.0153,
+   "peak_C": 64.02,
+   "peak_block": "MEMCTRL_B0",
+   "converged": true
+  }
+ ],
+ "comparison": {
+  "finned_water_block_K_per_W": 0.0549,
+  "microchannel_K_per_W_at_700W": 0.0153,
+  "ratio": 3.6,
+  "comment": "The GA100 at full H100-class power is comfortable on a real cold plate: 64 C at 700 W. It had no steady state at 300 W on the water block. The catalogue can therefore keep its real operating points (400 and 700 W) rather than being re-centred onto an envelope that was an artefact of the sink model."
+ },
+ "pump_power": {
+  "at_700W_channels_only_W": 0.06,
+  "flow_m3s": 1.681e-05,
+  "dp_kPa": 2.1,
+  "dT_fluid_K": 10.0,
+  "caveat": "Channels ONLY -- a floor. The manifold, plenum and facility loop are not modelled. For scale, the LCEstimator CDU figure is ~7 W per device for the whole loop (13.7 kW electrical over ~1950 devices at nominal), so the channels are a small part of it. The flow here (1.7e-05 m^3/s) is close to the CDU per-device nominal (1.0e-05), which is the cross-check that matters.",
+  "note": "The reference rig runs a ~2 K fluid rise, far more flow than a practical loop. r_conv is held flow-independent because microchannel flow is deeply laminar and developed-laminar Nu is a constant of the geometry; only the caloric term moves with flow."
+ },
+ "what_this_does_not_model": "manifold and plenum pressure drop, flow maldistribution across channels, fouling, and the thermal interface between the channel wafer and the die. All of those make a real plate worse."
+}

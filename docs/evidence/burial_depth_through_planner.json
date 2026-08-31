@@ -1,0 +1,71 @@
+{
+ "note": "P0.2 acceptance: the burial depth measured THROUGH run_mr_clipping, so the production path (CoolingApplication, ArrayWiring, ICEThermalSolver) is what is being tested rather than a hand-built .stk.",
+ "driver": "examples/burial_depth_planner_probe.py",
+ "reference": {
+  "evidence": "docs/evidence/mr_placement_burial_depth.json",
+  "target": "L3_4",
+  "reduction": "block maximum",
+  "pixels_ratio": 1.6724053123462863,
+  "source_ratio": 1.0803175344384777
+ },
+ "comparability": "the reference is a block MAXIMUM on L3_4; the production path reports block AVERAGES and ranks L2_4 hottest. Both differences move the magnitude several-fold, so the percentages are not expected to match -- the separation between the two placements is what is being tested.",
+ "rows": [
+  {
+   "burial_um": 360.0,
+   "peak_block": "L2_4",
+   "no_mr_C": 78.62200000000001,
+   "target_C": 58.622000000000014,
+   "source_C": 67.346,
+   "pixels_C": 72.69200000000001,
+   "gain_source_K": -11.27600000000001,
+   "gain_pixels_K": -5.930000000000007,
+   "W_source": 3.0,
+   "W_pixels": 3.0,
+   "placement_source": "in_source_layer",
+   "placement_pixels": "array_above",
+   "n_tiles": 204
+  },
+  {
+   "burial_um": 100.0,
+   "peak_block": "L2_4",
+   "no_mr_C": 73.28200000000004,
+   "target_C": 53.28200000000004,
+   "source_C": 62.710000000000036,
+   "pixels_C": 65.52300000000002,
+   "gain_source_K": -10.572000000000003,
+   "gain_pixels_K": -7.7590000000000146,
+   "W_source": 3.0,
+   "W_pixels": 3.0,
+   "placement_source": "in_source_layer",
+   "placement_pixels": "array_above",
+   "n_tiles": 204
+  },
+  {
+   "burial_um": 20.0,
+   "peak_block": "L2_4",
+   "no_mr_C": 71.60900000000004,
+   "target_C": 51.60900000000004,
+   "source_C": 61.120000000000005,
+   "pixels_C": 63.065,
+   "gain_source_K": -10.489000000000033,
+   "gain_pixels_K": -8.54400000000004,
+   "W_source": 3.0,
+   "W_pixels": 3.0,
+   "placement_source": "in_source_layer",
+   "placement_pixels": "array_above",
+   "n_tiles": 204
+  }
+ ],
+ "equal_budget": true,
+ "budget_spread_W": 0.0,
+ "die_W": 100.0,
+ "mr_W": 3.0,
+ "pitch_um": 500.0,
+ "cell_um": 100.0,
+ "target_margin_K": 20.0,
+ "source_ratio": 0.9302057467186966,
+ "source_swing_pct": -6.97942532813034,
+ "pixels_ratio": 1.4408094435075935,
+ "pixels_swing_pct": 44.08094435075935,
+ "verdict": "burial depth is live through the planner"
+}

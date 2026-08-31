@@ -1,0 +1,75 @@
+{
+ "note": "Two-stage package spreading (die -> lid -> cold plate) evaluated against the four published acceptance points, using typical real-cooler external resistances rather than inverting for whatever the budget allows. Analytic; no 3D-ICE solve. 25 Aug 2026.",
+ "model": "cooling_spec.staged_spreading_resistance_K_per_W. Checked against two analytic limits: it reduces exactly to the single-stage function for one stage, and the single-stage function reduces exactly to t/(kA)+1/(hA) when base == die.",
+ "result": "The two-stage model does NOT close the gap -- it widens it slightly, and correctly so: at a fixed external resistance another interface can only add. The second stage pays for itself through the larger area the convection then acts over, which is a property of the cooler rather than of the spreading model.",
+ "rows": [
+  {
+   "point": "H100_AIR",
+   "die_mm2": 814.0,
+   "lid_mm2": 1825.0,
+   "plate_mm2": 7326,
+   "assumed_r_ext": 0.05,
+   "stack_r": 0.0139,
+   "modelled_total_r": 0.1491,
+   "published_r": 0.1074468085106383,
+   "over_by": 0.0416
+  },
+  {
+   "point": "H100_LIQUID",
+   "die_mm2": 814.0,
+   "lid_mm2": 1825.0,
+   "plate_mm2": 7326,
+   "assumed_r_ext": 0.027500000000000004,
+   "stack_r": 0.0139,
+   "modelled_total_r": 0.1131,
+   "published_r": 0.06622516556291391,
+   "over_by": 0.0468
+  },
+  {
+   "point": "RYZEN_7500F_AIR",
+   "die_mm2": 71.0,
+   "lid_mm2": 1825.0,
+   "plate_mm2": 13916,
+   "assumed_r_ext": 0.12,
+   "stack_r": 0.1596,
+   "modelled_total_r": 0.6131,
+   "published_r": 0.3962121212121212,
+   "over_by": 0.2169
+  },
+  {
+   "point": "RYZEN_7500F_LIQUID",
+   "die_mm2": 71.0,
+   "lid_mm2": 1825.0,
+   "plate_mm2": 13916,
+   "assumed_r_ext": 0.066,
+   "stack_r": 0.1596,
+   "modelled_total_r": 0.542,
+   "published_r": 0.3651162790697674,
+   "over_by": 0.1768
+  }
+ ],
+ "where_the_budget_goes_ryzen": {
+  "published_total": 0.3962,
+  "SOLDER_200um_k25": 0.1127,
+  "silicon_die": 0.0468,
+  "die_to_lid_spreading_at_realistic_Bi": 0.1952,
+  "lid_to_plate_spreading": 0.134,
+  "grease_over_lid": 0.0041,
+  "assumed_cooler": 0.12,
+  "comment": "SOLDER is 28.4% of the entire published junction-to-ambient budget on this die, and it is the largest single package term -- larger than either spreading stage."
+ },
+ "sensitivity_ryzen": {
+  "note": "One input changed at a time from the 0.6129 K/W baseline. Every one of these four is an UNVALIDATED input and every one is biased pessimistic.",
+  "solder_200_to_80um": -0.0676,
+  "solder_k_25_to_82_bulk_indium": -0.0783,
+  "solder_80um_and_k82": -0.0989,
+  "cold_plate_2_to_6mm": -0.0813,
+  "cold_plate_k_300_to_2000_heatpipes": -0.1135,
+  "IHS_3_to_4mm": -0.0291,
+  "all_four": -0.2279,
+  "lands_at": 0.385,
+  "published": 0.3962
+ },
+ "DO_NOT": "Adopting those four values *because* they make the gate pass would be tuning against the acceptance test, which is the failure mode this gate exists to prevent. Each has to be validated against its OWN reference -- indium's conductivity, published Zen4 die-attach thickness, a real tower-cooler base and its heatpipes -- with provenance recorded the way the unit areas and cooler classes were, BEFORE the gate is re-run. If it then passes that is a result; if it still fails that is also a result.",
+ "status": "staged model built and limit-checked; package inputs identified as the open item"
+}

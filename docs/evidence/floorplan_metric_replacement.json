@@ -1,0 +1,179 @@
+{
+  "note": "A replacement for the phase-1 floorplan metric that broke. 'Plateau width at dt_max' degenerates to the whole die once dt_max reaches the die's own temperature span, which the DEMONSTRATED 45 K does -- see tier_screens_dt_ladder.json. This is the device-independent metric that replaces it, validated against the same eleven workload shapes. No new solves: computed from the block temperatures the tier screens already recorded.",
+  "design_rule": "A floorplan metric must not depend on a device parameter that can move under it. The old metric was informative only because dt_max was pinned at an unsourced 10 K; when the envelope was corrected to its demonstrated value the metric silently stopped measuring anything.",
+  "module": "HotGauge/HotGauge/thermal/floorplan_metrics.py",
+  "definition": "relative_plateau(temps, fraction=0.25): blocks within `fraction` of the die's OWN peak-to-minimum temperature span of the peak. Self-normalising, no device parameter.",
+  "validation": {
+    "against_the_legacy_metric": "Spearman 0.934 against plateau-at-dt_max=10 K across eleven shapes: it preserves the ordering the old metric produced, with only two adjacent swaps.",
+    "discrimination": "12.3x across shapes, against 18.7x for the legacy metric at 10 K and 1.0x -- no information -- for the legacy metric at the demonstrated 45 K.",
+    "insensitivity_to_its_one_parameter": {
+      "0.1": {
+        "range": [
+          1,
+          8
+        ],
+        "discrimination_x": 8.0,
+        "spearman_vs_legacy": 0.8134
+      },
+      "0.15": {
+        "range": [
+          1,
+          11
+        ],
+        "discrimination_x": 11.0,
+        "spearman_vs_legacy": 0.815
+      },
+      "0.2": {
+        "range": [
+          1,
+          23
+        ],
+        "discrimination_x": 23.0,
+        "spearman_vs_legacy": 0.8722
+      },
+      "0.25": {
+        "range": [
+          3,
+          37
+        ],
+        "discrimination_x": 12.33,
+        "spearman_vs_legacy": 0.9339
+      },
+      "0.3": {
+        "range": [
+          9,
+          50
+        ],
+        "discrimination_x": 5.56,
+        "spearman_vs_legacy": 0.8929
+      },
+      "0.4": {
+        "range": [
+          22,
+          97
+        ],
+        "discrimination_x": 4.41,
+        "spearman_vs_legacy": 0.7608
+      },
+      "0.5": {
+        "range": [
+          27,
+          190
+        ],
+        "discrimination_x": 7.04,
+        "spearman_vs_legacy": 0.8155
+      }
+    },
+    "chosen_fraction": "0.25, where agreement with the legacy ordering peaks. Correlation stays 0.76-0.93 over 0.10-0.50, so the choice is not delicate.",
+    "cross_check": "Correlates -0.834 with the peak-to-runner-up gap -- the right sign, since a large gap means a narrow plateau -- confirming both describe the same structure while the plateau sees past the top two blocks."
+  },
+  "rows": [
+    {
+      "shape": "fpu2",
+      "span_K": 31.872,
+      "relative_plateau_25pct": 37,
+      "plateau_share": 0.03286,
+      "width_used_K": 7.968,
+      "peak_to_runner_up_gap_K": 1.179,
+      "legacy_plateau_dt10": 56
+    },
+    {
+      "shape": "fpu3",
+      "span_K": 35.114,
+      "relative_plateau_25pct": 25,
+      "plateau_share": 0.0222,
+      "width_used_K": 8.779,
+      "peak_to_runner_up_gap_K": 2.9467,
+      "legacy_plateau_dt10": 36
+    },
+    {
+      "shape": "fpu4",
+      "span_K": 38.322,
+      "relative_plateau_25pct": 14,
+      "plateau_share": 0.01243,
+      "width_used_K": 9.58,
+      "peak_to_runner_up_gap_K": 3.9836,
+      "legacy_plateau_dt10": 16
+    },
+    {
+      "shape": "g4_mixed25",
+      "span_K": 45.045,
+      "relative_plateau_25pct": 13,
+      "plateau_share": 0.01155,
+      "width_used_K": 11.261,
+      "peak_to_runner_up_gap_K": 7.5717,
+      "legacy_plateau_dt10": 7
+    },
+    {
+      "shape": "g4_turbo",
+      "span_K": 39.069,
+      "relative_plateau_25pct": 4,
+      "plateau_share": 0.00355,
+      "width_used_K": 9.767,
+      "peak_to_runner_up_gap_K": 7.9891,
+      "legacy_plateau_dt10": 4
+    },
+    {
+      "shape": "g4_turbo_idle",
+      "span_K": 40.263,
+      "relative_plateau_25pct": 3,
+      "plateau_share": 0.00266,
+      "width_used_K": 10.066,
+      "peak_to_runner_up_gap_K": 8.0729,
+      "legacy_plateau_dt10": 3
+    },
+    {
+      "shape": "mixed25",
+      "span_K": 38.539,
+      "relative_plateau_25pct": 19,
+      "plateau_share": 0.01687,
+      "width_used_K": 9.635,
+      "peak_to_runner_up_gap_K": 1.5219,
+      "legacy_plateau_dt10": 20
+    },
+    {
+      "shape": "mixed50",
+      "span_K": 39.82,
+      "relative_plateau_25pct": 31,
+      "plateau_share": 0.02753,
+      "width_used_K": 9.955,
+      "peak_to_runner_up_gap_K": 1.4618,
+      "legacy_plateau_dt10": 31
+    },
+    {
+      "shape": "turbo",
+      "span_K": 33.617,
+      "relative_plateau_25pct": 19,
+      "plateau_share": 0.01687,
+      "width_used_K": 8.404,
+      "peak_to_runner_up_gap_K": 1.6929,
+      "legacy_plateau_dt10": 22
+    },
+    {
+      "shape": "turbo_idle",
+      "span_K": 34.92,
+      "relative_plateau_25pct": 21,
+      "plateau_share": 0.01865,
+      "width_used_K": 8.73,
+      "peak_to_runner_up_gap_K": 1.7771,
+      "legacy_plateau_dt10": 23
+    },
+    {
+      "shape": "uniform",
+      "span_K": 32.712,
+      "relative_plateau_25pct": 20,
+      "plateau_share": 0.01776,
+      "width_used_K": 8.178,
+      "peak_to_runner_up_gap_K": 2.0107,
+      "legacy_plateau_dt10": 38
+    }
+  ],
+  "gen_0_status_of_the_five_phase_1_metrics": {
+    "peak_to_runner_up_gap": "BUILT and validated; device-independent; 6.8x across shapes",
+    "plateau_width": "REPLACED by relative_plateau; the dt_max form is retired as degenerate",
+    "power_density_concentration": "NOW BUILT -- power_density_concentration(), area-weighted Gini plus top-decile share, from a trace and a floorplan, no solve",
+    "thermal_aspect": "NOW BUILT -- thermal_aspect() / hot_block_thermal_aspect(), geometry only",
+    "tile_alignment_at_a_pitch": "mr_array.coverage_report exists; relationship to benefit still untested"
+  },
+  "what_is_still_owed": "The deliverable in LADDER_GEN0 section 3 is a REGRESSION of measured MR benefit against these metrics, across floorplan and workload variants, with any metric that does not predict dropped. The metrics now exist and are tested; the regression has not been run."
+}

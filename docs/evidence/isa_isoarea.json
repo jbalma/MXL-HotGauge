@@ -1,0 +1,1102 @@
+{
+ "note": "Did the surviving floorplan metric transfer to the pack-rebuilt floorplans? Write the evidence.\n\n    python examples/isa_metric_transfer_report.py --out docs/evidence/isa_metric_transfer_pack.json\n\nWhat this asks\n--------------\nOne metric survived phase 1: **plateau width as a fraction of the die's own temperature span,\nagainst the watts it costs to hold a demanded margin.** rho +0.84 over eleven workloads on one\nfloorplan, +1.00 over four floorplans, +1.00 over six -- three datasets, two kinds of variation.\n\nEvery floorplan in those six was a **uniform rescale** of one McPAT unit mix. So plateau width and\ndie size were not independent: the only thing that varied was compaction, and both quantities are\nmonotone in it. The pack rebuild breaks that -- the block mix, the block sizes and the vector\nwidth all move independently of the die area -- which makes it the first real test of whether the\nmetric measures *shape* or was reading *scale* through a proxy.\n\nHow this avoids fishing\n-----------------------\n``relative_plateau_25pct`` is the **pre-registered** metric and it is reported first, on its own.\nThe other six quantities are reported as a panel *because a negative result on the registered\nmetric demands knowing what does predict* -- not as candidates that have passed anything. Any of\nthem that looks strong here is a hypothesis to register and test on new data, and the report says\nso in its own output. n = 6 floorplans; nothing here is a p-value to lean on.",
+ "datasets": {
+  "old_press_ratio_floorplans_iso_density": {
+   "root": "/mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/isa_benefit",
+   "arm": "iso",
+   "n_points": 18,
+   "rows": [
+    {
+     "floorplan": "arm_a64fx",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 102.19,
+     "power_W": 61.31,
+     "unaided_peak_C": 61.94,
+     "relative_plateau_25pct": 44,
+     "die_span_K": 29.41,
+     "peak_to_runner_up_gap_K": 1.649,
+     "cost_W": 0.6562,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_a64fx",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 102.19,
+     "power_W": 61.31,
+     "unaided_peak_C": 61.94,
+     "relative_plateau_25pct": 44,
+     "die_span_K": 29.41,
+     "peak_to_runner_up_gap_K": 1.649,
+     "cost_W": 1.1533,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_a64fx",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 102.19,
+     "power_W": 61.31,
+     "unaided_peak_C": 61.94,
+     "relative_plateau_25pct": 44,
+     "die_span_K": 29.41,
+     "peak_to_runner_up_gap_K": 1.649,
+     "cost_W": 2.667,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_n2",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 48.42,
+     "power_W": 29.05,
+     "unaided_peak_C": 46.66,
+     "relative_plateau_25pct": 54,
+     "die_span_K": 18.52,
+     "peak_to_runner_up_gap_K": 0.54,
+     "cost_W": 0.8503,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_n2",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 48.42,
+     "power_W": 29.05,
+     "unaided_peak_C": 46.66,
+     "relative_plateau_25pct": 54,
+     "die_span_K": 18.52,
+     "peak_to_runner_up_gap_K": 0.54,
+     "cost_W": 1.7385,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_n2",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 48.42,
+     "power_W": 29.05,
+     "unaided_peak_C": 46.66,
+     "relative_plateau_25pct": 54,
+     "die_span_K": 18.52,
+     "peak_to_runner_up_gap_K": 0.54,
+     "cost_W": 3.3111,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_v1",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 70.26,
+     "power_W": 42.15,
+     "unaided_peak_C": 51.88,
+     "relative_plateau_25pct": 59,
+     "die_span_K": 21.11,
+     "peak_to_runner_up_gap_K": 0.07,
+     "cost_W": 0.921,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_v1",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 70.26,
+     "power_W": 42.15,
+     "unaided_peak_C": 51.88,
+     "relative_plateau_25pct": 59,
+     "die_span_K": 21.11,
+     "peak_to_runner_up_gap_K": 0.07,
+     "cost_W": 1.8006,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_v1",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 70.26,
+     "power_W": 42.15,
+     "unaided_peak_C": 51.88,
+     "relative_plateau_25pct": 59,
+     "die_span_K": 21.11,
+     "peak_to_runner_up_gap_K": 0.07,
+     "cost_W": 3.3118,
+     "unconverged": false
+    },
+    {
+     "floorplan": "riscv_p670",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 38.59,
+     "power_W": 23.15,
+     "unaided_peak_C": 42.93,
+     "relative_plateau_25pct": 71,
+     "die_span_K": 15.96,
+     "peak_to_runner_up_gap_K": 0.0,
+     "cost_W": 1.3489,
+     "unconverged": false
+    },
+    {
+     "floorplan": "riscv_p670",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 38.59,
+     "power_W": 23.15,
+     "unaided_peak_C": 42.93,
+     "relative_plateau_25pct": 71,
+     "die_span_K": 15.96,
+     "peak_to_runner_up_gap_K": 0.0,
+     "cost_W": 2.5778,
+     "unconverged": false
+    },
+    {
+     "floorplan": "riscv_p670",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 38.59,
+     "power_W": 23.15,
+     "unaided_peak_C": 42.93,
+     "relative_plateau_25pct": 71,
+     "die_span_K": 15.96,
+     "peak_to_runner_up_gap_K": 0.0,
+     "cost_W": 4.0573,
+     "unconverged": false
+    },
+    {
+     "floorplan": "riscv_xiangshan",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 117.34,
+     "power_W": 70.4,
+     "unaided_peak_C": 68.22,
+     "relative_plateau_25pct": 52,
+     "die_span_K": 35.84,
+     "peak_to_runner_up_gap_K": 0.105,
+     "cost_W": 0.7586,
+     "unconverged": false
+    },
+    {
+     "floorplan": "riscv_xiangshan",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 117.34,
+     "power_W": 70.4,
+     "unaided_peak_C": 68.22,
+     "relative_plateau_25pct": 52,
+     "die_span_K": 35.84,
+     "peak_to_runner_up_gap_K": 0.105,
+     "cost_W": 1.1938,
+     "unconverged": false
+    },
+    {
+     "floorplan": "riscv_xiangshan",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 117.34,
+     "power_W": 70.4,
+     "unaided_peak_C": 68.22,
+     "relative_plateau_25pct": 52,
+     "die_span_K": 35.84,
+     "peak_to_runner_up_gap_K": 0.105,
+     "cost_W": 2.1708,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_skylake",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 101.19,
+     "power_W": 60.71,
+     "unaided_peak_C": 63.08,
+     "relative_plateau_25pct": 17,
+     "die_span_K": 30.46,
+     "peak_to_runner_up_gap_K": 1.995,
+     "cost_W": 0.4908,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_skylake",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 101.19,
+     "power_W": 60.71,
+     "unaided_peak_C": 63.08,
+     "relative_plateau_25pct": 17,
+     "die_span_K": 30.46,
+     "peak_to_runner_up_gap_K": 1.995,
+     "cost_W": 1.0366,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_skylake",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 101.19,
+     "power_W": 60.71,
+     "unaided_peak_C": 63.08,
+     "relative_plateau_25pct": 17,
+     "die_span_K": 30.46,
+     "peak_to_runner_up_gap_K": 1.995,
+     "cost_W": 2.6158,
+     "unconverged": false
+    }
+   ],
+   "no_steady_state": [],
+   "rho_vs_cost": {
+    "3": {
+     "n": 6,
+     "floorplans": [
+      "arm_a64fx",
+      "arm_n2",
+      "arm_v1",
+      "riscv_p670",
+      "riscv_xiangshan",
+      "x86_skylake"
+     ],
+     "relative_plateau_25pct": {
+      "rho": 1.0,
+      "p": 0.0
+     },
+     "relative_plateau_share": {
+      "rho": 1.0,
+      "p": 0.0
+     },
+     "peak_to_runner_up_gap_K": {
+      "rho": -0.943,
+      "p": 0.0048
+     },
+     "die_span_K": {
+      "rho": -0.771,
+      "p": 0.0724
+     },
+     "unaided_peak_C": {
+      "rho": -0.771,
+      "p": 0.0724
+     },
+     "die_area_mm2": {
+      "rho": -0.714,
+      "p": 0.1108
+     },
+     "die_power_W": {
+      "rho": -0.714,
+      "p": 0.1108
+     }
+    },
+    "5": {
+     "n": 6,
+     "floorplans": [
+      "arm_a64fx",
+      "arm_n2",
+      "arm_v1",
+      "riscv_p670",
+      "riscv_xiangshan",
+      "x86_skylake"
+     ],
+     "relative_plateau_25pct": {
+      "rho": 1.0,
+      "p": 0.0
+     },
+     "relative_plateau_share": {
+      "rho": 1.0,
+      "p": 0.0
+     },
+     "peak_to_runner_up_gap_K": {
+      "rho": -0.943,
+      "p": 0.0048
+     },
+     "die_span_K": {
+      "rho": -0.771,
+      "p": 0.0724
+     },
+     "unaided_peak_C": {
+      "rho": -0.771,
+      "p": 0.0724
+     },
+     "die_area_mm2": {
+      "rho": -0.714,
+      "p": 0.1108
+     },
+     "die_power_W": {
+      "rho": -0.714,
+      "p": 0.1108
+     }
+    },
+    "8": {
+     "n": 6,
+     "floorplans": [
+      "arm_a64fx",
+      "arm_n2",
+      "arm_v1",
+      "riscv_p670",
+      "riscv_xiangshan",
+      "x86_skylake"
+     ],
+     "relative_plateau_25pct": {
+      "rho": 0.829,
+      "p": 0.0416
+     },
+     "relative_plateau_share": {
+      "rho": 0.829,
+      "p": 0.0416
+     },
+     "peak_to_runner_up_gap_K": {
+      "rho": -0.657,
+      "p": 0.1562
+     },
+     "die_span_K": {
+      "rho": -0.943,
+      "p": 0.0048
+     },
+     "unaided_peak_C": {
+      "rho": -0.943,
+      "p": 0.0048
+     },
+     "die_area_mm2": {
+      "rho": -0.886,
+      "p": 0.0188
+     },
+     "die_power_W": {
+      "rho": -0.886,
+      "p": 0.0188
+     }
+    }
+   }
+  },
+  "pack_rebuilt_iso_density": {
+   "root": "results/isa_isoarea",
+   "arm": "iso",
+   "n_points": 21,
+   "rows": [
+    {
+     "floorplan": "arm_a64fx",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 103.75,
+     "power_W": 62.25,
+     "unaided_peak_C": 73.06,
+     "relative_plateau_25pct": 32,
+     "die_span_K": 43.11,
+     "peak_to_runner_up_gap_K": 1.754,
+     "cost_W": 0.3665,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_a64fx",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 103.75,
+     "power_W": 62.25,
+     "unaided_peak_C": 73.06,
+     "relative_plateau_25pct": 32,
+     "die_span_K": 43.11,
+     "peak_to_runner_up_gap_K": 1.754,
+     "cost_W": 1.2979,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_a64fx",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 103.75,
+     "power_W": 62.25,
+     "unaided_peak_C": 73.06,
+     "relative_plateau_25pct": 32,
+     "die_span_K": 43.11,
+     "peak_to_runner_up_gap_K": 1.754,
+     "cost_W": 2.9073,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_n1",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 95.22,
+     "power_W": 57.13,
+     "unaided_peak_C": 69.79,
+     "relative_plateau_25pct": 68,
+     "die_span_K": 39.94,
+     "peak_to_runner_up_gap_K": 0.156,
+     "cost_W": 0.7323,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_n1",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 95.22,
+     "power_W": 57.13,
+     "unaided_peak_C": 69.79,
+     "relative_plateau_25pct": 68,
+     "die_span_K": 39.94,
+     "peak_to_runner_up_gap_K": 0.156,
+     "cost_W": 1.4419,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_n1",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 95.22,
+     "power_W": 57.13,
+     "unaided_peak_C": 69.79,
+     "relative_plateau_25pct": 68,
+     "die_span_K": 39.94,
+     "peak_to_runner_up_gap_K": 0.156,
+     "cost_W": 2.7952,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_v1",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 109.23,
+     "power_W": 65.54,
+     "unaided_peak_C": 87.51,
+     "relative_plateau_25pct": 37,
+     "die_span_K": 58.74,
+     "peak_to_runner_up_gap_K": 0.596,
+     "cost_W": 0.5749,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_v1",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 109.23,
+     "power_W": 65.54,
+     "unaided_peak_C": 87.51,
+     "relative_plateau_25pct": 37,
+     "die_span_K": 58.74,
+     "peak_to_runner_up_gap_K": 0.596,
+     "cost_W": 0.9869,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_v1",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 109.23,
+     "power_W": 65.54,
+     "unaided_peak_C": 87.51,
+     "relative_plateau_25pct": 37,
+     "die_span_K": 58.74,
+     "peak_to_runner_up_gap_K": 0.596,
+     "cost_W": 1.877,
+     "unconverged": false
+    },
+    {
+     "floorplan": "riscv_xiangshan",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 107.25,
+     "power_W": 64.35,
+     "unaided_peak_C": 77.37,
+     "relative_plateau_25pct": 31,
+     "die_span_K": 47.76,
+     "peak_to_runner_up_gap_K": 1.785,
+     "cost_W": 0.4453,
+     "unconverged": false
+    },
+    {
+     "floorplan": "riscv_xiangshan",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 107.25,
+     "power_W": 64.35,
+     "unaided_peak_C": 77.37,
+     "relative_plateau_25pct": 31,
+     "die_span_K": 47.76,
+     "peak_to_runner_up_gap_K": 1.785,
+     "cost_W": 0.8786,
+     "unconverged": false
+    },
+    {
+     "floorplan": "riscv_xiangshan",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 107.25,
+     "power_W": 64.35,
+     "unaided_peak_C": 77.37,
+     "relative_plateau_25pct": 31,
+     "die_span_K": 47.76,
+     "peak_to_runner_up_gap_K": 1.785,
+     "cost_W": 2.0924,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_skylake",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 101.19,
+     "power_W": 60.71,
+     "unaided_peak_C": 63.08,
+     "relative_plateau_25pct": 17,
+     "die_span_K": 30.46,
+     "peak_to_runner_up_gap_K": 1.995,
+     "cost_W": 0.4908,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_skylake",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 101.19,
+     "power_W": 60.71,
+     "unaided_peak_C": 63.08,
+     "relative_plateau_25pct": 17,
+     "die_span_K": 30.46,
+     "peak_to_runner_up_gap_K": 1.995,
+     "cost_W": 1.0366,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_skylake",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 101.19,
+     "power_W": 60.71,
+     "unaided_peak_C": 63.08,
+     "relative_plateau_25pct": 17,
+     "die_span_K": 30.46,
+     "peak_to_runner_up_gap_K": 1.995,
+     "cost_W": 2.6158,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_zen2",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 108.05,
+     "power_W": 64.83,
+     "unaided_peak_C": 86.94,
+     "relative_plateau_25pct": 18,
+     "die_span_K": 57.28,
+     "peak_to_runner_up_gap_K": 3.944,
+     "cost_W": 0.3321,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_zen2",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 108.05,
+     "power_W": 64.83,
+     "unaided_peak_C": 86.94,
+     "relative_plateau_25pct": 18,
+     "die_span_K": 57.28,
+     "peak_to_runner_up_gap_K": 3.944,
+     "cost_W": 0.6869,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_zen2",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 108.05,
+     "power_W": 64.83,
+     "unaided_peak_C": 86.94,
+     "relative_plateau_25pct": 18,
+     "die_span_K": 57.28,
+     "peak_to_runner_up_gap_K": 3.944,
+     "cost_W": 1.3682,
+     "unconverged": false
+    }
+   ],
+   "no_steady_state": [
+    "x86_golden_cove @ 3 K",
+    "x86_golden_cove @ 5 K",
+    "x86_golden_cove @ 8 K"
+   ],
+   "rho_vs_cost": {
+    "3": {
+     "n": 6,
+     "floorplans": [
+      "arm_a64fx",
+      "arm_n1",
+      "arm_v1",
+      "riscv_xiangshan",
+      "x86_golden_cove",
+      "x86_skylake",
+      "x86_zen2"
+     ],
+     "relative_plateau_25pct": {
+      "rho": 0.6,
+      "p": 0.208
+     },
+     "relative_plateau_share": {
+      "rho": 0.6,
+      "p": 0.208
+     },
+     "peak_to_runner_up_gap_K": {
+      "rho": -0.771,
+      "p": 0.0724
+     },
+     "die_span_K": {
+      "rho": -0.257,
+      "p": 0.6228
+     },
+     "unaided_peak_C": {
+      "rho": -0.257,
+      "p": 0.6228
+     },
+     "die_area_mm2": {
+      "rho": -0.371,
+      "p": 0.4685
+     },
+     "die_power_W": {
+      "rho": -0.371,
+      "p": 0.4685
+     }
+    },
+    "5": {
+     "n": 6,
+     "floorplans": [
+      "arm_a64fx",
+      "arm_n1",
+      "arm_v1",
+      "riscv_xiangshan",
+      "x86_golden_cove",
+      "x86_skylake",
+      "x86_zen2"
+     ],
+     "relative_plateau_25pct": {
+      "rho": 0.543,
+      "p": 0.2657
+     },
+     "relative_plateau_share": {
+      "rho": 0.543,
+      "p": 0.2657
+     },
+     "peak_to_runner_up_gap_K": {
+      "rho": -0.714,
+      "p": 0.1108
+     },
+     "die_span_K": {
+      "rho": -0.657,
+      "p": 0.1562
+     },
+     "unaided_peak_C": {
+      "rho": -0.657,
+      "p": 0.1562
+     },
+     "die_area_mm2": {
+      "rho": -0.771,
+      "p": 0.0724
+     },
+     "die_power_W": {
+      "rho": -0.771,
+      "p": 0.0724
+     }
+    },
+    "8": {
+     "n": 6,
+     "floorplans": [
+      "arm_a64fx",
+      "arm_n1",
+      "arm_v1",
+      "riscv_xiangshan",
+      "x86_golden_cove",
+      "x86_skylake",
+      "x86_zen2"
+     ],
+     "relative_plateau_25pct": {
+      "rho": 0.314,
+      "p": 0.5441
+     },
+     "relative_plateau_share": {
+      "rho": 0.314,
+      "p": 0.5441
+     },
+     "peak_to_runner_up_gap_K": {
+      "rho": -0.486,
+      "p": 0.3287
+     },
+     "die_span_K": {
+      "rho": -0.714,
+      "p": 0.1108
+     },
+     "unaided_peak_C": {
+      "rho": -0.714,
+      "p": 0.1108
+     },
+     "die_area_mm2": {
+      "rho": -0.771,
+      "p": 0.0724
+     },
+     "die_power_W": {
+      "rho": -0.771,
+      "p": 0.0724
+     }
+    }
+   }
+  },
+  "pack_rebuilt_published_density": {
+   "root": "results/isa_isoarea",
+   "arm": "published",
+   "n_points": 21,
+   "rows": [
+    {
+     "floorplan": "arm_a64fx",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 103.75,
+     "power_W": 62.25,
+     "unaided_peak_C": 73.06,
+     "relative_plateau_25pct": 32,
+     "die_span_K": 43.11,
+     "peak_to_runner_up_gap_K": 1.754,
+     "cost_W": 0.3665,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_a64fx",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 103.75,
+     "power_W": 62.25,
+     "unaided_peak_C": 73.06,
+     "relative_plateau_25pct": 32,
+     "die_span_K": 43.11,
+     "peak_to_runner_up_gap_K": 1.754,
+     "cost_W": 1.2979,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_a64fx",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 103.75,
+     "power_W": 62.25,
+     "unaided_peak_C": 73.06,
+     "relative_plateau_25pct": 32,
+     "die_span_K": 43.11,
+     "peak_to_runner_up_gap_K": 1.754,
+     "cost_W": 2.9073,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_n1",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.87,
+     "area_mm2": 95.22,
+     "power_W": 82.84,
+     "unaided_peak_C": 92.31,
+     "relative_plateau_25pct": 71,
+     "die_span_K": 57.95,
+     "peak_to_runner_up_gap_K": 0.295,
+     "cost_W": 0.7139,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_n1",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.87,
+     "area_mm2": 95.22,
+     "power_W": 82.84,
+     "unaided_peak_C": 92.31,
+     "relative_plateau_25pct": 71,
+     "die_span_K": 57.95,
+     "peak_to_runner_up_gap_K": 0.295,
+     "cost_W": 1.2963,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_n1",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.87,
+     "area_mm2": 95.22,
+     "power_W": 82.84,
+     "unaided_peak_C": 92.31,
+     "relative_plateau_25pct": 71,
+     "die_span_K": 57.95,
+     "peak_to_runner_up_gap_K": 0.295,
+     "cost_W": 2.4737,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_v1",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.476,
+     "area_mm2": 109.23,
+     "power_W": 52.0,
+     "unaided_peak_C": 73.54,
+     "relative_plateau_25pct": 36,
+     "die_span_K": 46.61,
+     "peak_to_runner_up_gap_K": 0.5,
+     "cost_W": 0.5827,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_v1",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.476,
+     "area_mm2": 109.23,
+     "power_W": 52.0,
+     "unaided_peak_C": 73.54,
+     "relative_plateau_25pct": 36,
+     "die_span_K": 46.61,
+     "peak_to_runner_up_gap_K": 0.5,
+     "cost_W": 1.0181,
+     "unconverged": false
+    },
+    {
+     "floorplan": "arm_v1",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.476,
+     "area_mm2": 109.23,
+     "power_W": 52.0,
+     "unaided_peak_C": 73.54,
+     "relative_plateau_25pct": 36,
+     "die_span_K": 46.61,
+     "peak_to_runner_up_gap_K": 0.5,
+     "cost_W": 2.0587,
+     "unconverged": false
+    },
+    {
+     "floorplan": "riscv_xiangshan",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 107.25,
+     "power_W": 64.35,
+     "unaided_peak_C": 77.37,
+     "relative_plateau_25pct": 31,
+     "die_span_K": 47.76,
+     "peak_to_runner_up_gap_K": 1.785,
+     "cost_W": 0.4453,
+     "unconverged": false
+    },
+    {
+     "floorplan": "riscv_xiangshan",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 107.25,
+     "power_W": 64.35,
+     "unaided_peak_C": 77.37,
+     "relative_plateau_25pct": 31,
+     "die_span_K": 47.76,
+     "peak_to_runner_up_gap_K": 1.785,
+     "cost_W": 0.8786,
+     "unconverged": false
+    },
+    {
+     "floorplan": "riscv_xiangshan",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.6,
+     "area_mm2": 107.25,
+     "power_W": 64.35,
+     "unaided_peak_C": 77.37,
+     "relative_plateau_25pct": 31,
+     "die_span_K": 47.76,
+     "peak_to_runner_up_gap_K": 1.785,
+     "cost_W": 2.0924,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_skylake",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.62,
+     "area_mm2": 101.19,
+     "power_W": 62.74,
+     "unaided_peak_C": 64.52,
+     "relative_plateau_25pct": 17,
+     "die_span_K": 31.47,
+     "peak_to_runner_up_gap_K": 2.062,
+     "cost_W": 0.485,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_skylake",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.62,
+     "area_mm2": 101.19,
+     "power_W": 62.74,
+     "unaided_peak_C": 64.52,
+     "relative_plateau_25pct": 17,
+     "die_span_K": 31.47,
+     "peak_to_runner_up_gap_K": 2.062,
+     "cost_W": 1.008,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_skylake",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.62,
+     "area_mm2": 101.19,
+     "power_W": 62.74,
+     "unaided_peak_C": 64.52,
+     "relative_plateau_25pct": 17,
+     "die_span_K": 31.47,
+     "peak_to_runner_up_gap_K": 2.062,
+     "cost_W": 2.535,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_zen2",
+     "margin_K": 3,
+     "density_W_per_mm2": 0.62,
+     "area_mm2": 108.05,
+     "power_W": 66.99,
+     "unaided_peak_C": 89.56,
+     "relative_plateau_25pct": 18,
+     "die_span_K": 59.58,
+     "peak_to_runner_up_gap_K": 4.125,
+     "cost_W": 0.319,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_zen2",
+     "margin_K": 5,
+     "density_W_per_mm2": 0.62,
+     "area_mm2": 108.05,
+     "power_W": 66.99,
+     "unaided_peak_C": 89.56,
+     "relative_plateau_25pct": 18,
+     "die_span_K": 59.58,
+     "peak_to_runner_up_gap_K": 4.125,
+     "cost_W": 0.6018,
+     "unconverged": false
+    },
+    {
+     "floorplan": "x86_zen2",
+     "margin_K": 8,
+     "density_W_per_mm2": 0.62,
+     "area_mm2": 108.05,
+     "power_W": 66.99,
+     "unaided_peak_C": 89.56,
+     "relative_plateau_25pct": 18,
+     "die_span_K": 59.58,
+     "peak_to_runner_up_gap_K": 4.125,
+     "cost_W": 1.2885,
+     "unconverged": false
+    }
+   ],
+   "no_steady_state": [
+    "x86_golden_cove @ 3 K",
+    "x86_golden_cove @ 5 K",
+    "x86_golden_cove @ 8 K"
+   ],
+   "rho_vs_cost": {
+    "3": {
+     "n": 6,
+     "floorplans": [
+      "arm_a64fx",
+      "arm_n1",
+      "arm_v1",
+      "riscv_xiangshan",
+      "x86_golden_cove",
+      "x86_skylake",
+      "x86_zen2"
+     ],
+     "relative_plateau_25pct": {
+      "rho": 0.6,
+      "p": 0.208
+     },
+     "relative_plateau_share": {
+      "rho": 0.6,
+      "p": 0.208
+     },
+     "peak_to_runner_up_gap_K": {
+      "rho": -0.771,
+      "p": 0.0724
+     },
+     "die_span_K": {
+      "rho": -0.143,
+      "p": 0.7872
+     },
+     "unaided_peak_C": {
+      "rho": 0.143,
+      "p": 0.7872
+     },
+     "die_area_mm2": {
+      "rho": -0.371,
+      "p": 0.4685
+     },
+     "die_power_W": {
+      "rho": 0.029,
+      "p": 0.9572
+     }
+    },
+    "5": {
+     "n": 6,
+     "floorplans": [
+      "arm_a64fx",
+      "arm_n1",
+      "arm_v1",
+      "riscv_xiangshan",
+      "x86_golden_cove",
+      "x86_skylake",
+      "x86_zen2"
+     ],
+     "relative_plateau_25pct": {
+      "rho": 0.657,
+      "p": 0.1562
+     },
+     "relative_plateau_share": {
+      "rho": 0.657,
+      "p": 0.1562
+     },
+     "peak_to_runner_up_gap_K": {
+      "rho": -0.771,
+      "p": 0.0724
+     },
+     "die_span_K": {
+      "rho": -0.429,
+      "p": 0.3965
+     },
+     "unaided_peak_C": {
+      "rho": -0.2,
+      "p": 0.704
+     },
+     "die_area_mm2": {
+      "rho": -0.429,
+      "p": 0.3965
+     },
+     "die_power_W": {
+      "rho": -0.314,
+      "p": 0.5441
+     }
+    },
+    "8": {
+     "n": 6,
+     "floorplans": [
+      "arm_a64fx",
+      "arm_n1",
+      "arm_v1",
+      "riscv_xiangshan",
+      "x86_golden_cove",
+      "x86_skylake",
+      "x86_zen2"
+     ],
+     "relative_plateau_25pct": {
+      "rho": 0.029,
+      "p": 0.9572
+     },
+     "relative_plateau_share": {
+      "rho": 0.029,
+      "p": 0.9572
+     },
+     "peak_to_runner_up_gap_K": {
+      "rho": -0.257,
+      "p": 0.6228
+     },
+     "die_span_K": {
+      "rho": -0.714,
+      "p": 0.1108
+     },
+     "unaided_peak_C": {
+      "rho": -0.543,
+      "p": 0.2657
+     },
+     "die_area_mm2": {
+      "rho": -0.714,
+      "p": 0.1108
+     },
+     "die_power_W": {
+      "rho": -0.2,
+      "p": 0.704
+     }
+    }
+   }
+  }
+ }
+}

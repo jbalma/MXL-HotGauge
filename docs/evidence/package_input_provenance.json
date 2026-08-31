@@ -1,0 +1,39 @@
+{
+ "note": "What is actually known about the four package inputs the P0.4 gate turns on. Written BEFORE any of them was changed, and none of them has been changed. The checklist's instruction is explicit: validate them against their OWN references, because adopting them because they close the gate is tuning against the acceptance test.",
+ "the_finding_that_reframes_the_task": "None of the four has a reference to be validated against. They are not measurements of any of the gate's reference parts -- they are the upstream Tufts HotGauge stack_templates/skylake.stk numbers, inherited layer-for-layer by StackSpec(package='lidded') so that a default lidded build reproduces that file (die_stack.py: 'The lidded default reproduces the historical skylake.stk die layer-for-layer'). skylake.stk cites nothing for them. So the task is not 'check four values against their sources'; it is 'a generic ~2015-era desktop CPU package is being applied to a 2022 Hopper module and a 2023 Zen4 chiplet, and nobody has ever asked whether it fits'.",
+ "inputs": [
+  {
+   "name": "die-attach solder conductivity",
+   "model_value_W_mK": 25.0,
+   "where": "die_stack.MATERIALS['SOLDER_TIM'], from skylake.stk (0.25e-4 W/(um K))",
+   "status": "PARTIALLY SETTLED -- as a question of what the layer MEANS, not of its value",
+   "finding": "The material is described as 'indium solder die attach'. Bulk indium at 300 K is a standard tabulated value of about 82 W/(m K) -- roughly 3.3x the 25 used here. Both numbers can be defensible, but not for the same layer: 25 W/(m K) over a 200 um thickness is a LUMPED JOINT conductance (bulk metal plus both interfaces plus voids and intermetallics), in which case the 200 um is a fitted equivalent thickness rather than a measured one and neither number should be moved on its own; 82 W/(m K) is the bulk material, in which case the interfaces are missing from the model entirely. The stack models no separate interfacial resistance anywhere, which points to the lumped reading. docs/evidence/staged_spreading.json's sensitivity moves k from 25 to 82 as though the layer were bulk -- that is only legitimate under the second reading, and under the second reading the model also owes two interface resistances it does not have. This is a modelling inconsistency, and it is resolvable from the code alone.",
+   "still_needed": "a decision on which the layer is, and if bulk, an interface model to go with it. Then a citation for the tabulated indium value actually used."
+  },
+  {
+   "name": "die-attach solder thickness",
+   "model_value_um": 200.0,
+   "where": "StackSpec(solder_um=200.0), from skylake.stk",
+   "status": "NOT ESTABLISHED",
+   "finding": "No reference in the repository. The sensitivity study proposes 80 um as the 'real Zen4 die attach' but records no source for that figure either. Note this is not independent of the conductivity above: under the lumped-joint reading the thickness is a fitted equivalent and moving it alone is meaningless.",
+   "still_needed": "a published teardown or vendor figure for the specific part"
+  },
+  {
+   "name": "cold-plate thickness",
+   "model_value_mm": 2.0,
+   "where": "StackSpec(sink_um=2000.0), from skylake.stk's SINK_LAYER",
+   "status": "NOT ESTABLISHED",
+   "finding": "A generic value. It now matters more than it used to, not less: with --spreading the base thickness enters the constriction correlation through tau = t/b, and the model already shows an interior optimum in base area for that reason -- a wide thin plate spreads badly. So this is no longer a small series term, it is a shape parameter.",
+   "still_needed": "the base thickness of the specific cooler each gate point names"
+  },
+  {
+   "name": "cold-plate conductivity",
+   "model_value_W_mK": 300.0,
+   "where": "die_stack.MATERIALS['HEATSINK_METAL']",
+   "status": "NOT ESTABLISHED, and the proposed change is a category error",
+   "finding": "300 W/(m K) is a plausible copper-alloy plate. The sensitivity study proposes 2000 W/(m K) for 'heatpipes'. Heat pipes do reach effective conductivities in that range, but that is an AXIAL effective conductivity along a pipe, not the isotropic bulk conductivity of a plate -- and the spreading correlation this feeds assumes an isotropic disc. Substituting 2000 into it models a plate made of a material that does not exist, in a geometry heat pipes do not have. The Thermalright Peerless Assassin the Ryzen points name is a direct-touch heatpipe cooler, so the geometry question is real -- but it needs a two-stage or anisotropic treatment, not a raised k.",
+   "still_needed": "either the base alloy of the named coolers, or a heat-pipe model; the staged_spreading machinery already supports multiple stages"
+  }
+ ],
+ "conclusion": "One of the four is resolvable from the code alone and turns out to be an internal inconsistency rather than a wrong number; one (the heat-pipe k) is a category error that should not be adopted at any value; two need references the repository does not contain. None was changed for the gate run in acceptance_gate_spreading.json."
+}

@@ -1,0 +1,503 @@
+<title>Photonic Cooling Claim Register</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Same identity as the Handbook and Ledger — same project, same reader.
+     Structure is different: this is a register, scanned for a verdict, not read through. */
+  :root{
+    --ground:#EDF1F2; --surface:#FBFCFC; --sunken:#E3E9EB;
+    --ink:#131A1C; --ink-2:#3A474B; --muted:#66757A;
+    --rule:#D4DCDE; --rule-2:#E5EBEC;
+    --accent:#0F5C6E; --accent-2:#14798F;
+    --ok:#1F6F43;  --ok-bg:#E2EFE8;  --ok-edge:#1F6F43;
+    --qual:#8A5A00; --qual-bg:#F5EDDB; --qual-edge:#8A5A00;
+    --no:#8C2F52;  --no-bg:#F5E3E9;  --no-edge:#8C2F52;
+    --shadow:0 1px 2px rgba(19,26,28,.05),0 10px 28px -20px rgba(19,26,28,.30);
+    --f-display:Newsreader,Charter,Cambria,Georgia,serif;
+    --f-ui:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --f-data:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --col:66ch; --wide:1100px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E1416; --surface:#141B1E; --sunken:#192226;
+      --ink:#E7EDEE; --ink-2:#B6C2C6; --muted:#8A9AA0;
+      --rule:#242F33; --rule-2:#1C2529;
+      --accent:#4FB3C9; --accent-2:#7FCFE0;
+      --ok:#6FC191;  --ok-bg:#12241A;  --ok-edge:#6FC191;
+      --qual:#D9A845; --qual-bg:#251C0C; --qual-edge:#D9A845;
+      --no:#E08AA3;  --no-bg:#27131A;  --no-edge:#E08AA3;
+      --shadow:0 1px 2px rgba(0,0,0,.5),0 10px 28px -20px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E1416; --surface:#141B1E; --sunken:#192226;
+    --ink:#E7EDEE; --ink-2:#B6C2C6; --muted:#8A9AA0;
+    --rule:#242F33; --rule-2:#1C2529;
+    --accent:#4FB3C9; --accent-2:#7FCFE0;
+    --ok:#6FC191;  --ok-bg:#12241A;  --ok-edge:#6FC191;
+    --qual:#D9A845; --qual-bg:#251C0C; --qual-edge:#D9A845;
+    --no:#E08AA3;  --no-bg:#27131A;  --no-edge:#E08AA3;
+    --shadow:0 1px 2px rgba(0,0,0,.5),0 10px 28px -20px rgba(0,0,0,.8);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;padding:0 22px 96px;background:var(--ground);color:var(--ink);
+       font-family:var(--f-display);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:var(--wide);margin:0 auto}
+  .col{max-width:var(--col)}
+  section{padding:30px 0;border-top:1px solid var(--rule)}
+  section:first-of-type{border-top:none;padding-top:22px}
+
+  h1{font-family:var(--f-display);font-weight:600;font-size:clamp(1.9rem,4.4vw,2.7rem);
+     line-height:1.08;letter-spacing:-.02em;margin:.1em 0 .3em;text-wrap:balance}
+  h2{font-family:var(--f-display);font-weight:600;font-size:1.48rem;line-height:1.2;
+     margin:0 0 .3em;letter-spacing:-.01em;text-wrap:balance}
+  p{margin:0 0 1em}
+  .eyebrow{font-family:var(--f-ui);font-size:.8rem;color:var(--muted);margin-bottom:.8em}
+  .kicker{font-family:var(--f-ui);font-size:.75rem;font-weight:700;letter-spacing:.12em;
+          text-transform:uppercase;color:var(--muted);margin:0 0 .45em}
+  .standfirst{font-size:1.14rem;color:var(--ink-2);max-width:62ch}
+  .mono{font-family:var(--f-data);font-size:.88em}
+  .rule-strong{height:2px;background:var(--ink);opacity:.82;margin:.85em 0 0}
+
+  /* the register itself */
+  .claims{display:flex;flex-direction:column;gap:12px;margin:1.1em 0 .2em}
+  .claim{display:grid;grid-template-columns:104px 1fr;gap:0 18px;
+         background:var(--surface);border:1px solid var(--rule);border-radius:7px;
+         border-left-width:3px;padding:14px 17px;box-shadow:var(--shadow)}
+  .claim.ok{border-left-color:var(--ok-edge)}
+  .claim.qual{border-left-color:var(--qual-edge)}
+  .claim.no{border-left-color:var(--no-edge)}
+  .claim .tag{font-family:var(--f-ui);font-size:.66rem;font-weight:700;letter-spacing:.07em;
+              text-transform:uppercase;padding:.22em .5em;border-radius:3px;align-self:start;
+              text-align:center;white-space:nowrap}
+  .claim.ok .tag{background:var(--ok-bg);color:var(--ok)}
+  .claim.qual .tag{background:var(--qual-bg);color:var(--qual)}
+  .claim.no .tag{background:var(--no-bg);color:var(--no)}
+  .claim .body{min-width:0}
+  .claim .say{font-family:var(--f-display);font-size:1.04rem;line-height:1.45;margin:0 0 .4em}
+  .claim .why{font-family:var(--f-ui);font-size:.9rem;line-height:1.5;color:var(--ink-2);margin:0}
+  .claim .src{font-family:var(--f-data);font-size:.76rem;color:var(--muted);margin:.55em 0 0;
+              word-break:break-word}
+  @media (max-width:640px){
+    .claim{grid-template-columns:1fr;gap:8px}
+    .claim .tag{justify-self:start}
+  }
+
+  .scroll{overflow-x:auto;margin:.5em 0 1.2em;border:1px solid var(--rule);border-radius:6px;
+          background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-family:var(--f-ui);font-size:.89rem}
+  th,td{text-align:left;padding:.55em .8em;border-bottom:1px solid var(--rule-2);vertical-align:top}
+  th{font-weight:700;font-size:.76rem;letter-spacing:.05em;text-transform:uppercase;
+     color:var(--muted);background:var(--sunken);white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td.n{font-family:var(--f-data);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  .note{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--accent);
+        border-radius:0 6px 6px 0;padding:14px 17px;margin:1.1em 0}
+  .note.no{border-left-color:var(--no-edge)}
+  .note p{font-size:.96rem;margin:0 0 .65em}
+  .note p:last-child{margin-bottom:0}
+  .note .lbl{font-family:var(--f-ui);font-size:.71rem;font-weight:700;letter-spacing:.1em;
+             text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.45em}
+  footer{padding:26px 0 0;border-top:1px solid var(--rule);font-family:var(--f-ui);
+         font-size:.85rem;color:var(--muted)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  :focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+</style>
+
+<div class="wrap">
+
+<header style="padding:28px 0 4px">
+  <p class="eyebrow">MXL&#8209;HotGauge &middot; Maxwell Labs &middot; 30 August 2026</p>
+  <h1>Photonic Cooling Claim Register</h1>
+  <p class="standfirst">What the simulation work will and will not support, claim by claim, so
+  proposal text can be written against it directly. Three of these were the project&rsquo;s own
+  recorded positions until this week.</p>
+  <div class="rule-strong"></div>
+</header>
+
+<section>
+  <div class="col">
+    <p class="kicker">Read first</p>
+    <h2>The one-sentence claim</h2>
+    <p style="font-size:1.14rem"><strong>Photonic microrefrigeration is not a cheaper way to move
+    heat. It is the only cooling mechanism that can be <em>aimed</em> at a hotspot</strong> — which
+    makes it worth having exactly where a die is hotspot&#8209;limited, and worth more the deeper the
+    thermal rescue, because it is the only mechanism whose cost per watt does not diverge with
+    depth.</p>
+    <p>Everything defensible below follows from that sentence. Everything withdrawn came from
+    trying to claim more.</p>
+  </div>
+  <div class="note">
+    <span class="lbl">What changed this week, in one line each</span>
+    <p><strong>Materials.</strong> Yb:YLF is superseded for compute tiles; the current platforms
+    reach 10&sup3;&ndash;10&#8308;&nbsp;W/mm&sup2;, which is where hot&#8209;spot demand also sits.
+    <strong>Loop model.</strong> Two errors, in opposite directions, both corrected and
+    test&#8209;locked. <strong>Envelope.</strong> The simulated device was 4&ndash;40&times; too weak,
+    and it was the binding constraint — so a set of negative verdicts is now pending re&#8209;run.</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">Register &middot; safe to claim</p>
+  <h2>Measured, and it will survive questioning</h2>
+  <div class="claims">
+
+    <div class="claim ok"><span class="tag">measured</span><div class="body">
+      <p class="say">Array granularity is worth <strong>2.77&times;</strong> on a concentrated
+      hotspot and <strong>nothing</strong> on a uniform die.</p>
+      <p class="why">Measured across a 2000&nbsp;&rarr;&nbsp;50&nbsp;&micro;m pitch ladder: 0.977
+      &rarr; 1.854&nbsp;K/W concentrated, 0.978 &rarr; 0.670 uniform. <strong>The consequence is the
+      claim worth making: array value cannot be quoted per die.</strong> The same hardware is worth
+      2.77&times; more on one shape than another, so it is a property of workload and floorplan
+      rather than of the part.</p>
+      <p class="src">tile_pitch_concentrated.json · tile_pitch_uniform.json · aimed_vs_bulk_rescue.json</p>
+    </div></div>
+
+    <div class="claim ok"><span class="tag">measured</span><div class="body">
+      <p class="say">The three rescue mechanisms diverge by their <strong>exponents</strong>, and
+      only the laser&rsquo;s cost per watt stays flat.</p>
+      <p class="why">More airflow goes as P&nbsp;&prop;&nbsp;R<sup>&minus;5</sup> — a 900&nbsp;W die
+      needs a <strong>35.8&nbsp;kW</strong> fan. A sub&#8209;ambient chiller collapses from system COP
+      <strong>20 to 0.15</strong> across 4&times; overload. The array&rsquo;s cost per watt is flat and
+      its recovery <em>rises</em> with T<sub>h</sub>. The crossover is <strong>scale&#8209;free</strong>:
+      2.64&times;&nbsp;/&nbsp;2.88&times;&nbsp;/&nbsp;2.85&times; the unaided limit for fan, cold plate
+      and microchannel alike.</p>
+      <p class="src">thermal_limit_rescue.json</p>
+    </div></div>
+
+    <div class="claim ok"><span class="tag">measured</span><div class="body">
+      <p class="say">A thermal rescue pays for <strong>a quarter of itself</strong> in leakage.</p>
+      <p class="why">Holding a 34&#8209;core die at 90.6&nbsp;&deg;C instead of 133.8&nbsp;&deg;C drops
+      what the chip itself draws from <strong>124.9&nbsp;W to 91.7&nbsp;W — 26.6&nbsp;%</strong>. A
+      thermal result, unaffected by the recovery corrections, and the largest single term no prior
+      ledger had counted.</p>
+      <p class="src">mr_rescue_cost_34core.json · rescue_measured_anchor.json</p>
+    </div></div>
+
+    <div class="claim ok"><span class="tag">measured</span><div class="body">
+      <p class="say">Aimed efficacy is <strong>flat</strong> until the target stops being the die
+      peak, then falls off a cliff — which gives a plan&#8209;sizing rule.</p>
+      <p class="why">1.854&nbsp;K/W flat from 1&nbsp;W to <strong>16&nbsp;W</strong> — exactly the
+      target block&rsquo;s own power — then marginal efficacy collapses to 0.133 by 32&nbsp;W, because
+      another block has become the hottest thing on the die. <strong>Size the plan to level the
+      target with the runner&#8209;up, then re&#8209;aim rather than spend more.</strong> Coarse tiles
+      delay the cliff substantially but never pay for it.</p>
+      <p class="src">mr_budget_saturation.json · mr_budget_pitch_grid.json (40 solves)</p>
+    </div></div>
+
+    <div class="claim ok"><span class="tag">measured</span><div class="body">
+      <p class="say">The optics requirement is <strong>~50&nbsp;&micro;m</strong>, five times looser
+      than assumed.</p>
+      <p class="why">Spot minimum swept 1&ndash;100&nbsp;&micro;m: the array achieves an
+      <em>identical</em> thermal result at every size, and only the electrical cost moves &mdash;
+      flat within 3&nbsp;% from 1 to 50&nbsp;&micro;m, then <strong>+20&nbsp;% at 100</strong>. The
+      floorplan explains it: median block min&#8209;dimension is <strong>45.4&nbsp;&micro;m</strong>,
+      so a spot wider than that wastes light on neighbours. The requirement is set by the die, not
+      the device.</p>
+      <p class="src">spot_size_requirement.json</p>
+    </div></div>
+
+    <div class="claim ok"><span class="tag">measured</span><div class="body">
+      <p class="say">The cold zone is <strong>already where the leakage lives</strong> — it is not a
+      partition anyone has to impose.</p>
+      <p class="why">Static power is <strong>34.6&nbsp;%</strong> of die power and
+      <strong>89&nbsp;% of it sits in L3 alone</strong>. This is the measured basis for the
+      cold&#8209;cache half of the two&#8209;sided design point.</p>
+      <p class="src">leakage_targeting_policy.json</p>
+    </div></div>
+
+    <div class="claim ok"><span class="tag">validated</span><div class="body">
+      <p class="say">The self&#8209;powering design map reproduces the textbook&rsquo;s own worked
+      examples to three figures.</p>
+      <p class="why">Feasibility is
+      <span class="mono">&eta;<sub>P</sub>&middot;&eta;<sub>cpl</sub>&middot;[1&nbsp;+&nbsp;&eta;<sub>ASF</sub>&middot;&phi;]&nbsp;&ge;&nbsp;1</span>.
+      Checked against &sect;1.12 Examples&nbsp;1&ndash;3: 4.714&nbsp;/&nbsp;0.857&nbsp;/&nbsp;1.571
+      against the book&rsquo;s 4.71&nbsp;/&nbsp;0.857&nbsp;/&nbsp;1.571. Two independent
+      implementations now agree to 1e&#8209;12 and are locked by test.</p>
+      <p class="src">loop_model_reconciliation.json · exergy.py · test_microrefrigeration.py</p>
+    </div></div>
+
+  </div>
+</section>
+
+<section>
+  <p class="kicker">The design map</p>
+  <h2>How hot must logic run for the loop to close?</h2>
+  <div class="col">
+    <p>Read the feasibility condition backwards and it says what die temperature a given extractor
+    needs. <strong>This is the quantitative core of the &ldquo;run logic hot&rdquo; argument</strong>
+    and it should lead the technical section.</p>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>&eta;<sub>ASF</sub></th><th>&eta;<sub>P</sub> = 0.85</th>
+        <th>&eta;<sub>P</sub> = 0.90</th><th>&eta;<sub>P</sub> = 0.95</th><th>Provenance</th></tr></thead>
+      <tbody>
+        <tr><td class="n">0.12</td><td class="n">never</td><td class="n">3983 K</td><td class="n">525 K</td>
+            <td>SMILES&#8209;R640 @ 680&nbsp;nm — tabulated</td></tr>
+        <tr><td class="n">0.22</td><td class="n">1491 K</td><td class="n">596 K</td><td class="n">388 K</td>
+            <td>SMILES&#8209;R640 @ 740&nbsp;nm — tabulated</td></tr>
+        <tr><td class="n"><strong>0.30</strong></td><td class="n">716 K</td>
+            <td class="n"><strong>469 K</strong></td><td class="n">358 K</td>
+            <td><strong>our experimental claim</strong> — beyond the table</td></tr>
+        <tr><td class="n">0.35</td><td class="n">595 K</td><td class="n">432 K</td><td class="n">347 K</td>
+            <td>beyond the tabulated range</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    <span class="lbl">The finding that should reframe the programme</span>
+    <p><strong>&eta;<sub>P</sub> — the laser wall&#8209;plug — is now the binding term, not the
+    extractor.</strong> The requirement is
+    <span class="mono">[1/(&eta;<sub>P</sub>&eta;<sub>cpl</sub>)&nbsp;&minus;&nbsp;1]&nbsp;/&nbsp;&phi;</span>,
+    which is very steep near unity. At &eta;<sub>ASF</sub>&nbsp;=&nbsp;0.30, moving the laser from
+    0.85 to 0.90 drops the self&#8209;powering temperature from <strong>716&nbsp;K to
+    469&nbsp;K</strong>. One 20&nbsp;% front&#8209;end optical loss roughly <em>doubles</em> the
+    extractor target. <strong>The laser and the optical path are the hard part now</strong> — a
+    different programme from the one previously costed.</p>
+    <p>At &eta;<sub>ASF</sub>&nbsp;&ge;&nbsp;0.30 the loop closes <strong>inside the
+    400&ndash;600&nbsp;K hot&#8209;compute zone</strong> the architecture proposes, so the architecture
+    argument now closes on its own terms rather than needing a leap.</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">Register &middot; qualified</p>
+  <h2>Claimable with the qualifier attached</h2>
+  <div class="claims">
+
+    <div class="claim qual"><span class="tag">ours, not cited</span><div class="body">
+      <p class="say">&eta;<sub>ASF</sub>&nbsp;&gt;&nbsp;0.30 is <strong>our experimental claim</strong>,
+      beyond the published table.</p>
+      <p class="why">The tabulated anti&#8209;Stokes ladder supports <strong>0.124 at a 680&nbsp;nm
+      pump rising to 0.221 at 740&nbsp;nm</strong>, with &eta;<sub>EQE</sub> 99&nbsp;% at
+      N<sub>t</sub>&nbsp;&ge;&nbsp;10&#8315;&sup2;&nbsp;M. Present anything above that as
+      <em>our result, with the measurement ready</em> — never as the book&rsquo;s. It carries the
+      whole conclusion, because 0.30 is the threshold that closes the loop.</p>
+      <p class="src">v91 Table 8.1 · Table 8.2</p>
+    </div></div>
+
+    <div class="claim qual"><span class="tag">bounded</span><div class="body">
+      <p class="say">Reading the Carnot factor off junction temperatures is defensible
+      <strong>to 8.2&nbsp;%</strong>.</p>
+      <p class="why">The junction&#8209;to&#8209;extractor drop reaches 99.4&nbsp;K, but the error it
+      puts into &phi; never exceeds 8.2&nbsp;%, and that error is <em>non&#8209;monotonic</em> —
+      peaking near 2&nbsp;W/mm&sup2;, not at the extremes. Collapsing a die to a single temperature
+      costs only 0.3&ndash;0.6&nbsp;%.</p>
+      <p class="src">thermal_zone_tests.json · exergy_map.json</p>
+    </div></div>
+
+    <div class="claim qual"><span class="tag">relocated</span><div class="body">
+      <p class="say">The cold zone must be a <strong>physically separate die</strong>.</p>
+      <p class="why">A monolithic three&#8209;zone die fails two independent ways — coarse pitch cannot
+      address the zones, and lateral conduction shorts them anyway. This <em>relocates</em> the
+      architecture into a packaging and disaggregation programme rather than refuting it: on a
+      separate cache die the gradient problem disappears, because you cool the whole thing.</p>
+      <p class="src">thermal_zone_tests.json · thermal_zone_separability.json</p>
+    </div></div>
+
+  </div>
+</section>
+
+<section>
+  <p class="kicker">Register &middot; do not claim</p>
+  <h2>These will not survive a competent reviewer</h2>
+  <div class="claims">
+
+    <div class="claim no"><span class="tag">false</span><div class="body">
+      <p class="say">&ldquo;Photonic cooling beats liquid on efficiency.&rdquo;</p>
+      <p class="why">It does not, at any temperature swept, in the regime modelled
+      (T<sub>h</sub>&nbsp;&lesssim;&nbsp;400&nbsp;K, where &phi; is small). Net COP ~3 against a cold
+      plate&rsquo;s ~20. <strong>Make the rescue and high&#8209;T<sub>h</sub> case instead.</strong></p>
+      <p class="src">liquid_vs_photonic.json · hybrid_cooling_ledger.json</p>
+    </div></div>
+
+    <div class="claim no"><span class="tag">withdrawn</span><div class="body">
+      <p class="say">&ldquo;The loop self&#8209;powers at our design point.&rdquo;</p>
+      <p class="why">Our own accounting reported this, from a ledger that credited the whole
+      fluorescence stream as convertible work and <strong>omitted the Carnot factor</strong>.
+      Corrected, loop gain is 0.821 at 350&nbsp;K and <strong>0.958 even at 1000&nbsp;K</strong> — it
+      never reaches 1.0 at the shipped efficiencies. The guard that missed it tested the
+      <em>first</em> law, which passes.</p>
+      <p class="src">loop_model_reconciliation.json</p>
+    </div></div>
+
+    <div class="claim no"><span class="tag">conflation</span><div class="body">
+      <p class="say">&ldquo;The loop is self&#8209;powering, therefore it wins.&rdquo;</p>
+      <p class="why">Two different claims. Self&#8209;powering says the loop pays for <em>itself</em>;
+      it does not say it moves heat more cheaply than a pump. Conflating them is the single easiest
+      way to lose a reviewer.</p>
+      <p class="src">liquid_vs_photonic.json</p>
+    </div></div>
+
+    <div class="claim no"><span class="tag">superseded</span><div class="body">
+      <p class="say">&ldquo;&eta;<sub>ASF</sub>&nbsp;&asymp;&nbsp;0.02 is the demonstrated state of the
+      art.&rdquo;</p>
+      <p class="why">That is Yb:YLF, which at 1&ndash;10&nbsp;W/mm&sup2; is two to three orders below
+      the current platforms and is now correctly scoped as the <strong>cold&#8209;zone</strong>
+      material only. <strong>The phrase &ldquo;0.02 demonstrated&rdquo; should not appear in
+      proposal text.</strong></p>
+      <p class="src">v91 Table 8.2 · PLATFORMS_V91 in microrefrigeration.py</p>
+    </div></div>
+
+    <div class="claim no"><span class="tag">false</span><div class="body">
+      <p class="say">&ldquo;Finer tile pitch is better.&rdquo;</p>
+      <p class="why">Only on a concentrated hotspot. On a uniform die the pitch ladder is flat to
+      slightly <em>inverted</em> — granularity buys nothing. Fine pitch is the mechanism that
+      converts spatial structure into efficacy; a die without structure has none to convert.</p>
+      <p class="src">tile_pitch_uniform.json · mr_budget_pitch_grid.json</p>
+    </div></div>
+
+    <div class="claim no"><span class="tag">not buildable</span><div class="body">
+      <p class="say">&ldquo;A monolithic three&#8209;zone die delivers the architecture.&rdquo;</p>
+      <p class="why"><strong>40&nbsp;W of removal buys 1.24&nbsp;K</strong> against the
+      <strong>150&nbsp;K</strong> the template asks for. Two independent failure modes, confirmed
+      analytically to 1.71&times;. Claim the disaggregated form instead.</p>
+      <p class="src">thermal_zone_tests.json</p>
+    </div></div>
+
+    <div class="claim no"><span class="tag">optimistic</span><div class="body">
+      <p class="say">Any absolute peak temperature from the older catalogue.</p>
+      <p class="why">Those floorplans carried a 22&nbsp;% unallocated slab that acted as a heat
+      spreader. Rebuilt on published block areas, the same dies run <strong>7&ndash;24&nbsp;K
+      hotter</strong>. Absolute temperatures are optimistic by tens of kelvin.</p>
+      <p class="src">isa_floorplans_pack_rebuild.json</p>
+    </div></div>
+
+  </div>
+</section>
+
+<section>
+  <p class="kicker">Register &middot; pending</p>
+  <h2>Re&#8209;run: what landed, and what has not</h2>
+  <div class="note">
+    <span class="lbl">Landed 30 Aug — the envelope re-run, and what it moved</span>
+    <p>The simulated device had been capped at <strong>250&nbsp;W/mm&sup2;</strong>, the Yb:YLF&#8209;era
+    figure, against the current platforms&rsquo; <strong>10&sup3;&ndash;10&#8308;</strong>. Re&#8209;run at
+    the refreshed ceiling with second&#8209;law recovery active, on the 34&#8209;core die at three
+    densities:</p>
+    <p><strong>The array rescues a die that has no steady state, and the unpowered array does
+    not.</strong> Control and array&#8209;idle both run away at every density; array&#8209;on holds
+    <strong>93.9&ndash;94.0&nbsp;&deg;C</strong> against a 92&nbsp;&deg;C target, on a minimum plan
+    bracketed by bisection.</p>
+    <p><strong>The envelope cuts the heat that must be lifted by 1.96&ndash;2.58&times;</strong>
+    — 42.1&nbsp;&rarr;&nbsp;18.3&nbsp;W at density 1.15 for the same rescue. Priced at matched
+    efficiencies so the two corrections can be read apart, array electrical power falls
+    <strong>1.38&ndash;1.82&times;</strong>: the envelope&rsquo;s 2.30&times; reduction in heat, partly
+    given back by the second law&rsquo;s 1.42&times; rise in cost per watt.</p>
+    <p><strong>`[!]` Two cautions.</strong> The raw electrical columns are <em>not</em>
+    like&#8209;for&#8209;like — the recorded run used a conservative efficiency preset and the re&#8209;run
+    the shipped defaults — which is why the matched&#8209;efficiency figures are the ones quoted here.
+    And <strong>the chiller comparison now has to be re&#8209;derived</strong>: the control arm no
+    longer reaches a steady state at all, so there is no unaided temperature to measure a required
+    chill depth against. <strong>Until that is redone, make no quantitative chiller&#8209;versus&#8209;laser
+    claim.</strong></p>
+    <p class="src" style="font-family:var(--f-data);font-size:.76rem;color:var(--muted)">rescue_envelope_refresh.json · mr_rescue_cost_34core.json · first_law_recovery_audit.json</p>
+  </div>
+
+  <div class="note no">
+    <span class="lbl">Still pending</span>
+    <p><strong>FINDINGS.json carries 36 negative <span class="mono">p_mr_net_W</span> entries</strong>
+    — the ledger reporting a net&#8209;generating cooler, which the second law forbids at these
+    efficiencies. Two further concentrated turbo points carry positive but optimistic recovery.
+    Auditing by value rather than by schema showed two files previously flagged are in fact clean.</p>
+    <p>The positive claims in the first register are unaffected by any of this — they are thermal
+    and geometric results, not device&#8209;envelope or recovery ones.</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">Blocked</p>
+  <h2>Nothing above 400&nbsp;K is quotable yet</h2>
+  <div class="note no">
+    <span class="lbl">31 Aug &mdash; the overnight campaign found its own ceiling</span>
+    <p>The leakage table is calibrated <strong>310&ndash;400&nbsp;K</strong>; McPAT cannot be run
+    hotter. Above that the model either extrapolates an Arrhenius tail or clamps, and the two
+    disagree without bound &mdash; <strong>36&times; at 400&nbsp;K, 600&times; at 450, 5820&times; at
+    500, 184&nbsp;000&times; at 600</strong> extrapolated, against a flat 36.1 clamped.</p>
+    <p>Extrapolated, that is unbounded positive gain inside a feedback loop: a block that nudges
+    past 400&nbsp;K gains enough leakage to jump to 500&nbsp;K, which multiplies again. The
+    signature is unmistakable &mdash; an <strong>un&#8209;itemised accounting slab</strong>
+    (<span class="mono">core_other</span>, 15.7&nbsp;% of die area, power the model could not
+    attribute) reaching <strong>17&nbsp;381&nbsp;K on iteration&nbsp;1</strong>, which no physical
+    runaway does. Clamped, the code warns instead that &ldquo;runaway is suppressed and results in
+    that range are not trustworthy&rdquo;.</p>
+    <p><strong>So the two settings bracket the answer rather than giving it.</strong> Every density
+    above about 1.8&nbsp;W/mm&sup2; on these floorplans puts some block past 400&nbsp;K, which is why
+    sweeping the array envelope over 6.7&times; in temperature lift and 120&times; in intensity
+    changed nothing: the outcome was decided by the extrapolation before the envelope mattered.</p>
+    <p><strong>`[!]` Withdrawn on this basis:</strong> that <span class="mono">dt_max</span> is or
+    is not the limiting device parameter; that the array &ldquo;gives out&rdquo; at any particular
+    density; and any &ldquo;enables chips that cannot otherwise run&rdquo; claim at boost densities.
+    The rescues below 400&nbsp;K stand.</p>
+    <p><strong>The fix is already the top open item.</strong> PTM SPICE cards extend the
+    calibration above 400&nbsp;K. They were identified as highest&#8209;value for the <em>cold</em>
+    zone, where the curve clamps at 310&nbsp;K and the prize is uncertain 2.3&times;. They are now
+    also the gate on the entire hot&#8209;logic and high&#8209;density programme &mdash; the regime the
+    &ldquo;run chips hotter&rdquo; thesis lives in. <strong>One campaign unblocks both ends.</strong></p>
+    <p class="src">leakage_extrapolation_gate.json &middot; high_density_artifact.json</p>
+  </div>
+
+  <p class="kicker">Open</p>
+  <h2>Name these before a reviewer does</h2>
+  <div class="claims">
+
+    <div class="claim qual"><span class="tag">blocking</span><div class="body">
+      <p class="say"><span class="mono">dt_max</span> = 45&nbsp;K has <strong>no current
+      source</strong>.</p>
+      <p class="why">The other half of the device envelope is also a Yb:YLF&#8209;era figure, and unlike
+      the cooling density, the materials chapter supplies no replacement. It is left unchanged rather
+      than scaled by guesswork, because it is exactly the constraint the rescue case failed on — an
+      invented value would manufacture the result it is meant to test. <strong>This is the single
+      blocking input for the device team.</strong></p>
+      <p class="src">microrefrigeration.py · DEFAULT_DT_MAX_K</p>
+    </div></div>
+
+    <div class="claim qual"><span class="tag">unmodelled</span><div class="body">
+      <p class="say">The numerical &eta;<sub>ASF</sub>(T) curve inside each temperature window.</p>
+      <p class="why">The <em>structural</em> answer exists — a heterogeneous die uses a different
+      extractor per zone, and per&#8209;tile temperature targeting therefore requires per&#8209;tile
+      extractor selection. What is missing is the efficiency&#8209;versus&#8209;temperature curve within
+      each material&rsquo;s window.</p>
+      <p class="src">v91 &sect;8.4 · ZONE_EXTRACTORS_V91</p>
+    </div></div>
+
+    <div class="claim qual"><span class="tag">uncertain 2.3&times;</span><div class="body">
+      <p class="say">The cold&#8209;zone prize.</p>
+      <p class="why">Our calibrated leakage curve flattens at 310&nbsp;K and clamps below; the
+      architecture assumes it keeps falling to 200&nbsp;K. That is <strong>13.5&nbsp;% of die power
+      against 31.7&nbsp;%</strong>. PTM SPICE cards would settle it — and the same campaign settles
+      the &gt;400&nbsp;K extrapolation at the hot end. <strong>One measurement, both ends of the
+      template.</strong></p>
+      <p class="src">cold_zone_prize_bounds.json · MCPAT_HIGH_TEMPERATURE.md</p>
+    </div></div>
+
+    <div class="claim qual"><span class="tag">accounting</span><div class="body">
+      <p class="say">The hottest block on every simulated die is an <strong>accounting
+      entry</strong>.</p>
+      <p class="why">All dies peak on the results&#8209;broadcast bus, which the power model reports as
+      area overhead and the tiler places at 105&nbsp;W/mm&sup2; against 1&ndash;3 for real silicon. It
+      distorts peaks by a few kelvin — except on the largest core, where it carries nine times the
+      power and the die has no steady state.</p>
+      <p class="src">PHASE0_CHECKLIST.md · P0.5f</p>
+    </div></div>
+
+  </div>
+</section>
+
+<footer>
+  <div class="col">
+    <p><strong>Provenance.</strong> Every number here is measured in this repository or published
+    and cited; the <span class="mono">src</span> line under each claim names the file. Full working
+    notes in <span class="mono">docs/DARPA_FRAMING_HANDOFF.md</span>; live state in
+    <span class="mono">docs/PHASE0_CHECKLIST.md</span>; narrative in the
+    <em>Photonic Microrefrigeration Handbook</em> and the <em>MXL&#8209;HotGauge Ledger</em>.</p>
+    <p>Test suite at 772 passing, 1 skipped. Where a claim rests on an assumption, the assumption is
+    named in the evidence file rather than here. No third&#8209;party plate is reproduced.</p>
+  </div>
+</footer>
+
+</div>

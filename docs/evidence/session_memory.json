@@ -1,0 +1,41 @@
+{
+ "note": "Resident memory and cost of ONE factorised two-die 3D-ICE session, measured on node-06-8xv100 (96 CPU, 243 GB) under slurm job 1320, OMP_NUM_THREADS=1, 25 Aug 2026. The catalogue re-run parallelises by system matrix and each concurrent stream holds its own factorisation, so this is what bounds concurrency. It was previously a guess.",
+ "driver": "scripts/measure_session_memory.py",
+ "stack": {
+  "package": "direct_die",
+  "mr_layer": true,
+  "mr_powered": true,
+  "burial_um": 200.0,
+  "pitch_um": 500.0,
+  "cell_um": 50.0,
+  "solver": "steady"
+ },
+ "rows": [
+  {
+   "floorplan": "skylake7nm_34core_3",
+   "blocks": 1126,
+   "tiles": 384,
+   "elements": 1510,
+   "unknowns": 366048,
+   "factorise_s": 67.78,
+   "solve_s": 0.385,
+   "rss_GB": 2.132,
+   "peak_GB": 2.829,
+   "sessions_in_243GB": 85
+  },
+  {
+   "floorplan": "skylake7nm_128core_3",
+   "blocks": 4228,
+   "tiles": 1378,
+   "elements": 5606,
+   "unknowns": 1254240,
+   "factorise_s": 722.61,
+   "solve_s": 1.916,
+   "rss_GB": 11.091,
+   "peak_GB": 14.42,
+   "sessions_in_243GB": 16
+  }
+ ],
+ "finding": "At 34-core the node holds ~85 sessions, so concurrency is bound by the 96 CPUs, not by memory -- the re-run can use the whole node. At 128-core it is 16 sessions and memory binds first. Peak RSS runs ~1.3x steady-state RSS, which is the factorisation's transient; sizing on steady RSS would over-subscribe the node.",
+ "projection": "The 128-core solve-only time of 1.916 s confirms the ~2 s projected in solve_cost_two_die.json from the smaller dies' near-linear trend."
+}

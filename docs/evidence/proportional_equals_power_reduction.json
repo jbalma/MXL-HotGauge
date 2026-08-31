@@ -1,0 +1,43 @@
+{
+  "note": "Does proportional extraction behave like simply reducing the die power? Re-measured 27 Aug 2026 on the CORRECTED --spreading boundary at the settled 200 um burial depth, because the handbook's version of this check was made on the superseded boundary at 100 um burial. The prediction is a separate no-cooling solve of the same stack at (1-f) of the die power; the measurement is the proportional strategy removing f.",
+  "driver": "examples/die_average_cooling.py --die-W {97,90,70} (prediction) vs the proportional arm of die_average_strategies.json",
+  "configuration": {
+    "floorplan": "skylake10nm_7core_0_3D-ICE_template.flp",
+    "die_W": 100.0,
+    "pitch_um": 500.0,
+    "burial_um": 200.0,
+    "cell_um": 50.0,
+    "n_tiles": 204,
+    "base_peak_C": 80.355,
+    "solves": "steady, linear, no leakage feedback"
+  },
+  "rows": [
+    {
+      "watts_removed": 3.0,
+      "die_W_for_prediction": 97,
+      "predicted_peak_C": 78.845,
+      "measured_peak_C": 79.119,
+      "residual_K": 0.274,
+      "residual_K_on_the_OLD_boundary": 0.27
+    },
+    {
+      "watts_removed": 10.0,
+      "die_W_for_prediction": 90,
+      "predicted_peak_C": 75.32,
+      "measured_peak_C": 76.237,
+      "residual_K": 0.917,
+      "residual_K_on_the_OLD_boundary": 0.92
+    },
+    {
+      "watts_removed": 30.0,
+      "die_W_for_prediction": 70,
+      "predicted_peak_C": 65.249,
+      "measured_peak_C": 68.008,
+      "residual_K": 2.759,
+      "residual_K_on_the_OLD_boundary": 2.76
+    }
+  ],
+  "result": "The claim STANDS and is STRENGTHENED. Removing a fraction f of the heat where it is made moves the peak almost exactly as if the die dissipated (1-f) of its power, with a residual that grows with f: +0.27 K at 3 W, +0.92 K at 10 W, +2.76 K at 30 W.",
+  "why_this_is_stronger_than_a_restatement": "The residuals are IDENTICAL to two decimal places to those measured on the superseded boundary (+0.27 / +0.92 / +2.76), even though that boundary differed by a factor of 4.25 in K/W and the burial depth was half. The residual is therefore a property of the ARRAY LAYER -- its own thermal resistance and the silicon buried beneath it -- and not of the sink. A number that reproduces across a boundary change of that size is evidence about the mechanism, not a coincidence of calibration.",
+  "caveat": "These are linear solves with no leakage feedback, by design: the question is whether the geometry behaves like a power reduction, and leakage feedback would confound that with its own temperature dependence. It is not a statement about behaviour near the runaway cliff, where feedback dominates."
+}

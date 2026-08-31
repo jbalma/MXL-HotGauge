@@ -1,0 +1,42 @@
+{
+ "note": "First end-to-end three-arm runs with the planner driving a real cooling array as a second powered die. skylake 7-core, 10 nm trace, 2000 um tile pitch, 200 um burial, 88 CFM. SMOKE TESTS: reduced iteration limits (--mr-iter 2-3, --max-iter 12-20) to prove the wiring, NOT production settings. 25 Aug 2026.",
+ "driver": "examples/mr_comparison.py --arms control array_idle array_on",
+ "arms": {
+  "control": "30 um thermal grease, no cooling",
+  "array_idle": "30 um GaAs pixel array, 0 W of light",
+  "array_on": "same array under run_mr_clipping"
+ },
+ "low_density": {
+  "density_W_mm2": 0.6,
+  "die_W": 31.9,
+  "mr_target_C": 90.0,
+  "control_peak_C": 59.7737976074219,
+  "array_idle_peak_C": 49.59530029296877,
+  "array_on_peak_C": 49.59530029296877,
+  "passive_K": -10.18,
+  "laser_K": 0.0,
+  "laser_W_removed": 0.0,
+  "reading": "10.2 K of passive gain before any light; the laser correctly does nothing because no block is above target. That the laser term is exactly zero here is the point -- a two-arm comparison would have reported the whole 10.2 K as an MR result."
+ },
+ "high_density": {
+  "density_W_mm2": 1.6,
+  "die_W": 85.0,
+  "mr_target_C": 70.0,
+  "control": "RUNAWAY -- no steady state",
+  "array_idle_peak_C": 105.97915039062502,
+  "array_on_peak_C": 101.0390563964844,
+  "laser_K": -4.94,
+  "laser_W_removed": 2.7615699233434783,
+  "clock_GHz": {
+   "array_idle": 3.500611386338995,
+   "array_on": 3.9128056337509163
+  },
+  "throughput_gain_pct": 11.8,
+  "reading": "The UNPOWERED array alone rescues a die that has no steady state under grease. Swapping 30 um of TIM for 30 um of GaAs is sufficient on its own; the laser then adds 4.9 K and +11.8% throughput for 2.76 W removed. Under the old two-arm scheme this would have been reported as 'MR rescues a runaway die', crediting the light with what the material substitution achieved. That is precisely the confound the three arms exist to remove, and it fired on the first real run."
+ },
+ "wiring_verified": "every row stamps placement='array_above', n_tiles=12, pitch and the stack spec; control stamps placement='none' and 0 tiles",
+ "bugs_the_guards_caught": [
+  "spec string set mr_layer but not mr_powered, so the array rendered as an inert slab with no tile floorplan -- caught by session_powers()'s 'array would silently remove nothing' check",
+  "driver converted plan->stack sign a second time after CoolingApplication had already done it, flipping removal into heating -- caught by fill_mr_flp_template()'s sign guard"
+ ]
+}

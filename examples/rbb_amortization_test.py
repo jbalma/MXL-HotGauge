@@ -1,17 +1,38 @@
 #!/usr/bin/env python
-"""Why RBB gates the high-density programme, and what fixing it would mean.
+"""Why RBB gates the high-density programme, and what fixing it is worth.
 
     python examples/rbb_amortization_test.py
+
+`[!]` CORRECTED 31 Aug 2026. The first version of this file argued that RBB's placed density
+must be unphysical because real blocks sit at 1-3 W/mm^2. **That premise is false and is
+withdrawn.** The HotGauge paper (SII-A) reports >8 W/mm^2 within a core, literature hotspot
+definitions are 6.8-10, and this project's own measured distribution on these dies has block
+p90 = 13.2 and p99 = 64.4 W/mm^2, with iBuf at 141 and cALU at 65. RBB sits *inside* that
+distribution. The case below rests on the area semantics instead, which is where it always
+belonged -- and which the McPAT source settles outright.
 
 The problem in one sentence
 ---------------------------
 McPAT publishes the results-broadcast bus as an **Area Overhead**, not an Area -- the project's own
-``isa_floorplans._root_area`` exists because of that spelling. An overhead is not a footprint: a
-results-broadcast bus is wiring distributed across the execution units, and it has no compact place
-to sit. The tiler nonetheless renders it as a discrete rectangle and hands it the bus's full power.
+``isa_floorplans._root_area`` exists because of that spelling. Two lines of McPAT say what the
+spelling means:
 
-The result is a real power number on a fictitious footprint, and it is the hottest block on every
+* ``EXECU::EXECU`` (``McPAT/core.cc`` ~1150-1259) builds the bus out of ``interconnect`` objects
+  whose *length* argument is ``rfu->int_regfile_height + exeu->FU_height + lsq_height``, plus
+  ``scheu->Iw_height`` for the tag bus. ``RegFU``'s own comment (~core.cc:989) says it plainly:
+  *"the bypass buses need to travel across all the register files."* The area is real silicon --
+  wire tracks -- distributed across the execution cluster by construction.
+* ``core.cc:1265`` folds that area into the Execution Unit's own: ``area.set_area(area.get_area()
+  + bypass.area.get_area())``. "Area Overhead" means *itemised, and already inside the parent*.
+
+The tiler nonetheless renders it as a discrete 142 x 13 um rectangle and hands it the bus's full
+power. That is a real power number on a fictitious footprint, and it is the hottest block on every
 die this project has simulated.
+
+`[!]` And the tiler is not wrong by accident. ``examples/floorplans.py``'s
+``# Make RBB Area instead of Area Overhead`` is **stock** HotGauge, present in the initial commit,
+and Fig. 5 of the paper shows RBB as a block. Changing it is a deliberate divergence from
+upstream, not a bug fix, which is why it ships as an opt-in policy rather than a new default.
 
 What that does at density
 -------------------------
@@ -22,27 +43,32 @@ ITERATION ONE. The die then has no steady state, so every question asked at that
 "diverged" regardless of what else was varied. That is why sweeping dt_max over 6.7x and h_max over
 120x changed nothing: the outcome was decided before either mattered.
 
-The fix, and why it is the honest one
--------------------------------------
-Amortize the bus into the units it actually spans, which is what "Area Overhead" already means.
-Three ways to do it, in descending order of principle:
+The fix
+-------
+Amortize the bus into the units it spans, which is what "Area Overhead" already means. Three ways
+were costed, in descending order of principle:
 
  1. **Redistribute its power** across the execution-unit blocks in proportion to their area, and
-    stop placing RBB as a block. This matches the published semantics exactly and needs no new
-    assumption.
- 2. **Give it a real footprint** -- the span of the execution units it serves -- and keep its
-    power. Arithmetically close to (1); differs only in whether the bus appears as a named block.
- 3. **Cap block power density** at a physical ceiling. A guard, not a fix: it stops the runaway
-    without making the number right, and would silently alter every existing result.
+    stop giving RBB power. Matches the published semantics exactly; needs no new assumption.
+ 2. **Give it a real footprint** -- the span of the units it serves. Arithmetically close to (1),
+    but the tiler places disjoint rectangles and this bus overlaps its siblings by construction,
+    so it cannot be expressed. **Not implementable here.**
+ 3. **Cap block power density.** A guard, not a fix: it stops the runaway without making the
+    number right, and would silently alter every existing result.
 
-This file quantifies (1) against the current placement so the size of the change is on record
-before anyone edits the tiler.
+**(1) has now landed** as ``HotGauge.thermal.rbb`` -- ``--rbb-policy {stock,amortized}``,
+defaulting to ``stock`` so an un-flagged re-run reproduces the recorded catalogue. The RBB
+rectangle stays in the floorplan at zero power: it stands for wire tracks that are real silicon
+but physically elsewhere, so deleting it would shrink the die while re-tiling to grow its
+neighbours would move every block and make the two policies incomparable. Power moves; geometry
+does not.
 
-`[!]` What this is not
------------------------
-Not the fix itself. Changing how RBB is placed alters every recorded thermal result in the
-project, so it needs to land as a deliberate, tested change with the catalogue re-run behind it --
-not as a side effect of an overnight investigation. This measures what that change is worth.
+What this file still does
+-------------------------
+Sizes the change on the shipped floorplan, so the decision rests on a number. The recipient set
+comes from ``rbb.rbb_recipients`` rather than a local list -- `[!]` the original list here named
+``regs`` and ``iSched``, which this floorplan *subdivides*, so it silently excluded the scheduler
+blocks the tag bus explicitly spans and counted 204 recipients where the floorplan has 272.
 """
 import os
 import sys
@@ -56,9 +82,7 @@ sys.path.insert(0, os.path.join(_REPO, 'HotGauge'))
 
 from HotGauge.utils.floorplan import Floorplan
 from HotGauge.thermal.mr_array import blocks_from_floorplan
-
-#: the execution-unit blocks a results-broadcast bus physically spans
-EU_BLOCKS = ('cALU', 'iALU', 'FPUs', 'AVXs', 'regs', 'iRF', 'fpRF', 'iSched')
+from HotGauge.thermal.rbb import rbb_recipients
 
 
 def main():
@@ -79,7 +103,7 @@ def main():
     area = {n: v[2] * v[3] / 1e6 for n, v in b.items()}          # mm^2
     die_mm2 = sum(area.values())
     rbb = {n: a for n, a in area.items() if n.startswith('RBB')}
-    eu = {n: a for n, a in area.items() if n.split('_')[0] in EU_BLOCKS}
+    eu = {b: a for blocks in rbb_recipients(area).values() for b, a in blocks.items()}
 
     rbb_area = sum(rbb.values())
     eu_area = sum(eu.values())
@@ -99,9 +123,10 @@ def main():
     print('  density if amortized over the EUs   %.3f W/mm^2' % q_amortized)
     print('  ratio                               %.0fx' % (q_now / q_amortized))
     print()
-    print('  real silicon blocks on this die sit at 1-3 W/mm^2, so the placed value is')
-    print('  %.0f-%.0fx physical and the amortized value is inside the normal range.'
-          % (q_now / 3.0, q_now / 1.0))
+    print('  `[!]` The ratio is the size of the change, NOT an argument that the placed value')
+    print('  is unphysical: block p90 on this die is 13.2 W/mm^2 and p99 is 64.4, so %.0f'
+          % q_now)
+    print('  sits inside the measured distribution. The case rests on the area semantics.')
 
     out = {'note': __doc__.strip(),
            'floorplan': os.path.basename(args.flp), 'die_mm2': die_mm2,
@@ -113,13 +138,22 @@ def main():
                                'share_of_die': eu_area / die_mm2},
            'amortized_density_W_per_mm2': q_amortized,
            'density_ratio': q_now / q_amortized,
-           'THE_MISMATCH_IS_THE_WHOLE_PROBLEM': (
+           'THE_MISMATCH': (
                'The bus carries {:.2f} W on {:.4f} mm^2 because McPAT published an AREA OVERHEAD '
-               'and the tiler treated it as a footprint. That is {:.0f} W/mm^2, against 1-3 for '
-               'real blocks on the same die. Amortized over the {:.2f} mm^2 of execution units the '
-               'bus actually spans, the same power is {:.3f} W/mm^2 -- inside the normal range, and '
-               'a factor of {:.0f} lower.'
+               'and the tiler treated it as a footprint. That is {:.0f} W/mm^2; amortized over '
+               'the {:.2f} mm^2 of execution units the bus spans it is {:.3f} W/mm^2, a factor '
+               'of {:.0f} lower. `[!]` That ratio is the SIZE of the change and nothing more. It '
+               'is NOT evidence the placed value is unphysical -- block p90 on this die is 13.2 '
+               'W/mm^2 and p99 is 64.4, so the placed value sits inside the measured '
+               'distribution. The earlier "real blocks are 1-3 W/mm^2" claim is WITHDRAWN.'
                .format(rbb_W, rbb_area, q_now, eu_area, q_amortized, q_now / q_amortized)),
+           'WHY_THE_FOOTPRINT_IS_FICTITIOUS': (
+               'Not density -- geometry. McPAT builds the bus from interconnect wires whose '
+               'length spans the register file, the functional units and the LSQ (core.cc '
+               '~1150-1259; RegFU comment at ~989: "the bypass buses need to travel across all '
+               'the register files"), and folds their area into the Execution Unit at '
+               'core.cc:1265. An Area Overhead is itemised and already inside its parent. The '
+               'compact rectangle the tiler gives it is not where that copper is.'),
            'WHY_IT_GATES': (
                'Leakage feedback is exponential in temperature, so the hottest block decides '
                'whether the solve converges. RBB is the hottest block on every die here. Past '
@@ -129,15 +163,28 @@ def main():
                'which is why dt_max over 6.7x and h_max over 120x had no effect.'),
            'THE_FIX': (
                'Redistribute the bus power across the execution-unit blocks in proportion to '
-               'area, and stop placing RBB as a block. That is what "Area Overhead" already means '
-               'and it needs no new assumption. Alternatives: give it the real span of the units '
-               'it serves (arithmetically close), or cap block power density (a guard, not a fix, '
-               'and it would silently alter every existing result).'),
-           'WHY_THIS_FILE_DOES_NOT_DO_IT': (
-               'Changing RBB placement alters every recorded thermal result in the project. It '
-               'should land as a deliberate, tested change with the catalogue re-run behind it, '
-               'not as a side effect of an overnight investigation. This measures what the change '
-               'is worth so the decision can be made on a number.'),
+               'area, and stop giving RBB power. That is what "Area Overhead" already means and '
+               'it needs no new assumption. Giving it the real span instead is arithmetically '
+               'close but not implementable -- the tiler places disjoint rectangles and this bus '
+               'overlaps its siblings by construction. Capping block power density is a guard, '
+               'not a fix.'),
+           'STATUS': (
+               'LANDED 31 Aug 2026 as HotGauge.thermal.rbb: --rbb-policy {stock,amortized}, '
+               'default stock so an un-flagged re-run reproduces the recorded catalogue. The RBB '
+               'rectangle stays in the floorplan at zero power. Bracketed against stock on the '
+               'same density ladder before any catalogue re-run: results/rbb_bracket.'),
+           'RECIPIENT_SET_CORRECTED': (
+               'This file previously named regs and iSched as recipients. The shipped tiler '
+               'SUBDIVIDES both, so neither is ever placed -- the set silently excluded iWin, '
+               'fpiWin and ROB, the scheduler blocks the tag bus explicitly spans, and counted '
+               '204 recipient blocks where the floorplan has 272. It now takes the set from '
+               'rbb.rbb_recipients, which also drops AVXs: this pipeline forces AVXs to zero '
+               'power, so anything routed there would be destroyed downstream.'),
+           'WHY_IT_IS_A_POLICY_AND_NOT_A_DEFAULT': (
+               'examples/floorplans.py\'s "Make RBB Area instead of Area Overhead" is STOCK '
+               'HotGauge, present in the initial commit, and Fig. 5 of the paper shows RBB as a '
+               'block. Amortizing is a deliberate divergence from upstream, not a bug fix, so '
+               'stock stays the default and the alternative is opt-in and stamped on every row.'),
            }
     with open(args.json_out, 'w') as f:
         json.dump(out, f, indent=1)

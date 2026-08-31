@@ -1,0 +1,304 @@
+{
+ "note": "Test 6d: the AIMED rescue -- charging the array only for the hotspot, as the limit binds.\n\n    python examples/aimed_vs_bulk_rescue.py\n\nTest 6c priced the rescue with the array charged as though it lifted bulk die power, and said so:\nevery crossover it reported was conservative for the laser. This is the case it deliberately did\nnot run.\n\nReal thermal limits do not bind on a die average. They bind on one block, and every bulk\nmechanism -- more airflow, a colder coolant -- has to drag the WHOLE die down to move that one\nblock. The array does not. That asymmetry is the entire physical case for photonic cooling, and\nit is the one thing in this comparison that liquid cannot buy at any price.\n\nThe comparison is therefore not watts against watts but KELVIN OF PEAK REDUCTION PER ELECTRICAL\nWATT, because that is what a thermal limit actually spends:\n\n  * ARRAY. Measured, through the coupled solve, in tile_pitch_{concentrated,uniform}.json. On a\n    concentrated hotspot the efficacy rises from 0.977 K/W at 2000 um pitch to 1.855 K/W per\n    block -- and on a UNIFORM die it is flat at ~0.67 K/W and fine pitch buys nothing at all.\n    That contrast is the measurement that matters here: granularity pays 2.77x on a hotspot and\n    zero on a flat die.\n\n  * CHILLER. Analytic, and optimistic throughout. Efficacy is eta_2 * (T_a - dT) / P_die, which\n    FALLS as the rescue deepens, because the machine doing the work gets worse exactly as it is\n    asked for more.\n\n  * MORE AIRFLOW. Analytic, from the affinity laws in Test 6c. Falls fastest of the three.\n\n`[!]` What this is not\n-----------------------\nThe array efficacies are measured on ONE concentrated shape (--concentrate 4.0 on L3_4, 100 W\ndie, 3 W array budget, 200 um burial) and one uniform shape. They are not a general law: the\nregression file records efficiencies from 2.23 to 10.77 K/W across shapes, so the 1.855 used\nhere is a mid-range concentrated value and not the ceiling. The chiller and fan curves are\nclosed-form and are not solved.\n\nBoth electrical conversions come from the measured rescue: 1.735 W in per W lifted, or 0.945 W/W\nonce the leakage the rescue itself saves is credited. Where the leakage credit is used it is\nlabelled, because it is a real term that no earlier ledger counted and it is worth roughly a\nfactor of two.",
+ "saturation_check": [
+  {
+   "case": "tile_pitch_concentrated_50um",
+   "budget_W": 3.0,
+   "peak_drop_K": 5.5610000000000355,
+   "K_per_W_lifted": 1.8536666666666786
+  },
+  {
+   "case": "34core_d1.10",
+   "budget_W": 26.836097826047606,
+   "peak_drop_K": 4.4600830078125,
+   "K_per_W_lifted": 0.16619715119250542
+  },
+  {
+   "case": "34core_d1.15",
+   "budget_W": 42.05155402789617,
+   "peak_drop_K": 43.1802978515625,
+   "K_per_W_lifted": 1.0268419051271576
+  },
+  {
+   "case": "34core_d1.18",
+   "budget_W": 44.86315336408711,
+   "peak_drop_K": 39.854339599609375,
+   "K_per_W_lifted": 0.8883535064102899
+  }
+ ],
+ "saturation_fade_factor": 1.8052113547480635,
+ "SATURATION_IS_THE_REAL_LIMIT_ON_THE_AIMED_CASE": "The 1.855 K/W headline is measured at a 3 W array budget. At the 42 W budget the measured 34-core rescue actually needed, efficacy is 1.027 K/W -- a 1.81x fade -- because the local region saturates and the array is forced outward into cooler tiles. At that budget the aimed array gives 0.415 K per electrical watt gross against the chiller's 1.032 at 42 K, so it LOSES gross and leads only once the leakage credit is counted (0.610). The aimed advantage is therefore real but it decays with the size of the rescue, and it decays fastest exactly where the rescue is largest. Two different dies and shapes are being compared here, so this is an indication of the trend rather than a clean scaling law -- a budget sweep on ONE shape is the measurement that would settle it.",
+ "inputs_are_measured_from": [
+  "docs/evidence/tile_pitch_concentrated.json",
+  "docs/evidence/tile_pitch_uniform.json",
+  "docs/evidence/rescue_measured_anchor.json"
+ ],
+ "die_W": 100.0,
+ "ambient_K": 300.0,
+ "eta_chiller_2nd": 0.4,
+ "W_elec_per_W_lifted": 2.4728,
+ "W_elec_per_W_lifted_net_leakage": 1.6833,
+ "measured_efficacy": {
+  "concentrated": {
+   "base_peak_C": 113.45700000000005,
+   "die_W": 100.0,
+   "mr_W": 3.0,
+   "burial_um": 200.0,
+   "rows": [
+    {
+     "label": "2000",
+     "pitch_um": 2000.0,
+     "K_per_W_lifted": 0.9770000000000133,
+     "collateral_area_ratio": 12.38136617955514,
+     "n_engaged": 2
+    },
+    {
+     "label": "1000",
+     "pitch_um": 1000.0,
+     "K_per_W_lifted": 1.4183333333333508,
+     "collateral_area_ratio": 4.696380275003674,
+     "n_engaged": 3
+    },
+    {
+     "label": "500",
+     "pitch_um": 500.0,
+     "K_per_W_lifted": 1.7353333333333392,
+     "collateral_area_ratio": 2.205875583713847,
+     "n_engaged": 6
+    },
+    {
+     "label": "200",
+     "pitch_um": 200.0,
+     "K_per_W_lifted": 1.8263333333333474,
+     "collateral_area_ratio": 1.6793117346982835,
+     "n_engaged": 45
+    },
+    {
+     "label": "100",
+     "pitch_um": 100.0,
+     "K_per_W_lifted": 1.8420000000000034,
+     "collateral_area_ratio": 0.8254244119703427,
+     "n_engaged": 90
+    },
+    {
+     "label": "50",
+     "pitch_um": 50.0,
+     "K_per_W_lifted": 1.8536666666666786,
+     "collateral_area_ratio": 0.0,
+     "n_engaged": 354
+    },
+    {
+     "label": "per-block",
+     "pitch_um": 0.0,
+     "K_per_W_lifted": 1.8550000000000182,
+     "collateral_area_ratio": 5.46843672930352,
+     "n_engaged": 5
+    }
+   ]
+  },
+  "uniform": {
+   "base_peak_C": 80.35500000000002,
+   "die_W": 100.0,
+   "mr_W": 3.0,
+   "burial_um": 200.0,
+   "rows": [
+    {
+     "label": "2000",
+     "pitch_um": 2000.0,
+     "K_per_W_lifted": 0.9776666666666642,
+     "collateral_area_ratio": 12.38136617955514,
+     "n_engaged": 2
+    },
+    {
+     "label": "1000",
+     "pitch_um": 1000.0,
+     "K_per_W_lifted": 0.7223333333333244,
+     "collateral_area_ratio": 4.696380275003674,
+     "n_engaged": 3
+    },
+    {
+     "label": "500",
+     "pitch_um": 500.0,
+     "K_per_W_lifted": 0.665333333333327,
+     "collateral_area_ratio": 2.205875583713847,
+     "n_engaged": 6
+    },
+    {
+     "label": "200",
+     "pitch_um": 200.0,
+     "K_per_W_lifted": 0.6686666666666573,
+     "collateral_area_ratio": 1.6793117346982835,
+     "n_engaged": 45
+    },
+    {
+     "label": "100",
+     "pitch_um": 100.0,
+     "K_per_W_lifted": 0.6709999999999923,
+     "collateral_area_ratio": 0.8254244119703427,
+     "n_engaged": 90
+    },
+    {
+     "label": "50",
+     "pitch_um": 50.0,
+     "K_per_W_lifted": 0.6703333333333225,
+     "collateral_area_ratio": 0.0,
+     "n_engaged": 354
+    },
+    {
+     "label": "per-block",
+     "pitch_um": 0.0,
+     "K_per_W_lifted": 0.674666666666667,
+     "collateral_area_ratio": 5.46843672930352,
+     "n_engaged": 5
+    }
+   ]
+  }
+ },
+ "granularity_value": [
+  {
+   "pitch_um": 2000.0,
+   "concentrated_K_per_W": 0.9770000000000133,
+   "uniform_K_per_W": 0.9776666666666642,
+   "ratio": 0.9993181043300536
+  },
+  {
+   "pitch_um": 1000.0,
+   "concentrated_K_per_W": 1.4183333333333508,
+   "uniform_K_per_W": 0.7223333333333244,
+   "ratio": 1.9635440701431033
+  },
+  {
+   "pitch_um": 500.0,
+   "concentrated_K_per_W": 1.7353333333333392,
+   "uniform_K_per_W": 0.665333333333327,
+   "ratio": 2.608216432865765
+  },
+  {
+   "pitch_um": 200.0,
+   "concentrated_K_per_W": 1.8263333333333474,
+   "uniform_K_per_W": 0.6686666666666573,
+   "ratio": 2.731306081754795
+  },
+  {
+   "pitch_um": 100.0,
+   "concentrated_K_per_W": 1.8420000000000034,
+   "uniform_K_per_W": 0.6709999999999923,
+   "ratio": 2.7451564828614377
+  },
+  {
+   "pitch_um": 50.0,
+   "concentrated_K_per_W": 1.8536666666666786,
+   "uniform_K_per_W": 0.6703333333333225,
+   "ratio": 2.765290900049789
+  }
+ ],
+ "efficacy_vs_depth": [
+  {
+   "depth_K": 10,
+   "chiller_K_per_W": 1.16,
+   "fan_K_per_W": 0.05403192009179634,
+   "aimed_array_K_per_W": 0.7501617599482442,
+   "aimed_array_net_leakage_K_per_W": 1.1020020198419878,
+   "uniform_array_K_per_W": 0.39536827348215153,
+   "winner": "chiller",
+   "array_beats_chiller": false,
+   "array_net_beats_chiller": false
+  },
+  {
+   "depth_K": 20,
+   "chiller_K_per_W": 1.12,
+   "fan_K_per_W": 0.004850270218254396,
+   "aimed_array_K_per_W": 0.7501617599482442,
+   "aimed_array_net_leakage_K_per_W": 1.1020020198419878,
+   "uniform_array_K_per_W": 0.39536827348215153,
+   "winner": "chiller",
+   "array_beats_chiller": false,
+   "array_net_beats_chiller": false
+  },
+  {
+   "depth_K": 30,
+   "chiller_K_per_W": 1.08,
+   "fan_K_per_W": 0.0,
+   "aimed_array_K_per_W": 0.7501617599482442,
+   "aimed_array_net_leakage_K_per_W": 1.1020020198419878,
+   "uniform_array_K_per_W": 0.39536827348215153,
+   "winner": "chiller",
+   "array_beats_chiller": false,
+   "array_net_beats_chiller": true
+  },
+  {
+   "depth_K": 42,
+   "chiller_K_per_W": 1.032,
+   "fan_K_per_W": 0.0,
+   "aimed_array_K_per_W": 0.7501617599482442,
+   "aimed_array_net_leakage_K_per_W": 1.1020020198419878,
+   "uniform_array_K_per_W": 0.39536827348215153,
+   "winner": "chiller",
+   "array_beats_chiller": false,
+   "array_net_beats_chiller": true
+  },
+  {
+   "depth_K": 60,
+   "chiller_K_per_W": 0.96,
+   "fan_K_per_W": 0.0,
+   "aimed_array_K_per_W": 0.7501617599482442,
+   "aimed_array_net_leakage_K_per_W": 1.1020020198419878,
+   "uniform_array_K_per_W": 0.39536827348215153,
+   "winner": "chiller",
+   "array_beats_chiller": false,
+   "array_net_beats_chiller": true
+  },
+  {
+   "depth_K": 80,
+   "chiller_K_per_W": 0.88,
+   "fan_K_per_W": 0.0,
+   "aimed_array_K_per_W": 0.7501617599482442,
+   "aimed_array_net_leakage_K_per_W": 1.1020020198419878,
+   "uniform_array_K_per_W": 0.39536827348215153,
+   "winner": "chiller",
+   "array_beats_chiller": false,
+   "array_net_beats_chiller": true
+  },
+  {
+   "depth_K": 100,
+   "chiller_K_per_W": 0.8,
+   "fan_K_per_W": 0.0,
+   "aimed_array_K_per_W": 0.7501617599482442,
+   "aimed_array_net_leakage_K_per_W": 1.1020020198419878,
+   "uniform_array_K_per_W": 0.39536827348215153,
+   "winner": "chiller",
+   "array_beats_chiller": false,
+   "array_net_beats_chiller": true
+  },
+  {
+   "depth_K": 120,
+   "chiller_K_per_W": 0.72,
+   "fan_K_per_W": 0.0,
+   "aimed_array_K_per_W": 0.7501617599482442,
+   "aimed_array_net_leakage_K_per_W": 1.1020020198419878,
+   "uniform_array_K_per_W": 0.39536827348215153,
+   "winner": "aimed array",
+   "array_beats_chiller": true,
+   "array_net_beats_chiller": true
+  },
+  {
+   "depth_K": 150,
+   "chiller_K_per_W": 0.6,
+   "fan_K_per_W": 0.0,
+   "aimed_array_K_per_W": 0.7501617599482442,
+   "aimed_array_net_leakage_K_per_W": 1.1020020198419878,
+   "uniform_array_K_per_W": 0.39536827348215153,
+   "winner": "aimed array",
+   "array_beats_chiller": true,
+   "array_net_beats_chiller": true
+  }
+ ],
+ "crossover_depth_K": {
+  "aimed_gross": 112.5,
+  "aimed_net_of_leakage": 24.5,
+  "uniform_shape": 201.5
+ },
+ "GRANULARITY_IS_WORTH_NOTHING_ON_A_FLAT_DIE": "Going from 2000 um to 50 um pitch is worth 1.90x on a concentrated hotspot and 0.69x on a uniform die -- that is, nothing. Fine pitch is not a general good; it is the mechanism by which an array converts SPATIAL structure into efficacy, and a die without spatial structure has none to convert. This also means array value cannot be quoted per-die: it is a property of the workload and floorplan, and the same hardware is worth 1.90x more on one shape than another.",
+ "THE_AIMED_CASE_IS_THE_ONLY_ONE_THE_ARRAY_WINS": "Charged for bulk die power (Test 6c) the array needed ~100 K of chill depth before it beat a chiller. Charged only for the hotspot, as a real limit binds, it delivers 0.750 K per electrical watt against the chiller's 1.032 at 42 K -- so it leads from 112.5 K of depth, and from 24.5 K once the leakage credit is counted. On a uniform shape it manages 0.395 K/W and the ordering reverses. The array's case is therefore not \"cheaper cooling\" but \"the only mechanism that can be aimed\", and it is worth having exactly and only where the die is hotspot-limited.",
+ "WHAT_WOULD_FALSIFY_THIS": "The efficacy ladder is one concentrated shape and one uniform shape, at one burial depth and one 3 W budget. The saturation check above already shows the fade is real and large, but it compares two different dies. A budget sweep on a SINGLE shape, from 1 W to the 45 W a real rescue needs, is the measurement that would settle how much of the aimed advantage survives at scale. Until it is run, the aimed case should be quoted at the large-budget efficacy, not the small-budget one."
+}

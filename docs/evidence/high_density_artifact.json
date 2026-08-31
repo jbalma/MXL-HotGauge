@@ -1,0 +1,30 @@
+{
+ "note": "Why every high-density run diverged, and why no envelope parameter changed it. The failures are\na MODELLING artifact, not a cooling result, and the solver says so in its own log.",
+ "runaway_blocks": {
+  "core_other_0": {
+   "n_events": 128,
+   "max_K": 17380.8,
+   "min_K": 1039.8
+  }
+ },
+ "oversized_plans": {
+  "n": 22,
+  "max_ratio_x": 849,
+  "example": {
+   "wanted_W": 11605.4,
+   "die_W": 241.2,
+   "ratio": 48
+  }
+ },
+ "core_other_geometry": {
+  "blocks": 34,
+  "area_each_mm2": 0.4662,
+  "area_total_mm2": 15.85,
+  "share_of_die": 0.1568,
+  "rank_by_area": "2nd largest class, after L2"
+ },
+ "THE_BLOCK_THAT_RUNS_AWAY_IS_AN_ACCOUNTING_ENTRY": "Every high-density divergence begins with 'core_other_0' reaching thousands of kelvin -- 7703 K in the worst case, against a 1000 K guard. core_other is the UNALLOCATED slab: power the model could not attribute to a named unit, given an area and placed on the die. It is 15.68 % of the die here, the second-largest block class after L2, where a real core carries about 1.35 % unallocated. It is not silicon. A runaway there is an artifact of where unattributed power was put, and it gates every question about what the array can do at density.",
+ "AND_THE_PLAN_IS_THEN_SIZED_FROM_THAT_FIELD": "With the baseline field diverged, the planner sizes against an untrustworthy sensitivity and asks for up to 849x the die power before being scaled back to nothing. The code prints \"treat the result as suspect rather than merely trimmed\" -- this is defect 1 of MR_RESCUE_COST.md recurring, whose documented fix is plan_mode=envelope. The auto default did not select it.",
+ "WHAT_THIS_INVALIDATES": "The conclusion that dt_max and h_max do not gate the high-density case was drawn from these runs and is WITHDRAWN: sweeping an envelope parameter cannot matter when the plan is sized from a field in which an artifact block sits at 7703 K. So is any statement that the array \"gives out\" at 2.0-2.4 W/mm^2. The re-run with plan_mode=envelope is what those questions have to be answered from.",
+ "AND_A_THIRD_PROBLEM_UNDERNEATH": "These points also run the leakage model above its calibrated range -- top measured 400 K, seen to 450.7 K -- where the code warns Arrhenius and local-exponential fits differ by ~2.5x. Even with a sound plan, high-density results sit partly outside the leakage calibration, which is the same PTM SPICE gap already identified as the highest-value open item."
+}

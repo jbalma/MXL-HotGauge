@@ -1,0 +1,111 @@
+{
+  "note": "The THIRD phase-1 metric, built 27 Aug 2026 to predict the saturation split the workload regression exposed and nothing then computed could see. No new solves -- the eleven temperature fields were already on disk.",
+  "the_split_it_explains": "Efficiency retained as demanded margin grows 3 K -> 8 K divides the eleven shapes almost binarily: six retain 97.7-100%, five retain 37.4-53.5%, nothing between. It is NOT ordered by plateau width -- turbo (plateau 15) and turbo_idle (19) retain ~98% while fpu4 (12) collapses to 43%.",
+  "definition": "hot_region_depth(temps, fraction=0.05): the temperature drop from the peak to the coolest of the hottest `fraction` of blocks. A share of blocks, not a count, so it transfers across floorplans with different block counts.",
+  "measured_at_fraction_0.05": {
+    "fpu2": {
+      "depth_K": 10.08,
+      "retained": 0.453
+    },
+    "fpu3": {
+      "depth_K": 12.14,
+      "retained": 0.449
+    },
+    "fpu4": {
+      "depth_K": 13.98,
+      "retained": 0.433
+    },
+    "g4_mixed25": {
+      "depth_K": 23.49,
+      "retained": 1.0
+    },
+    "g4_turbo": {
+      "depth_K": 30.35,
+      "retained": 0.998
+    },
+    "g4_turbo_idle": {
+      "depth_K": 33.04,
+      "retained": 1.0
+    },
+    "mixed25": {
+      "depth_K": 19.5,
+      "retained": 0.985
+    },
+    "mixed50": {
+      "depth_K": 12.68,
+      "retained": 0.535
+    },
+    "turbo": {
+      "depth_K": 23.55,
+      "retained": 0.981
+    },
+    "turbo_idle": {
+      "depth_K": 26.53,
+      "retained": 0.977
+    },
+    "uniform": {
+      "depth_K": 11.95,
+      "retained": 0.374
+    }
+  },
+  "separation": {
+    "degrades_group_K": [
+      10.08,
+      13.98
+    ],
+    "holds_group_K": [
+      19.5,
+      33.04
+    ],
+    "gap_K": 5.52,
+    "spearman_vs_retained": 0.8
+  },
+  "against_the_existing_metrics": "Neither separates the split at all. relative_plateau_25pct overlaps by 30 blocks IN THE WRONG DIRECTION (rho -0.647); peak_to_runner_up_gap_K overlaps by 1.8 K and is not significant (rho +0.391, p 0.23). The gap cannot see it because it looks at the top TWO blocks; the plateau cannot because it counts blocks rather than measuring how fast temperature falls.",
+  "mechanism": "As the demanded margin grows the plan must reach further down the distribution. Where temperature falls away steeply below the top few per cent there is a well-defined hot group and cooling stays efficient. Where it falls away shallowly the plan meets an ever-widening set of near-peak blocks and efficiency collapses.",
+  "robustness": {
+    "note": "the split survives cleanly from fraction 0.02 to 0.20, so 0.05 is not delicate",
+    "sweep": {
+      "0.01": {
+        "group_gap_K": -2.996,
+        "rho": 0.709,
+        "separates": false
+      },
+      "0.02": {
+        "group_gap_K": 0.253,
+        "rho": 0.9,
+        "separates": true
+      },
+      "0.03": {
+        "group_gap_K": 4.391,
+        "rho": 0.864,
+        "separates": true
+      },
+      "0.05": {
+        "group_gap_K": 5.523,
+        "rho": 0.8,
+        "separates": true
+      },
+      "0.08": {
+        "group_gap_K": 6.772,
+        "rho": 0.8,
+        "separates": true
+      },
+      "0.1": {
+        "group_gap_K": 6.248,
+        "rho": 0.827,
+        "separates": true
+      },
+      "0.15": {
+        "group_gap_K": 6.785,
+        "rho": 0.827,
+        "separates": true
+      },
+      "0.2": {
+        "group_gap_K": 7.927,
+        "rho": 0.9,
+        "separates": true
+      }
+    }
+  },
+  "status": "Validated on ELEVEN WORKLOADS, one floorplan. It has NOT been tested across floorplans -- the constant-power sweep left only two convergent dies, too few to regress. That is the next test, and it is the same transfer question relative_plateau has already passed."
+}

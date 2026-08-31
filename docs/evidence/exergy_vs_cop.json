@@ -1,0 +1,117 @@
+{
+ "note": "Re-score the four extraction strategies on recovered exergy instead of peak reduction.\n\n    python examples/exergy_vs_cop.py\n\n``docs/evidence/die_average_strategies.json`` ranked four spatial strategies -- hotspot, top5,\nproportional, uniform -- by **kelvin of peak reduction per watt removed**, and top5 won at\n1.119 K/W. That is the right score when the objective is holding a thermal limit.\n\nUnder the power-recovery framing the extracted heat is also a *resource*: heat lifted at ``T_h``\ncarries exergy ``phi(T_h) = 1 - T_0/T_h``, so a watt removed from a hot block is worth more than a\nwatt removed from a cold one. This re-scores the same four strategies on that axis and asks\nwhether the ranking inverts -- which would make this a genuine multi-objective frontier rather\nthan one objective with a second read-out.\n\nComputed from the FIELD, not the summary\n-----------------------------------------\nThe strategy definitions are applied to the 1126 measured block temperatures in\n``results/isa_fields/*/tiers.json`` rather than inferred from the recorded peak and mean, so the\nexergy integral ``sum phi(T_i) q_i`` is exact for each allocation instead of being approximated by\na single die temperature. Test 3 measured that collapsing a die to one temperature costs only\n~0.4% on the die integral -- but the *difference between strategies* lives in the peak-to-mean\nspread, which is exactly what a single temperature throws away, so it has to be done per block.",
+ "field": "/mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/isa_fields/x86_skylake/tiers.json",
+ "T0_K": 295.0,
+ "peak_K": 341.72015380859375,
+ "mean_K": 319.7399717232685,
+ "phi_peak": 0.13672051030025845,
+ "phi_mean": 0.07737528589225218,
+ "rows": [
+  {
+   "strategy": "hotspot",
+   "budget_W": 3.0,
+   "exergy_W": 0.41016153090077534,
+   "exergy_per_W": 0.13672051030025845,
+   "n_blocks": 1,
+   "vs_uniform": 0.7724057590519147
+  },
+  {
+   "strategy": "top5",
+   "budget_W": 3.0,
+   "exergy_W": 0.3937725157671838,
+   "exergy_per_W": 0.13125750525572794,
+   "n_blocks": 5,
+   "vs_uniform": 0.7015849174576947
+  },
+  {
+   "strategy": "proportional",
+   "budget_W": 3.0,
+   "exergy_W": 0.3028492889538727,
+   "exergy_per_W": 0.10094976298462423,
+   "n_blocks": 458,
+   "vs_uniform": 0.30868397796300173
+  },
+  {
+   "strategy": "uniform",
+   "budget_W": 3.0,
+   "exergy_W": 0.23141514227542154,
+   "exergy_per_W": 0.07713838075847385,
+   "n_blocks": 1126,
+   "vs_uniform": 0.0
+  },
+  {
+   "strategy": "hotspot",
+   "budget_W": 10.0,
+   "exergy_W": 1.3672051030025845,
+   "exergy_per_W": 0.13672051030025845,
+   "n_blocks": 1,
+   "vs_uniform": 0.7724057590519169
+  },
+  {
+   "strategy": "top5",
+   "budget_W": 10.0,
+   "exergy_W": 1.3125750525572795,
+   "exergy_per_W": 0.13125750525572794,
+   "n_blocks": 5,
+   "vs_uniform": 0.7015849174576967
+  },
+  {
+   "strategy": "proportional",
+   "budget_W": 10.0,
+   "exergy_W": 1.0094976298462421,
+   "exergy_per_W": 0.10094976298462421,
+   "n_blocks": 458,
+   "vs_uniform": 0.3086839779630033
+  },
+  {
+   "strategy": "uniform",
+   "budget_W": 10.0,
+   "exergy_W": 0.7713838075847375,
+   "exergy_per_W": 0.07713838075847375,
+   "n_blocks": 1126,
+   "vs_uniform": 0.0
+  },
+  {
+   "strategy": "hotspot",
+   "budget_W": 30.0,
+   "exergy_W": 4.101615309007753,
+   "exergy_per_W": 0.13672051030025845,
+   "n_blocks": 1,
+   "vs_uniform": 0.7724057590519167
+  },
+  {
+   "strategy": "top5",
+   "budget_W": 30.0,
+   "exergy_W": 3.9377251576718386,
+   "exergy_per_W": 0.13125750525572796,
+   "n_blocks": 5,
+   "vs_uniform": 0.7015849174576967
+  },
+  {
+   "strategy": "proportional",
+   "budget_W": 30.0,
+   "exergy_W": 3.0284928895387315,
+   "exergy_per_W": 0.10094976298462438,
+   "n_blocks": 458,
+   "vs_uniform": 0.3086839779630053
+  },
+  {
+   "strategy": "uniform",
+   "budget_W": 30.0,
+   "exergy_W": 2.314151422754213,
+   "exergy_per_W": 0.07713838075847376,
+   "n_blocks": 1126,
+   "vs_uniform": 0.0
+  }
+ ],
+ "exergy_ranking_best_first": [
+  "hotspot",
+  "top5",
+  "proportional",
+  "uniform"
+ ],
+ "recorded_cop_ranking": "top5 best at 1.119 K/W (die_average_strategies.json)",
+ "verdict": "A NARROW FRONTIER, and it is real. The two objectives share a DIRECTION -- both reward concentrating removal on the hottest blocks -- but they pick different winners: peak reduction favours top5 (1.119 K/W against hotspot 0.665), while exergy favours hotspot . The trade is lopsided: top5 buys ~68% more peak reduction, hotspot buys only ~4% more exergy, so on current dies the thermal objective should still decide and exergy should break ties. What makes exergy worth carrying at all is its SIZE: a watt removed at the peak is worth 76.7% more than one removed at the die average. A frontier wide enough to change decisions needs the large gradients Section 10.8 proposes -- which is exactly what thermal_zones.py says a monolithic die cannot hold.",
+ "cop_best": "top5",
+ "exergy_best": "hotspot"
+}

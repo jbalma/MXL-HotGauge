@@ -1,0 +1,199 @@
+{
+  "note": "A defect that silently zeroed the MR arm of EVERY clock study in the project, found 27 Aug 2026 while harvesting the leak_v_exponent runs. The SYMPTOM is established and reproducible; the MECHANISM stated in the first version of this file was WRONG and is corrected below. The pre-fix numbers are recorded because they are on disk across the catalogue and they look like measurements.",
+  "symptom": "9 of 10 array_on rows in the catalogue report f_sustainable_GHz = 2.0000 -- exactly the value of --f-lo, the bottom of the search bracket -- with limited_by = 'unverified'. The single exception uses --mr-mode distributed, which bypasses run_mr_clipping entirely.",
+  "mechanism": "SUPERSEDED -- see CORRECTION_27_Aug_2026. The text below is the first, wrong diagnosis, kept so the reasoning can be audited: clock_headroom's solve wrapper accumulates state['unconverged'] over EVERY solve the MR loop makes. The MR envelope descent deliberately probes past the stability boundary to bracket its answer, so for an MR point that counter is essentially always non-zero. is_sustainable() treats unconverged as NOT sustainable -- correctly, since 'we could not tell' must not become 'yes' -- so every candidate clock was rejected as 'unverified' and the bisection walked all the way down to --f-lo.",
+  "why_it_survived": "The identical bug was found and fixed in examples/mr_comparison.py, whose source says it 'hid roughly fifteen good measurements, including every pixel-pitch point'. clock_headroom.py received only HALF of that fix: the `diverged` verdict was taken from the MR result (temp_trace_diverged) while the `unconverged` verdict was still taken from the probe counter. A half-applied fix is worse than none, because the file looks like it has been corrected.",
+  "the_fix": "Kept, and still correct as a CONSISTENCY fix -- clock_headroom took only the `diverged` half of a two-part correction that mr_comparison has in full, and a half-applied fix reads as though the file had been corrected. It is pinned by TestProbeFailuresMustNotSinkTheAnswer across both drivers. But it does NOT resolve the symptom this file is about.",
+  "what_it_invalidates": "Every array_on row in the clock family, unchanged by the above. The passive term (array_idle - control) is unaffected because neither arm runs the planner. So the project still has no measured answer to 'what clock does the laser buy?' -- and now knows that the reason is a real convergence failure in the MR arm rather than a reporting artefact, which is a worse problem than the one first diagnosed.",
+  "prefix_rows_array_on": [
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.02/clock_headroom.json",
+      "arm": "array_on",
+      "r_th": 0.02,
+      "cfm": null,
+      "f_GHz": 2.0,
+      "limited_by": "unverified"
+    },
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.05/clock_headroom.json",
+      "arm": "array_on",
+      "r_th": 0.05,
+      "cfm": null,
+      "f_GHz": 2.0,
+      "limited_by": "unverified"
+    },
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.1/clock_headroom.json",
+      "arm": "array_on",
+      "r_th": 0.1,
+      "cfm": null,
+      "f_GHz": 2.0,
+      "limited_by": "unverified"
+    },
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.3/clock_headroom.json",
+      "arm": "array_on",
+      "r_th": 0.3,
+      "cfm": null,
+      "f_GHz": 2.0,
+      "limited_by": "unverified"
+    },
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.5/clock_headroom.json",
+      "arm": "array_on",
+      "r_th": 0.5,
+      "cfm": null,
+      "f_GHz": 2.0,
+      "limited_by": "unverified"
+    },
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth1.0/clock_headroom.json",
+      "arm": "array_on",
+      "r_th": 1.0,
+      "cfm": null,
+      "f_GHz": 2.0,
+      "limited_by": "unverified"
+    },
+    {
+      "source": "results/rerun_cpu/design_batch/E_distributed/clock_headroom.json",
+      "arm": "array_on",
+      "r_th": null,
+      "cfm": 88.0,
+      "f_GHz": 4.3125,
+      "limited_by": "over_thermal_limit"
+    }
+  ],
+  "prefix_rows_other_arms_for_contrast": [
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.02/clock_headroom.json",
+      "arm": "control",
+      "r_th": 0.02,
+      "cfm": null,
+      "f_GHz": 4.25,
+      "limited_by": "thermal_runaway"
+    },
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.02/clock_headroom.json",
+      "arm": "array_idle",
+      "r_th": 0.02,
+      "cfm": null,
+      "f_GHz": 4.484375,
+      "limited_by": "thermal_runaway"
+    },
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.05/clock_headroom.json",
+      "arm": "control",
+      "r_th": 0.05,
+      "cfm": null,
+      "f_GHz": 4.015625,
+      "limited_by": "thermal_runaway"
+    },
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.05/clock_headroom.json",
+      "arm": "array_idle",
+      "r_th": 0.05,
+      "cfm": null,
+      "f_GHz": 4.203125,
+      "limited_by": "thermal_runaway"
+    },
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.1/clock_headroom.json",
+      "arm": "control",
+      "r_th": 0.1,
+      "cfm": null,
+      "f_GHz": 3.78125,
+      "limited_by": "thermal_runaway"
+    },
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.1/clock_headroom.json",
+      "arm": "array_idle",
+      "r_th": 0.1,
+      "cfm": null,
+      "f_GHz": 3.96875,
+      "limited_by": "thermal_runaway"
+    },
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.3/clock_headroom.json",
+      "arm": "control",
+      "r_th": 0.3,
+      "cfm": null,
+      "f_GHz": 3.3125,
+      "limited_by": "thermal_runaway"
+    },
+    {
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.3/clock_headroom.json",
+      "arm": "array_idle",
+      "r_th": 0.3,
+      "cfm": null,
+      "f_GHz": 3.453125,
+      "limited_by": "thermal_runaway"
+    }
+  ],
+  "status": "re-running on the fixed driver: results/clock_refix/ and the leakv arms",
+  "CORRECTION_27_Aug_2026": {
+    "what_the_first_version_of_this_file_claimed": "That clock_headroom counted the MR planner's deliberate boundary probes as evidence about the answer -- accumulating state['unconverged'] over every solve -- so every candidate clock was rejected as 'unverified' and the bisection collapsed to --f-lo.",
+    "why_that_was_wrong": "It was a plausible mechanism and it was checked rather than assumed, which is how it fell over. run_mr_clipping's `result_unconverged` does not report the probes: it is bool(status_fn()['unconverged']) -- the status of the LAST solve. Taking the verdict from there instead of from the probe counter therefore changes nothing when the last solve is itself unconverged, which here it is. The fix was applied, the leakv arms were re-run on it, and they returned 2.0000 GHz / 'unverified' exactly as before.",
+    "what_is_actually_established": [
+      "The symptom is real and systematic: 9 of 10 array_on rows sit at exactly --f-lo.",
+      "The 'unverified' verdict is HONEST. The run log records 'convergence verification FAILED after 3 damping levels (relax=0.5: diverged, 0.25: diverged, 0.125: diverged)'. The solve genuinely has no damping-independent answer.",
+      "The array_on coupled solve fails at EVERY clock tried, down to ~2 GHz, while control and array_idle converge at 3.875 and 4.109 GHz on the same die, same trace, same boundary.",
+      "A block reaches 3838.2 K at ITERATION 1 -- before the descent has done anything -- which is not a thermal-limit story. Something in the array_on path is injecting a pathological power.",
+      "It is specific to clock_headroom's MR path: mr_comparison plans successfully on the same die at the same density (0.779-0.80 W/mm^2), removing 0.457 W for 2.9 K."
+    ],
+    "what_was_ruled_out": [
+      "The probe-counter asymmetry (above) -- fixed, re-run, no change.",
+      "Spot-size arguments: both drivers take DEFAULT_SPOT_MIN_UM / DEFAULT_SPOT_POLICY from the same module constants, so an unconstrained spot is not the difference.",
+      "The MR target being unreachably low: it is 92.0 C absolute against an array_idle peak of ~77.5 C at this density, so the planner should find NOTHING above target and do nothing."
+    ],
+    "status": "DIAGNOSED to a boundary, by three probes. Not yet fixed -- the fix is a change to how the planner behaves near the runaway boundary and deserves its own decision."
+  },
+  "DIAGNOSIS_by_bisecting_the_conditions": {
+    "probe_1_low_clock_two_arms": {
+      "run": "results/clock_probe_lowf/ -- --f-lo 2.5 --f-hi 2.55, --arms array_idle array_on",
+      "result": "BOTH arms converge cleanly. array_on holds 2.550 GHz at 42.1 C.",
+      "rules_out": "The array_on path is not broken per se. It solves fine."
+    },
+    "probe_2_low_clock_three_arms": {
+      "run": "results/clock_probe_3arm/ -- same clock, --arms control array_idle array_on",
+      "result": "All three converge. control 45.1 C, array_idle 42.1, array_on 42.1.",
+      "rules_out": "An arm-ordering or session-cache interaction -- the hypothesis that the control arm's single-die session poisons the two-die array arms. It does not."
+    },
+    "probe_3_the_full_search": {
+      "run": "results/recentred_gapfill/leakv_* -- --f-lo 2.0 --f-hi 5.0",
+      "result": "array_on fails damping verification at every candidate, and a block reaches 3838.2 K at iteration 1."
+    },
+    "THE_PATTERN": "array_on converges whenever the planner has NOTHING TO DO, and fails whenever the planner ENGAGES. At 2.5 GHz the die sits at 42 C against a 92 C target, so the plan is empty and the solve is just array_idle -- which is exactly what the run reports: '0 W removed, nothing was above target'. At the clocks the search actually cares about, the die is at or past its runaway boundary, the planner engages, and the coupled solve loses its damping-independent answer.",
+    "THE_LIKELY_MECHANISM_and_it_has_a_precedent": "A cooling plan sized from a diverging or marginally-converged baseline. The handbook's own 'how this project fails' section lists 'a cooling plan sized from a diverging trajectory' as one of the five defects already found and fixed once. plan_mode='auto' selects the envelope descent only when the BASE SOLVE DIVERGES; near the boundary the base can converge marginally while the sensitivity estimated from it is meaningless, and a plan built on that sensitivity can demand enormous local extraction -- which is what a block at 3838 K at iteration 1 looks like.",
+    "why_mr_comparison_does_not_hit_it": "It plans against targets 1-12 K below the die's own measured peak, so the demand is small and the baseline it is sized from is comfortably converged. clock_headroom asks the planner to pull the die down to an ABSOLUTE 92 C from wherever the candidate clock puts it, which near the cliff is a very large demand sized from a very bad baseline. This is the same lesson the margin study taught today from the other direction: an absolute target is the problem.",
+    "next_step": "Decide how the planner should behave when the baseline it would size from is not trustworthy: refuse and report, force the envelope descent, or clamp the plan. All three are defensible and they give different answers, so it is a decision rather than a bug fix. Until then the clock family's laser term stays unmeasured and must not be quoted."
+  },
+  "OUTCOME_after_all_four_fixes": {
+    "the_run": "results/clock_fixed4/rth0.3, 34-core 7nm, r_th 0.3, --spreading, 500 um pitch",
+    "rows": {
+      "control": {
+        "GHz": 3.3125,
+        "peak_C": 84.0,
+        "p_chip_W": 55.4,
+        "removed_W": 0.0
+      },
+      "array_idle": {
+        "GHz": 3.4531,
+        "peak_C": 85.0,
+        "p_chip_W": 61.7,
+        "removed_W": 0.0
+      },
+      "array_on": {
+        "GHz": 4.6719,
+        "peak_C": 86.3,
+        "p_chip_W": 163.5,
+        "removed_W": 152.436
+      }
+    },
+    "what_IS_fixed": "The numbers are internally consistent for the first time. array_on is now HOTTER than array_idle (86.3 vs 85.0 C), which is what running at a much higher clock should look like, and it reports a removal large enough to explain how it holds that clock. The arm-consistency check passes. The array-state invariant (zero at entry) works, and the search no longer collapses to --f-lo.",
+    "what_is_NOT_fixed_and_it_is_the_thing_that_matters": "The reported answer removes 152.4 W from a 163.5 W die -- 93.2% of die power -- i.e. it sits hard against the conservation cap. The cap fired SEVEN times during the search, and the last one records the planner wanting 12692.7 W from a 160.9 W die: SEVENTY-NINE TIMES the physically possible amount, scaled by 0.0127. So '4.6719 GHz, +35% over array_idle' is not a measurement of what the laser buys. It is a measurement of what happens when the array is allowed to remove essentially the entire die's heat, and that ceiling was set by the safety bound added today rather than by any physics of the device.",
+    "so_the_calibration_probe_did_NOT_fix_the_sizing": "Option 1 was supposed to remove the guess that made the plan absurd. It did not: the plan is still 79x too large WITH a measured sensitivity. The likely reason is the one already suspected -- near the runaway boundary the baseline the probe measures against is itself untrustworthy, so a sensitivity measured on it is no better than the guess it replaced. Nothing sized from that baseline can be relied on, calibrated or not.",
+    "which_makes_an_earlier_recommendation_WRONG": "Option 4 -- widen the envelope-descent trigger so the envelope path is used whenever the baseline is NEAR the boundary and not only when it diverges -- was argued against on the grounds that 'once the plan cannot be absurd, the baseline/envelope split is doing its intended job'. That was wrong. The plan still IS absurd; it is merely bounded. The envelope path ascends from zero cooling and never sizes anything from a baseline, which is exactly the property this regime needs. It now looks like the necessary fix rather than an optional one.",
+    "status": "The clock LASER term remains unmeasured. Four defects have been fixed in this path today and the study still cannot produce a trustworthy laser number. The passive term is unaffected and stands (clock_passive_term.json).",
+    "do_not_quote": "4.6719 GHz, and any laser term derived from it."
+  }
+}

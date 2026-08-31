@@ -1,0 +1,331 @@
+<title>Chips Designed Hot</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* The project's identity, pitched forward: this argues a case rather than logging a state.
+     Warmer accent than the Ledger's teal — the subject is heat as a resource, not a hazard. */
+  :root{
+    --ground:#EFF2F2; --surface:#FCFDFD; --sunken:#E4EAEB;
+    --ink:#131A1C; --ink-2:#3A474B; --muted:#66757A;
+    --rule:#D4DCDE; --rule-2:#E6ECED;
+    --accent:#0F5C6E; --accent-2:#14798F;
+    --hot:#A6431B; --hot-bg:#F7E7DF;
+    --cold:#1F5F8A; --cold-bg:#E2ECF3;
+    --gain:#1F6F43; --gain-bg:#E2EFE8;
+    --warn:#8A5A00; --warn-bg:#F5EDDB;
+    --shadow:0 1px 2px rgba(19,26,28,.05),0 12px 30px -22px rgba(19,26,28,.34);
+    --f-display:Newsreader,Charter,Cambria,Georgia,serif;
+    --f-ui:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --f-data:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --col:64ch; --wide:1080px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E1416; --surface:#151C1F; --sunken:#1A2327;
+      --ink:#E8EEEF; --ink-2:#B6C2C6; --muted:#8A9AA0;
+      --rule:#253034; --rule-2:#1D262A;
+      --accent:#4FB3C9; --accent-2:#7FCFE0;
+      --hot:#E8865C; --hot-bg:#2A150C;
+      --cold:#6FAcD6; --cold-bg:#0F1E2A;
+      --gain:#6FC191; --gain-bg:#12241A;
+      --warn:#D9A845; --warn-bg:#251C0C;
+      --shadow:0 1px 2px rgba(0,0,0,.5),0 12px 30px -22px rgba(0,0,0,.85);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E1416; --surface:#151C1F; --sunken:#1A2327;
+    --ink:#E8EEEF; --ink-2:#B6C2C6; --muted:#8A9AA0;
+    --rule:#253034; --rule-2:#1D262A;
+    --accent:#4FB3C9; --accent-2:#7FCFE0;
+    --hot:#E8865C; --hot-bg:#2A150C;
+    --cold:#6FAcD6; --cold-bg:#0F1E2A;
+    --gain:#6FC191; --gain-bg:#12241A;
+    --warn:#D9A845; --warn-bg:#251C0C;
+    --shadow:0 1px 2px rgba(0,0,0,.5),0 12px 30px -22px rgba(0,0,0,.85);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;padding:0 22px 100px;background:var(--ground);color:var(--ink);
+       font-family:var(--f-display);font-size:17.5px;line-height:1.62;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:var(--wide);margin:0 auto}
+  .col{max-width:var(--col)}
+  section{padding:38px 0;border-top:1px solid var(--rule)}
+  section:first-of-type{border-top:none;padding-top:22px}
+
+  h1{font-family:var(--f-display);font-weight:600;font-size:clamp(2.1rem,5.2vw,3.2rem);
+     line-height:1.04;letter-spacing:-.025em;margin:.06em 0 .3em;text-wrap:balance}
+  h2{font-family:var(--f-display);font-weight:600;font-size:1.58rem;line-height:1.18;
+     margin:0 0 .35em;letter-spacing:-.012em;text-wrap:balance}
+  p{margin:0 0 1.05em}
+  .eyebrow{font-family:var(--f-ui);font-size:.8rem;color:var(--muted);margin-bottom:.85em}
+  .kicker{font-family:var(--f-ui);font-size:.75rem;font-weight:700;letter-spacing:.13em;
+          text-transform:uppercase;color:var(--muted);margin:0 0 .45em}
+  .lede{font-family:var(--f-display);font-size:1.28rem;line-height:1.5;color:var(--ink-2);
+        max-width:60ch}
+  .mono{font-family:var(--f-data);font-size:.88em}
+  .rule-strong{height:2px;background:var(--ink);opacity:.85;margin:1em 0 0}
+
+  .pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin:1.3em 0}
+  .half{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:20px 22px;
+        box-shadow:var(--shadow);border-top:3px solid var(--rule)}
+  .half.a{border-top-color:var(--gain)}
+  .half.b{border-top-color:var(--hot)}
+  .half .lbl{font-family:var(--f-ui);font-size:.72rem;font-weight:700;letter-spacing:.1em;
+             text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.5em}
+  .half .big{font-family:var(--f-data);font-size:2.1rem;font-weight:600;line-height:1.05;
+             letter-spacing:-.03em;display:block;margin-bottom:.35em}
+  .half.a .big{color:var(--gain)}
+  .half.b .big{color:var(--hot)}
+  .half p{font-family:var(--f-ui);font-size:.92rem;line-height:1.5;color:var(--ink-2);margin:0}
+
+  .scroll{overflow-x:auto;margin:.6em 0 1.3em;border:1px solid var(--rule);border-radius:7px;
+          background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-family:var(--f-ui);font-size:.9rem}
+  th,td{text-align:left;padding:.6em .85em;border-bottom:1px solid var(--rule-2);vertical-align:top}
+  th{font-weight:700;font-size:.76rem;letter-spacing:.05em;text-transform:uppercase;
+     color:var(--muted);background:var(--sunken);white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  td.n{font-family:var(--f-data);font-variant-numeric:tabular-nums;white-space:nowrap}
+  tr.peak td{background:var(--gain-bg)}
+
+  .note{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--accent);
+        border-radius:0 7px 7px 0;padding:16px 19px;margin:1.2em 0}
+  .note.hot{border-left-color:var(--hot)}
+  .note.warn{border-left-color:var(--warn)}
+  .note.gain{border-left-color:var(--gain)}
+  .note p{font-size:1rem;margin:0 0 .7em}
+  .note p:last-child{margin-bottom:0}
+  .note .lbl{font-family:var(--f-ui);font-size:.72rem;font-weight:700;letter-spacing:.1em;
+             text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.5em}
+  .src{font-family:var(--f-data);font-size:.76rem;color:var(--muted);margin:.5em 0 0}
+  ul.zones{list-style:none;padding:0;margin:.5em 0 1em;display:flex;flex-direction:column;gap:10px}
+  ul.zones li{background:var(--surface);border:1px solid var(--rule);border-radius:7px;
+              padding:13px 16px;font-family:var(--f-ui);font-size:.94rem;line-height:1.5;
+              border-left:3px solid var(--rule)}
+  ul.zones li.h{border-left-color:var(--hot)}
+  ul.zones li.c{border-left-color:var(--cold)}
+  ul.zones li strong{font-family:var(--f-ui)}
+  footer{padding:30px 0 0;border-top:1px solid var(--rule);font-family:var(--f-ui);
+         font-size:.86rem;color:var(--muted)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  :focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+</style>
+
+<div class="wrap">
+
+<header style="padding:30px 0 4px">
+  <p class="eyebrow">MXL&#8209;HotGauge &middot; Maxwell Labs &middot; 31 August 2026</p>
+  <h1>Chips Designed Hot</h1>
+  <p class="lede">Every processor built so far treats heat as a tax. Localized photonic cooling
+  turns it into a design variable &mdash; and once it is one, the cheapest chip and the fastest chip
+  are both hotter than anything shipping today.</p>
+  <div class="rule-strong"></div>
+</header>
+
+<section>
+  <div class="col">
+    <p class="kicker">The thesis</p>
+    <h2>Cooling stops being overhead and becomes a lever</h2>
+    <p>A conventional cooler has one setting: more. More airflow, more flow rate, colder coolant.
+    The expensive part is not moving the heat &mdash; it is holding the <em>hotspot</em> under its
+    limit while doing so. A fan carrying a fixed load gets dramatically cheaper if you let the air
+    run hotter, and the only reason a designer cannot is that hotter air raises the ambient the die
+    sees and eats the margin the hotspot needs.</p>
+    <p><strong>That is the trade the array breaks.</strong> It does not carry heat more cheaply
+    than a fan &mdash; measured against this project&rsquo;s calibrated fan it does not come close.
+    It buys back <em>margin</em>, exactly where margin is spent, which lets the bulk air stream run
+    hot and cheap. The array and the fan are not competing for the same job.</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">The lever</p>
+  <h2>One array, two currencies</h2>
+  <div class="col">
+    <p>Hold the junction at its limit and let the array take flux fraction <em>s</em>. The package
+    then only has to move what is left, so its required resistance relaxes by
+    <span class="mono">1/(1&minus;s)</span>. That relaxation can be spent on clock, or on the air
+    stream. The first is a die&#8209;thermal result; the second is now measured through the solver
+    rather than argued.</p>
+  </div>
+  <div class="pair">
+    <div class="half b">
+      <span class="lbl">Spend it on clock &mdash; v91 eq. (1.32), cubic regime</span>
+      <span class="big">5.04 GHz</span>
+      <p>from a 4.0&nbsp;GHz thermal ceiling at <em>s</em>&nbsp;=&nbsp;0.5, where the power cap
+      doubles. At <em>s</em>&nbsp;=&nbsp;0.9 the cap is tenfold and the clock 2.15&times;.</p>
+    </div>
+    <div class="half a">
+      <span class="lbl">Or on the air stream &mdash; 42 coupled solves</span>
+      <span class="big">6&times;</span>
+      <p>airflow range over which the array holds target &mdash; 20 to 120&nbsp;CFM &mdash; while
+      the unassisted die has <strong>no steady state at any of them</strong>.</p>
+    </div>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Airflow</th><th>Fan</th><th>Array lifts</th><th>System, shipped extractor</th>
+        <th>v91 target</th><th>Run hot</th></tr></thead>
+      <tbody>
+        <tr><td class="n">120 CFM</td><td class="n">96.3 W</td><td class="n">9.6 W</td>
+            <td class="n">218.7 W</td><td class="n">215.6</td><td class="n">213.9</td></tr>
+        <tr class="peak"><td class="n">88 CFM</td><td class="n">35.0 W</td><td class="n">18.3 W</td>
+            <td class="n"><strong>162.8 W</strong></td><td class="n">156.9</td><td class="n">153.6</td></tr>
+        <tr><td class="n">60 CFM</td><td class="n">29.6 W</td><td class="n">29.8 W</td>
+            <td class="n">164.6 W</td><td class="n"><strong>155.0</strong></td><td class="n">149.5</td></tr>
+        <tr><td class="n">30 CFM</td><td class="n">23.8 W</td><td class="n">62.9 W</td>
+            <td class="n">177.8 W</td><td class="n">157.4</td><td class="n"><strong>145.9</strong></td></tr>
+        <tr><td class="n">20 CFM</td><td class="n">21.9 W</td><td class="n">67.5 W</td>
+            <td class="n">182.3 W</td><td class="n">160.4</td><td class="n">148.0</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note warn">
+    <span class="lbl">`[!]` The honest reading, and a claim corrected</span>
+    <p><strong>At today&rsquo;s extractor, turning the fan down does not save power.</strong> The
+    array has to lift more heat and costs more per watt than the fan saves, so the optimum sits at
+    the baseline airflow. An earlier version of this page claimed a 22&ndash;35&nbsp;% system saving
+    from displacing a fan whose power falls as the fifth power of resistance &mdash; that used the
+    textbook affinity law, and this project models a calibrated fan that is linear in heat carried.
+    Both the mechanism and the number were wrong.</p>
+    <p><strong>The trade flips as the extractor improves</strong>, and only then: the optimum moves
+    to 60&nbsp;CFM at the v91 target with a 90&nbsp;% laser, and to 30&nbsp;CFM with the logic run
+    hot, worth 2.0 and 7.7&nbsp;W. So &ldquo;localized cooling lowers fan power&rdquo; is a
+    <em>forward</em> claim contingent on extractor efficiency, not a present&#8209;tense one.</p>
+    <p><strong>What is unambiguous from the same runs</strong> is the other half: the unassisted die
+    has no steady state anywhere from 20 to 120&nbsp;CFM, and the array holds target at every one.
+    More airflow is not the alternative &mdash; 120&nbsp;CFM costs 96&nbsp;W of fan and is worse on
+    every metric. That is the argument for cooling the hotspot instead of the die.</p>
+    <p class="src">airflow_ladder_solved.json &middot; overnight_campaign.json (42 points, 22 rescues)</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">The threshold</p>
+  <h2>The chiller stops being necessary at <em>s</em> = 0.10</h2>
+  <div class="note gain">
+    <p>A 250&nbsp;W die on 88&nbsp;CFM of air sits at <strong>381&nbsp;K</strong> &mdash; over a
+    100&nbsp;&deg;C junction limit. Today that is answered by chilling the inlet below ambient, which
+    costs power and puts every surface in the box below the dew point.</p>
+    <p><strong>At a tenth of the flux, the array removes the requirement outright</strong> &mdash; the
+    package no longer has to reach below ambient at all. This holds at <em>every</em> extractor
+    efficiency in the table above, including the legacy one, because it is a
+    <strong>feasibility</strong> threshold rather than an efficiency one. Sub&#8209;ambient hardware
+    does not get cheaper; it stops being needed.</p>
+    <p>That is worth more than its wattage. Condensation control is a sealing and reliability
+    problem, not a power problem, and it is the reason sub&#8209;ambient cooling has never gone
+    mainstream. The array creates no sub&#8209;ambient surface anywhere.</p>
+    <p class="src">hybrid_displacement.json &middot; thermal_limit_rescue.json</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">The reversal</p>
+  <h2>Above 408 K the cooler starts exporting power</h2>
+  <div class="col">
+    <p>Heat lifted at <span class="mono">T_h</span> carries exergy
+    <span class="mono">&phi; = 1 &minus; T&#8320;/T_h</span>. Near ambient that is 0.05&ndash;0.20 and the
+    loop is mostly recycling its own pump light &mdash; which is why every honest analysis of a
+    warm die concludes the recovery term cannot pay. <strong>That is a fact about the operating
+    point, not about the technology.</strong></p>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Extractor</th><th>350 K</th><th>450 K</th><th>500 K</th><th>600 K</th>
+        <th>700 K</th><th>Exports above</th></tr></thead>
+      <tbody>
+        <tr><td>legacy Yb:YLF</td><td class="n">+187.6</td><td class="n">+175.0</td><td class="n">+170.5</td>
+            <td class="n">+163.9</td><td class="n">+159.2</td><td class="n">never</td></tr>
+        <tr><td>shipped</td><td class="n">+49.3</td><td class="n">+36.3</td><td class="n">+31.8</td>
+            <td class="n">+25.0</td><td class="n">+20.2</td><td class="n">658 K</td></tr>
+        <tr><td>v91 target</td><td class="n">+37.2</td><td class="n">+24.3</td><td class="n">+19.8</td>
+            <td class="n">+13.0</td><td class="n">+8.2</td><td class="n">528 K</td></tr>
+        <tr class="peak"><td><strong>v91 target + 90% laser</strong></td><td class="n">+25.0</td>
+            <td class="n">+12.1</td><td class="n">+7.5</td><td class="n">+3.8</td>
+            <td class="n"><strong>&minus;4.1</strong></td><td class="n"><strong>408 K</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p>Watts of net electrical cost on a 250&nbsp;W die with 30&nbsp;% of its power lifted; negative
+    is <em>export</em>. <strong>408&nbsp;K is 135&nbsp;&deg;C</strong> &mdash; a junction temperature a
+    chip designed to run hot can hold, not an exotic one. Above it the chip becomes the hot
+    reservoir of a heat engine that also happens to be its cooler.</p>
+    <p class="src">recovery_at_temperature.json &middot; v91 eq. (1.14)&ndash;(1.18)</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">The consequence</p>
+  <h2>What a chip designed around this actually looks like</h2>
+  <div class="col">
+    <p>If cooling is spatially targetable, thermal uniformity stops being a virtue. The die
+    separates by what each region&rsquo;s power is <em>made of</em> &mdash; and the two halves want
+    opposite temperatures.</p>
+  </div>
+  <ul class="zones">
+    <li class="h"><strong>Logic runs hot, deliberately.</strong> Dynamic power dominates, so
+    temperature costs little and buys much: &phi; rises, recovery rises with it, and the frequency
+    ceiling lifts. This is the region that pays for the loop.</li>
+    <li class="c"><strong>Cache and V<sub>th</sub>&#8209;limited cells run cold.</strong> Leakage falls
+    exponentially &mdash; roughly a halving per 10&nbsp;K &mdash; and a colder device tolerates a
+    <em>lower</em> threshold voltage, which raises drive current and buys frequency again without
+    paying the cubic V<sub>dd</sub> penalty. Two wins from one lever.</li>
+    <li class="c"><strong>And that partition already exists.</strong> Static power is
+    <strong>34.6&nbsp;%</strong> of die power on our measured floorplans and
+    <strong>89&nbsp;% of it sits in L3 alone</strong>. Nobody has to impose the cold zone; it is
+    already where the leakage lives.</li>
+    <li class="h"><strong>The extractor changes with the zone.</strong> No single material spans
+    150&ndash;600&nbsp;K: Yb&#8209;doped hosts for cold storage tiles, fluoride glasses warm,
+    Ho&sup3;&#8314;/Tm&sup3;&#8314; fluorides for hot compute, SiC:Er or GaN:Yb above 600&nbsp;K &mdash;
+    the same wide&#8209;bandgap families as the devices there. Per&#8209;tile temperature targeting
+    requires per&#8209;tile extractor selection.</li>
+  </ul>
+  <div class="note hot">
+    <span class="lbl">And the array has to be aimed, not merely present</span>
+    <p>Fine tile pitch is worth <strong>2.77&times;</strong> on a concentrated hotspot and
+    <strong>nothing</strong> on a uniform die &mdash; measured, across a
+    2000&nbsp;&rarr;&nbsp;50&nbsp;&micro;m ladder. Granularity is the mechanism that converts spatial
+    structure into cooling efficacy, and a flat die has no structure to convert.</p>
+    <p><strong>So array value cannot be quoted per part.</strong> The same hardware is worth
+    2.77&times; more on one workload than another. It is a property of the power map &mdash; which
+    makes the floorplan and the cooling array a <em>co&#8209;design</em> problem, and that is the
+    deepest change here.</p>
+    <p class="src">tile_pitch_concentrated.json &middot; tile_pitch_uniform.json &middot; mr_budget_pitch_grid.json</p>
+  </div>
+</section>
+
+<section>
+  <p class="kicker">Honest</p>
+  <h2>What has to be true for this</h2>
+  <div class="note warn">
+    <p><strong>The laser is the hard part, not the extractor.</strong> The self&#8209;powering
+    requirement scales as <span class="mono">[1/(&eta;<sub>P</sub>&eta;<sub>cpl</sub>) &minus; 1]/&phi;</span>,
+    which is very steep near unity: at a fixed extractor, moving the laser wall&#8209;plug from 0.85
+    to 0.90 drops the crossing temperature from <strong>716&nbsp;K to 469&nbsp;K</strong>, and one
+    20&nbsp;% front&#8209;end optical loss roughly <em>doubles</em> the extractor target. Every number
+    on this page is more sensitive to the optical path than to the material.</p>
+    <p><strong>The extractor at temperature is unproven.</strong> The efficiencies used here are
+    targets on a published trajectory, and nothing in this model captures how a given extractor
+    quenches at the temperature it is being asked to work at. The zone&#8209;matched material families
+    exist because that problem is real.</p>
+    <p><strong>These are upper bounds by construction.</strong> The converter is held at its
+    second&#8209;law ceiling times a stated internal factor, so the export figures are the best a
+    perfect device could do. They should be quoted as bounds, and the trajectory they describe
+    matters more than any single cell.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="col">
+    <p><strong>Provenance.</strong> Every figure is computed in this repository against measured
+    thermal solves or the published loop equations, and each section names its evidence file.
+    Companions: the <em>Photonic Cooling Claim Register</em> for what is and is not defensible
+    today, the <em>MXL&#8209;HotGauge Ledger</em> for current state, and the
+    <em>Photonic Microrefrigeration Handbook</em> for the full record.</p>
+    <p>Test suite at 772 passing, 1 skipped. Sustainable-clock searches against the thermal limit
+    are still running and will replace the analytic frequency column when they land.</p>
+  </div>
+</footer>
+
+</div>

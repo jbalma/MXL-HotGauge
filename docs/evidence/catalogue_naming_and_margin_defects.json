@@ -1,0 +1,340 @@
+{
+  "note": "Two defects the completed catalogue carries, found 27 Aug 2026 while re-adjudicating the handbook against the corrected boundary. Neither is a physics error and neither needs a re-solve to DIAGNOSE, but the second one voids a headline handbook claim until the study is re-centred and re-run. Read with catalogue_run_defects.json, which covers the three defects the run itself surfaced.",
+  "defect_1_tags_lie_about_density": {
+    "what": "The density grids were re-centred onto the measured cliff (0.80-1.00 W/mm^2, down from 1.05-1.15) and moved into array_config.sh, but the POINT TAGS kept their old names. Sixteen tags now encode a density they did not run at.",
+    "worst_case": "ceiling_d1.17 ran at 0.95 W/mm^2 -- the name overstates by 0.22, or 23%",
+    "largest_relative": "cores128_d1.00 ran at 0.70 W/mm^2 -- the name overstates by 43%",
+    "why_it_bites": "The tag is what every summary, figure caption and handbook sentence quotes. A reader who takes 'margin_T95_d1.10' at face value attributes a 0.80 W/mm^2 result to 1.10 W/mm^2. The density field in the JSON is correct throughout, so this is a naming defect, not a data defect -- the harvest is trustworthy and the tags are not.",
+    "fix": "Either rename the points in array_config.sh so tags derive from the grid variable rather than being written by hand, or have sweep_runner stamp the density into the tag. The second is cheaper and cannot drift again.",
+    "mismatched_tags": [
+      {
+        "family": "overnight3",
+        "tag": "p5_cfm133_d1.10",
+        "name_says_W_per_mm2": 1.1,
+        "actually_ran_at_W_per_mm2": 0.8,
+        "source": "results/rerun_cpu/overnight3/p5_cfm133_d1.10/mr_comparison.json"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p5_cfm200_d1.10",
+        "name_says_W_per_mm2": 1.1,
+        "actually_ran_at_W_per_mm2": 0.8,
+        "source": "results/rerun_cpu/overnight3/p5_cfm200_d1.10/mr_comparison.json"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p5_cfm50_d1.10",
+        "name_says_W_per_mm2": 1.1,
+        "actually_ran_at_W_per_mm2": 0.8,
+        "source": "results/rerun_cpu/overnight3/p5_cfm50_d1.10/mr_comparison.json"
+      },
+      {
+        "family": "margin_curve",
+        "tag": "margin_T93_d1.10",
+        "name_says_W_per_mm2": 1.1,
+        "actually_ran_at_W_per_mm2": 0.8,
+        "source": "results/rerun_cpu/gapfill/margin_T93_d1.10/mr_comparison.json"
+      },
+      {
+        "family": "margin_curve",
+        "tag": "margin_T94_d1.10",
+        "name_says_W_per_mm2": 1.1,
+        "actually_ran_at_W_per_mm2": 0.8,
+        "source": "results/rerun_cpu/gapfill/margin_T94_d1.10/mr_comparison.json"
+      },
+      {
+        "family": "margin_curve",
+        "tag": "margin_T95_d1.10",
+        "name_says_W_per_mm2": 1.1,
+        "actually_ran_at_W_per_mm2": 0.8,
+        "source": "results/rerun_cpu/gapfill/margin_T95_d1.10/mr_comparison.json"
+      },
+      {
+        "family": "margin_curve",
+        "tag": "margin_T96_d1.10",
+        "name_says_W_per_mm2": 1.1,
+        "actually_ran_at_W_per_mm2": 0.8,
+        "source": "results/rerun_cpu/gapfill/margin_T96_d1.10/mr_comparison.json"
+      },
+      {
+        "family": "margin_curve",
+        "tag": "margin_T97_d1.10",
+        "name_says_W_per_mm2": 1.1,
+        "actually_ran_at_W_per_mm2": 0.8,
+        "source": "results/rerun_cpu/gapfill/margin_T97_d1.10/mr_comparison.json"
+      },
+      {
+        "family": "margin_curve",
+        "tag": "margin_T99_d1.10",
+        "name_says_W_per_mm2": 1.1,
+        "actually_ran_at_W_per_mm2": 0.8,
+        "source": "results/rerun_cpu/gapfill/margin_T99_d1.10/mr_comparison.json"
+      },
+      {
+        "family": "margin_curve",
+        "tag": "margin_T95_d1.10",
+        "name_says_W_per_mm2": 1.1,
+        "actually_ran_at_W_per_mm2": 0.8,
+        "source": "results/rerun_cpu/nextsteps/margin_T95_d1.10/mr_comparison.json"
+      },
+      {
+        "family": "margin_curve",
+        "tag": "margin_T98_d1.10",
+        "name_says_W_per_mm2": 1.1,
+        "actually_ran_at_W_per_mm2": 0.8,
+        "source": "results/rerun_cpu/nextsteps/margin_T98_d1.10/mr_comparison.json"
+      },
+      {
+        "family": "margin_curve",
+        "tag": "margin_T99_d1.10",
+        "name_says_W_per_mm2": 1.1,
+        "actually_ran_at_W_per_mm2": 0.8,
+        "source": "results/rerun_cpu/nextsteps/margin_T99_d1.10/mr_comparison.json"
+      },
+      {
+        "family": "margin_curve",
+        "tag": "margin2_T93_d1.15",
+        "name_says_W_per_mm2": 1.15,
+        "actually_ran_at_W_per_mm2": 0.85,
+        "source": "results/rerun_cpu/nextsteps/margin2_T93_d1.15/mr_comparison.json"
+      },
+      {
+        "family": "margin_curve",
+        "tag": "margin2_T94_d1.15",
+        "name_says_W_per_mm2": 1.15,
+        "actually_ran_at_W_per_mm2": 0.85,
+        "source": "results/rerun_cpu/nextsteps/margin2_T94_d1.15/mr_comparison.json"
+      },
+      {
+        "family": "margin_curve",
+        "tag": "margin2_T96_d1.15",
+        "name_says_W_per_mm2": 1.15,
+        "actually_ran_at_W_per_mm2": 0.85,
+        "source": "results/rerun_cpu/nextsteps/margin2_T96_d1.15/mr_comparison.json"
+      },
+      {
+        "family": "margin_curve",
+        "tag": "margin2_T98_d1.15",
+        "name_says_W_per_mm2": 1.15,
+        "actually_ran_at_W_per_mm2": 0.85,
+        "source": "results/rerun_cpu/nextsteps/margin2_T98_d1.15/mr_comparison.json"
+      },
+      {
+        "family": "core_scaling",
+        "tag": "cores128_d1.00",
+        "name_says_W_per_mm2": 1.0,
+        "actually_ran_at_W_per_mm2": 0.7,
+        "source": "results/rerun_cpu/nextsteps/cores128_d1.00/mr_comparison.json"
+      },
+      {
+        "family": "ceiling",
+        "tag": "ceiling_d1.17",
+        "name_says_W_per_mm2": 1.17,
+        "actually_ran_at_W_per_mm2": 0.95,
+        "source": "results/rerun_cpu/nextsteps/ceiling_d1.17/mr_comparison.json"
+      }
+    ]
+  },
+  "defect_2_the_margin_study_is_inert_on_the_corrected_boundary": {
+    "what": "Of 85 catalogue points that build an MR plan, 68 removed ZERO heat and engaged ZERO blocks: 'nothing above target; no cooling needed'. Every margin_curve point and both rescue_target98 points are among them.",
+    "why": "The margin sweep asks for targets of 93-99 C. On the corrected --spreading boundary the 34-core die at the re-centred densities peaks at 77.5 C (d=0.80) and 81.1 C (d=0.85), and the liquid arm at 73.0 C. The targets are 12-26 K above the peaks, so the planner correctly does nothing.",
+    "what_it_voids": "The handbook's 'Cost is dominated by how much margin you demand', marked VERIFIED, rests on a rescue cost rising 30-160x as the target moves a few kelvin, with a knee at ~94 C at 1.10 W/mm^2 and ~97 C at 1.15. Neither density nor either knee exists on the corrected boundary. The claim has NO backing in the completed catalogue.",
+    "the_honest_reading": "This is the SAME mechanism the handbook's own third margin curve already reported, arriving everywhere at once. That curve noted that on a liquid-class sink the die held 93.6 C unaided and MR engaged zero blocks -- 'better conventional cooling did not make MR more valuable, it made it irrelevant'. The spreading correction did to the AIR case what the liquid sink had done to the liquid one. The mechanism is strengthened; the numbers are gone.",
+    "what_it_does_NOT_void": "The cliff results, which do not depend on a target: the grease control loses its steady state at 0.80-0.85 W/mm^2 and the unpowered array at 0.92-0.96. Those are runaway boundaries, measured, and they stand.",
+    "fix": "Re-centre the margin targets onto the corrected temperature range before re-running -- roughly 70-85 C rather than 93-99 C -- and derive them from the measured unaided peak rather than from absolute literals, so the study cannot slide out from under its own targets again when the boundary next moves.",
+    "counts": {
+      "points_with_an_mr_plan": 85,
+      "engaged": 17,
+      "nothing_above_target": 68
+    },
+    "the_17_points_that_did_engage": [
+      {
+        "family": "overnight3",
+        "tag": "p3_target_T65_d0.92",
+        "density": 0.92,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 86.17,
+        "heat_removed_W": 7.528,
+        "n_targets": 106,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 74.2 C against a 65.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p3_target_T65_d0.85",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 5.033,
+        "n_targets": 56,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 72.3 C against a 65.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p3_target_T78_d0.92",
+        "density": 0.92,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 86.17,
+        "heat_removed_W": 1.643,
+        "n_targets": 8,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 80.6 C against a 78.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p5_cfm50_d1.10",
+        "density": 0.8,
+        "cfm": 50.0,
+        "r_th": null,
+        "peak_C": 84.48,
+        "heat_removed_W": 1.054,
+        "n_targets": 8,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 80.2 C against a 78.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p4_pitch_p2000",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 0.61,
+        "n_targets": 3,
+        "reason": "descent converged on the target; this plan holds the target but the stability boundary was never probed, so it is not known to be the smallest plan that keeps a steady state"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p4_pitch_p1000",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 0.59,
+        "n_targets": 3,
+        "reason": "descent converged on the target; this plan holds the target but the stability boundary was never probed, so it is not known to be the smallest plan that keeps a steady state"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p3_target_T78_d0.85",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 0.514,
+        "n_targets": 3,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 78.1 C against a 78.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p4_pitch_p500",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 0.514,
+        "n_targets": 3,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 78.1 C against a 78.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p4_spot_s100_dilute",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 0.514,
+        "n_targets": 3,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 78.1 C against a 78.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p4_spot_s10_dilute",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 0.514,
+        "n_targets": 3,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 78.1 C against a 78.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p4_spot_s10_exclude",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 0.514,
+        "n_targets": 3,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 78.1 C against a 78.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p4_spot_s1_dilute",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 0.514,
+        "n_targets": 3,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 78.1 C against a 78.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p4_spot_s1_exclude",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 0.514,
+        "n_targets": 3,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 78.1 C against a 78.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p4_pitch_p200",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 0.363,
+        "n_targets": 3,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 78.1 C against a 78.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p4_pitch_p100",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 0.329,
+        "n_targets": 3,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 78.1 C against a 78.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p4_pitch_p50",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 0.323,
+        "n_targets": 3,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 78.1 C against a 78.0 C target)"
+      },
+      {
+        "family": "overnight3",
+        "tag": "p4_spot_s100_exclude",
+        "density": 0.85,
+        "cfm": 88.0,
+        "r_th": null,
+        "peak_C": 81.11,
+        "heat_removed_W": 0.042,
+        "n_targets": 1,
+        "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOWER BOUND on what holding the target actually needs (peak 80.8 C against a 78.0 C target)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,100 @@
+{
+ "note": "The only real (V,f) points this project has ever had, used to TEST the three V/F sources it already carries. From the floorplan pack's vf_anchors.csv, 30 Aug 2026.",
+ "the_anchor": {
+  "points": [
+   {
+    "chip": "Neoverse V1",
+    "node": "TSMC N7",
+    "voltage_v": 0.75,
+    "freq_ghz": 2.8,
+    "power_w": 1.2,
+    "source_image": "images/floorplans/isa_cores__ARM_Hot_Chips_2023_Arm_s_Neoverse_V2_468.jpeg"
+   },
+   {
+    "chip": "Neoverse V2",
+    "node": "TSMC N5",
+    "voltage_v": 0.75,
+    "freq_ghz": 2.8,
+    "power_w": 1.4,
+    "source_image": "images/floorplans/isa_cores__ARM_Hot_Chips_2023_Arm_s_Neoverse_V2_468.jpeg"
+   }
+  ],
+  "provenance": "Arm's own PPA slide -- typical implementations, 2.8 GHz at 0.75 V, N7 and N5",
+  "limits": "TWO points at ONE frequency, from one vendor, and both happen to sit at the same (V,f). This is a spot check, not a curve, and it cannot validate curve SHAPE."
+ },
+ "results_at_2.8_GHz": {
+  "measured_V": 0.75,
+  "shipped_VF_PAIRS_linear": {
+   "V": 0.7467,
+   "error": -0.0044
+  },
+  "shipped_VF_PAIRS_alpha_power_fit": {
+   "V": 0.7381,
+   "error": -0.0159,
+   "fit": {
+    "k": 7.5485,
+    "Vth": 0.4643,
+    "alpha": 1.0,
+    "rms_error_frac": 0.0074,
+    "max_error_frac": 0.0137,
+    "alpha_constrained": true,
+    "alpha_bound_binds": true,
+    "source": "fit to configuration.performance.VF_PAIRS with alpha >= 1; model from Chandrakasan/Bowhill/Fox eq. 4.2, physical range for alpha from Gonzalez/Gordon/Horowitz JSSC 32(8) 1997"
+   }
+  },
+  "IRDS_nodes": {
+   "2024": {
+    "V_at_2.8GHz": 0.4928,
+    "error_vs_measured": -0.343,
+    "clamped": false,
+    "vdd": 0.7
+   },
+   "2025": {
+    "V_at_2.8GHz": 0.4374,
+    "error_vs_measured": -0.4168,
+    "clamped": false,
+    "vdd": 0.65
+   },
+   "2027": {
+    "V_at_2.8GHz": 0.4029,
+    "error_vs_measured": -0.4628,
+    "clamped": false,
+    "vdd": 0.6
+   },
+   "2029": {
+    "V_at_2.8GHz": 0.4563,
+    "error_vs_measured": -0.3916,
+    "clamped": false,
+    "vdd": 0.6
+   },
+   "2031": {
+    "V_at_2.8GHz": 0.3579,
+    "error_vs_measured": -0.5228,
+    "clamped": false,
+    "vdd": 0.6
+   },
+   "2033": {
+    "V_at_2.8GHz": 0.3718,
+    "error_vs_measured": -0.5042,
+    "clamped": false,
+    "vdd": 0.6
+   },
+   "2035": {
+    "V_at_2.8GHz": 0.3523,
+    "error_vs_measured": -0.5302,
+    "clamped": false,
+    "vdd": 0.6
+   },
+   "2037": {
+    "V_at_2.8GHz": 0.3566,
+    "error_vs_measured": -0.5245,
+    "clamped": false,
+    "vdd": 0.6
+   }
+  }
+ },
+ "THE_RESULT_AND_IT_CUTS_AGAINST_THE_RECORDED_POSITION": "The shipped VF_PAIRS table lands within 0.4% of the measured voltage at 2.8 GHz (0.747 V against 0.75 V by linear interpolation of the raw table). The project's recorded position -- from LADDER_GEN0 section 1 and product_vf.py's own docstring -- is that VF_PAIRS is 'a binning artefact rather than a device curve'. That critique was built on its HIGH end: it demands 1.4 V for 5.0 GHz, and its alpha-power fit only reaches low RMS by driving alpha below the physical floor of 1. Both of those remain true. What this shows is that the criticism does not generalise to the whole table: at 2.8 GHz, which is where server parts actually run, the table is essentially exact.",
+ "and_IRDS_is_the_one_that_misses": "the IRDS roadmap models come in 34-46% LOW on voltage at the same point, across every node. They are projections and are already marked calibrated=False, but the size and consistency of the miss is worth recording: they are not a conservative substitute for the shipped table at moderate frequencies, they are a different answer.",
+ "what_this_changes": "clock-search results computed in the 2-3.5 GHz range rest on a firmer footing than the project has been assuming. Results near 5 GHz do not -- that is where the table's shape is in question and where vf_clamped verdicts are produced. The distinction is frequency-dependent and has not previously been drawn.",
+ "what_it_does_NOT_establish": "one frequency, one vendor, two parts that share an operating point. Agreement at 2.8 GHz could be coincidence, and nothing here tests the curve's SHAPE, which is what the alpha<1 criticism is actually about. A second anchor at a different frequency would be worth more than any amount of re-fitting -- the pack's own suggested routes (AMD pp_od_clk_voltage, ACPI _PSS, Intel MSR 0x198) each give a full curve for the cost of an afternoon."
+}

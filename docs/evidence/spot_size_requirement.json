@@ -1,0 +1,76 @@
+{
+ "note": "How fine must the optics be? Spot minimum swept 1-100 um on the 34-core die at density 1.60.\nThe array achieves the SAME thermal result at every spot size -- identical heat removed, peak\nand throughput. What changes is the electrical COST, because a spot larger than its target\nblock must be diluted over silicon that did not need cooling.",
+ "rows": [
+  {
+   "spot_min_um": 1,
+   "heat_removed_W": 112.53394028005624,
+   "p_mr_net_W": 70.11236326507276,
+   "peak_C": 92.83400878906252,
+   "gflops": 4383.186393749999,
+   "n_targets": 1126,
+   "cost_vs_best": 1.0289867148245315
+  },
+  {
+   "spot_min_um": 5,
+   "heat_removed_W": 112.53394028005629,
+   "p_mr_net_W": 69.86302753238118,
+   "peak_C": 92.83400878906252,
+   "gflops": 4383.186393749999,
+   "n_targets": 1126,
+   "cost_vs_best": 1.0253274007674558
+  },
+  {
+   "spot_min_um": 10,
+   "heat_removed_W": 112.53394028005626,
+   "p_mr_net_W": 68.70663787789022,
+   "peak_C": 92.83400878906252,
+   "gflops": 4383.186393749999,
+   "n_targets": 1126,
+   "cost_vs_best": 1.008355934734667
+  },
+  {
+   "spot_min_um": 25,
+   "heat_removed_W": 112.53394028005627,
+   "p_mr_net_W": 68.66103466122041,
+   "peak_C": 92.83400878906252,
+   "gflops": 4383.186393749999,
+   "n_targets": 1126,
+   "cost_vs_best": 1.0076866504327089
+  },
+  {
+   "spot_min_um": 50,
+   "heat_removed_W": 112.53394028005623,
+   "p_mr_net_W": 68.13728715343882,
+   "peak_C": 92.83400878906252,
+   "gflops": 4383.186393749999,
+   "n_targets": 1126,
+   "cost_vs_best": 1.0
+  },
+  {
+   "spot_min_um": 100,
+   "heat_removed_W": 112.53394028005643,
+   "p_mr_net_W": 82.02564795142291,
+   "peak_C": 92.83400878906252,
+   "gflops": 4383.186393749999,
+   "n_targets": 1126,
+   "cost_vs_best": 1.2038290835781118
+  }
+ ],
+ "floorplan_block_min_dimension_um": {
+  "min": 1.307,
+  "median": 45.406,
+  "max": 1197.746,
+  "n": 1126
+ },
+ "blocks_narrower_than": {
+  "1": 0,
+  "5": 68,
+  "10": 306,
+  "25": 408,
+  "50": 612,
+  "100": 714
+ },
+ "THE_REQUIREMENT_IS_50_UM_NOT_10": "Cost is flat within 3 % from 1 um to 50 um and jumps 20 % at 100 um (68.1 -> 82.0 W for the same 112.5 W lifted). So the optics requirement is a spot at or below ~50 um, which is FIVE TIMES looser than the 10 um this project has been assuming. Going finer than 50 um buys nothing measurable.",
+ "AND_THE_FLOORPLAN_EXPLAINS_WHY": "The median block min-dimension on this die is 45.4 um and 714 of 1126 blocks are narrower than 100 um. A spot larger than its target block wastes light on neighbours that did not need it, so the knee sits where the spot starts exceeding typical block width -- between 50 and 100 um, exactly as measured. The requirement is therefore set by the FLOORPLAN, not by the device: a die with coarser blocks would tolerate a coarser spot.",
+ "WHAT_THIS_IS_NOT": "Not a claim that spot size is free. It is a claim that below ~50 um the constraint stops binding ON THIS FLOORPLAN at this density. The thermal result was identical at every point, so this measures cost, not capability, and a shape with finer hot blocks would move the knee."
+}

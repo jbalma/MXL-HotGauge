@@ -1,0 +1,95 @@
+{
+ "note": "Cost of ONE steady 3D-ICE solve on a two-die stack (silicon + powered photonic array), measured on node-06-8xv100 under slurm job 1320, OMP_NUM_THREADS=1, 25 Aug 2026. 'cold_s' is wall time for 3D-ICE-Emulator start to finish: parse, assemble, factorise, solve. 'solve_only_s' is the emulator's own post-factorisation solve timer, which is what a persistent 3D-ICE-Server session pays per solve once the matrix is factorised. The ratio is what a working two-die session cache is worth, and it is the number that decides whether the catalogue re-run is an overnight job or a two-month one.",
+ "driver": "scripts/measure_solve_cost.py",
+ "stack": {
+  "package": "direct_die",
+  "mr_layer": true,
+  "mr_powered": true,
+  "mr_material": "GAAS",
+  "mr_um": 30.0,
+  "die_um": 140.0,
+  "source_depth_um": 100.0,
+  "source_um": 20.0,
+  "cell_um": 50.0,
+  "pitch_um": 500.0,
+  "layers": 9,
+  "solver": "steady",
+  "die_W": 100.0
+ },
+ "rows": [
+  {
+   "floorplan": "skylake10nm_7core_0",
+   "blocks": 25,
+   "tiles": 204,
+   "cells_per_layer": 21350,
+   "unknowns": 192150,
+   "cold_s": 22.7,
+   "solve_only_s": 0.165,
+   "ratio": 138
+  },
+  {
+   "floorplan": "skylake7nm_34core_3",
+   "blocks": 1126,
+   "tiles": 384,
+   "cells_per_layer": 40672,
+   "unknowns": 366048,
+   "cold_s": 68.3,
+   "solve_only_s": 0.37,
+   "ratio": 185
+  },
+  {
+   "floorplan": "skylake7nm_70core_3",
+   "blocks": 2314,
+   "tiles": 777,
+   "cells_per_layer": 78652,
+   "unknowns": 707868,
+   "cold_s": 274.3,
+   "solve_only_s": 0.919,
+   "ratio": 298
+  },
+  {
+   "floorplan": "skylake7nm_128core_3",
+   "blocks": 4228,
+   "tiles": 1378,
+   "cells_per_layer": 139360,
+   "unknowns": 1254240,
+   "cold_s": 711.8,
+   "solve_only_s": null,
+   "ratio": null,
+   "comment": "solve_only not captured on this run; the trend in solve_only_s is close to linear in unknowns (8.6e-4, 1.01e-3, 1.30e-3 s per thousand unknowns), which projects ~2 s. Projected, not measured."
+  }
+ ],
+ "local_exponent": {
+  "note": "d log(cold_s) / d log(unknowns) between adjacent rows. Sparse LU steepens as the problem leaves cache, so no single power law holds -- this is reported per interval rather than fitted, for the same reason scripts/solver_cost_model.py reports its residual.",
+  "192k_to_366k": 1.69,
+  "366k_to_708k": 2.14,
+  "708k_to_1254k": 1.67
+ },
+ "catalogue_size": {
+  "note": "Solves in the existing catalogue, counted from iter_* directories under the result dirs that docs/evidence/FINDINGS.json cites. Deduplicated: 157 findings rows resolve to 144 distinct run directories, because a single run yields both an MR-on and an MR-off row (this is nearly all of the clock family). No cited directory is nested inside another, and no directory is cited by two families, so the family counts below partition the total. This is what a re-run costs, because every one of these was computed with the cooling in the die's own source layer instead of in the array above it.",
+  "findings_rows": 157,
+  "distinct_run_dirs": 144,
+  "solves_total": 80330,
+  "by_family": {
+   "clock": 24591,
+   "overnight3": 17587,
+   "margin_curve": 15093,
+   "pitch": 11161,
+   "cliff": 6412,
+   "rescue_target98": 2607,
+   "accelerator": 1328,
+   "core_scaling": 651,
+   "tiers": 383,
+   "ceiling": 322,
+   "stacked": 195
+  }
+ },
+ "catalogue_rerun_cost": {
+  "note": "At 34-core two-die cost, single stream. 'warm' assumes ~40 distinct system matrices across the catalogue -- the matrix is set by stack and floorplan GEOMETRY, not by power, MR target or kernel (see scripts/solver_cost_model.py). That 40 is an estimate; everything else here is measured.",
+  "cold_s": 5486539,
+  "cold_days": 63.5,
+  "warm_s": 32454,
+  "warm_hours": 9.0,
+  "speedup": 169
+ }
+}

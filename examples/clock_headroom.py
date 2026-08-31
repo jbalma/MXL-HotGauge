@@ -59,6 +59,7 @@ sys.path.insert(0, os.path.join(_REPO, 'HotGauge'))
 from HotGauge.power import BasicPowerTrace, LeakageModel
 from HotGauge.configuration import load_block_powers
 from HotGauge.thermal import get_stack_template, ICEThermalSolver, run_leakage_feedback
+from HotGauge.thermal.rbb import amortize_rbb, add_rbb_argument
 from HotGauge.thermal.ICE import Floorplan
 from HotGauge.thermal.leakage_feedback import (die_power_of_trace, mcpat_flp_name_map,
                                                replicate_trace_cores, peak_temp_K,
@@ -437,6 +438,7 @@ def main():
     ap.add_argument('--trace-dir', default=os.path.join(_REPO, 'mcpat_runs', '7nm',
                                                         'linpack_3.8GHz'))
     ap.add_argument('--tech-node', type=int, default=7)
+    add_rbb_argument(ap)
     ap.add_argument('--trace-cores', type=int, default=8)
     ap.add_argument('--stack', default='auto',
                     help="'auto' builds a direct-die stack per arm -- 30 um grease for the "
@@ -636,6 +638,16 @@ def main():
     if args.turbo_core is not None:
         base = scale_cores(base, single_core_turbo(args.cores, args.turbo_core,
                                                    args.turbo_background))
+    # `[!]` RBB policy: applied ONCE here, after every other trace transform (replication,
+    # emphasis, turbo) and before the clock search rescales anything -- so p_ref, every candidate
+    # clock and the accounting all see one power map. The leakage reference moves with it;
+    # rescale_trace rebuilds power as `series - leak + leak*scale(T)`, so a zeroed series with a
+    # live leakage entry would re-inject the bus. See HotGauge.thermal.rbb.
+    base, leak_ref_base, rbb_meta = amortize_rbb(
+        base, flp, policy=args.rbb_policy, leakage_ref=leak_ref_base or None,
+        span=args.rbb_span, name_map=mcpat_flp_name_map(include_core_idx=(args.cores > 1)))
+    leak_ref_base = leak_ref_base or {}
+
     p_ref = die_power_of_trace(base, flp, args.tech_node, num_cores=args.cores)
     fp = Floorplan.from_file(flp)
     geom = {e.name: {'area_mm2': (e.width * e.height) / 1.0e6,
@@ -768,6 +780,9 @@ def main():
                     label, arm, 'none', '--', '--', '--', '--', '--',
                     'no sustainable clock >= {:.2f} GHz ({})'.format(
                         args.f_lo, row['limited_by'])))
+            # Stamped per row: the two RBB policies are not comparable and a row that
+            # does not say which one produced it is unusable.
+            row['rbb_policy'] = args.rbb_policy
             rows.append(row)
 
         if args.mr:
@@ -776,6 +791,7 @@ def main():
     out = os.path.join(args.out_dir, 'clock_headroom.json')
     with open(out, 'w') as f:
         json.dump({'node': args.node, 'cores': args.cores, 'area_mm2': area_m2 * 1e6,
+                   'rbb_policy': args.rbb_policy, 'rbb': rbb_meta,
                    'p_ref_W': p_ref, 'trace_GHz': TRACE_REFERENCE_GHZ,
                    'thermal_limit_C': args.thermal_limit_C,
                    'leak_v_exponent': args.leak_v_exponent,

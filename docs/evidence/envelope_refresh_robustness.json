@@ -1,0 +1,52 @@
+{
+ "note": "Which findings survive the 30 Aug envelope refresh (h_max 250 -> 1000 W/mm^2, a 4x change).\nRun as a control: the same experiments, the same geometry, only the intensity ceiling moved.\nThe answer is a clean split, and it is worth recording because it says which parts of the\ncatalogue had to be re-derived and which did not.",
+ "unchanged": [
+  {
+   "finding": "tile-pitch efficacy ladder (granularity worth 2.77x on a hotspot)",
+   "h_max_1000": {
+    "2000": 0.9770000000000133,
+    "1000": 1.4183333333333508,
+    "500": 1.7353333333333392,
+    "200": 1.8263333333333474,
+    "100": 1.8420000000000034,
+    "50": 1.8536666666666786,
+    "per-block": 1.8550000000000182
+   },
+   "h_max_250": {
+    "2000": 0.9770000000000133,
+    "1000": 1.4183333333333508,
+    "500": 1.7353333333333392,
+    "200": 1.8263333333333474,
+    "100": 1.8420000000000034,
+    "50": 1.8536666666666786,
+    "per-block": 1.8550000000000182
+   },
+   "identical": true
+  },
+  {
+   "finding": "budget cliff (efficacy flat to the target block's own power, then collapse)",
+   "rows": [
+    {
+     "budget_W": 3,
+     "h_max_1000": 1.8536666666666786,
+     "h_max_250": 1.8536666666666786
+    },
+    {
+     "budget_W": 8,
+     "h_max_1000": 1.8537500000000051,
+     "h_max_250": 1.8537500000000051
+    },
+    {
+     "budget_W": 24,
+     "h_max_1000": 1.8152500000000014,
+     "h_max_250": 1.8152500000000014
+    }
+   ],
+   "identical": true,
+   "n_compared": 3
+  }
+ ],
+ "envelope_dependent": [],
+ "WHY_THESE_ARE_ROBUST": "Both are set by GEOMETRY rather than by the actuator. Efficacy at a few watts is limited by how heat spreads from the cooled tile to the hot block, and the cliff is the moment another block becomes the die peak -- a floorplan property. The intensity ceiling never binds at those budgets, so quadrupling it changes nothing. The findings that DO move with the envelope are the rescue cases, where the plan is large and the actuator is the limit.",
+ "WHAT_THIS_SAVES": "The granularity and plan-sizing results quoted in the forward case did not need re-deriving after the refresh, and are quoted at their original values deliberately rather than by oversight. Only the rescue and high-density results required a re-run."
+}

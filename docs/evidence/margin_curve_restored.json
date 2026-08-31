@@ -1,0 +1,256 @@
+{
+  "note": "The cost-of-margin curve, RESTORED 27 Aug 2026 on the corrected boundary using DERIVED targets. The previous version of this study was inert -- all sixteen margin points and both rescue points returned 'nothing above target', zero watts, zero blocks, because it asked for absolute 93-99 C while --spreading had dropped the die to 73-81 C. The handbook claim was withdrawn for want of any backing (catalogue_naming_and_margin_defects.json). It is now measured again.",
+  "the_fix": "examples/mr_comparison.py gained --mr-target-offset-K: the target is derived from THIS POINT's measured unaided peak rather than stated as an absolute temperature. The reference arm is array_idle -- the same stack with the laser off -- and NOT the control: the control is a different stack, cooler by the passive term (7.4 K at d=0.80), so offsetting from it re-creates the same defect one layer down. That error was made and caught by smoke test before the batch ran.",
+  "configuration": {
+    "cores": 34,
+    "cfm": 88,
+    "pitch_um": 500,
+    "burial_um": 200,
+    "spreading": true,
+    "arms": "control -> array_idle -> array_on",
+    "driver": "scripts/recentred_gapfill.sh"
+  },
+  "families": {
+    "d0.80": [
+      {
+        "offset_K": 1,
+        "unaided_peak_C": 77.503,
+        "target_C": 76.503,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 76.498,
+        "achieved_reduction_K": 1.006,
+        "held_target": true,
+        "heat_removed_W": 0.1436,
+        "blocks_engaged": 1,
+        "W_per_achieved_K": 0.1428
+      },
+      {
+        "offset_K": 2,
+        "unaided_peak_C": 77.503,
+        "target_C": 75.503,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 75.5,
+        "achieved_reduction_K": 2.003,
+        "held_target": true,
+        "heat_removed_W": 0.2861,
+        "blocks_engaged": 1,
+        "W_per_achieved_K": 0.1428
+      },
+      {
+        "offset_K": 3,
+        "unaided_peak_C": 77.503,
+        "target_C": 74.503,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 74.592,
+        "achieved_reduction_K": 2.912,
+        "held_target": true,
+        "heat_removed_W": 0.4573,
+        "blocks_engaged": 3,
+        "W_per_achieved_K": 0.1571
+      },
+      {
+        "offset_K": 5,
+        "unaided_peak_C": 77.503,
+        "target_C": 72.503,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 74.251,
+        "achieved_reduction_K": 3.252,
+        "held_target": false,
+        "heat_removed_W": 0.7448,
+        "blocks_engaged": 6,
+        "W_per_achieved_K": 0.229
+      },
+      {
+        "offset_K": 8,
+        "unaided_peak_C": 77.503,
+        "target_C": 69.503,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 71.823,
+        "achieved_reduction_K": 5.68,
+        "held_target": false,
+        "heat_removed_W": 1.7132,
+        "blocks_engaged": 12,
+        "W_per_achieved_K": 0.3016
+      },
+      {
+        "offset_K": 12,
+        "unaided_peak_C": 77.503,
+        "target_C": 65.503,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 70.165,
+        "achieved_reduction_K": 7.338,
+        "held_target": false,
+        "heat_removed_W": 3.4528,
+        "blocks_engaged": 32,
+        "W_per_achieved_K": 0.4705
+      }
+    ],
+    "d0.85": [
+      {
+        "offset_K": 1,
+        "unaided_peak_C": 81.113,
+        "target_C": 80.113,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 80.107,
+        "achieved_reduction_K": 1.006,
+        "held_target": true,
+        "heat_removed_W": 0.1436,
+        "blocks_engaged": 1,
+        "W_per_achieved_K": 0.1428
+      },
+      {
+        "offset_K": 2,
+        "unaided_peak_C": 81.113,
+        "target_C": 79.113,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 79.109,
+        "achieved_reduction_K": 2.003,
+        "held_target": true,
+        "heat_removed_W": 0.2861,
+        "blocks_engaged": 1,
+        "W_per_achieved_K": 0.1428
+      },
+      {
+        "offset_K": 3,
+        "unaided_peak_C": 81.113,
+        "target_C": 78.113,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 78.149,
+        "achieved_reduction_K": 2.964,
+        "held_target": true,
+        "heat_removed_W": 0.4907,
+        "blocks_engaged": 3,
+        "W_per_achieved_K": 0.1655
+      },
+      {
+        "offset_K": 5,
+        "unaided_peak_C": 81.113,
+        "target_C": 76.113,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 77.767,
+        "achieved_reduction_K": 3.345,
+        "held_target": false,
+        "heat_removed_W": 0.736,
+        "blocks_engaged": 5,
+        "W_per_achieved_K": 0.22
+      },
+      {
+        "offset_K": 8,
+        "unaided_peak_C": 81.113,
+        "target_C": 73.113,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 75.553,
+        "achieved_reduction_K": 5.56,
+        "held_target": false,
+        "heat_removed_W": 1.6281,
+        "blocks_engaged": 10,
+        "W_per_achieved_K": 0.2928
+      },
+      {
+        "offset_K": 12,
+        "unaided_peak_C": 81.113,
+        "target_C": 69.113,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 73.299,
+        "achieved_reduction_K": 7.814,
+        "held_target": false,
+        "heat_removed_W": 3.4279,
+        "blocks_engaged": 28,
+        "W_per_achieved_K": 0.4387
+      }
+    ],
+    "liquid": [
+      {
+        "offset_K": 1,
+        "unaided_peak_C": 73.013,
+        "target_C": 72.013,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 72.008,
+        "achieved_reduction_K": 1.005,
+        "held_target": true,
+        "heat_removed_W": 0.1532,
+        "blocks_engaged": 1,
+        "W_per_achieved_K": 0.1524
+      },
+      {
+        "offset_K": 2,
+        "unaided_peak_C": 73.013,
+        "target_C": 71.013,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 71.011,
+        "achieved_reduction_K": 2.003,
+        "held_target": true,
+        "heat_removed_W": 0.3052,
+        "blocks_engaged": 1,
+        "W_per_achieved_K": 0.1524
+      },
+      {
+        "offset_K": 3,
+        "unaided_peak_C": 73.013,
+        "target_C": 70.013,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 70.101,
+        "achieved_reduction_K": 2.913,
+        "held_target": true,
+        "heat_removed_W": 0.444,
+        "blocks_engaged": 2,
+        "W_per_achieved_K": 0.1524
+      },
+      {
+        "offset_K": 5,
+        "unaided_peak_C": 73.013,
+        "target_C": 68.013,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 69.744,
+        "achieved_reduction_K": 3.27,
+        "held_target": false,
+        "heat_removed_W": 0.8498,
+        "blocks_engaged": 6,
+        "W_per_achieved_K": 0.2599
+      },
+      {
+        "offset_K": 8,
+        "unaided_peak_C": 73.013,
+        "target_C": 65.013,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 67.329,
+        "achieved_reduction_K": 5.685,
+        "held_target": false,
+        "heat_removed_W": 2.045,
+        "blocks_engaged": 11,
+        "W_per_achieved_K": 0.3597
+      },
+      {
+        "offset_K": 12,
+        "unaided_peak_C": 73.013,
+        "target_C": 61.013,
+        "target_source": "offset_from_control_peak",
+        "achieved_peak_C": 65.598,
+        "achieved_reduction_K": 7.415,
+        "held_target": false,
+        "heat_removed_W": 3.8472,
+        "blocks_engaged": 33,
+        "W_per_achieved_K": 0.5188
+      }
+    ]
+  },
+  "RESULT_1_the_relation_holds_and_is_now_measured": {
+    "claim": "The cost of a rescue rises steeply and nonlinearly with the margin demanded. Measured: ~24x more heat removed for 12 K of margin than for 1 K, and the consistency across three quite different configurations is the striking part.",
+    "cost_rise_1K_to_12K": {
+      "d0.80": 24.0,
+      "d0.85": 23.9,
+      "liquid": 25.1
+    },
+    "note_on_the_old_number": "The superseded claim said 30-160x over 'a few kelvin' at densities of 1.10-1.15 W/mm^2, which do not exist on this boundary. The new measurement is over 1-12 K at 0.80-0.85 W/mm^2. Same SHAPE, different axis -- the numbers are not comparable and the old ones stay withdrawn."
+  },
+  "RESULT_2_the_knee_is_the_plateau_being_entered": {
+    "what": "Up to 2 K of margin the planner hits the target exactly using ONE block. From 3 K it can no longer hold the target -- achieved lags demanded -- and the engaged-block count explodes: 1 -> 3 -> 6 -> 12 -> 32 across 2/3/5/8/12 K.",
+    "why": "Past the runner-up, cooling the peak means cooling everything between the target and the peak, which on this die is the plateau. It is the same overshoot the tile-pitch and die-average studies found: a targeted plan can only pull the peak down to the runner-up's level."
+  },
+  "RESULT_3_this_OVERTURNS_the_uncomfortable_third_curve": {
+    "the_old_claim": "'On a liquid-class sink at the same density the die holds 93.6 C unaided and MR engages ZERO blocks. Better conventional cooling did not make MR more valuable -- it made it irrelevant.'",
+    "what_the_measurement_says_now": "With a target derived from where the die actually sits, the liquid arm behaves ESSENTIALLY IDENTICALLY to the air arms: 25.1x cost rise against 24.0x and 23.9x, the same block-count explosion, the same knee. The cost-of-margin relation is a property of the die's TEMPERATURE DISTRIBUTION, not of the cooling class.",
+    "the_honest_reconciliation": "Both statements are true and they answer different questions. If the requirement is an ABSOLUTE temperature the die already meets, MR is irrelevant -- that is a real deployment consideration and it is unchanged. But it is a statement about the REQUIREMENT, not about MR or about liquid cooling. Ask instead what a given margin below the part's own operating point costs, and air and liquid are indistinguishable. The old framing attributed to the cooling class what belonged to the choice of target.",
+    "so_what_stays_withdrawn": "The 93.6 C figure and the 'MR is irrelevant under better cooling' conclusion. The mechanism -- that a target inside the plateau makes cooling anything mean cooling everything -- stands, and is now measured on all three configurations."
+  }
+}

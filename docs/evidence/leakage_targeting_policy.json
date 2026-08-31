@@ -1,0 +1,74 @@
+{
+ "note": "Allocating cooling by MARGINAL LEAKAGE BENEFIT instead of temperature excess. Built 29 Aug 2026 against Section 10.8 of Photonic_Cooling_Devices___v9.pdf, which makes leakage suppression a first-class objective for spatially-selective cooling. HotGauge/thermal/leakage_targeting.py, 15 tests. Additive: microrefrigeration.py is untouched and every existing output is byte-identical.",
+ "the_figure_of_merit": {
+  "form": "B = s_b * (dP_leak/dT)_b   [W leakage saved per W of heat removed]",
+  "why": "combines how cheap a block is to cool with how much cooling it is worth; both measured",
+  "s_b": "K/W, measured by the planner's own probe",
+  "dP_leak_dT": "from leakage_calibration/, this project's measured curve"
+ },
+ "WHAT_THE_POLICY_CHANGES": {
+  "current": "clipping_plan allocates by TEMPERATURE EXCESS -- every block above target, to target",
+  "proposed": "allocate a BUDGET by marginal leakage benefit",
+  "measured_comparison_equal_watts": [
+   {
+    "peak_C": 63.1,
+    "budget_W": 0.49,
+    "clipping_leak_saved_W": 2.4e-05,
+    "benefit_leak_saved_W": 0.000256,
+    "gain": 10.48,
+    "benefit_W_per_W_spent": 0.00052,
+    "top_target": "core_other_0"
+   },
+   {
+    "peak_C": 87.5,
+    "budget_W": 0.58,
+    "clipping_leak_saved_W": 0.000208,
+    "benefit_leak_saved_W": 0.000302,
+    "gain": 1.45,
+    "benefit_W_per_W_spent": 0.00052,
+    "top_target": "core_other_0"
+   },
+   {
+    "peak_C": 92.3,
+    "budget_W": 0.71,
+    "clipping_leak_saved_W": 0.00018,
+    "benefit_leak_saved_W": 0.000366,
+    "gain": 2.03,
+    "benefit_W_per_W_spent": 0.00051,
+    "top_target": "core_other_1"
+   },
+   {
+    "peak_C": 110.0,
+    "budget_W": 1.5,
+    "clipping_leak_saved_W": 0.000351,
+    "benefit_leak_saved_W": 0.003707,
+    "gain": 10.57,
+    "benefit_W_per_W_spent": 0.00247,
+    "top_target": "core_other_0"
+   }
+  ],
+  "verdict": "the policy does beat clipping on its own objective, 1.45x to 10.6x more leakage removed for the same watts"
+ },
+ "BUT_THE_LEVER_IS_SMALL_AND_THIS_IS_THE_POINT": {
+  "peak_benefit_W_per_W": 0.01686,
+  "meaning": "a watt of extraction returns at most ~1.7% of itself in leakage, peaking near 360 K",
+  "consequence": "leakage payback ALONE never justifies the cooling. The justification stays on the performance side -- holding the clock, avoiding throttle -- which is what clipping_plan already optimises.",
+  "so_the_settled_decision_needs_a_SECONDARY_TERM_not_an_inversion": "docs/PHASE0_CHECKLIST.md records 'extraction is spatially matched to power density' as settled. That decision conflates PROJECTION (a block's removal lands on the tiles above it -- geometry, correct, guarded by TestExtractionTracksPowerDensity, untouched here) with ALLOCATION (how much each block gets). Only allocation is in question, and the measurement says it should gain a leakage tie-breaker rather than be replaced."
+ },
+ "A_NON_OBVIOUS_RESULT": {
+  "what": "the most valuable block to cool is NOT the hottest one",
+  "why": "the measured curve's local doubling constant is 10.7 K at 360 K but 13.3 K at 380 K -- the relative leakage response peaks in the middle of the range, not at the top. At equal leakage the allocator prefers a 360 K block over a 380 K one.",
+  "pinned_by": "test_it_spends_where_the_curve_is_STEEPEST_which_is_not_the_hottest_block"
+ },
+ "AND_IT_CURRENTLY_CHASES_AN_ARTEFACT": {
+  "what": "every scenario sends its watts to `core_other` -- the McPAT unallocated slab that P0.5f identified as 22%% of core area with no counterpart on a real die (published residual 1.35%%).",
+  "why": "that block has the most leakage because it has the most unallocated area and power",
+  "consequence": "a leakage-targeted policy is only as good as the per-block leakage attribution, and ours puts the most leakage in a block that does not exist. Same root cause as the results-broadcast-bus defect in P0.5g: McPAT's per-block outputs are self-consistent only at McPAT's own block sizes.",
+  "so": "fixing per-block power attribution is the shared prerequisite for BOTH this policy and the ISA comparison -- it is one blocker, not two."
+ },
+ "THE_LIMIT": {
+  "floor_K": 310.0,
+  "why": "McPAT rejects temperatures outside 300-400 K, so the calibrated curve clamps below 310 K. The allocator refuses to cool a block past that rather than chase the clamp.",
+  "cost_of_the_refusal": "small -- the measured benefit has nearly vanished by 315 K anyway"
+ }
+}

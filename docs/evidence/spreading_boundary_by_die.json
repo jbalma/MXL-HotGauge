@@ -1,0 +1,50 @@
+{
+ "note": "What --spreading does to the catalogue boundary at 88 CFM. BaffledFinSink presents the SimScale CONVECTIVE resistance only (0.0764 K/W at 88 CFM), deliberately excluding conduction because 3D-ICE resolves spreading in the die. But the die is 240 um of silicon -- it cannot spread a 28 mm^2 source out to a cold plate. That spreading happens in the BASE, which the slab model rendered as a die-width column, so the path was simply absent. Adding it is not a double count.",
+ "consequence": "Small-die absolute temperatures RISE substantially. On the 7nm 7-core die at 1.0 W/mm^2 the control arm moved 74.4 -> 95.7 C. Every cliff, rescue threshold and clock in the catalogue moves with it.",
+ "fixed_cooler": "88 CFM baffled fin stack, SimScale-calibrated",
+ "base_area_mm2": 1825.0,
+ "rows": [
+  {
+   "die": "skylake 7nm 7-core",
+   "die_mm2": 28.4,
+   "slab_K_per_W": 0.07641213669838351,
+   "overhang_K_per_W": 0.5526262722685836,
+   "ratio": 7.232179286517378
+  },
+  {
+   "die": "skylake 10nm 7-core",
+   "die_mm2": 53.2,
+   "slab_K_per_W": 0.07641213669838351,
+   "overhang_K_per_W": 0.4313624230835609,
+   "ratio": 5.645208231596098
+  },
+  {
+   "die": "skylake 7nm 34-core",
+   "die_mm2": 101.2,
+   "slab_K_per_W": 0.0764121366983835,
+   "overhang_K_per_W": 0.3246768339703766,
+   "ratio": 4.249021791550624
+  },
+  {
+   "die": "skylake 7nm 70-core",
+   "die_mm2": 196.2,
+   "slab_K_per_W": 0.07641213669838351,
+   "overhang_K_per_W": 0.23430794117684742,
+   "ratio": 3.0663707534015887
+  },
+  {
+   "die": "skylake 7nm 128-core",
+   "die_mm2": 347.6,
+   "slab_K_per_W": 0.07641213669838352,
+   "overhang_K_per_W": 0.17263314022631782,
+   "ratio": 2.259237179922621
+  },
+  {
+   "die": "GA100",
+   "die_mm2": 826.0,
+   "slab_K_per_W": 0.07641213669838352,
+   "overhang_K_per_W": 0.10771182898281663,
+   "ratio": 1.4096167655667093
+  }
+ ]
+}

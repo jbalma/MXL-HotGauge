@@ -1,0 +1,638 @@
+{
+ "note": "The ISA floorplans rebuilt on docs/chip_design_lit/MXL-HotGauge-Floorplan-Pack, 28 August 2026. Four defects found in the first cut, three corrections to its numbers, and one modelling rule the rebuild forced. Every area below is published; nothing here was measured off silicon by us.",
+ "DEFECT_1_the_vector_multiple_was_never_applied": {
+  "what": "ISAVariant.vector_multiple was declared per variant, returned in the re-weighting metadata and printed by the generator, and nothing installed it. AVX_512_AREA_VS_FPU is baked into configuration.mcpat.DERIVED_UNITS at import and an area JSON cannot reach it.",
+  "measured": "AVXs/FPUs = 1.981 in ALL SIX floorplans on disk -- x86, ARM and RISC-V alike. The axis the module called 'the largest single lever in the unit mix' was never varied.",
+  "consequence_for_the_27_Aug_result": "isa_benefit_prediction_test.json attributes PREDICTION_2's null result ('the gap is ordered by nothing') to uniform scaling preserving the mix. True but not the cause: every variant carried the x86 AVX-512 accelerator at full size. That entry should be read with this note beside it.",
+  "fix": "examples/generate_ncore_floorplans.py --vector-multiple, installed per variant.",
+  "now": {
+   "arm_n1": 0.1032,
+   "riscv_xiangshan": 0.1032,
+   "arm_v1": 0.2063,
+   "x86_zen2": 0.2063,
+   "arm_a64fx": 0.4126,
+   "x86_golden_cove": 0.4126,
+   "x86_skylake": 1.981
+  }
+ },
+ "DEFECT_2_the_variants_used_a_different_base_file_from_the_baseline": {
+  "what": "The shipped tiler defaults to examples/floorplans/adjusted_14nm-area.json; generate_isa_floorplans.py defaulted to 14nm_unit_areas.json. The adjusted file multiplies every unit by 1.40 except the ALUs (x0.565) and leaves Core/Area alone.",
+  "consequence": "Every ISA variant carried a different unit mix from the baseline it was compared against, for a reason unrelated to any ISA: unallocated residual 22.1% of core on the baseline against 34.7% on the variants.",
+  "fix": "both drivers now default to adjusted_14nm-area.json",
+  "acceptance": "the shipped 34-core baseline regenerates BYTE-IDENTICALLY through the new --vector-multiple code path -- 3D-ICE, hotspot and template forms"
+ },
+ "DEFECT_3_reweighting_emitted_sliver_blocks_that_3D_ICE_could_not_solve": {
+  "what": "examples/floorplans.py::replace emits a block for a parent's leftover area only when that leftover exceeds 0.5 um^2. McPAT's instruction scheduler carries 0.42 um^2 more than its three children -- just under the threshold, so the shipped baseline emits nothing. Scaling the scheduler to the published mix scales the rounding artefact too: at 0.99 um^2 it crosses the threshold and the tiler emits a sliver 509 um wide and a few NANOMETRES tall, with negative area in some variants.",
+  "how_it_presented": "3D-ICE returned non-finite temperatures and every driver read that as thermal runaway. A 62 mm^2 die 'diverged' at 12.5 W -- 0.20 W/mm^2 -- which is not a temperature at all. Six of seven floorplans.",
+  "fix": "isa_floorplans._repair_parent_coverage now clamps parent/child slack below TINY_SLACK_FRACTION (1e-4 of the parent) to zero and raises a parent that is short of its children to exactly cover them. Genuine internal residual -- the instruction fetch unit's 0.7% -- is far above the cutoff and survives.",
+  "acceptance": "all six rebuilt floorplans now emit 1126 blocks, the same count as the baseline, with no degenerate dimension"
+ },
+ "DEFECT_4_the_trace_and_the_areas_became_two_inconsistent_models": {
+  "what": "A McPAT trace and a McPAT floorplan agree by construction. The pack publishes areas and no per-block power for any part, so replacing the areas breaks that agreement.",
+  "how_it_presented": "McPAT's un-itemised core area and un-itemised core power both land on the tiler's core_other slab: 15.85 mm^2 at 1.4 W/mm^2 on the baseline, carrying 38% of die power. The published decomposition shrinks that slab 32x while the trace still hands it the same power -- 28 W/mm^2.",
+  "the_rule_chosen": "--power-follows-area: every block holds the W/mm^2 it has on the reference floorplan, so only the ARRANGEMENT changes. leakage_feedback.rebalance_trace_by_block_area.",
+  "the_rule_rejected": "hold each block's POWER -- physically meaningful, but it requires McPAT's power for a block to be right while McPAT's area for the same block is wrong by up to 30x.",
+  "what_it_costs": "these floorplans compare GEOMETRY at constant activity density. An ISA comparison that needs per-block activity needs per-block power the pack does not have, for any part.",
+  "the_failed_run_is_kept": "results/isa_benefit_pack_powerheld/ holds the partial sweep run WITHOUT the rule, before it was diagnosed: 18 of 18 logs report RUNAWAY. It is kept rather than deleted because the failure mode is the evidence for why the rule is needed, and because two of the six dies there fail for the sliver-block reason (DEFECT_3) rather than the power one -- the two defects were tangled and separating them is what the directory records."
+ },
+ "CORRECTION_1_the_vector_multiple_is_4.8x_too_large": {
+  "shipped": 1.9810072416144315,
+  "shipped_provenance": "configuration.mcpat carries an explicit '# HACK: Fudge the AVX ratio to match die photos' targeting DESIRED_RATIO = 0.1 of total die, and it hits it: the AVX blocks are 10.5% of the 34-core die.",
+  "published": 0.41260744985673353,
+  "published_provenance": "Golden Cove FMA EUs on ports 0 and 1 = 0.288 mm^2 against the rest of the FP cluster, 0.986 - 0.288 = 0.698 mm^2. The FMA block is 4.04% of a 7.123 mm^2 core; the whole FP cluster is 13.8%.",
+  "ratio": 4.80119116196831,
+  "NOT_applied_to_the_baseline": "deliberately. Every catalogue result rests on the 1.981 floorplan and recalibrating it would invalidate the back catalogue. The corrected core enters as the x86_golden_cove VARIANT so the size of the correction is measurable."
+ },
+ "CORRECTION_2_the_V1_over_N1_ratio": {
+  "first_cut": "a press claim of '~70% larger than N1', chained onto an assumed N2 ratio -> 0.71x the baseline",
+  "pack_rows": {
+   "Neoverse V1 core+1MB L2": 2.52,
+   "Neoverse N1 core+L2": [
+    1.15,
+    1.4
+   ]
+  },
+  "published_ratio_range": [
+   1.8,
+   2.191304347826087
+  ],
+  "now": "arm_v1 is 1.19x the baseline core -- LARGER -- where the first cut had it 29% smaller. The direction of the correction is the point."
+ },
+ "CORRECTION_3_the_baseline_core_is_small_at_iso_node": {
+  "modelled_core_plus_512KB_L2_at_7nm_mm2": 2.11615,
+  "published_AMD_Zen2_core_incl_512KB_L2_TSMC_N7_mm2": 3.54,
+  "ratio": 1.672849278170262,
+  "why_it_matters": "the only published x86 core area in the pack at the same node AND the same L2 capacity as our own McPAT configuration. It is why every ARM ratio in the first cut came out below 1.0."
+ },
+ "THE_MIX_our_model_against_the_one_published_decomposition": {
+  "units": "fraction of per-core area, both excluding L3",
+  "model_source": "examples/floorplans/adjusted_14nm-area.json through the shipped load_14nm_stats",
+  "published_source": "block_areas.csv, Golden Cove (P-core), six non-overlapping blocks",
+  "rows": [
+   {
+    "group": "frontend",
+    "model": 0.104,
+    "golden_cove": 0.2302,
+    "ratio": 0.45
+   },
+   {
+    "group": "ooo",
+    "model": 0.0513,
+    "golden_cove": 0.1856,
+    "ratio": 0.28
+   },
+   {
+    "group": "lsu",
+    "model": 0.1264,
+    "golden_cove": 0.1447,
+    "ratio": 0.87
+   },
+   {
+    "group": "fpu",
+    "model": 0.2223,
+    "golden_cove": 0.1384,
+    "ratio": 1.61
+   },
+   {
+    "group": "int",
+    "model": 0.0231,
+    "golden_cove": 0.0564,
+    "ratio": 0.41
+   },
+   {
+    "group": "l2",
+    "model": 0.2521,
+    "golden_cove": 0.2311,
+    "ratio": 1.09
+   },
+   {
+    "group": "residual",
+    "model": 0.2208,
+    "golden_cove": 0.0135,
+    "ratio": 16.39
+   }
+  ],
+  "the_headline": "the residual. McPAT reports a Core/Area its own itemised children fall well short of, and the tiler renders that shortfall as ONE featureless core_other slab per core -- 15.85 mm^2 of a 101 mm^2 die, the second largest block on it. A real core, transcribed independently from the same plate as its own total, closes to 1.35%.",
+  "what_it_means_for_the_metrics": "every floorplan metric this project has validated was measured on a die a fifth of whose area is a single uniform block. x86_golden_cove is the same core with the published mix and it is in the sweep to find out whether that changes the answer."
+ },
+ "A_NOTE_ON_THE_DECODE_ARGUMENT": {
+  "the_number_this_module_has_used": 0.03338722934618605,
+  "its_status": "a McPAT output, not a measurement",
+  "what_the_pack_says": "Golden Cove's frontend block -- branch prediction, decode, the micro-op ROM, the L1I and its control -- is 23.0% of the core against McPAT's 10.4%, and the L1I inside it prices at about 2.3% of that block from the plate's own L2 array density.",
+  "the_honest_statement": "the pack CANNOT restore the decode argument, because its plate labels one block for the whole frontend and never separates the decoder. What it removes is the MODEL's authority for dismissing it. 'Decode is 3.3% of core' should not be quoted as a measurement."
+ },
+ "THE_PACK_ITSELF_verified_not_taken_on_trust": {
+  "golden_cove_closure": {
+   "chip": "Golden Cove (P-core)",
+   "published_total_mm2": 7.123,
+   "sum_of_blocks_mm2": 7.026999999999999,
+   "n_blocks": 6,
+   "residual_mm2": 0.09600000000000097,
+   "residual_frac": 0.013477467359258876,
+   "closure_err_frac": -0.013477467359258921,
+   "n_nested_excluded": 4,
+   "naive_sum_mm2": 7.802999999999999,
+   "naive_sum_error_frac": 0.09546539379474916
+  },
+  "redwood_cove_closure": {
+   "chip": "Redwood Cove (P-core)",
+   "published_total_mm2": 5.33,
+   "sum_of_blocks_mm2": 5.328,
+   "n_blocks": 6,
+   "residual_mm2": 0.0019999999999997797,
+   "residual_frac": 0.0003752345215759437,
+   "closure_err_frac": -0.00037523452157595116,
+   "n_nested_excluded": 4,
+   "naive_sum_mm2": 5.833,
+   "naive_sum_error_frac": 0.09437148217636016
+  },
+  "annotated_floorplans": {
+   "total": 121,
+   "ARM": 11,
+   "RISC-V": 3
+  },
+  "vf_anchors_with_a_real_voltage": [
+   {
+    "chip": "Neoverse V1",
+    "node": "TSMC N7",
+    "voltage_v": 0.75,
+    "freq_ghz": 2.8
+   },
+   {
+    "chip": "Neoverse V2",
+    "node": "TSMC N5",
+    "voltage_v": 0.75,
+    "freq_ghz": 2.8
+   }
+  ],
+  "power_density_priors": [
+   {
+    "vendor": "Arm",
+    "chip": "Neoverse V1",
+    "node": "7nm",
+    "block": "core_plus_1mb_l2",
+    "area_mm2": 2.52,
+    "power_w": 1.2,
+    "w_per_mm2": 0.47619047619047616,
+    "note": "typical impl, 2.8 GHz 0.75 V",
+    "source_image": "isa_cores/ARM_Hot_Chips_2023_Arm_s_Neoverse_V2_468.jpeg"
+   },
+   {
+    "vendor": "Arm",
+    "chip": "Neoverse V2",
+    "node": "5nm",
+    "block": "core_plus_2mb_l2",
+    "area_mm2": 2.5,
+    "power_w": 1.4,
+    "w_per_mm2": 0.5599999999999999,
+    "note": "typical impl, 2.8 GHz 0.75 V",
+    "source_image": "isa_cores/ARM_Hot_Chips_2023_Arm_s_Neoverse_V2_468.jpeg"
+   },
+   {
+    "vendor": "Tesla",
+    "chip": "Dojo D1",
+    "node": "TSMC N7",
+    "block": "die_total",
+    "area_mm2": 645.0,
+    "power_w": 400.0,
+    "w_per_mm2": 0.6201550387596899,
+    "note": "50B transistors, 362 TFLOPs BF16/CFP8",
+    "source_image": "semianalysis/Tesla_Dojo_D1_01.png"
+   },
+   {
+    "vendor": "Arm",
+    "chip": "Neoverse N1",
+    "node": "7nm",
+    "block": "core_plus_l2_min",
+    "area_mm2": 1.15,
+    "power_w": 1.0,
+    "w_per_mm2": 0.8695652173913044,
+    "note": "512K/1M L2; range 1.15-1.4 mm2, 1.0-1.8 W",
+    "source_image": "isa_cores/ARM_ARM_s_Neoverse_N2_Cortex_A710_for_Server_509.jpeg"
+   },
+   {
+    "vendor": "Arm",
+    "chip": "Neoverse N2",
+    "node": "5nm",
+    "block": "core_plus_l2_min",
+    "area_mm2": 1.1,
+    "power_w": 1.0,
+    "w_per_mm2": 0.9090909090909091,
+    "note": "range 1.1-1.3 mm2, 1.0-2.0 W, max 3.6 GHz",
+    "source_image": "isa_cores/ARM_ARM_s_Neoverse_N2_Cortex_A710_for_Server_509.jpeg"
+   },
+   {
+    "vendor": "Arm",
+    "chip": "Neoverse N1",
+    "node": "7nm",
+    "block": "core_plus_l2_max",
+    "area_mm2": 1.4,
+    "power_w": 1.8,
+    "w_per_mm2": 1.2857142857142858,
+    "note": "",
+    "source_image": "isa_cores/ARM_ARM_s_Neoverse_N2_Cortex_A710_for_Server_509.jpeg"
+   },
+   {
+    "vendor": "Arm",
+    "chip": "Neoverse N2",
+    "node": "5nm",
+    "block": "core_plus_l2_max",
+    "area_mm2": 1.3,
+    "power_w": 2.0,
+    "w_per_mm2": 1.5384615384615383,
+    "note": "",
+    "source_image": "isa_cores/ARM_ARM_s_Neoverse_N2_Cortex_A710_for_Server_509.jpeg"
+   }
+  ]
+ },
+ "THE_CORE_TEMPLATE": {
+  "module": "HotGauge/HotGauge/thermal/core_templates.py",
+  "what": "Golden Cove / Redwood Cove as a placed floorplan: published areas, arrangement read off images/floorplans/semianalysis__Intel_Meteor_Lake_005.png, source_image per block, closure asserted at construction. The accelerator_floorplan.py pattern, applied to a CPU core for the first time.",
+  "blocks": {
+   "fma_eus_port_0_1": 0.288,
+   "fpu_excl_fma": 0.698,
+   "fpu_register_file": 0.235,
+   "frontend_branch_decode_l1i_op": 1.64,
+   "int_register_file": 0.102,
+   "integer_execution": 0.402,
+   "l2_control": 0.891,
+   "l2_data_256kb_a": 0.151,
+   "l2_data_256kb_b": 0.151,
+   "l2_data_384kb_a": 0.2265,
+   "l2_data_384kb_b": 0.2265,
+   "load_store_with_l1d": 1.031,
+   "ooo_sched_and_retire": 0.985,
+   "uncore": 0.096
+  },
+  "arrangement_consistency": {
+   "blocks": {
+    "ooo_sched_and_retire": {
+     "published_frac": 0.18559595675979224,
+     "plate_frac": 0.164,
+     "error": -0.1163600605143722
+    },
+    "fpu_incl_fma_eus": {
+     "published_frac": 0.13842482100238662,
+     "plate_frac": 0.133,
+     "error": -0.039189655172413684
+    },
+    "integer_execution": {
+     "published_frac": 0.05643689456689597,
+     "plate_frac": 0.067,
+     "error": 0.1871666666666667
+    },
+    "load_store_with_l1d": {
+     "published_frac": 0.14474238382703916,
+     "plate_frac": 0.125,
+     "error": -0.13639670223084377
+    },
+    "l2_cache": {
+     "published_frac": 0.23108240909729044,
+     "plate_frac": 0.28,
+     "error": 0.21168894289185936
+    },
+    "frontend_branch_decode_l1i_op": {
+     "published_frac": 0.23024006738733677,
+     "plate_frac": 0.231,
+     "error": 0.0033006097560976944
+    }
+   },
+   "worst_abs_error": 0.21168894289185936,
+   "worst_block": "l2_cache"
+  },
+  "rescale_error_vs_published": {
+   "scale": 0.7482802190088446,
+   "max_abs_error": 0.21976737916960487,
+   "mean_abs_error": 0.1392912031123189,
+   "n_blocks_summarised": 6,
+   "note": "Redwood Cove carries a 2 MB L2 against Golden Cove 1.25 MB on a denser node, so the L2 is where a uniform rescale must fail and does"
+  },
+  "rescale_error_per_block": {
+   "fpu_incl_fma_eus": {
+    "predicted_mm2": 0.7378042959427207,
+    "published_mm2": 0.613230105105105,
+    "error": 0.20314428434048293
+   },
+   "integer_execution": {
+    "predicted_mm2": 0.30080864804155555,
+    "published_mm2": 0.30411411411411404,
+    "error": -0.010869163643349222
+   },
+   "ooo_sched_and_retire": {
+    "predicted_mm2": 0.9892264495296925,
+    "published_mm2": 0.861323198198198,
+    "error": 0.1484962341651257
+   },
+   "load_store_with_l1d": {
+    "predicted_mm2": 0.7714769057981187,
+    "published_mm2": 0.6522447447447447,
+    "error": 0.18280279299151014
+   },
+   "frontend_branch_decode_l1i_op": {
+    "predicted_mm2": 1.227179559174505,
+    "published_mm2": 1.3204954954954953,
+    "error": -0.07066736436384058
+   },
+   "l2_cache": {
+    "predicted_mm2": 1.231669240488558,
+    "published_mm2": 1.5785923423423422,
+    "error": -0.21976737916960487
+   }
+  },
+  "sram_linearity_check": {
+   "A100": {
+    "points": [
+     [
+      128,
+      0.32
+     ],
+     [
+      256,
+      0.65
+     ],
+     [
+      512,
+      1.29
+     ],
+     [
+      1024,
+      2.57
+     ]
+    ],
+    "mm2_per_kb": [
+     [
+      128,
+      0.0025
+     ],
+     [
+      256,
+      0.0025390625
+     ],
+     [
+      512,
+      0.00251953125
+     ],
+     [
+      1024,
+      0.002509765625
+     ]
+    ],
+    "linearity_error_vs_smallest": [
+     [
+      128,
+      0.0
+     ],
+     [
+      256,
+      0.015625
+     ],
+     [
+      512,
+      0.0078125
+     ],
+     [
+      1024,
+      0.00390625
+     ]
+    ]
+   },
+   "GA102": {
+    "points": [
+     [
+      128,
+      0.95
+     ],
+     [
+      256,
+      1.9
+     ],
+     [
+      512,
+      3.78
+     ],
+     [
+      1024,
+      7.54
+     ]
+    ],
+    "mm2_per_kb": [
+     [
+      128,
+      0.007421875
+     ],
+     [
+      256,
+      0.007421875
+     ],
+     [
+      512,
+      0.0073828125
+     ],
+     [
+      1024,
+      0.00736328125
+     ]
+    ],
+    "linearity_error_vs_smallest": [
+     [
+      128,
+      0.0
+     ],
+     [
+      256,
+      0.0
+     ],
+     [
+      512,
+      -0.0052631578947368585
+     ],
+     [
+      1024,
+      -0.007894736842105177
+     ]
+    ]
+   },
+   "Navi22": {
+    "points": [
+     [
+      128,
+      0.4
+     ],
+     [
+      256,
+      0.8
+     ],
+     [
+      512,
+      1.59
+     ],
+     [
+      1024,
+      3.18
+     ]
+    ],
+    "mm2_per_kb": [
+     [
+      128,
+      0.003125
+     ],
+     [
+      256,
+      0.003125
+     ],
+     [
+      512,
+      0.00310546875
+     ],
+     [
+      1024,
+      0.00310546875
+     ]
+    ],
+    "linearity_error_vs_smallest": [
+     [
+      128,
+      0.0
+     ],
+     [
+      256,
+      0.0
+     ],
+     [
+      512,
+      -0.006249999999999978
+     ],
+     [
+      1024,
+      -0.006249999999999978
+     ]
+    ]
+   }
+  },
+  "grid": "the published decomposition contains structure the catalogue's own 50 um grid cannot resolve -- the uncore residual is a 77 um strip and the integer register file 329 x 310 um. write_flp refuses a grid that distorts a block by more than 10%, so 20 um is the coarsest that works."
+ },
+ "VARIANTS": [
+  {
+   "key": "x86_golden_cove",
+   "label": "Intel Golden Cove P-core (published decomposition)",
+   "vector_isa": "AVX-512",
+   "vector_bits": 1024,
+   "core_area_mm2": 7.123,
+   "core_area_scale": 3.3660184769510666,
+   "vector_multiple": 0.41260744985673353,
+   "sram_scale": 2.361111111111111,
+   "node": "Intel 7",
+   "w_per_mm2": 0.62,
+   "area_provenance": "published",
+   "published_mix": true,
+   "calibrated": false
+  },
+  {
+   "key": "x86_zen2",
+   "label": "AMD Zen 2 core (iso-node x86 size check)",
+   "vector_isa": "AVX2",
+   "vector_bits": 512,
+   "core_area_mm2": 3.54,
+   "core_area_scale": 1.672849278170262,
+   "vector_multiple": 0.20630372492836677,
+   "sram_scale": 1.0,
+   "node": "TSMC N7",
+   "w_per_mm2": 0.62,
+   "area_provenance": "published",
+   "published_mix": true,
+   "calibrated": false
+  },
+  {
+   "key": "arm_v1",
+   "label": "Arm Neoverse V1 (wide vector server core)",
+   "vector_isa": "SVE 2x256b",
+   "vector_bits": 512,
+   "core_area_mm2": 2.52,
+   "core_area_scale": 1.1908418590364576,
+   "vector_multiple": 0.20630372492836677,
+   "sram_scale": 2.0,
+   "node": "7nm",
+   "w_per_mm2": 0.476,
+   "area_provenance": "published",
+   "published_mix": true,
+   "calibrated": false
+  },
+  {
+   "key": "riscv_xiangshan",
+   "label": "XiangShan Kunminghu RISC-V (server OoO)",
+   "vector_isa": "RVV 1.0 VLEN 128b x2",
+   "vector_bits": 256,
+   "core_area_mm2": null,
+   "core_area_scale": 1.0860223983788788,
+   "vector_multiple": 0.10315186246418338,
+   "sram_scale": 2.0,
+   "node": "7nm",
+   "w_per_mm2": null,
+   "area_provenance": "derived_from_microarchitecture",
+   "published_mix": true,
+   "calibrated": false
+  },
+  {
+   "key": "arm_a64fx",
+   "label": "Fujitsu A64FX (HPC, 512-bit SVE)",
+   "vector_isa": "SVE 512b x2",
+   "vector_bits": 1024,
+   "core_area_mm2": null,
+   "core_area_scale": 1.049064709888257,
+   "vector_multiple": 0.41260744985673353,
+   "sram_scale": 1.4079861111111112,
+   "node": "7nm",
+   "w_per_mm2": null,
+   "area_provenance": "derived_from_microarchitecture",
+   "published_mix": true,
+   "calibrated": false
+  },
+  {
+   "key": "x86_skylake",
+   "label": "Skylake-class x86 (the shipped baseline)",
+   "vector_isa": "AVX-512",
+   "vector_bits": 1024,
+   "core_area_mm2": null,
+   "core_area_scale": 1.0,
+   "vector_multiple": 1.9810072416144315,
+   "sram_scale": 1.0,
+   "node": "7nm",
+   "w_per_mm2": 0.62,
+   "area_provenance": "model",
+   "published_mix": false,
+   "calibrated": false
+  },
+  {
+   "key": "arm_n1",
+   "label": "Arm Neoverse N1 (compact server core)",
+   "vector_isa": "NEON 2x128b",
+   "vector_bits": 256,
+   "core_area_mm2": 1.15,
+   "core_area_scale": 0.5434397372587009,
+   "vector_multiple": 0.10315186246418338,
+   "sram_scale": 1.1111111111111112,
+   "node": "7nm",
+   "w_per_mm2": 0.87,
+   "area_provenance": "published",
+   "published_mix": true,
+   "calibrated": false
+  }
+ ],
+ "RETIRED": {
+  "arm_n2": {
+   "core_area_scale": 0.42,
+   "vector_multiple": 0.5,
+   "why": "press ratio; superseded by arm_n1, whose area is published"
+  },
+  "arm_v1_press": {
+   "core_area_scale": 0.71,
+   "vector_multiple": 1.6,
+   "why": "0.42 x 1.70 chained press ratios; the pack gives 2.52 mm^2 directly"
+  },
+  "riscv_p670": {
+   "core_area_scale": 0.3,
+   "vector_multiple": 0.8,
+   "why": "two chained press ratios; no published P670 area exists anywhere"
+  }
+ }
+}

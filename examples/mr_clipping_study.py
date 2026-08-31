@@ -49,6 +49,7 @@ from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power,
                                                die_power_of_trace,
                                                mcpat_flp_name_map, load_calibrated_leakage_model,
                                                mcpat_tref_from_trace_dir)
+from HotGauge.thermal.rbb import amortize_rbb, add_rbb_argument
 from HotGauge.thermal.sink_models import (ThermalResistanceSink, render_stack_with_sink,
                                           chip_area_m2_from_floorplan)
 from HotGauge.thermal.sink_models import spreading_sink_for_stack
@@ -98,6 +99,7 @@ def main():
     ap.add_argument('--trace-dir', default='mcpat_runs/7nm/linpack_3.8GHz')
     ap.add_argument('--flp-template', default=None)
     ap.add_argument('--tech-node', type=int, default=7)
+    add_rbb_argument(ap)
     ap.add_argument('--num-cores', type=int, default=8)
     ap.add_argument('--spreading', action='store_true',
                     help='take the cold-plate slab OUT of the stack and fold it into the boundary '
@@ -216,6 +218,18 @@ def main():
     for p_w in args.powers:
         trace, leak_ref = scaled_trace(args.trace_dir, p_w, args.flp_template,
                                        args.tech_node, num_cores=args.num_cores)
+        # `[!]` Applied here, ONCE, on the baseline trace -- before the feedback loop, the
+        # planner and the accounting, so all three see the same power map. Both the trace and
+        # the leakage reference have to move together: rescale_trace rebuilds power as
+        # `series - leak + leak*scale(T)`, so a zeroed series with a live leakage entry would
+        # re-inject the bus with a negative power below T_ref.
+        trace, leak_ref, rbb_meta = amortize_rbb(trace, args.flp_template,
+                                                 policy=args.rbb_policy,
+                                                 leakage_ref=leak_ref or None,
+                                                 span=args.rbb_span,
+                                                 name_map=mcpat_flp_name_map(
+                                                     include_core_idx=args.num_cores > 1))
+        leak_ref = leak_ref or {}
         if not leak_ref:
             leak_ref = {u: 0.2 * max(float(s[0]), 0.0) for u, s in trace.powers.items()}
 
@@ -325,11 +339,15 @@ def main():
         rows.append({'power_W': p_w, 'baseline': None if b_div else b_perf,
                      'mr': None if m_perf is None else m_perf, 'mr_accounting': acc,
                      'mr_converged': bool(res['converged']),
-                     'baseline_diverged': b_div})
+                     'baseline_diverged': b_div,
+                     # Stamped per row for the same reason `placement` is: two generations of
+                     # results now exist and the verdict alone does not tell them apart.
+                     'rbb_policy': args.rbb_policy})
 
     out = os.path.join(args.out_dir, 'mr_study.json')
     with open(out, 'w') as f:
-        json.dump({'r_th': args.r_th, 'mr': repr(mr), 'rows': rows}, f, indent=2, default=str)
+        json.dump({'r_th': args.r_th, 'mr': repr(mr), 'rbb': rbb_meta, 'rows': rows},
+                  f, indent=2, default=str)
     print('\n  written: {}'.format(out))
     return 0
 

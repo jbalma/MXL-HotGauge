@@ -160,3 +160,10 @@ plain `skylake` stack works without it, so this failure only appears on plugin s
 - Never run `git clean -fdx` (would delete the built toolchain).
 - Surface uncertainty and physically-suspect results explicitly; runaway/non-convergence is a
   meaningful signal, not an error to hide.
+- **One architecture, one die** (decided 31 Aug 2026). The 34-core 7nm skylake floorplan is the
+  only die in play until the physics is verified end to end. ISA variants, the accelerator die,
+  n-core sweeps and the pack floorplans are parked for the next phase — each one adds a confound
+  to questions that have already been confounded repeatedly. Vary the physics, not the die.
+- **`--rbb-policy` defaults to `stock`** and must keep doing so until a catalogue re-run says
+  otherwise: the amortized policy moves every recorded thermal number. See
+  `HotGauge/HotGauge/thermal/rbb.py` and §P0.10.

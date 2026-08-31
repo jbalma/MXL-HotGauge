@@ -1,0 +1,75 @@
+{
+  "note": "The two planner fixes decided on 27 Aug 2026 after the clock study's MR arm was found returning its own search floor. Option 2 (conservation) then option 1 (measured sensitivity). Both are in; this file records what each does, what it does NOT change, and the two design choices inside option 2 that the measurements overturned.",
+  "the_problem_being_fixed": {
+    "mechanism": "The descent sized its FIRST plan from an ASSUMED sensitivity of 1.0 K/W (sens.setdefault(b, 1.0)), because nothing had been measured yet. Under the LEGACY envelope the device caps hid that: on a representative near-cliff field h_max bound 396 of 400 blocks, so the plan was restrained by the device rather than by the guess. Correcting the envelope to its DEMONSTRATED values removed the restraint and `q_need = excess / s` began to bind, so the guess set the plan directly.",
+    "measured_first_iteration_plan": {
+      "legacy_envelope_W": 840.8,
+      "demonstrated_envelope_W": 9404.8,
+      "ratio": 11.2,
+      "die_power_W": 79.0,
+      "binding_limit_legacy": "h_max on 396 of 400 blocks",
+      "binding_limit_demonstrated": "need on 242 of 400 blocks"
+    },
+    "consequence": "blocks at 3838 K, no damping-independent answer, MR arm pinned at --f-lo",
+    "aggravating_detail": "`relax` is not applied on the first iteration -- `blended = (...) if plan else dict(new_plan)` -- so the full first plan went in undamped. Left as-is: with the cap in place it no longer matters, and changing it would move working results for no reason."
+  },
+  "option_2_conservation_cap": {
+    "what": "clipping_plan gains die_power_W. In steady state the array cannot remove more heat than the die generates without driving it below the coolant, which is a refrigeration regime this model does not claim and cannot price. The three existing caps (h_max, dt_max, need) are all DEVICE limits; this is the only physical one.",
+    "design_choice_1_GLOBAL_not_per_block": {
+      "first_proposal": "q <= p_block, the block's own dissipation",
+      "why_it_was_wrong": "The array sits ABOVE the silicon, so a tile cools a thermal NEIGHBOURHOOD and legitimately removes more than the block underneath dissipates. Measured on the working margin plans: 0.108 W per engaged block against a 0.070 W mean block power, i.e. 1.5x. A strict per-block rule would have broken results that are correct.",
+      "adopted": "a global cap on the plan total; only the total is conserved"
+    },
+    "design_choice_2_SCALE_not_reallocate": {
+      "first_implementation": "reuse the existing greedy hottest-block-first budget trim",
+      "why_it_was_wrong": "A budget is a spending decision, so 'hottest first' is right -- the marginal watt is worth most at the peak. A conservation violation is not a spending decision: the plan's SHAPE came from the physics and only its total is impossible. Greedy reallocation put the entire die's 79 W onto 2 blocks (39.5 W on one), replacing one pathology with another.",
+      "adopted": "scale the whole plan by die_power_W / total, leaving the shape alone. Same field: 79.0 W over 400 blocks, max 0.336 W on any single block.",
+      "budget_trim_unchanged": "max_total_W still trims greedily, and the two are distinguishable in `detail`"
+    },
+    "it_warns_rather_than_silently_trimming": "Hitting max_total_W is a RESULT. Hitting die_power_W is a BUG SIGNAL -- it means the plan was sized from an untrustworthy sensitivity -- so it logs a warning naming the ratio and saying the result is suspect rather than merely trimmed.",
+    "regression_check": {
+      "margin_off1_W": {
+        "before": 0.144,
+        "after": 0.144
+      },
+      "margin_off12_W": {
+        "before": 3.453,
+        "after": 3.453
+      },
+      "conservation_warnings_fired": 0,
+      "verdict": "inert on the working regime, exactly as intended"
+    }
+  },
+  "option_1_measured_sensitivity": {
+    "what": "Before sizing anything, apply a small PROPORTIONAL probe removal over the hot blocks, solve once, and estimate dT/dq per block. Proportional because the secant estimate is per block and a uniform probe would over-drive the small ones. The probe is 2% of die power -- die power is the only scale available that is a property of the workload rather than of the device. One extra solve per planning call.",
+    "verification": "On a lumped rig with a KNOWN sensitivity the probe recovers it exactly: 0.35 and 0.08 K/W, against the 1.0 it would otherwise have assumed.",
+    "fallback": "Blocks the probe cannot measure still fall back to 1.0 K/W, and a probe that diverges says so in a warning rather than silently reverting. That fallback is now BOUNDED rather than load-bearing, because option 2 stops a guessed sensitivity producing an impossible plan.",
+    "reproducibility": "calibrate=False restores the historical behaviour exactly.",
+    "effect_on_real_results": {
+      "margin_offset_1K": {
+        "before_W": 0.144,
+        "after_W": 0.143,
+        "laser_term_K": -1.0,
+        "verdict": "unchanged"
+      },
+      "margin_offset_12K": {
+        "before_W": 3.453,
+        "after_W": 3.771,
+        "laser_term_K_before": -7.3,
+        "laser_term_K_after": -8.8,
+        "verdict": "IMPROVED, not regressed: a measured sensitivity sizes a better plan, so the same target buys 8.8 K instead of 7.3 K for 9% more heat removed. The margin curve's SHAPE and its ~24x cost rise are unaffected."
+      }
+    }
+  },
+  "tests": "615 passed, 1 skipped, up from 605. Ten added: six pinning the conservation cap (including one that pins the UNCAPPED behaviour so the regression cannot return unnoticed, and one asserting the cap is global rather than per-block) and four on the calibration probe.",
+  "still_open": "Whether the clock study's MR arm produces a TRUSTWORTHY number. The run with the leak closed is still going and is far slower than before, because every evaluation now does real MR descent work instead of rejecting immediately. Any number it returns must pass the arm-consistency check before it is quoted.",
+  "option_3_a_regression_I_INTRODUCED_and_the_check_that_now_catches_it": {
+    "what_happened": "With options 1 and 2 in, the clock arm returned a number for the first time: 4.8125 GHz at r_th 0.3, a +39% laser term over array_idle. It was FALSE, and the arithmetic gave it away: array_on reported 62.6 C on 183.9 W while array_idle diverged at 85.0 C on 61.7 W -- three times the power at a 22 K LOWER peak, with 0.000 W removed.",
+    "cause": "CoolingApplication pushes tile powers into the solver as a SIDE EFFECT and nothing rewound them. clock_headroom builds the wiring once per ARM and reuses it across every step of the clock bisection, so a plan from one candidate clock persisted into the next while the accounting reported the new, empty one. Cooling applied but not accounted -- the exact failure the placement-stamping machinery exists to prevent.",
+    "my_part_in_it": "The leak predates this session. What options 1 and 2 changed is that the stale plan went from 'so large that everything diverged' to a large FINITE plan, which made the leak produce a plausible-looking result instead of an obvious failure. That is strictly more dangerous, and it is why the fix is not complete without the check below.",
+    "the_fix": "run_mr_clipping re-applies the reported plan on exit, so array state and accounting agree by construction at all thirteen exits. The wrapper already existed to do exactly this kind of thing -- 'one thing the loop must not be trusted to remember at each of its thirteen exits'.",
+    "the_standing_check": "HotGauge/thermal/arm_consistency.py, wired into BOTH clock_headroom and mr_comparison so it runs on every point. Zero removal must mean zero cooling -- exact, cannot false-positive, and it is the case actually observed. A gain per watt beyond 10 K/W is warned about, not raised: the best strategy ever measured here is 1.119 K/W (die_average_strategies.json), so that ceiling has ~9x headroom and is explicitly a smoke alarm rather than a physical law.",
+    "why_a_check_and_not_just_a_fix": "This class of defect is silent in every field the pipeline records. It surfaced only because three numbers were looked at together. 'Fixed once' is not 'cannot recur', so the arithmetic that caught it is now run automatically.",
+    "regression_checked": "The margin points are byte-identical after the leak fix -- 0.143 W / -1.0 K and 3.771 W / -8.8 K -- so mr_comparison was never affected: its final plan IS the reported plan, making the re-apply a no-op there."
+  }
+}

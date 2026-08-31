@@ -1,0 +1,310 @@
+{
+ "note": "Test 9: how much electricity comes back, on a die designed to run hot.\n\n    python examples/recovery_at_temperature.py\n\nEarlier recovery work asked whether the loop pays for itself on dies running at 310-370 K, and\nanswered no. That was the right answer to the wrong question. At those temperatures the Carnot\nfactor is 0.05-0.20, so the chip's heat carries almost no exergy and the loop is mostly recycling\nits own pump light. The interesting regime is the one the architecture proposes and the toolchain\ncould not previously reach: logic held deliberately hot.\n\nThis reports, for a die of given power held at ``T_h``, the electrical power the loop exports --\nor costs -- as a fraction of the die's own dissipation. Three things move it, and only one of\nthem is the extractor:\n\n  * ``phi = 1 - T_0/T_h`` -- what fraction of the lifted heat is convertible at all;\n  * ``eta_ASF`` -- how much heat is lifted per watt of pump light;\n  * ``eta_P``, the laser wall-plug -- which enters as ``1/eta_P`` and is therefore the steepest\n    term of the three near unity.\n\n`[!]` What this is not\n-----------------------\nA second-law ledger on stated efficiencies, not a device simulation. The LPC is held at its\nexergy ceiling times a stated internal factor, so the export figures are the best a perfect\nconverter could do at that temperature -- an upper bound by construction, and it should be quoted\nas one. Nothing here models the extractor material's quenching behaviour at the temperature it is\nbeing asked to work at, which is the assumption most likely to bite: the zone-matched extractor\nfamilies of v91 s8.4 exist precisely because no single material spans this range.",
+ "die_W": 250.0,
+ "fraction_lifted": 0.3,
+ "Q_lifted_W": 75.0,
+ "T0_K": 295.0,
+ "presets": [
+  {
+   "preset": "legacy   eta_ASF 0.20",
+   "eta_ASF": 0.2,
+   "eta_P": 0.7,
+   "eta_LPC": 0.9,
+   "rows": [
+    {
+     "T_h_K": 350,
+     "phi": 0.15714285714285714,
+     "cost_per_W": 2.5014285714285722,
+     "net_W": 187.60714285714292,
+     "net_frac_of_die": 0.7504285714285717,
+     "exporting": false
+    },
+    {
+     "T_h_K": 400,
+     "phi": 0.26249999999999996,
+     "cost_per_W": 2.406607142857143,
+     "net_W": 180.49553571428575,
+     "net_frac_of_die": 0.721982142857143,
+     "exporting": false
+    },
+    {
+     "T_h_K": 450,
+     "phi": 0.34444444444444444,
+     "cost_per_W": 2.332857142857143,
+     "net_W": 174.96428571428575,
+     "net_frac_of_die": 0.699857142857143,
+     "exporting": false
+    },
+    {
+     "T_h_K": 500,
+     "phi": 0.41000000000000003,
+     "cost_per_W": 2.2738571428571426,
+     "net_W": 170.53928571428568,
+     "net_frac_of_die": 0.6821571428571427,
+     "exporting": false
+    },
+    {
+     "T_h_K": 550,
+     "phi": 0.4636363636363636,
+     "cost_per_W": 2.2255844155844158,
+     "net_W": 166.9188311688312,
+     "net_frac_of_die": 0.6676753246753248,
+     "exporting": false
+    },
+    {
+     "T_h_K": 600,
+     "phi": 0.5083333333333333,
+     "cost_per_W": 2.1853571428571437,
+     "net_W": 163.90178571428578,
+     "net_frac_of_die": 0.6556071428571432,
+     "exporting": false
+    },
+    {
+     "T_h_K": 700,
+     "phi": 0.5785714285714285,
+     "cost_per_W": 2.1221428571428578,
+     "net_W": 159.16071428571433,
+     "net_frac_of_die": 0.6366428571428573,
+     "exporting": false
+    },
+    {
+     "T_h_K": 800,
+     "phi": 0.63125,
+     "cost_per_W": 2.0747321428571435,
+     "net_W": 155.60491071428575,
+     "net_frac_of_die": 0.622419642857143,
+     "exporting": false
+    }
+   ],
+   "self_powering_T_h_K": null
+  },
+  {
+   "preset": "shipped  eta_ASF 0.32",
+   "eta_ASF": 0.32,
+   "eta_P": 0.85,
+   "eta_LPC": 0.92,
+   "rows": [
+    {
+     "T_h_K": 350,
+     "phi": 0.15714285714285714,
+     "cost_per_W": 0.6568991596638655,
+     "net_W": 49.26743697478991,
+     "net_frac_of_die": 0.19706974789915963,
+     "exporting": false
+    },
+    {
+     "T_h_K": 400,
+     "phi": 0.26249999999999996,
+     "cost_per_W": 0.5599705882352937,
+     "net_W": 41.997794117647025,
+     "net_frac_of_die": 0.1679911764705881,
+     "exporting": false
+    },
+    {
+     "T_h_K": 450,
+     "phi": 0.34444444444444444,
+     "cost_per_W": 0.48458169934640494,
+     "net_W": 36.34362745098037,
+     "net_frac_of_die": 0.14537450980392147,
+     "exporting": false
+    },
+    {
+     "T_h_K": 500,
+     "phi": 0.41000000000000003,
+     "cost_per_W": 0.42427058823529407,
+     "net_W": 31.820294117647055,
+     "net_frac_of_die": 0.12728117647058823,
+     "exporting": false
+    },
+    {
+     "T_h_K": 550,
+     "phi": 0.4636363636363636,
+     "cost_per_W": 0.37492513368984004,
+     "net_W": 28.119385026738,
+     "net_frac_of_die": 0.112477540106952,
+     "exporting": false
+    },
+    {
+     "T_h_K": 600,
+     "phi": 0.5083333333333333,
+     "cost_per_W": 0.33380392156862754,
+     "net_W": 25.035294117647066,
+     "net_frac_of_die": 0.10014117647058826,
+     "exporting": false
+    },
+    {
+     "T_h_K": 700,
+     "phi": 0.5785714285714285,
+     "cost_per_W": 0.2691848739495801,
+     "net_W": 20.188865546218505,
+     "net_frac_of_die": 0.08075546218487402,
+     "exporting": false
+    },
+    {
+     "T_h_K": 800,
+     "phi": 0.63125,
+     "cost_per_W": 0.22072058823529442,
+     "net_W": 16.55404411764708,
+     "net_frac_of_die": 0.06621617647058832,
+     "exporting": false
+    }
+   ],
+   "self_powering_T_h_K": 657.7049180327871
+  },
+  {
+   "preset": "v91 tgt  eta_ASF 0.40",
+   "eta_ASF": 0.4,
+   "eta_P": 0.85,
+   "eta_LPC": 0.92,
+   "rows": [
+    {
+     "T_h_K": 350,
+     "phi": 0.15714285714285714,
+     "cost_per_W": 0.4966050420168063,
+     "net_W": 37.24537815126047,
+     "net_frac_of_die": 0.14898151260504186,
+     "exporting": false
+    },
+    {
+     "T_h_K": 400,
+     "phi": 0.26249999999999996,
+     "cost_per_W": 0.39967647058823547,
+     "net_W": 29.97573529411766,
+     "net_frac_of_die": 0.11990294117647063,
+     "exporting": false
+    },
+    {
+     "T_h_K": 450,
+     "phi": 0.34444444444444444,
+     "cost_per_W": 0.3242875816993461,
+     "net_W": 24.321568627450954,
+     "net_frac_of_die": 0.09728627450980382,
+     "exporting": false
+    },
+    {
+     "T_h_K": 500,
+     "phi": 0.41000000000000003,
+     "cost_per_W": 0.26397647058823476,
+     "net_W": 19.798235294117607,
+     "net_frac_of_die": 0.07919294117647042,
+     "exporting": false
+    },
+    {
+     "T_h_K": 550,
+     "phi": 0.4636363636363636,
+     "cost_per_W": 0.2146310160427806,
+     "net_W": 16.097326203208546,
+     "net_frac_of_die": 0.06438930481283418,
+     "exporting": false
+    },
+    {
+     "T_h_K": 600,
+     "phi": 0.5083333333333333,
+     "cost_per_W": 0.17350980392156864,
+     "net_W": 13.01323529411765,
+     "net_frac_of_die": 0.052052941176470593,
+     "exporting": false
+    },
+    {
+     "T_h_K": 700,
+     "phi": 0.5785714285714285,
+     "cost_per_W": 0.10889075630252097,
+     "net_W": 8.166806722689072,
+     "net_frac_of_die": 0.03266722689075629,
+     "exporting": false
+    },
+    {
+     "T_h_K": 800,
+     "phi": 0.63125,
+     "cost_per_W": 0.06042647058823507,
+     "net_W": 4.53198529411763,
+     "net_frac_of_die": 0.01812794117647052,
+     "exporting": false
+    }
+   ],
+   "self_powering_T_h_K": 527.8947368421053
+  },
+  {
+   "preset": "v91 tgt  + laser 0.90",
+   "eta_ASF": 0.4,
+   "eta_P": 0.9,
+   "eta_LPC": 0.92,
+   "rows": [
+    {
+     "T_h_K": 350,
+     "phi": 0.15714285714285714,
+     "cost_per_W": 0.3332063492063488,
+     "net_W": 24.99047619047616,
+     "net_frac_of_die": 0.09996190476190464,
+     "exporting": false
+    },
+    {
+     "T_h_K": 400,
+     "phi": 0.26249999999999996,
+     "cost_per_W": 0.2362777777777778,
+     "net_W": 17.720833333333335,
+     "net_frac_of_die": 0.07088333333333334,
+     "exporting": false
+    },
+    {
+     "T_h_K": 450,
+     "phi": 0.34444444444444444,
+     "cost_per_W": 0.16088888888888847,
+     "net_W": 12.066666666666634,
+     "net_frac_of_die": 0.04826666666666654,
+     "exporting": false
+    },
+    {
+     "T_h_K": 500,
+     "phi": 0.41000000000000003,
+     "cost_per_W": 0.10057777777777689,
+     "net_W": 7.543333333333267,
+     "net_frac_of_die": 0.03017333333333307,
+     "exporting": false
+    },
+    {
+     "T_h_K": 550,
+     "phi": 0.4636363636363636,
+     "cost_per_W": 0.051232323232322824,
+     "net_W": 3.8424242424242117,
+     "net_frac_of_die": 0.015369696969696846,
+     "exporting": false
+    },
+    {
+     "T_h_K": 600,
+     "phi": 0.5083333333333333,
+     "cost_per_W": 0.010111111111111045,
+     "net_W": 0.7583333333333283,
+     "net_frac_of_die": 0.0030333333333333132,
+     "exporting": false
+    },
+    {
+     "T_h_K": 700,
+     "phi": 0.5785714285714285,
+     "cost_per_W": -0.05450793650793656,
+     "net_W": -4.088095238095242,
+     "net_frac_of_die": -0.01635238095238097,
+     "exporting": true
+    },
+    {
+     "T_h_K": 800,
+     "phi": 0.63125,
+     "cost_per_W": -0.10297222222222265,
+     "net_W": -7.722916666666698,
+     "net_frac_of_die": -0.030891666666666793,
+     "exporting": true
+    }
+   ],
+   "self_powering_T_h_K": 408.4615384615385
+  }
+ ],
+ "self_powering_temperatures": {
+  "legacy   eta_ASF 0.20": null,
+  "shipped  eta_ASF 0.32": 657.7049180327871,
+  "v91 tgt  eta_ASF 0.40": 527.8947368421053,
+  "v91 tgt  + laser 0.90": 408.4615384615385
+ },
+ "THE_REGIME_WAS_THE_PROBLEM": "At 350 K the Carnot factor is 0.157 and every preset costs power -- which is the result this project recorded and generalised too far. At 600 K phi is 0.508, and the v91 target preset with a 90 % laser has fallen to +0.8 W on a 75 W lift. The loop was never going to look good on a die held near ambient; the question is what it does on a die designed to run hot.",
+ "WHAT_IT_TAKES_TO_EXPORT": "The crossing is at 408 K for the v91 target preset with a 90 % laser. Above it the loop exports electricity while cooling: the chip becomes the hot reservoir of a heat engine that happens to also be its cooler. eta_P is the steep term -- it enters as 1/eta_P -- so the laser and the optical path decide where this line sits, not the extractor.",
+ "UPPER_BOUND_BY_CONSTRUCTION": "The LPC is held at its exergy ceiling (v91 eq. 1.14) times a stated internal factor, so these are the best a perfect converter could do at each temperature. Quote them as bounds. The unmodelled assumption most likely to bite is extractor quenching at the working temperature -- which is exactly why v91 s8.4 specifies a different material family per thermal zone rather than one extractor across the die."
+}

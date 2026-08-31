@@ -1,0 +1,205 @@
+{
+ "note": "Does the leakage treatment above 400 K decide the high-density outcome? Same points, run with\nthe Arrhenius tail and with the curve clamped at its top measured temperature.",
+ "pairs": [
+  {
+   "point": "air_d2.00",
+   "density": 2.0,
+   "extrapolated": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.0
+   },
+   "clamped": null
+  },
+  {
+   "point": "d1.60",
+   "density": 1.6,
+   "extrapolated": null,
+   "clamped": {
+    "diverged": false,
+    "peak_C": 90.07198486328127,
+    "Q_W": 97.00617465009938,
+    "density": 1.6
+   }
+  },
+  {
+   "point": "d1.80",
+   "density": 1.8,
+   "extrapolated": {
+    "diverged": false,
+    "peak_C": 92.48714599609377,
+    "Q_W": 141.19572193028736,
+    "density": 1.8
+   },
+   "clamped": null
+  },
+  {
+   "point": "d2.00",
+   "density": 2.0,
+   "extrapolated": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.0
+   },
+   "clamped": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.0
+   }
+  },
+  {
+   "point": "d2.20",
+   "density": 2.2,
+   "extrapolated": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.2
+   },
+   "clamped": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.2
+   }
+  },
+  {
+   "point": "d2.40",
+   "density": 2.4,
+   "extrapolated": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   },
+   "clamped": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   }
+  },
+  {
+   "point": "d2.80",
+   "density": 2.8,
+   "extrapolated": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.8
+   },
+   "clamped": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.8
+   }
+  },
+  {
+   "point": "dt150",
+   "density": 2.4,
+   "extrapolated": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   },
+   "clamped": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   }
+  },
+  {
+   "point": "dt300",
+   "density": 2.4,
+   "extrapolated": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   },
+   "clamped": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   }
+  },
+  {
+   "point": "dt45",
+   "density": 2.4,
+   "extrapolated": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   },
+   "clamped": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   }
+  },
+  {
+   "point": "h1000",
+   "density": 2.4,
+   "extrapolated": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   },
+   "clamped": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   }
+  },
+  {
+   "point": "h10000",
+   "density": 2.4,
+   "extrapolated": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   },
+   "clamped": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   }
+  },
+  {
+   "point": "h30000",
+   "density": 2.4,
+   "extrapolated": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   },
+   "clamped": {
+    "diverged": true,
+    "peak_C": null,
+    "Q_W": null,
+    "density": 2.4
+   }
+  }
+ ],
+ "n_compared": 10,
+ "n_agree": 10,
+ "A_CORRECTION": "An earlier note in this campaign asserted that \"extrapolated, everything diverges; clamped, nothing does -- the two bracket the answer\". The clamped half of that was stated before it was measured, and it is WRONG. Of 10 points run both ways, 10 give the same verdict. Clamping the leakage at 36.1x changes nothing: every high-density point still has no steady state.",
+ "SO_IT_IS_NOT_THE_EXTRAPOLATION": "The unbounded Arrhenius tail is real -- 600x at 450 K, 184000x at 600 K -- and it certainly makes the blow-up more violent. But it is not what decides the outcome. Even frozen at the top CALIBRATED value, 36.1x, the die has no steady state at 2.00 W/mm^2 and above. The divergence is therefore inside the model's calibrated implications, not an artefact of reading past them.",
+ "WHAT_IS_STILL_AN_ARTEFACT": "The block that seeds it. Every runaway begins on core_other -- the un-itemised slab holding power the model could not attribute, 15.7 % of die area where a real core carries about 1.35 %. A 36x leakage multiplier on a slab that large is enough to diverge without any extrapolation. So the high-density ceiling is a FLOORPLAN artefact rather than a leakage one, and the fix is to attribute that power, not to extend the temperature calibration.",
+ "THE_CEILING_ITSELF_IS_ROBUST": "Under both leakage treatments the array holds at 1.60-1.80 W/mm^2 and fails at 2.00 and above. That boundary is reproducible across the two settings, so it is a stable property of this floorplan and this package -- but it is a property of the ARTEFACT, and should not be quoted as where photonic cooling gives out.",
+ "WHAT_THIS_CHANGES_FOR_PRIORITIES": "PTM SPICE remains the top item for the cold zone and for any claim above 400 K. But it will NOT unblock the high-density work on its own: fixing core_other will, and that is a floorplan and power-attribution task the project has already done once for the ISA variants (isa_floorplans.py lands the residual at the published 1.35 %)."
+}

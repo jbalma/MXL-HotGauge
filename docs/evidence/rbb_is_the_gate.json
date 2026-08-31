@@ -1,0 +1,72 @@
+{
+ "note": "The decisive test for the high-density ceiling: the same density ladder on floorplans whose\nun-itemised core_other residual is 0.94 % of die area instead of 15.68 %.",
+ "rows": [
+  {
+   "point": "a64fx_d2.00",
+   "density": 2.0,
+   "diverged": true,
+   "peak_C": null,
+   "Q_W": null
+  },
+  {
+   "point": "a64fx_d2.40",
+   "density": 2.4,
+   "diverged": true,
+   "peak_C": null,
+   "Q_W": null
+  },
+  {
+   "point": "a64fx_d2.80",
+   "density": 2.8,
+   "diverged": true,
+   "peak_C": null,
+   "Q_W": null
+  },
+  {
+   "point": "riscv_d1.60",
+   "density": 1.6,
+   "diverged": true,
+   "peak_C": null,
+   "Q_W": null
+  },
+  {
+   "point": "riscv_d2.00",
+   "density": 2.0,
+   "diverged": true,
+   "peak_C": null,
+   "Q_W": null
+  },
+  {
+   "point": "riscv_d2.40",
+   "density": 2.4,
+   "diverged": true,
+   "peak_C": null,
+   "Q_W": null
+  },
+  {
+   "point": "riscv_d2.80",
+   "density": 2.8,
+   "diverged": true,
+   "peak_C": null,
+   "Q_W": null
+  },
+  {
+   "point": "riscv_d3.20",
+   "density": 3.2,
+   "diverged": true,
+   "peak_C": null,
+   "Q_W": null
+  }
+ ],
+ "runaway_blocks": {
+  "RBB_0": {
+   "n": 40,
+   "max_K": 36465.5
+  }
+ },
+ "CORE_OTHER_WAS_NOT_THE_CAUSE": "Shrinking the residual from 15.68 % to 0.94 % eliminated the core_other runaway completely -- ZERO events across all eight runs, against 128 on the standard floorplan. And the ceiling did not move: still holds at 1.60 and fails at 2.00 and above. core_other was a co-occurring artefact, not the gate. That is the fourth hypothesis for this ceiling to be eliminated, after the bulk floor, the leakage extrapolation and the array envelope.",
+ "THE_GATE_IS_RBB": "With core_other fixed, every runaway is on RBB_0 -- the results-broadcast bus -- reaching 36466 K. It is 0.0019 mm^2 carrying about 399 W/mm^2, the peak block on the die, and the power model reports it as an AREA OVERHEAD rather than as silicon. `[!]` CORRECTED 31 Aug 2026: this entry originally continued \"real blocks here sit at 1-3 W/mm^2\". That is FALSE and is withdrawn -- the HotGauge paper reports >8 W/mm^2 in a core, and this project's own measured distribution on these dies has block p90 = 13.2 and p99 = 64.4, with iBuf at 141. RBB's density sits inside that distribution, so density is not the argument. The argument is the AREA SEMANTICS, and the McPAT source settles it: EXECU builds the bus from interconnect wires whose length spans the register file, the functional units and the LSQ (core.cc ~1150-1259) and folds their area into the Execution Unit (core.cc:1265). The compact rectangle the tiler gives it is not where that copper is. Even at 1.60 W/mm^2, where the solve converges, RBB_0 hits 1314 K and drives total power to 29x baseline before recovering.",
+ "THIS_CONFIRMS_THE_PROJECTS_OWN_TOP_BLOCKER": "P0.5f already records this: the hottest block on every die in this project is an accounting entry, and all six dies peak on the results-broadcast bus, which the power model reports as an area overhead and the tiler places as a rectangle. (P0.5f's own \"against 1-3 for real silicon\" is withdrawn on the same grounds as above.) The overnight campaign reached the same block independently, from the other direction, and shows it gates the DENSITY ladder too -- not just the per-ISA comparisons.",
+ "SO_THE_UNBLOCK_IS_ONE_BLOCK": "Fixing RBB is the single change that unblocks the high-density programme. Until it lands there is no measurable answer to \"where does the array give out\", and none of the dt_max, h_max or density-ceiling questions can be settled. PTM SPICE remains necessary for anything above 400 K, but it is not what is blocking here.",
+ "STATUS_31_AUG_2026": "The fix LANDED as HotGauge.thermal.rbb -- --rbb-policy {stock,amortized}, default stock so an un-flagged re-run reproduces this file's numbers. Wired into mr_comparison.py, mr_clipping_study.py and clock_headroom.py and stamped on every row. `[!]` And the bracket that followed it (docs/evidence/rbb_bracket.json) shows THIS FILE'S TITLE CLAIM DOES NOT GENERALISE. On the standard 34-core floorplan -- the die the density ladder actually runs on -- amortizing RBB does not move the ceiling at all (fails at 2.00 and 2.40 under both policies) and RBB is never the block that runs away: core_other_0 is, under both policies, at nearly the same temperature. The measurement recorded here was made on the REBUILT ISA floorplans, where core_other had already been shrunk to 0.94 %, so it says which block is hottest once core_other is gone -- not which block gates the ladder. Each candidate has now been removed once and the ceiling did not move either time, which is evidence the ceiling is not a property of any single block."
+}

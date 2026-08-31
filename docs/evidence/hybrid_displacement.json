@@ -1,0 +1,283 @@
+{
+ "note": "Test 8 (rewritten): what localized cooling displaces from the fan, and by what mechanism.\n\n    python examples/hybrid_displacement.py\n\n`[!]` This supersedes the first version of this file, which was wrong. That version assumed the\ntextbook fan affinity law -- ``P_fan ~ CFM^3``, giving ``P_fan ~ R^-5`` -- and built a headline\non the fifth power. **This project does not model a fan that way, and never did.**\n``HotGauge.thermal.sink_models.FanCoolingModel`` is calibrated against Maxwell Labs' own\nspreadsheet::\n\n    CFM   = Q / (AIR_W_PER_CFM_K * dT_air)        AIR_W_PER_CFM_K = 0.569\n    P_fan = MXL_FAN_W_PER_CFM * CFM               MXL_FAN_W_PER_CFM = 0.590\n\nso **fan power scales as Q / dT_air**: linear in the heat carried, and INVERSE in the air\ntemperature rise. The three calibration cases span 3x in airflow and agree on 0.590 W/CFM to four\nfigures, so this is a property of the modelled fan rather than a fitted constant. The measured\ncampaign confirms it: 45 CFM draws 26.7 W against 88 CFM's 35.0 W, which is linear, not cubic.\n\nThe mechanism, corrected\n------------------------\nTaking flux off the fan is the WEAK lever here. Fan power is linear in heat carried, so an array\nlifting fraction ``s`` cuts fan power by exactly ``s`` -- and it only pays if the array costs less\nper watt than the fan does, which is a hard bar.\n\nThe strong lever is the one the sink model's own docstring names: **fan power is inverse in\n``dT_air``**. Letting the air stream run hotter is dramatically cheaper, and the only reason a\ndesigner cannot is that hotter air raises the effective ambient the die sees, which costs\ntemperature margin at the hotspot. The array buys that margin back exactly where it is spent.\n\n    the array does not carry the heat -- it buys the MARGIN that lets the air carry it hot\n\nThat is a better claim than the one it replaces, and unlike the fifth-power version it is the\nmechanism this repository actually models.\n\n`[!]` What this is not\n-----------------------\nThe margin-to-dT_air conversion here is a ledger on the calibrated fan model, not a coupled solve.\nIt assumes the array's measured peak reduction converts one-for-one into permissible air rise,\nwhich the effective-ambient term (inlet + dT_air/2) makes conservative but not exact. The solver\ncampaign measures the same thing directly and should be preferred where the two disagree.",
+ "supersedes": "the first version of this file, which assumed P_fan ~ CFM^3 (affinity law) and reported a fifth-power lever. The calibrated model is linear in heat and inverse in dT_air.",
+ "fan_model": {
+  "W_per_CFM": 0.59,
+  "W_per_CFM_K": 0.569,
+  "P_fan_equals": "MXL_FAN_W_PER_CFM * Q / (AIR_W_PER_CFM_K * dT_air)"
+ },
+ "die_W": 250.0,
+ "dt_air_base_K": 15.0,
+ "baseline_fan_W": 17.281780902167544,
+ "weak_lever_flux": [
+  {
+   "s": 0.0,
+   "fan_W": 17.281780902167544,
+   "saved_W": 0.0,
+   "breakeven_cost_W_per_W": NaN
+  },
+  {
+   "s": 0.1,
+   "fan_W": 15.55360281195079,
+   "saved_W": 1.728178090216753,
+   "breakeven_cost_W_per_W": 0.06912712360867011
+  },
+  {
+   "s": 0.2,
+   "fan_W": 13.825424721734034,
+   "saved_W": 3.4563561804335095,
+   "breakeven_cost_W_per_W": 0.06912712360867018
+  },
+  {
+   "s": 0.3,
+   "fan_W": 12.09724663151728,
+   "saved_W": 5.184534270650264,
+   "breakeven_cost_W_per_W": 0.06912712360867018
+  }
+ ],
+ "strong_lever_margin": [
+  {
+   "margin_K": 0,
+   "dt_air_K": 15.0,
+   "fan_W": 17.281780902167544,
+   "fan_saved_W": 0.0,
+   "fan_frac_of_baseline": 1.0
+  },
+  {
+   "margin_K": 5,
+   "dt_air_K": 20.0,
+   "fan_W": 12.96133567662566,
+   "fan_saved_W": 4.320445225541883,
+   "fan_frac_of_baseline": 0.7500000000000001
+  },
+  {
+   "margin_K": 10,
+   "dt_air_K": 25.0,
+   "fan_W": 10.369068541300528,
+   "fan_saved_W": 6.912712360867015,
+   "fan_frac_of_baseline": 0.6000000000000001
+  },
+  {
+   "margin_K": 20,
+   "dt_air_K": 35.0,
+   "fan_W": 7.406477529500377,
+   "fan_saved_W": 9.875303372667167,
+   "fan_frac_of_baseline": 0.4285714285714286
+  },
+  {
+   "margin_K": 30,
+   "dt_air_K": 45.0,
+   "fan_W": 5.760593634055849,
+   "fan_saved_W": 11.521187268111696,
+   "fan_frac_of_baseline": 0.33333333333333337
+  },
+  {
+   "margin_K": 45,
+   "dt_air_K": 60.0,
+   "fan_W": 4.320445225541886,
+   "fan_saved_W": 12.961335676625659,
+   "fan_frac_of_baseline": 0.25
+  }
+ ],
+ "net_by_trajectory": [
+  {
+   "array_cost_W_per_W": 2.4728,
+   "label": "legacy Yb:YLF",
+   "array_W": 123.64,
+   "points": [
+    {
+     "margin_K": 0,
+     "dt_air_K": 15.0,
+     "system_W": 390.92178090216754,
+     "vs_baseline_W": 123.63999999999999
+    },
+    {
+     "margin_K": 5,
+     "dt_air_K": 20.0,
+     "system_W": 386.60133567662564,
+     "vs_baseline_W": 119.31955477445808
+    },
+    {
+     "margin_K": 10,
+     "dt_air_K": 25.0,
+     "system_W": 384.0090685413005,
+     "vs_baseline_W": 116.72728763913295
+    },
+    {
+     "margin_K": 20,
+     "dt_air_K": 35.0,
+     "system_W": 381.04647752950035,
+     "vs_baseline_W": 113.7646966273328
+    },
+    {
+     "margin_K": 30,
+     "dt_air_K": 45.0,
+     "system_W": 379.40059363405584,
+     "vs_baseline_W": 112.11881273188828
+    },
+    {
+     "margin_K": 45,
+     "dt_air_K": 60.0,
+     "system_W": 377.9604452255419,
+     "vs_baseline_W": 110.67866432337433
+    }
+   ],
+   "best": {
+    "margin_K": 45,
+    "dt_air_K": 60.0,
+    "system_W": 377.9604452255419,
+    "vs_baseline_W": 110.67866432337433
+   }
+  },
+  {
+   "array_cost_W_per_W": 0.609,
+   "label": "shipped",
+   "array_W": 30.450000000000003,
+   "points": [
+    {
+     "margin_K": 0,
+     "dt_air_K": 15.0,
+     "system_W": 297.73178090216754,
+     "vs_baseline_W": 30.44999999999999
+    },
+    {
+     "margin_K": 5,
+     "dt_air_K": 20.0,
+     "system_W": 293.41133567662564,
+     "vs_baseline_W": 26.129554774458086
+    },
+    {
+     "margin_K": 10,
+     "dt_air_K": 25.0,
+     "system_W": 290.8190685413005,
+     "vs_baseline_W": 23.537287639132956
+    },
+    {
+     "margin_K": 20,
+     "dt_air_K": 35.0,
+     "system_W": 287.85647752950035,
+     "vs_baseline_W": 20.5746966273328
+    },
+    {
+     "margin_K": 30,
+     "dt_air_K": 45.0,
+     "system_W": 286.21059363405584,
+     "vs_baseline_W": 18.928812731888286
+    },
+    {
+     "margin_K": 45,
+     "dt_air_K": 60.0,
+     "system_W": 284.7704452255419,
+     "vs_baseline_W": 17.488664323374337
+    }
+   ],
+   "best": {
+    "margin_K": 45,
+    "dt_air_K": 60.0,
+    "system_W": 284.7704452255419,
+    "vs_baseline_W": 17.488664323374337
+   }
+  },
+  {
+   "array_cost_W_per_W": 0.285,
+   "label": "v91 target + 90% laser",
+   "array_W": 14.249999999999998,
+   "points": [
+    {
+     "margin_K": 0,
+     "dt_air_K": 15.0,
+     "system_W": 281.53178090216755,
+     "vs_baseline_W": 14.25
+    },
+    {
+     "margin_K": 5,
+     "dt_air_K": 20.0,
+     "system_W": 277.21133567662565,
+     "vs_baseline_W": 9.929554774458097
+    },
+    {
+     "margin_K": 10,
+     "dt_air_K": 25.0,
+     "system_W": 274.6190685413005,
+     "vs_baseline_W": 7.337287639132967
+    },
+    {
+     "margin_K": 20,
+     "dt_air_K": 35.0,
+     "system_W": 271.65647752950036,
+     "vs_baseline_W": 4.37469662733281
+    },
+    {
+     "margin_K": 30,
+     "dt_air_K": 45.0,
+     "system_W": 270.01059363405585,
+     "vs_baseline_W": 2.728812731888297
+    },
+    {
+     "margin_K": 45,
+     "dt_air_K": 60.0,
+     "system_W": 268.57044522554185,
+     "vs_baseline_W": 1.2886643233742916
+    }
+   ],
+   "best": {
+    "margin_K": 45,
+    "dt_air_K": 60.0,
+    "system_W": 268.57044522554185,
+    "vs_baseline_W": 1.2886643233742916
+   }
+  },
+  {
+   "array_cost_W_per_W": 0.101,
+   "label": "same, logic run hot",
+   "array_W": 5.050000000000001,
+   "points": [
+    {
+     "margin_K": 0,
+     "dt_air_K": 15.0,
+     "system_W": 272.33178090216757,
+     "vs_baseline_W": 5.050000000000011
+    },
+    {
+     "margin_K": 5,
+     "dt_air_K": 20.0,
+     "system_W": 268.01133567662566,
+     "vs_baseline_W": 0.7295547744581086
+    },
+    {
+     "margin_K": 10,
+     "dt_air_K": 25.0,
+     "system_W": 265.41906854130053,
+     "vs_baseline_W": -1.8627123608670217
+    },
+    {
+     "margin_K": 20,
+     "dt_air_K": 35.0,
+     "system_W": 262.4564775295004,
+     "vs_baseline_W": -4.825303372667179
+    },
+    {
+     "margin_K": 30,
+     "dt_air_K": 45.0,
+     "system_W": 260.81059363405586,
+     "vs_baseline_W": -6.4711872681116915
+    },
+    {
+     "margin_K": 45,
+     "dt_air_K": 60.0,
+     "system_W": 259.37044522554186,
+     "vs_baseline_W": -7.911335676625697
+    }
+   ],
+   "best": {
+    "margin_K": 45,
+    "dt_air_K": 60.0,
+    "system_W": 259.37044522554186,
+    "vs_baseline_W": -7.911335676625697
+   }
+  }
+ ],
+ "THE_FIRST_VERSION_WAS_WRONG": "It assumed the textbook fan affinity law and reported fan power falling as the fifth power of thermal resistance, which produced a 22-35 % system-power saving. This project models a calibrated fan whose power is LINEAR in heat carried, so that headline was an artefact of an imported assumption rather than a result. The campaign confirms the linear model directly: 45 CFM draws 26.7 W against 88 CFM's 35.0 W.",
+ "THE_REAL_MECHANISM_IS_BETTER": "Fan power is inverse in dT_air, so letting the air run hot is where the money is -- the sink model's own calibration drops a 100 W chip's fan from 6.91 W to 2.07 W going from dT_air 15 K to 50 K. What stops a designer doing that is the effective ambient rising and eating hotspot margin. The array buys that margin back exactly where it is spent. So the claim is not that the array carries the heat more cheaply than the fan -- it does not -- but that it BUYS THE MARGIN THAT LETS THE AIR CARRY THE HEAT HOT, which is a different and much stronger lever.",
+ "WHAT_STILL_NEEDS_MEASURING": "The margin-to-dT_air conversion is a ledger, not a solve: it assumes measured peak reduction converts one-for-one into permissible air rise. The campaign's airflow family measures the same thing through the coupled solver and should be preferred where they disagree."
+}

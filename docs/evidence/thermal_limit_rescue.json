@@ -1,0 +1,911 @@
+{
+ "note": "Test 6c: pricing the RESCUE of a die that its cooler cannot otherwise run.\n\n    python examples/thermal_limit_rescue.py\n\nTests 6 and 6b both scored cooling at a fixed 250 W die, and neither enforced a junction limit.\nThat put them in the wrong regime twice over. Every option looked interchangeable because none\nof them was actually constrained -- and the air baseline they compared against was already\nILLEGAL: 0.325 K/W on a 250 W die sits at 381.2 K, which is 108 C, past a 100 C limit and well\npast 85 C. The finding that \"fan + laser beats fan alone\" was measured on a chip the fan cannot\nrun at all.\n\nThe regime that matters is the one where the chip is otherwise INOPERABLE. Below the limit,\ncooling is a question of efficiency and the cheapest pump wins by definition. Above it, cooling\nis a question of feasibility, and the comparison is between mechanisms that buy back headroom at\nvery different -- and very steeply rising -- prices.\n\nThe three rescue mechanisms, and why they diverge\n--------------------------------------------------\nEach buys the same thing (junction temperature) by a different route, and the routes have\ndifferent exponents:\n\n  1. MORE AIRFLOW. Heatsink resistance falls sublinearly with flow while fan power rises with\n     its cube. With R ~ CFM^-0.6 and P ~ CFM^3, fan power goes as R^-5. Rescue by fan is the\n     steepest curve here and it saturates against the heatsink's conduction floor.\n\n  2. SUB-AMBIENT CHILLER. Drop the coolant inlet below ambient and the die runs cooler at the\n     same resistance. But the chiller must then lift the ENTIRE die power from T_in up to\n     ambient, and its Carnot COP is T_in / (T_a - T_in), which collapses as T_in falls. This is\n     the mechanism that makes unrunnable chips runnable under pure liquid today, and it is\n     exactly the \"collapsing COP\" case: the colder you must go, the worse the machine that\n     takes you there.\n\n  3. LASER AT THE JUNCTION. The array removes heat at T_j itself. Its cost per watt is roughly\n     flat in temperature, and the recovery term works in its FAVOUR as the die gets hotter,\n     because phi = 1 - T_0/T_h grows (eq. 1.13).\n\nThe thermodynamic contrast is the whole point, and it is a contrast in WHERE each machine\noperates. The chiller is forced to work at the coldest point in the system, sub-ambient, where\nits COP is worst and still falling. The laser works at the hottest point in the system, the\njunction at its limit, where its recovery is best and still rising. They move in opposite\ndirections against the same variable.\n\n`[!]` What this is not\n-----------------------\nA single-resistance lumped model, not a solve. `T_j` here is a die-average against a die-level\nR_th; a real rescue binds on a hotspot, which is the case that most favours the laser because it\nis the only mechanism that can be aimed. That advantage is NOT counted here -- the laser is\ncharged as if it removed bulk die power -- so the crossovers below are conservative for it.\n\nThe chiller is given the optimistic reading throughout: cold side taken at the inlet temperature\n(the warmest defensible choice, so the best COP), reject at ambient, and no condensation\npenalty. Sub-ambient hardware in air is not usually buildable at all without sealing against\ndew, and that constraint is noted but not priced.\n\nAnti-Stokes efficiency is swept and is the input the answer turns on. eta_AS = 0.02 is near what\nhas been demonstrated; eta_AS = 1.0 is roughly 50x beyond it and is included as a ceiling, not a\nforecast.",
+ "supersedes": "docs/evidence/hybrid_cooling_ledger.json and liquid_vs_photonic.json, both of which scored a fixed 250 W die and enforced no junction limit",
+ "Tj_max_K": 373.15,
+ "ambient_K": 300.0,
+ "T0_K": 295.0,
+ "eta_L": 0.85,
+ "eta_c": 0.92,
+ "eta_P_int": 0.6,
+ "eta_chiller_2nd_used": 0.4,
+ "fan_model": {
+  "R_exp": 0.6,
+  "P_exp": 3.0,
+  "R_floor_K_per_W": 0.08
+ },
+ "unaided_limits": {
+  "air_88cfm": {
+   "R_th_K_per_W": 0.325,
+   "P_max_unaided_W": 225.076923076923,
+   "T_j_at_250W_K": 381.25,
+   "operable_at_250W": false
+  },
+  "cold_plate_liquid": {
+   "R_th_K_per_W": 0.05,
+   "P_max_unaided_W": 1462.9999999999995,
+   "T_j_at_250W_K": 312.5,
+   "operable_at_250W": true
+  },
+  "microchannel_direct_die": {
+   "R_th_K_per_W": 0.0153,
+   "P_max_unaided_W": 4781.045751633986,
+   "T_j_at_250W_K": 303.825,
+   "operable_at_250W": true
+  }
+ },
+ "laser_cost_per_W_at_Tj_max": {
+  "0.02": 33.812959003547945,
+  "0.2": 3.268201970299856,
+  "1.0": 0.5531124562333599
+ },
+ "rescue_sweep": [
+  {
+   "baseline": "air_88cfm",
+   "overload": 1.0,
+   "die_W": 225.076923076923,
+   "T_in_required_K": 300.0,
+   "chiller_needed": false,
+   "chiller_COP": Infinity,
+   "chiller_W": 0.0,
+   "pump_W": 130.54461538461535,
+   "chiller_route_cool_W": 130.54461538461535,
+   "chiller_route_sysCOP": 1.7241379310344827,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 0.0,
+     "laser_net_W": 0.0,
+     "cool_W": 130.54461538461535,
+     "sysCOP": 1.7241379310344827,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 0.0,
+     "laser_net_W": 0.0,
+     "cool_W": 130.54461538461535,
+     "sysCOP": 1.7241379310344827,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 0.0,
+     "laser_net_W": 0.0,
+     "cool_W": 130.54461538461535,
+     "sysCOP": 1.7241379310344827,
+     "beats_chiller": false
+    }
+   },
+   "fan_route": {
+    "feasible": true,
+    "P_W": 35.0,
+    "flow_ratio": 1.0,
+    "sysCOP": 6.430769230769229
+   }
+  },
+  {
+   "baseline": "air_88cfm",
+   "overload": 1.25,
+   "die_W": 281.34615384615375,
+   "T_in_required_K": 281.7125,
+   "chiller_needed": true,
+   "chiller_COP": 6.161859193438134,
+   "chiller_W": 45.65929616596302,
+   "pump_W": 163.1807692307692,
+   "chiller_route_cool_W": 208.8400653967322,
+   "chiller_route_sysCOP": 1.3471847622326787,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 56.269230769230745,
+     "laser_net_W": 1902.629193161178,
+     "cool_W": 2033.1738085457932,
+     "sysCOP": 0.1383778173138005,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 56.269230769230745,
+     "laser_net_W": 183.8992108672572,
+     "cool_W": 314.44382625187257,
+     "sysCOP": 0.8947421776403164,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 56.269230769230745,
+     "laser_net_W": 31.12321244113097,
+     "cool_W": 161.66782782574631,
+     "sysCOP": 1.7402729883239523,
+     "beats_chiller": true
+    }
+   },
+   "fan_route": {
+    "feasible": true,
+    "P_W": 106.81152343749999,
+    "flow_ratio": 1.4504965105039933,
+    "sysCOP": 2.6340430769230765
+   }
+  },
+  {
+   "baseline": "air_88cfm",
+   "overload": 1.5,
+   "die_W": 337.6153846153845,
+   "T_in_required_K": 263.425,
+   "chiller_needed": true,
+   "chiller_COP": 2.8809295967190716,
+   "chiller_W": 117.18973799286024,
+   "pump_W": 195.81692307692305,
+   "chiller_route_cool_W": 313.00666106978326,
+   "chiller_route_sysCOP": 1.0786204468029352,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 112.53846153846152,
+     "laser_net_W": 3805.2583863223567,
+     "cool_W": 3935.8030017069723,
+     "sysCOP": 0.0857805597660654,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 112.53846153846152,
+     "laser_net_W": 367.7984217345145,
+     "cool_W": 498.3430371191298,
+     "sysCOP": 0.6774758739825173,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 112.53846153846152,
+     "laser_net_W": 62.246424882261955,
+     "cool_W": 192.7910402668773,
+     "sysCOP": 1.751198521196988,
+     "beats_chiller": true
+    }
+   },
+   "fan_route": {
+    "feasible": true,
+    "P_W": 265.7812500000001,
+    "flow_ratio": 1.9655560456566727,
+    "sysCOP": 1.270275403608736
+   }
+  },
+  {
+   "baseline": "air_88cfm",
+   "overload": 2.0,
+   "die_W": 450.153846153846,
+   "T_in_required_K": 226.85000000000002,
+   "chiller_needed": true,
+   "chiller_COP": 1.2404647983595356,
+   "chiller_W": 362.8912700700223,
+   "pump_W": 261.0892307692307,
+   "chiller_route_cool_W": 623.980500839253,
+   "chiller_route_sysCOP": 0.7214229379738465,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 225.076923076923,
+     "laser_net_W": 7610.516772644713,
+     "cool_W": 7741.061388029328,
+     "sysCOP": 0.05815143732743908,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 225.076923076923,
+     "laser_net_W": 735.5968434690288,
+     "cool_W": 866.1414588536442,
+     "sysCOP": 0.5197232409930288,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 225.076923076923,
+     "laser_net_W": 124.4928497645239,
+     "cool_W": 255.03746514913925,
+     "sysCOP": 1.7650498756745712,
+     "beats_chiller": true
+    }
+   },
+   "fan_route": {
+    "feasible": true,
+    "P_W": 1120.0000000000002,
+    "flow_ratio": 3.174802103936399,
+    "sysCOP": 0.4019230769230767
+   }
+  },
+  {
+   "baseline": "air_88cfm",
+   "overload": 2.5,
+   "die_W": 562.6923076923075,
+   "T_in_required_K": 190.27500000000003,
+   "chiller_needed": true,
+   "chiller_COP": 0.6936431989063572,
+   "chiller_W": 811.2128953033558,
+   "pump_W": 326.3615384615384,
+   "chiller_route_cool_W": 1137.5744337648941,
+   "chiller_route_sysCOP": 0.494642188669828,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 337.6153846153845,
+     "laser_net_W": 11415.775158967068,
+     "cool_W": 11546.319774351683,
+     "sysCOP": 0.04873347687305865,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 337.6153846153845,
+     "laser_net_W": 1103.3952652035434,
+     "cool_W": 1233.9398805881588,
+     "sysCOP": 0.4560127414182445,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 337.6153846153845,
+     "laser_net_W": 186.73927464678584,
+     "cool_W": 317.2838900314012,
+     "sysCOP": 1.773466366781555,
+     "beats_chiller": true
+    }
+   },
+   "fan_route": {
+    "feasible": true,
+    "P_W": 3417.9687500000005,
+    "flow_ratio": 4.6050393733004835,
+    "sysCOP": 0.16462769230769222
+   }
+  },
+  {
+   "baseline": "air_88cfm",
+   "overload": 3.0,
+   "die_W": 675.230769230769,
+   "T_in_required_K": 153.70000000000002,
+   "chiller_needed": true,
+   "chiller_COP": 0.42023239917976773,
+   "chiller_W": 1606.8032130523989,
+   "pump_W": 391.6338461538461,
+   "chiller_route_cool_W": 1998.437059206245,
+   "chiller_route_sysCOP": 0.3378794273856003,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 450.1538461538461,
+     "laser_net_W": 15221.033545289427,
+     "cool_W": 15351.578160674042,
+     "sysCOP": 0.0439844530747008,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 450.1538461538461,
+     "laser_net_W": 1471.193686938058,
+     "cool_W": 1601.7383023226732,
+     "sysCOP": 0.42156123022819647,
+     "beats_chiller": true
+    },
+    "1.0": {
+     "Q_laser_W": 450.1538461538461,
+     "laser_net_W": 248.98569952904782,
+     "cool_W": 379.5303149136632,
+     "sysCOP": 1.7791220956470177,
+     "beats_chiller": true
+    }
+   },
+   "fan_route": {
+    "feasible": true,
+    "P_W": 8505.000000000004,
+    "flow_ratio": 6.240251469155713,
+    "sysCOP": 0.079392212725546
+   }
+  },
+  {
+   "baseline": "air_88cfm",
+   "overload": 4.0,
+   "die_W": 900.307692307692,
+   "T_in_required_K": 80.55000000000007,
+   "chiller_needed": true,
+   "chiller_COP": 0.14682159945317858,
+   "chiller_W": 6131.983956453221,
+   "pump_W": 522.1784615384614,
+   "chiller_route_cool_W": 6654.162417991683,
+   "chiller_route_sysCOP": 0.13529992743691058,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 675.230769230769,
+     "laser_net_W": 22831.550317934136,
+     "cool_W": 22962.094933318753,
+     "sysCOP": 0.03920843002009002,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 675.230769230769,
+     "laser_net_W": 2206.790530407087,
+     "cool_W": 2337.3351457917024,
+     "sysCOP": 0.3851855365836891,
+     "beats_chiller": true
+    },
+    "1.0": {
+     "Q_laser_W": 675.230769230769,
+     "laser_net_W": 373.4785492935717,
+     "cool_W": 504.0231646781871,
+     "sysCOP": 1.786242687640216,
+     "beats_chiller": true
+    }
+   },
+   "fan_route": {
+    "feasible": true,
+    "P_W": 35840.0,
+    "flow_ratio": 10.079368399158986,
+    "sysCOP": 0.0251201923076923
+   }
+  },
+  {
+   "baseline": "cold_plate_liquid",
+   "overload": 1.0,
+   "die_W": 1462.9999999999995,
+   "T_in_required_K": 300.0,
+   "chiller_needed": false,
+   "chiller_COP": Infinity,
+   "chiller_W": 0.0,
+   "pump_W": 73.14999999999998,
+   "chiller_route_cool_W": 73.14999999999998,
+   "chiller_route_sysCOP": 20.0,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 0.0,
+     "laser_net_W": 0.0,
+     "cool_W": 73.14999999999998,
+     "sysCOP": 20.0,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 0.0,
+     "laser_net_W": 0.0,
+     "cool_W": 73.14999999999998,
+     "sysCOP": 20.0,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 0.0,
+     "laser_net_W": 0.0,
+     "cool_W": 73.14999999999998,
+     "sysCOP": 20.0,
+     "beats_chiller": false
+    }
+   }
+  },
+  {
+   "baseline": "cold_plate_liquid",
+   "overload": 1.25,
+   "die_W": 1828.7499999999995,
+   "T_in_required_K": 281.7125,
+   "chiller_needed": true,
+   "chiller_COP": 6.161859193438134,
+   "chiller_W": 296.78542507875966,
+   "pump_W": 91.43749999999999,
+   "chiller_route_cool_W": 388.22292507875966,
+   "chiller_route_sysCOP": 4.710566743653783,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 365.75,
+     "laser_net_W": 12367.08975554766,
+     "cool_W": 12440.23975554766,
+     "sysCOP": 0.14700279383156406,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 365.75,
+     "laser_net_W": 1195.3448706371723,
+     "cool_W": 1268.4948706371724,
+     "sysCOP": 1.4416692115447087,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 365.75,
+     "laser_net_W": 202.3008808673514,
+     "cool_W": 275.4508808673514,
+     "sysCOP": 6.639114727974564,
+     "beats_chiller": true
+    }
+   }
+  },
+  {
+   "baseline": "cold_plate_liquid",
+   "overload": 1.5,
+   "die_W": 2194.499999999999,
+   "T_in_required_K": 263.425,
+   "chiller_needed": true,
+   "chiller_COP": 2.8809295967190716,
+   "chiller_W": 761.7332969535914,
+   "pump_W": 109.72499999999997,
+   "chiller_route_cool_W": 871.4582969535913,
+   "chiller_route_sysCOP": 2.5181927898000898,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 731.4999999999995,
+     "laser_net_W": 24734.179511095306,
+     "cool_W": 24807.329511095308,
+     "sysCOP": 0.08846175881279315,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 731.4999999999995,
+     "laser_net_W": 2390.6897412743433,
+     "cool_W": 2463.8397412743434,
+     "sysCOP": 0.8906829300776532,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 731.4999999999995,
+     "laser_net_W": 404.6017617347025,
+     "cool_W": 477.7517617347025,
+     "sysCOP": 4.593389654978633,
+     "beats_chiller": true
+    }
+   }
+  },
+  {
+   "baseline": "cold_plate_liquid",
+   "overload": 2.0,
+   "die_W": 2925.999999999999,
+   "T_in_required_K": 226.85000000000002,
+   "chiller_needed": true,
+   "chiller_COP": 1.2404647983595356,
+   "chiller_W": 2358.7932554551453,
+   "pump_W": 146.29999999999995,
+   "chiller_route_cool_W": 2505.0932554551455,
+   "chiller_route_sysCOP": 1.168020389511759,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 1462.9999999999995,
+     "laser_net_W": 49468.35902219063,
+     "cool_W": 49541.50902219063,
+     "sysCOP": 0.05906158406861175,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 1462.9999999999995,
+     "laser_net_W": 4781.3794825486875,
+     "cool_W": 4854.529482548687,
+     "sysCOP": 0.6027360654659807,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 1462.9999999999995,
+     "laser_net_W": 809.2035234694054,
+     "cool_W": 882.3535234694053,
+     "sysCOP": 3.3161311449122977,
+     "beats_chiller": true
+    }
+   }
+  },
+  {
+   "baseline": "cold_plate_liquid",
+   "overload": 2.5,
+   "die_W": 3657.499999999999,
+   "T_in_required_K": 190.275,
+   "chiller_needed": true,
+   "chiller_COP": 0.6936431989063568,
+   "chiller_W": 5272.8838194718155,
+   "pump_W": 182.87499999999997,
+   "chiller_route_cool_W": 5455.7588194718155,
+   "chiller_route_sysCOP": 0.6703925376881102,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 2194.4999999999995,
+     "laser_net_W": 74202.53853328594,
+     "cool_W": 74275.68853328594,
+     "sysCOP": 0.049242222754500964,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 2194.4999999999995,
+     "laser_net_W": 7172.069223823032,
+     "cool_W": 7245.219223823032,
+     "sysCOP": 0.504815642841249,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 2194.4999999999995,
+     "laser_net_W": 1213.805285204108,
+     "cool_W": 1286.955285204108,
+     "sysCOP": 2.8419790819849102,
+     "beats_chiller": true
+    }
+   }
+  },
+  {
+   "baseline": "cold_plate_liquid",
+   "overload": 3.0,
+   "die_W": 4388.999999999998,
+   "T_in_required_K": 153.70000000000005,
+   "chiller_needed": true,
+   "chiller_COP": 0.42023239917976785,
+   "chiller_W": 10444.220884840588,
+   "pump_W": 219.44999999999993,
+   "chiller_route_cool_W": 10663.670884840589,
+   "chiller_route_sysCOP": 0.41158434533452964,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 2925.9999999999986,
+     "laser_net_W": 98936.71804438124,
+     "cool_W": 99009.86804438123,
+     "sysCOP": 0.04432891475052392,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 2925.9999999999986,
+     "laser_net_W": 9562.758965097373,
+     "cool_W": 9635.908965097373,
+     "sysCOP": 0.45548375518050016,
+     "beats_chiller": true
+    },
+    "1.0": {
+     "Q_laser_W": 2925.9999999999986,
+     "laser_net_W": 1618.4070469388103,
+     "cool_W": 1691.5570469388103,
+     "sysCOP": 2.5946508915810536,
+     "beats_chiller": true
+    }
+   }
+  },
+  {
+   "baseline": "cold_plate_liquid",
+   "overload": 4.0,
+   "die_W": 5851.999999999998,
+   "T_in_required_K": 80.55000000000007,
+   "chiller_needed": true,
+   "chiller_COP": 0.14682159945317858,
+   "chiller_W": 39857.89571694594,
+   "pump_W": 292.5999999999999,
+   "chiller_route_cool_W": 40150.49571694594,
+   "chiller_route_sysCOP": 0.1457516251170493,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 4388.999999999998,
+     "laser_net_W": 148405.07706657186,
+     "cool_W": 148478.22706657185,
+     "sysCOP": 0.03941318613251079,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 4388.999999999998,
+     "laser_net_W": 14344.138447646063,
+     "cool_W": 14417.288447646062,
+     "sysCOP": 0.4059015688872803,
+     "beats_chiller": true
+    },
+    "1.0": {
+     "Q_laser_W": 4388.999999999998,
+     "laser_net_W": 2427.6105704082156,
+     "cool_W": 2500.7605704082157,
+     "sysCOP": 2.3400880793017054,
+     "beats_chiller": true
+    }
+   }
+  },
+  {
+   "baseline": "microchannel_direct_die",
+   "overload": 1.0,
+   "die_W": 4781.045751633986,
+   "T_in_required_K": 300.0,
+   "chiller_needed": false,
+   "chiller_COP": Infinity,
+   "chiller_W": 0.0,
+   "pump_W": 573.7254901960783,
+   "chiller_route_cool_W": 573.7254901960783,
+   "chiller_route_sysCOP": 8.333333333333332,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 0.0,
+     "laser_net_W": 0.0,
+     "cool_W": 573.7254901960783,
+     "sysCOP": 8.333333333333332,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 0.0,
+     "laser_net_W": 0.0,
+     "cool_W": 573.7254901960783,
+     "sysCOP": 8.333333333333332,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 0.0,
+     "laser_net_W": 0.0,
+     "cool_W": 573.7254901960783,
+     "sysCOP": 8.333333333333332,
+     "beats_chiller": false
+    }
+   }
+  },
+  {
+   "baseline": "microchannel_direct_die",
+   "overload": 1.25,
+   "die_W": 5976.307189542482,
+   "T_in_required_K": 281.7125,
+   "chiller_needed": true,
+   "chiller_COP": 6.161859193438134,
+   "chiller_W": 969.887010061306,
+   "pump_W": 717.1568627450978,
+   "chiller_route_cool_W": 1687.0438728064037,
+   "chiller_route_sysCOP": 3.542472893488462,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 1195.2614379084962,
+     "laser_net_W": 40415.32599852175,
+     "cool_W": 40989.05148871783,
+     "sysCOP": 0.14580252463727908,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 1195.2614379084962,
+     "laser_net_W": 3906.3557863959863,
+     "cool_W": 4480.081276592065,
+     "sysCOP": 1.3339729394571556,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 1195.2614379084962,
+     "laser_net_W": 661.1139897625859,
+     "cool_W": 1234.8394799586642,
+     "sysCOP": 4.839744182573865,
+     "beats_chiller": true
+    }
+   }
+  },
+  {
+   "baseline": "microchannel_direct_die",
+   "overload": 1.5,
+   "die_W": 7171.568627450979,
+   "T_in_required_K": 263.425,
+   "chiller_needed": true,
+   "chiller_COP": 2.8809295967190716,
+   "chiller_W": 2489.3244998483387,
+   "pump_W": 860.5882352941175,
+   "chiller_route_cool_W": 3349.9127351424563,
+   "chiller_route_sysCOP": 2.1408225212009904,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 2390.5228758169933,
+     "laser_net_W": 80830.65199704353,
+     "cool_W": 81404.37748723962,
+     "sysCOP": 0.08809807099839495,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 2390.5228758169933,
+     "laser_net_W": 7812.711572791975,
+     "cool_W": 8386.437062988054,
+     "sysCOP": 0.8551389074510956,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 2390.5228758169933,
+     "laser_net_W": 1322.2279795251725,
+     "cool_W": 1895.9534697212507,
+     "sysCOP": 3.782565733802194,
+     "beats_chiller": true
+    }
+   }
+  },
+  {
+   "baseline": "microchannel_direct_die",
+   "overload": 2.0,
+   "die_W": 9562.091503267971,
+   "T_in_required_K": 226.85000000000002,
+   "chiller_needed": true,
+   "chiller_COP": 1.2404647983595356,
+   "chiller_W": 7708.474691029886,
+   "pump_W": 1147.4509803921567,
+   "chiller_route_cool_W": 8855.925671422043,
+   "chiller_route_sysCOP": 1.0797393584867945,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 4781.045751633986,
+     "laser_net_W": 161661.30399408704,
+     "cool_W": 162235.02948428312,
+     "sysCOP": 0.05893974645096187,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 4781.045751633986,
+     "laser_net_W": 15625.423145583947,
+     "cool_W": 16199.148635780026,
+     "sysCOP": 0.5902835833080518,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 4781.045751633986,
+     "laser_net_W": 2644.455959050344,
+     "cool_W": 3218.1814492464223,
+     "sysCOP": 2.971271711701357,
+     "beats_chiller": true
+    }
+   }
+  },
+  {
+   "baseline": "microchannel_direct_die",
+   "overload": 2.5,
+   "die_W": 11952.614379084964,
+   "T_in_required_K": 190.27500000000003,
+   "chiller_needed": true,
+   "chiller_COP": 0.6936431989063572,
+   "chiller_W": 17231.646468862134,
+   "pump_W": 1434.3137254901956,
+   "chiller_route_cool_W": 18665.96019435233,
+   "chiller_route_sysCOP": 0.640342862335119,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 7171.568627450978,
+     "laser_net_W": 242491.95599113053,
+     "cool_W": 243065.6814813266,
+     "sysCOP": 0.04917442193501602,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 7171.568627450978,
+     "laser_net_W": 23438.13471837592,
+     "cool_W": 24011.860208571998,
+     "sysCOP": 0.49777960871261434,
+     "beats_chiller": false
+    },
+    "1.0": {
+     "Q_laser_W": 7171.568627450978,
+     "laser_net_W": 3966.683938575516,
+     "cool_W": 4540.409428771594,
+     "sysCOP": 2.632497039439621,
+     "beats_chiller": true
+    }
+   }
+  },
+  {
+   "baseline": "microchannel_direct_die",
+   "overload": 3.0,
+   "die_W": 14343.137254901958,
+   "T_in_required_K": 153.70000000000002,
+   "chiller_needed": true,
+   "chiller_COP": 0.42023239917976773,
+   "chiller_W": 34131.44080013266,
+   "pump_W": 1721.176470588235,
+   "chiller_route_cool_W": 35852.6172707209,
+   "chiller_route_sysCOP": 0.4000583038777285,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 9562.091503267973,
+     "laser_net_W": 323322.60798817413,
+     "cool_W": 323896.3334783702,
+     "sysCOP": 0.04428311089807317,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 9562.091503267973,
+     "laser_net_W": 31250.8462911679,
+     "cool_W": 31824.57178136398,
+     "sysCOP": 0.45069380205458404,
+     "beats_chiller": true
+    },
+    "1.0": {
+     "Q_laser_W": 9562.091503267973,
+     "laser_net_W": 5288.91191810069,
+     "cool_W": 5862.637408296769,
+     "sysCOP": 2.446533233422152,
+     "beats_chiller": true
+    }
+   }
+  },
+  {
+   "baseline": "microchannel_direct_die",
+   "overload": 4.0,
+   "die_W": 19124.183006535943,
+   "T_in_required_K": 80.55000000000007,
+   "chiller_needed": true,
+   "chiller_COP": 0.14682159945317858,
+   "chiller_W": 130254.56116648999,
+   "pump_W": 2294.9019607843134,
+   "chiller_route_cool_W": 132549.4631272743,
+   "chiller_route_sysCOP": 0.14427959612460187,
+   "laser_route": {
+    "0.02": {
+     "Q_laser_W": 14343.137254901958,
+     "laser_net_W": 484983.9119822611,
+     "cool_W": 485557.6374724572,
+     "sysCOP": 0.03938602038284434,
+     "beats_chiller": false
+    },
+    "0.2": {
+     "Q_laser_W": 14343.137254901958,
+     "laser_net_W": 46876.26943675185,
+     "cool_W": 47449.994926947926,
+     "sysCOP": 0.4030386733650605,
+     "beats_chiller": true
+    },
+    "1.0": {
+     "Q_laser_W": 14343.137254901958,
+     "laser_net_W": 7933.367877151033,
+     "cool_W": 8507.093367347112,
+     "sysCOP": 2.248027872826757,
+     "beats_chiller": true
+    }
+   }
+  }
+ ],
+ "crossovers": [
+  {
+   "baseline": "air_88cfm",
+   "eta_AS": 0.02,
+   "crossover_die_W": 1072.2802310960458,
+   "crossover_x_unaided": 4.764061177118455,
+   "T_in_at_crossover_K": 24.65892489378507
+  },
+  {
+   "baseline": "air_88cfm",
+   "eta_AS": 0.2,
+   "crossover_die_W": 595.2686515010319,
+   "crossover_x_unaided": 2.644734268459814,
+   "T_in_at_crossover_K": 179.6876882621646
+  },
+  {
+   "baseline": "air_88cfm",
+   "eta_AS": 1.0,
+   "crossover_die_W": 226.2023076923076,
+   "crossover_x_unaided": 1.005,
+   "T_in_at_crossover_K": 299.63425
+  },
+  {
+   "baseline": "cold_plate_liquid",
+   "eta_AS": 0.02,
+   "crossover_die_W": 6969.821502124296,
+   "crossover_x_unaided": 4.764061177118454,
+   "T_in_at_crossover_K": 24.658924893785183
+  },
+  {
+   "baseline": "cold_plate_liquid",
+   "eta_AS": 0.2,
+   "crossover_die_W": 4211.622318918603,
+   "crossover_x_unaided": 2.8787575659047193,
+   "T_in_at_crossover_K": 162.56888405406983
+  },
+  {
+   "baseline": "cold_plate_liquid",
+   "eta_AS": 1.0,
+   "crossover_die_W": 1470.3149999999994,
+   "crossover_x_unaided": 1.005,
+   "T_in_at_crossover_K": 299.63425
+  },
+  {
+   "baseline": "microchannel_direct_die",
+   "eta_AS": 0.02,
+   "crossover_die_W": 22777.19445138659,
+   "crossover_x_unaided": 4.764061177118454,
+   "T_in_at_crossover_K": 24.658924893785183
+  },
+  {
+   "baseline": "microchannel_direct_die",
+   "eta_AS": 0.2,
+   "crossover_die_W": 13626.862335539163,
+   "crossover_x_unaided": 2.850184466626784,
+   "T_in_at_crossover_K": 164.6590062662508
+  },
+  {
+   "baseline": "microchannel_direct_die",
+   "eta_AS": 1.0,
+   "crossover_die_W": 4804.9509803921555,
+   "crossover_x_unaided": 1.005,
+   "T_in_at_crossover_K": 299.63425
+  }
+ ],
+ "chiller_sensitivity": [
+  {
+   "eta_2nd": 0.25,
+   "die_W": 2925.999999999999,
+   "T_in_K": 226.85000000000002,
+   "COP": 0.7752904989747098,
+   "chiller_W": 3774.069208728232
+  },
+  {
+   "eta_2nd": 0.4,
+   "die_W": 2925.999999999999,
+   "T_in_K": 226.85000000000002,
+   "COP": 1.2404647983595356,
+   "chiller_W": 2358.7932554551453
+  },
+  {
+   "eta_2nd": 0.55,
+   "die_W": 2925.999999999999,
+   "T_in_K": 226.85000000000002,
+   "COP": 1.7056390977443618,
+   "chiller_W": 1715.4860039673779
+  }
+ ],
+ "THE_EARLIER_TESTS_WERE_IN_THE_WRONG_REGIME": "Tests 6 and 6b fixed the die at 250 W and never checked T_j. At 0.325 K/W that is 381.2 K = 108 C, past a 100 C limit and past 85 C -- so the air baseline they compared against could not run the chip at all, and the \"fan + laser beats fan\" result was scored on an illegal operating point. Below the thermal limit the cheapest pump wins by construction and the comparison is close to meaningless; the question only becomes interesting above it.",
+ "THE_CONTRAST_IS_WHERE_EACH_MACHINE_WORKS": "The chiller is forced to operate at the coldest point in the system and its COP falls as T_in falls, so the deeper the rescue the worse the machine performing it. The laser operates at the hottest point -- the junction at its limit -- where phi is largest and its recovery term is best. The two mechanisms move in OPPOSITE directions against the same variable, which is why a crossover exists at all and why it is not sensitive to modest changes in either efficiency.",
+ "SPATIAL_SELECTIVITY_IS_NOT_COUNTED": "The laser is charged here as though it lifted bulk die power. Real thermal limits bind on a hotspot, and the array is the only mechanism in this comparison that can be aimed at one -- so every crossover reported is conservative for the laser, probably substantially. Pricing the aimed case needs the per-tile map from Test 3 rather than this lumped model."
+}

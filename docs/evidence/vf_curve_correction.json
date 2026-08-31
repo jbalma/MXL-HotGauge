@@ -1,0 +1,131 @@
+{
+  "note": "The V/F work, 27 Aug 2026. Two separable results: (1) the shipped alpha-power fit was UNPHYSICAL and is corrected, and (2) a MEASURED product curve now exists and it carries temperature, which no other V/F source in this repository does. Neither changes any historical result -- nothing in the solve path uses the alpha fit, and the product curve is new. Both change what can be claimed next.",
+  "1_the_alpha_fit_was_outside_its_own_model": {
+    "defect": "performance_model.VF_ALPHA_POWER_FIT had alpha = 0.949. Gonzalez, Gordon & Horowitz (JSSC 32(8), 1997) bound alpha between 1 (complete velocity saturation) and 2 (none). f(V) = k(V-Vth)^alpha/V has an interior maximum at Vth/(1-alpha) ONLY when alpha < 1, which is where the reported 6.43 GHz ceiling at 9.40 V came from -- an artefact of the exponent, not a property of any device.",
+    "reproduced": {
+      "turnover_V": 9.402,
+      "turnover_GHz": 6.435
+    },
+    "refits_against_the_same_eight_pairs": [
+      {
+        "constraint": "alpha free (shipped)",
+        "k": 7.5752,
+        "Vth": 0.4777,
+        "alpha": 0.9545,
+        "rms_frac": 0.0028,
+        "max_frac": 0.006,
+        "turns_over": true
+      },
+      {
+        "constraint": "alpha >= 1.0 (adopted)",
+        "k": 7.5485,
+        "Vth": 0.4643,
+        "alpha": 1.0,
+        "rms_frac": 0.0074,
+        "max_frac": 0.0137,
+        "turns_over": false
+      },
+      {
+        "constraint": "alpha = 1.4 (Gonzalez typical)",
+        "k": 6.7144,
+        "Vth": 0.3313,
+        "alpha": 1.4,
+        "rms_frac": 0.0493,
+        "max_frac": 0.092,
+        "turns_over": false
+      }
+    ],
+    "the_bound_binds": "The constrained fit lands EXACTLY on alpha = 1.0 and its error rises from 0.28% to 0.74% RMS. Meanwhile the textbook's typical 1.4 misfits by 4.93% RMS -- seventeen times worse than the free fit.",
+    "what_that_actually_means": "The honest conclusion is not 'we had the wrong exponent' but 'the alpha-power law is the wrong model for this table'. The data actively resist the physical range. Look at the shape: 1.5 GHz per 200 mV at the bottom (0.6-0.8 V), 0.1 GHz per ~50 mV at the top (above 1.19 V). A single device's delay law does not saturate like that; a PRODUCT BIN TABLE does, because the top of the range is reliability-limited guardbanding. This is the clearest evidence in the repository that VF_PAIRS is a binning artefact rather than a device curve -- and therefore why a defensible product curve needs product data, not a better fit.",
+    "extrapolated_supply_demands": {
+      "corrected_alpha_1": {
+        "5.0": 1.375,
+        "5.5": 1.711,
+        "6.0": 2.263,
+        "6.5": 3.343
+      },
+      "superseded_alpha_0949": {
+        "5.0": 1.396,
+        "5.5": 1.819,
+        "6.0": 2.741,
+        "6.5": "unreachable at any voltage -- an ARTEFACT of the turnover"
+      }
+    },
+    "what_does_NOT_change": "The 5.0 GHz table top is still a DEVICE limit at 1.4 V, not a truncated lookup: the corrected curve needs 1.71 V for 5.5 GHz and 2.26 V for 6.0. A vf_clamped verdict stays a result -- voltage-limited, not thermally limited. And nothing in the solve path uses either fit (only frequency_for_voltage and voltage_for_frequency_extrapolated do), so no historical number moves.",
+    "blast_radius": "none; two reporting functions only. Verified by grep across the repository."
+  },
+  "2_a_measured_product_curve_that_carries_temperature": {
+    "module": "HotGauge/HotGauge/power/product_vf.py",
+    "part": "Ryzen 9 9950X (Zen 5, N4P)",
+    "provenance": [
+      "https://skatterbencher.com/2024/08/07/granite-ridge-overclocking-curve-shaper/",
+      "https://skatterbencher.com/amd-curve-optimizer/"
+    ],
+    "what_it_is": "Measurements of AMD's own SMU V/F curve through Curve Optimizer and Curve Shaper. Curve Shaper exposes 15 tuning points -- 5 frequency regions x 3 temperature points (-5, 50, 90 C) -- which is itself the finding that a real product V/F curve is a SURFACE over (f, T), not a line.",
+    "what_it_is_not": "A datasheet. This is enthusiast-press measurement of ONE part, and product V/F curves are per-part: each die is calibrated at test and its curve fused. That is why no vendor publishes a frequency->voltage table -- Intel's published VID tables are an 8-bit code->volts ENCODING, not a frequency mapping. calibrated = False, for a different reason than IRDSVFModel: that is a projection nobody measured, this is a measurement with a sample size of one.",
+    "measured_curve_V_at_40C": [
+      {
+        "f_GHz": 4.766,
+        "V": 1.06
+      },
+      {
+        "f_GHz": 5.0,
+        "V": 1.08
+      },
+      {
+        "f_GHz": 5.165,
+        "V": 1.11
+      },
+      {
+        "f_GHz": 5.63,
+        "V": 1.35
+      }
+    ],
+    "temperature_sensitivity_mV_per_K": [
+      {
+        "f_GHz": 4.766,
+        "dV_dT": 0.4
+      },
+      {
+        "f_GHz": 5.165,
+        "dV_dT": 0.96
+      }
+    ],
+    "THE_LEVER_THIS_ADDS": {
+      "claim": "Cooling buys VOLTAGE, not only thermal headroom -- and the sensitivity grows steeply with frequency, roughly doubling between 4.77 and 5.17 GHz. Every clock result in this project so far was computed on a temperature-INDEPENDENT V/F curve, so this lever has been absent by construction: the same shape of omission as the unsourced dt_max = 10 K ceiling.",
+      "at_constant_clock": [
+        {
+          "f_GHz": 4.8,
+          "cool_90C_to_40C_saves_mV": 22.4,
+          "dynamic_power_ratio": 0.9592
+        },
+        {
+          "f_GHz": 5.0,
+          "cool_90C_to_40C_saves_mV": 36.4,
+          "dynamic_power_ratio": 0.9358
+        },
+        {
+          "f_GHz": 5.165,
+          "cool_90C_to_40C_saves_mV": 48.0,
+          "dynamic_power_ratio": 0.9188
+        }
+      ],
+      "at_constant_voltage": {
+        "v_limit_V": 1.35,
+        "f_at_90C_GHz": 5.537,
+        "f_at_40C_GHz": 5.63,
+        "clock_gained_MHz": 93.0
+      },
+      "honest_size": "Modest but real and MEASURED: ~8% dynamic power at constant 5.165 GHz, or ~93 MHz (+1.7%) at a fixed 1.35 V ceiling, for a 50 K reduction. It is wholly independent of the runaway/cliff mechanism, so it ADDS to the packaging and laser terms rather than overlapping them.",
+      "conservatism": "dV/dT is held FLAT outside the two measured frequencies rather than extrapolated. The trend is steeply increasing, so extending it would overstate the LCMR benefit; holding it flat makes the error run the safe way."
+    },
+    "against_the_shipped_table": {
+      "shipped_V_for_5GHz": 1.4,
+      "measured_V_for_5GHz_at_40C": 1.08,
+      "ratio": 1.296,
+      "implied_dynamic_power_overstatement": 1.68,
+      "and": "the shipped table calls 1.4 V / 5.0 GHz the device limit, while a shipping part reaches 5.63 GHz at 1.35 V. The table's ceiling is a property of the table."
+    }
+  },
+  "consequence_for_the_ladder": "'Does LCMR reach 6 GHz?' was answered NO on every curve available, for a non-thermal reason. That answer was computed on the shipped table (5.0 GHz at 1.4 V) and on IRDS projections (3.34-4.54 GHz), both of which are now known to be well below what ships: a measured Zen 5 part does 5.63 GHz at 1.35 V, and 5.83 with an optimised curve. 6 GHz is far closer than either source suggested. This does NOT overturn the answer -- the measured curve stops at 5.63 GHz and must not be extrapolated -- but it removes the basis for the confident no, and it means the question should be re-asked against product data rather than settled."
+}
