@@ -76,7 +76,8 @@
      "exporting": false
     }
    ],
-   "self_powering_T_h_K": null
+   "self_powering_T_h_K": null,
+   "export_crossing_T_h_K": null
   },
   {
    "preset": "shipped  eta_ASF 0.32",
@@ -149,7 +150,8 @@
      "exporting": false
     }
    ],
-   "self_powering_T_h_K": 657.7049180327871
+   "self_powering_T_h_K": 657.7049180327871,
+   "export_crossing_T_h_K": null
   },
   {
    "preset": "v91 tgt  eta_ASF 0.40",
@@ -222,7 +224,8 @@
      "exporting": false
     }
    ],
-   "self_powering_T_h_K": 527.8947368421053
+   "self_powering_T_h_K": 527.8947368421053,
+   "export_crossing_T_h_K": null
   },
   {
    "preset": "v91 tgt  + laser 0.90",
@@ -295,7 +298,8 @@
      "exporting": true
     }
    ],
-   "self_powering_T_h_K": 408.4615384615385
+   "self_powering_T_h_K": 408.4615384615385,
+   "export_crossing_T_h_K": 613.7165069580078
   }
  ],
  "self_powering_temperatures": {
@@ -304,7 +308,14 @@
   "v91 tgt  eta_ASF 0.40": 527.8947368421053,
   "v91 tgt  + laser 0.90": 408.4615384615385
  },
+ "export_crossing_temperatures": {
+  "legacy   eta_ASF 0.20": null,
+  "shipped  eta_ASF 0.32": null,
+  "v91 tgt  eta_ASF 0.40": null,
+  "v91 tgt  + laser 0.90": 613.7165069580078
+ },
+ "WHICH_TEMPERATURE_IS_WHICH": "self_powering_temperatures is v91 condition (1.15): recovered electricity covers the pump. export_crossing_temperatures is where the rows change sign: net electrical cost per lifted watt, LPC included, reaches zero. Quote the export crossing; the rows are its evidence. The first pass (before 9 Sep 2026) reported the self-powering temperature and called it the crossing.",
  "THE_REGIME_WAS_THE_PROBLEM": "At 350 K the Carnot factor is 0.157 and every preset costs power -- which is the result this project recorded and generalised too far. At 600 K phi is 0.508, and the v91 target preset with a 90 % laser has fallen to +0.8 W on a 75 W lift. The loop was never going to look good on a die held near ambient; the question is what it does on a die designed to run hot.",
- "WHAT_IT_TAKES_TO_EXPORT": "The crossing is at 408 K for the v91 target preset with a 90 % laser. Above it the loop exports electricity while cooling: the chip becomes the hot reservoir of a heat engine that happens to also be its cooler. eta_P is the steep term -- it enters as 1/eta_P -- so the laser and the optical path decide where this line sits, not the extractor.",
+ "WHAT_IT_TAKES_TO_EXPORT": "The export crossing is at 614 K for the v91 target preset with a 90 % laser (the loop self-powers, i.e. covers its pump, from 408 K). Above it the loop exports electricity while cooling: the chip becomes the hot reservoir of a heat engine that happens to also be its cooler. eta_P is the steep term -- it enters as 1/eta_P -- so the laser and the optical path decide where this line sits, not the extractor.",
  "UPPER_BOUND_BY_CONSTRUCTION": "The LPC is held at its exergy ceiling (v91 eq. 1.14) times a stated internal factor, so these are the best a perfect converter could do at each temperature. Quote them as bounds. The unmodelled assumption most likely to bite is extractor quenching at the working temperature -- which is exactly why v91 s8.4 specifies a different material family per thermal zone rather than one extractor across the die."
 }

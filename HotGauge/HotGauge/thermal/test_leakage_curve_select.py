@@ -4,7 +4,8 @@ The point of these is not that the arithmetic works -- it is that the *swap* is 
 leakage curve is the single most load-bearing input in this project, so the ways it could go
 wrong quietly all get a test:
 
-* the default must stay ``pipeline``, or every recorded result silently moves;
+* the default is ``simulated`` (flipped 9 Sep 2026, §P0.18.0): arm D exactly, the measured
+  combination; reproducing the pre-30-Aug catalogue needs ``--leakage-curve pipeline`` explicitly;
 * both curves must be anchored at the same T_ref, or the swap smuggles in a level change and the
   comparison stops being about shape;
 * the simulated curve must NOT clamp where the pipeline one does -- that clamp is the cold-zone
@@ -135,11 +136,13 @@ RETROFITTED_DRIVERS = tuple(d for d in CURVE_SELECTING_DRIVERS if d != 'uniform_
 
 
 @pytest.mark.parametrize('driver', CURVE_SELECTING_DRIVERS)
-def test_every_driver_defaults_to_the_pipeline_curve(driver):
-    """`[!]` If this fails, every recorded result from that driver has silently moved.
+def test_every_driver_defaults_to_the_simulated_curve(driver):
+    """`[!]` The default is arm D's curve (flipped 9 Sep 2026 on the user's decision, §P0.18.0).
 
-    Same guard as ``--rbb-policy`` has. The simulated curve is a deliberate flagged re-run, never
-    a new default, until a catalogue re-run says otherwise.
+    Same guard as ``--rbb-policy`` has, pointing the other way now: an un-flagged run must be the
+    MEASURED combination (simulated, amortized, hierarchy-consistent), never the unmeasured
+    (pipeline, amortized, hierarchy-consistent) that the shipped defaults were between 3 and
+    9 Sep. The pipeline curve stays selectable for reproducing the recorded catalogue.
     """
     import re
     path = os.path.join(_REPO, 'examples', driver)
@@ -148,7 +151,7 @@ def test_every_driver_defaults_to_the_pipeline_curve(driver):
     src = open(path).read()
     m = re.search(r"add_argument\('--leakage-curve',[^)]*?default='([\w-]+)'", src, re.S)
     assert m is not None, 'the --leakage-curve flag is gone from {}'.format(driver)
-    assert m.group(1) == 'pipeline'
+    assert m.group(1) == 'simulated'
 
 
 @pytest.mark.parametrize('driver', RETROFITTED_DRIVERS)

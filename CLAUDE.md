@@ -220,9 +220,11 @@ plain `skylake` stack works without it, so this failure only appears on plugin s
   - The analytic model in `device_leakage.py` is kept as an independent cross-check and agrees
     within 2x over 310-400 K. Don't delete it; don't quote it.
 - **Studies select a curve with `--leakage-curve {pipeline,simulated,simulated-gidl-off}`**
-  (`thermal.leakage_feedback.load_leakage_model`). **Default `pipeline` everywhere and it must stay
-  that way** — same discipline as `--rbb-policy stock`. Both curves anchor at 330 K, so the swap
-  changes the *shape* and nothing else.
+  (`thermal.leakage_feedback.load_leakage_model`). ~~Default `pipeline` everywhere and it must stay
+  that way~~ **`[+]` Default flipped to `simulated` on 9 Sep 2026 (user's decision, §P0.18.0):
+  an un-flagged run is now arm D exactly.** Reproducing the recorded catalogue needs
+  `--leakage-curve pipeline` explicitly. Both curves anchor at 330 K, so the swap changes the
+  *shape* and nothing else.
 - **`[!]` The cold-zone prize is 2.2x bigger than the pipeline curve said** (§P0.14,
   `docs/evidence/cold_zone_prize_simulated.json`) — because that curve **clamps below 300 K** and
   reports a 1.73x reduction where the physics gives 16.6x. Quote the **2.2x improvement**; it is
@@ -397,11 +399,10 @@ plain `skylake` stack works without it, so this failure only appears on plugin s
   one run: `--leakage-curve`, `--rbb-policy`, and the `core_other` accounting.
 - **`[!]` §P0.18 (3 Sep, second session) — read `docs/START_HERE.md` first; the four routing docs
   supersede everything above.** Four things landed:
-  - **`--leakage-curve`: RECOMMEND `simulated`, NOT applied.** The reproducibility argument for
-    `pipeline` was spent when the other two defaults moved; every §1 register number already sits
-    on `simulated`; arm D is the measured combination. The standing "default `pipeline` and it
-    must stay that way" rule above is therefore a *pending decision*, the user's — see
-    `PHASE0_CHECKLIST.md` §P0.18.0 for what the flip touches.
+  - **`--leakage-curve`: `simulated` is the default since 9 Sep** (recommended 3 Sep, applied on
+    the user's decision). The reproducibility argument for `pipeline` was spent when the other
+    two defaults moved; every §1 register number already sits on `simulated`; arm D is the
+    measured combination. `test_leakage_curve_select.py` pins the new default.
   - **The array charged its own footprint** (`--array-coverage`, AREAL, default 1.0 on
     `mr_comparison.py` / `mr_clipping_study.py` / `clock_headroom.py`; `mr_array.DEFAULT_COVERAGE`;
     a block under a gap is routed to its nearest tile). `[!]` In the v91 device the tiles,
@@ -470,3 +471,13 @@ plain `skylake` stack works without it, so this failure only appears on plugin s
   caches cold there — measure it against a cache-leakage objective or in Phase 2, not on this
   ladder. `[!]` P1 found a latent P0.20 bug: the uncapped first-plan re-cap tripped the
   stale-plan guard (`preview_shortfall` fixes it; the P0.20 target-device rows now reproduce).
+- **`[+]` §P0.21.5 (9 Sep) — three corrections.** (1) `--leakage-curve` **defaults to `simulated`**
+  now (user's decision); an un-flagged run is arm D; `--leakage-curve pipeline` reproduces the
+  recorded catalogue. (2) **`docs/Photonic_Cooling_Devices___v100.pdf` supersedes v98**: same
+  numbers for the target device (rung 6), Cr:LiSAF and GaAs; chapter-8 equations renumbered
+  (η_cool 8.6, p_max 8.8, d_min 8.9); Table 1.1 gains `nir-cyanine` and `j-aggregate` presets
+  (ceilings, cascade stages, not the target device); **§1.18 and §10.9 are the book's own frame
+  for the evolution ladder** (budget inequality 1.32, hybrid cap 1.33, three-zone template and
+  its three walls). (3) `recovery_at_temperature.json`'s "crossing at 408 K" was the
+  *self-powering* temperature; the **export crossing is 614 K** (90 % laser preset), from the
+  rows' own expression. Quote the export crossing.

@@ -174,7 +174,8 @@ inspectable rather than remembered.
 
 ### 4.1a The extractor's cooling curve (§P0.19)
 
-`thermal.extractor.DyeExtractor` (R640-SMILES on **v98's** volumetric route, eqs. 5.7 and 8.4–8.9;
+`thermal.extractor.DyeExtractor` (R640-SMILES on the book's volumetric route — **v100** eqs. 5.7,
+8.4, 8.6–8.8, 8.11, unchanged in value from v98's 8.4–8.9;
 the rungs of Table 8.2 as presets via `from_rung`) and `SemiconductorExtractor` (GaAs at Table
 9.2 with photon recycling; `gaas-enhanced` = Table 1.1's row) give `cooling_density_W_per_mm2(T_ext)`:
 the most heat the film removes per unit footprint at its own temperature. **`--mr-extractor dye`
@@ -196,7 +197,7 @@ envelope is area-weighted and the descent lands ~30 % dearer with nothing physic
 Run `--mr-dt-max 45` with the extractor for anything compared against the recorded ladders.
 
 **Zone materials and `--mr-zone-mode` (§P0.21, decided 8 Sep).** The storage (cold) zone material
-is Cr³⁺:LiSAF (`make_extractor('cr-lisaf')`, v98 §8.1.2 / Table 1.1 on the same volumetric route;
+is Cr³⁺:LiSAF (`make_extractor('cr-lisaf')`, v100 §8.1.2 / Table 1.1 on the same volumetric route;
 every figure a ceiling at η_EQE = 1 — at the demonstrated 0.90 it heats), the hot zone is the
 dye; Yb:YLF is not a zone material. **The default cold plate is single-material**
 (`--mr-zone-mode single`): a cold-zone / hot-zone tile arrangement is laid out against the

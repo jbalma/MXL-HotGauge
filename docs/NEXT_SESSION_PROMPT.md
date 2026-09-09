@@ -1,7 +1,8 @@
 # Kick-off prompt for the next session
 
-**Rewritten 9 September 2026, revised the same day after the user's answers.** Copy the block
-below verbatim. This version opens the **architecture-evolution phase**: the user lifted the
+**Rewritten 9 September 2026, revised the same day after the user's answers and the v100 drop.**
+Copy the block below verbatim (the short intro prompt at the end of this file is the same thing
+compressed to one paragraph, for a session that will read the files itself). This version opens the **architecture-evolution phase**: the user lifted the
 one-die rule on 9 September and asked for **initial core designs within about a day**, as input
 to a patent update. The user's decisions: **the designs are to be ARGUED, measured where the day
 allows**; the deliverable is the rational evolution ladder (bottleneck → laser cooling removes it →
@@ -20,13 +21,17 @@ Continue MXL-HotGauge at `/mnt/nfs01/scratch/jbalma/MXL-HotGauge`.
 | `docs/RESULTS_REGISTER.md` | quote any number — quotable / withdrawn / open, and the flag table in §0 |
 | `docs/ARCHITECTURE_EVOLUTION.md` | design anything — §3 is the design template, §4 the gap list, §5 says **no architecture has been evolved yet** |
 | `docs/CODESIGN_PLAN.md` §9 | call anything a "design" — a rung is a floorplan **plus** the binding constraint the solve named **plus** the change made because of it, at three fixed invariants |
-| `docs/METHODS.md` | run anything — pipeline, cluster, traps (§5), suite baseline **1050 passed, 1 skipped** |
+| `docs/METHODS.md` | run anything — pipeline, cluster, traps (§5), suite baseline **1050 passed, 1 skipped** (re-run 9 Sep after the flip) |
+| `docs/REFERENCES.md` §1 and **`docs/Photonic_Cooling_Devices___v100.pdf`** | argue any device number — v100 is the authority (9 Sep). For the ladder read **§1.18** (the architectural budget inequality 1.32, the hybrid cap 1.33, cubic vs linear scaling, the V_t trap) and **§10.9** (thermal heterogeneity as a design knob; the three-zone template and its three walls) |
 | `docs/PHASE0_CHECKLIST.md` §P0.18–§P0.21 | rely on the array footprint, the SPICE device, the extractor curve, or the zone decision |
 | `docs/NEXT_SESSION.md` (8 Sep handoff at the top) | pick up open items; the 3 Sep Phase 2 plan below it is still the plan |
 
 `CLAUDE.md` is the short form and loads automatically. The run ledger artifact from the last
 session (charts of every campaign, 3–8 Sep) is at
 https://claude.ai/code/artifact/9f44928b-5d22-4ae2-909d-b7113bbc083c.
+
+`[+]` **`--leakage-curve` defaults to `simulated` since 9 Sep** (user's decision): an un-flagged
+run is arm D. Add `--leakage-curve pipeline` only to reproduce the pre-30-Aug catalogue.
 
 Compute: `squeue -u jbalma` for the jobid (**1507** on node-06 as of 9 Sep; it may have ended).
 `scripts/on_node.sh <jobid> <cmd>` with `OMP_NUM_THREADS=1` and `PYTHONDONTWRITEBYTECODE=1`.
@@ -48,6 +53,11 @@ extractor's own cooling curve on v98's transparency cap and **never binds** on t
 flow-down; the zone materials are **decided** — Cr:LiSAF storage zone, dye hot zone, no Yb:YLF —
 and the cold plate we test is **single-material by default** (`--mr-zone-mode single`), the dual
 arrangement being a flag that measured as a 1 % effect on the hot-spot objective (§P0.21).
+On 9 Sep (§P0.21.5): the leakage default was flipped; v100 was checked against the code (target
+device, Cr:LiSAF and GaAs unchanged; two new Table 1.1 organic rows added as `nir-cyanine` and
+`j-aggregate` presets — ceilings, cascade stages, not the target device); and the recovery
+evidence's "crossing at 408 K" was corrected to a **614 K export crossing** (408 K is the
+self-powering temperature) — quote the export crossing.
 
 `[!]` **The one-die rule (31 Aug) is lifted as of 9 September.** The user opened the
 architecture-evolution phase. Other floorplans are in scope now, with the same discipline: one
@@ -78,7 +88,10 @@ A design here is a **gen-0 → gen-1 rung** in `CODESIGN_PLAN.md` §9's sense:
    budget — with the *next* binding constraint named.
 
 **The primary deliverable is `docs/designs/EVOLUTION_LADDER.md`**: the ladder for the 34-core
-7 nm die, written rung by rung — gen 0 (the die as measured: what binds, from the solve),
+7 nm die, written rung by rung, in the frame v100 §1.18 gives it — every rung is a statement about
+which term of the budget inequality (1.32) binds, and what moving the wall by 1/(1−s) (1.33) lets
+the architecture spend; §10.9's three walls (BEOL ≳ 400 K, extractor material, thermal gradient /
+packaging) are the honest limits on the hot end. Written rung by rung — gen 0 (the die as measured: what binds, from the solve),
 gen 1 (what laser cooling removes and what the architecture does with the freed constraint),
 gen 2 (what binds the gen-1 design and how cooling plus a second change addresses it), and so
 on to the rung where the limit stops being thermal. For every rung: the binding constraint and
@@ -118,6 +131,18 @@ writing it, and change it where the register disagrees:
   D3's objective is what makes it measurable.
 - **The dual-material plate is not a rung.** It is a per-architecture layout; the product stays
   single-material. Say so in the ladder.
+- **The hot end has walls the cooler cannot move** (v100 §10.9): Cu/low-κ BEOL is not viable in
+  continuous operation above ~400 K, so a 500–600 K compute zone is a metallization story before
+  it is a cooling story; the extractor is zone-specific; a 300 K in-plane gradient over sub-mm is
+  a packaging element. The ladder's hot rungs stop at the BEOL wall unless the rung changes the
+  metallization, and the ladder must say which.
+
+**Device parameters for the next batch (v100-checked, 9 Sep):** target device `--mr-extractor dye`
+= v100 Table 1.1's R640-SMILES row (rung 6: 10⁻¹ M, 651 nm pump, λ̄_f 590 nm, F̄_P 100, 50 µm;
+5.9×10³ W/mm² at 400 K, 813 at 300 K); `--mr-dt-max 45` kept alongside; storage-zone material
+`cr-lisaf` (F_P 30, 10 µm, η_EQE = 1 ceiling); `--mr-zone-mode single` default; `--array-coverage
+1.00`; `--mr-energy-cap converged` for any ceiling claim. The two new organic rows are available as
+`nir-cyanine` and `j-aggregate` for a cascade argument, not as the plate under test.
 
 ### The candidates, in order of evidential support (`ARCHITECTURE_EVOLUTION.md` §3)
 
@@ -216,4 +241,25 @@ not). One ladder ≈ 2–3 h wall at `PAR=6`; it can run while D1's floorplans a
 
 ## Still open for the user
 
-1. `--leakage-curve` default: recommendation stands, flip to `simulated` (§P0.18.0). Not applied.
+Nothing blocking. The `--leakage-curve` default is flipped (9 Sep).
+
+---
+
+## Short intro prompt (the same session, in one paragraph)
+
+Continue MXL-HotGauge at `/mnt/nfs01/scratch/jbalma/MXL-HotGauge`. Read `docs/START_HERE.md`,
+then `docs/NEXT_SESSION_PROMPT.md` (9 Sep) in full — it is the brief for this session. Context files:
+`docs/RESULTS_REGISTER.md` (quotable / withdrawn / open, flag table in §0), `docs/METHODS.md`
+(pipeline, cluster, traps), `docs/PHASE0_CHECKLIST.md` §P0.18–§P0.21.5 (the lab notebook for
+the last week), `docs/ARCHITECTURE_EVOLUTION.md` and `docs/CODESIGN_PLAN.md` §9 (what a design
+is), `CLAUDE.md` (the rules). Evidence: `docs/evidence/*.json` (every number the register quotes;
+`results-quotable/` is the checksummed copy, `scripts/build_results_registers.py --verify`), and
+the run-ledger artifact https://claude.ai/code/artifact/9f44928b-5d22-4ae2-909d-b7113bbc083c
+(charts of every 3–8 Sep campaign). References: `docs/REFERENCES.md` §1 maps the device physics
+to **`docs/Photonic_Cooling_Devices___v100.pdf`**, the authority since 9 Sep — read §1.18 and
+§10.9 before writing the ladder, Table 1.1 / Tables 8.1–8.2 / §8.1.2 for the extractor, §8.4 for
+platform selection; v91 remains the source for the array geometry and Draft_5 for the demonstrated
+45 K lift. Goal: the argued evolution ladder `docs/designs/EVOLUTION_LADDER.md` (bottleneck →
+laser cooling removes it → the architecture changes → the next bottleneck), with D3's
+cache-leakage planner objective built, and D1/D2/D4 measured where the day allows. Predictions in
+`PHASE0_CHECKLIST.md` §P0.22 before any run; never solve on the login node; never `git add .`.

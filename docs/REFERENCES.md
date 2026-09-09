@@ -7,24 +7,32 @@ Every reference below is **in this repository**. Nothing here requires a library
 
 ---
 
-## 1. The device physics — `docs/Photonic_Cooling_Devices___v98.pdf`
+## 1. The device physics — `docs/Photonic_Cooling_Devices___v100.pdf`
 
-**`[!]` v98 (8 September 2026) supersedes v91 as the authority.** When a device number in this
-project disagrees with v98, v98 wins and the code comment should say so. The section numbers below
-were written against v91; v98 renumbers some (the GaAs closed form is (9.6)–(9.7), the dye tail
-(9.5)) and adds what the extractor model now rests on:
+**`[!]` v100 (9 September 2026) supersedes v98, which superseded v91.** When a device number in
+this project disagrees with v100, v100 wins and the code comment should say so. Checked 9 Sep
+(§P0.21.5): v100 keeps every number the code reproduces from v98 — Tables 8.1, 8.2 (all eight
+rungs), 1.1's R640 and Cr:LiSAF rows, §8.1.2, Table 9.2 — and **renumbers chapter 8**: η_cool is
+(8.6), the unsaturated slope (8.7), p_max (8.8), the transparency floor d_min (8.9), Strickler–Berg
+(8.10), the ladder score Γ_tot (8.11); the new (8.4) is IQE under Purcell. v100 adds two organic
+rows to Table 1.1 (NIR tricarbocyanine, J-aggregate — presets `nir-cyanine`, `j-aggregate`), §1.18
+(thermally-limited architecture design points) and §10.9 (thermal heterogeneity as a design knob).
 
-| you need (v98) | go to |
+| you need (v100) | go to |
 |---|---|
-| **The target device** — in-principle ceilings per family; the R640-SMILES row is the design point | **Table 1.1**, eq. (1.1) |
-| The transparency cap `x_max` | **eq. (5.7)**, §8.3.3 eqs. (8.4)–(8.8) |
-| The volumetric route, concentration → W/mm³ → W/mm² | §8.3.3, eq. (8.9) |
-| The dye's operating points and the **photonic ladder** to the design point | **Tables 8.1, 8.2**, §8.3.4 (rungs 0–7, Tiers I–III) |
-| Quantum defect per pump wavelength | Table 8.3, eq. (8.10) |
+| **The target device** — in-principle ceilings per family; the R640-SMILES row is the design point; the two new organic rows are cascade stages | **Table 1.1**, eq. (1.1) |
+| **The architectural budget inequality** and what microrefrigeration does to it: (1.32), the hybrid cap ∝ 1/(1−s) (1.33), cubic vs linear frequency scaling, the V_t/leakage trap (1.29), dark silicon | **§1.18** |
+| The transparency cap `x_max` | **eq. (5.7)**, §8.3.3 eqs. (8.6)–(8.8) |
+| The volumetric route, concentration → W/mm³ → W/mm² | §8.3.3, eq. (8.8) and the `Pcool/A = ∫p dz` line after it; d_min (8.9) |
+| IQE under a Purcell factor (low-IQE emitters) | **eq. (8.4)**, §8.3.1 |
+| Strickler–Berg: the radiative rate is fixed by the absorption band | eq. (8.10) |
+| The dye's operating points and the **photonic ladder** to the design point | **Tables 8.1, 8.2**, §8.3.4 (rungs 0–7, scored by (8.11)) |
+| Quantum defect per pump wavelength | Table 8.3 |
 | The dye tail model (σ, the 600 nm anchor, λ_00) | **eq. (9.5)**, §9.3.2, Fig. 9.3 |
+| Cr:LiSAF (the storage-zone material, 8 Sep decision) | **§8.1.2**, Table 8.4 |
 | Why the pump wavelength is a per-temperature variable (GaAs hot-side limit, dye red-shift) | §9.3.2, last subsection |
-| Platform comparison at common thickness; the `[T_min, T_max]` axis | Table 8.4, §8.4 |
-| The three-zone template with materials | **Table 10.8**, §10.9 |
+| Platform comparison at common thickness; the `[T_min, T_max]` axis; selection rules | Table 8.4, §8.4 |
+| **Thermal heterogeneity as a design knob**: compute hot / storage cold, the three-zone template and its three walls (BEOL 400 K, extractor material, thermal gradient / packaging) | **§10.9**, Table 10.8 (`[!]` names Yb:YLF for the cold zone; the repository's decision is Cr:LiSAF) |
 
 v91's map, still valid where v98 did not move it:
 

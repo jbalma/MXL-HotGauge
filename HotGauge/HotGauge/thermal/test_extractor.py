@@ -15,7 +15,8 @@ from HotGauge.thermal.extractor import (DyeExtractor, SemiconductorExtractor,
                                         urbach_energy_static_plus_thermal, gaas_bandgap_eV,
                                         ev_from_nm, nm_from_ev, make_extractor, exergy_bound_ok,
                                         K_B_EV, DYE_LADDER, DYE_SIGMA_BOOK, CrLiSAFExtractor,
-                                        DualZoneExtractor, CRLISAF)
+                                        DualZoneExtractor, CRLISAF, iqe_under_purcell,
+                                        TABLE_1_1_ORGANIC)
 
 
 # ---------------------------------------------------------------------------
@@ -311,3 +312,48 @@ def test_dual_zone_dispatches_by_tile_and_defaults_to_the_hot_curve():
     assert dz.cooling_density_W_per_mm2(300.0, tile='MR_r00_c01') == hot.cooling_density_W_per_mm2(300.0)
     assert dz.cooling_density_W_per_mm2(300.0) == hot.cooling_density_W_per_mm2(300.0)
     assert set(dz.t_min_K()) == {'cold', 'hot'} and dz.describe()['n_cold_tiles'] == 1
+
+
+# ---------------------------------------------------------------------------
+# v100 (9 Sep 2026): the two organic rows added to Table 1.1, and eq. (8.4)
+# ---------------------------------------------------------------------------
+def test_v100_eq_8_4_iqe_under_purcell():
+    """0.2 -> 0.71, 0.88, 0.96 at F_P = 10, 30, 100 (v100 §8.3.1)."""
+    assert iqe_under_purcell(10, 0.2) == pytest.approx(0.71, abs=0.01)
+    assert iqe_under_purcell(30, 0.2) == pytest.approx(0.88, abs=0.01)
+    assert iqe_under_purcell(100, 0.2) == pytest.approx(0.96, abs=0.01)
+    assert iqe_under_purcell(100, 1.0) == 1.0
+
+
+def test_v100_table_1_1_nir_tricarbocyanine_row():
+    """10^-1 M, 400 K, 980 nm pump 200 meV below the zero line, IQE0 0.2, F_P 100, 50 um:
+    x_max 3e-3, eta_q 18 %, eta_cool 13 %, 1.7e5 W/mm^3, 8e3 W/mm^2."""
+    c = make_extractor('nir-cyanine')
+    assert c.x_max(400.0) == pytest.approx(3e-3, rel=0.05)
+    assert 100 * c.eta_q() == pytest.approx(18.0, abs=0.5)
+    assert c.eta_EQE == pytest.approx(0.96, abs=0.01)                   # eq. 8.4 applied
+    assert 100 * c.eta_cool(400.0) == pytest.approx(13.0, abs=0.5)
+    assert c.cooling_per_volume_W_per_mm3(400.0) == pytest.approx(1.7e5, rel=0.15)
+    assert c.cooling_density_W_per_mm2(400.0) == pytest.approx(8e3, rel=0.15)
+    # the cycling rate is (F_P iqe0 + 1 - iqe0)/tau, not F_P/tau: a 4.8x difference
+    assert c.gamma_tot() == pytest.approx(20.8 / 0.6e-9, rel=1e-6)
+
+
+def test_v100_table_1_1_j_aggregate_row():
+    """10^20 cm^-3, tau 234 ps, F_P 10, 400 K, pump 60 meV into the hot band of a 590 nm J-band:
+    McCumber x_max 0.15, annihilation-capped 0.02, ~1e6 W/mm^3, ~1e3 W/mm^2 from 1 um, eta_q 3 %."""
+    j = make_extractor('j-aggregate')
+    assert 1.0 / (1.0 + math.exp((j.E_00 - j.E_p) / (K_B_EV * 400.0))) == pytest.approx(0.15, abs=0.01)
+    assert j.x_max(400.0) == pytest.approx(0.02)                        # the cap binds
+    assert 100 * j.eta_q() == pytest.approx(3.0, abs=0.2)
+    assert j.cooling_per_volume_W_per_mm3(400.0) == pytest.approx(1e6, rel=0.25)
+    assert j.cooling_density_W_per_mm2(400.0) == pytest.approx(1e3, rel=0.25)
+    assert j.film_um == 1.0
+
+
+def test_v100_leaves_the_target_device_where_v98_put_it():
+    """v100 changed equation numbers, not the rung-6 numbers: the target device is unchanged."""
+    d = make_extractor('dye')
+    assert d.cooling_density_W_per_mm2(400.0) == pytest.approx(5.9e3, rel=0.05)
+    assert d.cooling_density_W_per_mm2(300.0) == pytest.approx(813.0, rel=0.02)
+    assert set(TABLE_1_1_ORGANIC) == {'nir-cyanine', 'j-aggregate'}

@@ -48,6 +48,24 @@ PRESETS = (
 )
 
 
+def _export_crossing(p, T0, T_lo, T_hi, tol=0.01):
+    """Temperature where the net electrical cost per lifted watt reaches zero, by bisection on
+    the same expression the rows use. ``None`` if it does not cross inside [T_lo, T_hi]."""
+    cost = lambda T: (1.0 - p.breakeven_ratio_at(T, T0)) / p.cop
+    lo, hi = float(T_lo), float(T_hi)
+    if cost(lo) <= 0.0:
+        return lo
+    if cost(hi) > 0.0:
+        return None
+    while hi - lo > tol:
+        mid = 0.5 * (lo + hi)
+        if cost(mid) > 0.0:
+            lo = mid
+        else:
+            hi = mid
+    return 0.5 * (lo + hi)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -79,14 +97,26 @@ def main():
             line += '%9s' % ('%+.1f' % net_W)
         print(line)
         T_sp = EX.self_powering_T_h(p.eta_asf, p.laser_wallplug, p.collection_efficiency, T0)
+        # `[!]` Two different temperatures, and the first pass conflated them (found 9 Sep 2026):
+        #   * self_powering_T_h_K -- v91 condition (1.15), eta_L eta_c [1 + eta_ASF phi] >= 1: the
+        #     loop's recovered electricity covers its PUMP. Does not include the LPC's own
+        #     conversion, so it sits well below the export crossing.
+        #   * export_crossing_T_h_K -- where the ROWS above change sign: the net electrical cost per
+        #     lifted watt, LPC included, reaches zero. This is the number the rows support and the
+        #     one every document quotes ("crossing near 600 K for the 90 % laser preset").
+        # The summary used to report the first and call it "the crossing", contradicting its own
+        # rows (658 / 528 / 408 K against rows that only cross at 600-700 K).
+        T_x = _export_crossing(p, T0, args.temps_K[0], args.temps_K[-1])
         table.append({'preset': label.strip(), 'eta_ASF': p.eta_asf,
                       'eta_P': p.laser_wallplug, 'eta_LPC': p.lpc_efficiency,
-                      'rows': row, 'self_powering_T_h_K': T_sp})
-        cross.append((label.strip(), T_sp))
+                      'rows': row, 'self_powering_T_h_K': T_sp, 'export_crossing_T_h_K': T_x})
+        cross.append((label.strip(), T_sp, T_x))
 
     print('\n=== temperature at which each preset stops costing and starts exporting ===')
-    for label, T in cross:
-        print('   %-24s %s' % (label, ('%.0f K  (%.0f C)' % (T, T - 273.15)) if T else 'never'))
+    print('   %-24s %14s %14s' % ('preset', 'self-powers', 'exports'))
+    for label, T_sp, T_x in cross:
+        fmt = lambda T: ('%.0f K' % T) if T else 'never'
+        print('   %-24s %14s %14s' % (label, fmt(T_sp), fmt(T_x)))
 
     best = table[-1]
     hot = [r for r in best['rows'] if r['exporting']]
@@ -94,7 +124,14 @@ def main():
         'note': __doc__.strip(),
         'die_W': P, 'fraction_lifted': f, 'Q_lifted_W': Q, 'T0_K': T0,
         'presets': table,
-        'self_powering_temperatures': {l: T for l, T in cross},
+        'self_powering_temperatures': {l: T for l, T, _ in cross},
+        'export_crossing_temperatures': {l: T for l, _, T in cross},
+        'WHICH_TEMPERATURE_IS_WHICH': (
+            'self_powering_temperatures is v91 condition (1.15): recovered electricity covers the '
+            'pump. export_crossing_temperatures is where the rows change sign: net electrical cost '
+            'per lifted watt, LPC included, reaches zero. Quote the export crossing; the rows are '
+            'its evidence. The first pass (before 9 Sep 2026) reported the self-powering '
+            'temperature and called it the crossing.'),
         'THE_REGIME_WAS_THE_PROBLEM': (
             'At 350 K the Carnot factor is {:.3f} and every preset costs power -- which is the '
             'result this project recorded and generalised too far. At 600 K phi is {:.3f}, and '
@@ -104,12 +141,15 @@ def main():
             .format(EX.carnot_factor(350.0, T0), EX.carnot_factor(600.0, T0),
                     [r for r in best['rows'] if r['T_h_K'] == 600][0]['net_W'], Q)),
         'WHAT_IT_TAKES_TO_EXPORT': (
-            'The crossing is at {} for the v91 target preset with a 90 % laser. Above it the loop '
+            'The export crossing is at {} for the v91 target preset with a 90 % laser (the loop '
+            'self-powers, i.e. covers its pump, from {}). Above it the loop '
             'exports electricity while cooling: the chip becomes the hot reservoir of a heat '
             'engine that happens to also be its cooler. eta_P is the steep term -- it enters as '
             '1/eta_P -- so the laser and the optical path decide where this line sits, not the '
             'extractor.'
-            .format(('%.0f K' % best['self_powering_T_h_K'])
+            .format(('%.0f K' % best['export_crossing_T_h_K'])
+                    if best['export_crossing_T_h_K'] else 'no finite temperature',
+                    ('%.0f K' % best['self_powering_T_h_K'])
                     if best['self_powering_T_h_K'] else 'no finite temperature')),
         'UPPER_BOUND_BY_CONSTRUCTION': (
             'The LPC is held at its exergy ceiling (v91 eq. 1.14) times a stated internal factor, '

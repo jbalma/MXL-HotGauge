@@ -171,7 +171,11 @@ class UrbachMcCumberLineshape(object):
 
 
 # ---------------------------------------------------------------------------------------------
-# The molecular-dispersion platform (R101 / R640-SMILES in a thin film), v98 §8.3.3-8.3.4
+# The molecular-dispersion platform (R101 / R640-SMILES in a thin film), v100 §8.3.3-8.3.4
+# (`[!]` v100 (9 Sep 2026) supersedes v98: same physics and the same Table 8.1 / 8.2 / 1.1 numbers
+# for R640 and Cr:LiSAF; equations renumbered (eta_cool 8.6, p_max 8.8, d_min 8.9, Strickler-Berg
+# 8.10, ladder score 8.11); Table 1.1 gains the NIR-cyanine and J-aggregate rows below; §1.18 and
+# §10.9 add the architecture design points the evolution ladder rests on.)
 # ---------------------------------------------------------------------------------------------
 #
 # `[!]` REBUILT 8 September 2026 on v98's volumetric route (eqs. 8.4-8.7, 8.9; Table 1.1). The
@@ -227,18 +231,52 @@ DYE_LADDER = {
 }
 
 
+def iqe_under_purcell(F_P, iqe0):
+    """v100 eq. (8.4): the Purcell factor acts on the radiative rate alone, so
+    IQE(F_P) = F_P iqe0 / (F_P iqe0 + 1 - iqe0). 0.2 -> 0.71, 0.88, 0.96 at F_P = 10, 30, 100."""
+    F_P, iqe0 = float(F_P), float(iqe0)
+    return F_P * iqe0 / (F_P * iqe0 + 1.0 - iqe0)
+
+
+#: v100 Table 1.1's two organic rows beyond R640 (9 Sep 2026). Both are evaluated with the book's
+#: eta_abs -> 1 and eta_EQE = 1 (before the IQE(F_P) rule for the cyanine), so like every Table 1.1
+#: figure they are ceilings. Neither is the target device; they are the cascade's other stages.
+#:   nir-cyanine  -- 980 nm-pumped tricarbocyanine, 10^-1 M isolated, 400 K, pump 200 meV below the
+#:                   zero line (x_max 3e-3), IQE0 = 0.2 lifted to 0.96 by F_P = 100, tau 0.6 ns,
+#:                   50 um: 1.7e5 W/mm^3, 8e3 W/mm^2, eta_cool 13 % at eta_q 18 % -- the R640 density
+#:                   at a third of the circulated pump, with fluorescence on a GaAs LPC.
+#:   j-aggregate  -- silica-TDBC superradiant J-aggregate, 10^20 cm^-3, tau 234 ps, F_P = 10 on top
+#:                   of the superradiant rate, 400 K, pump 60 meV into the hot band of the 590 nm
+#:                   J-band (McCumber x_max 0.15, annihilation-capped x ~ 0.02), 1 um: ~1e6 W/mm^3,
+#:                   ~1e3 W/mm^2 at eta_q 3 % -- the dense, bluest, terminal stage of a cascade.
+TABLE_1_1_ORGANIC = {
+    'nir-cyanine': dict(N_t_M=1e-1, T_design_K=400.0, lambda_p_nm=980.0, lambda_f_nm=833.0,
+                        lambda_00_nm=nm_from_ev(ev_from_nm(980.0) + 0.200), purcell=100.0,
+                        film_um=50.0, tau_s=0.6e-9, iqe0=0.2, eta_abs_fixed=1.0,
+                        family='NIR tricarbocyanine', platform='molecular_nir_cyanine'),
+    'j-aggregate': dict(N_t_M=1e20 / 6.02214076e20, T_design_K=400.0,
+                        lambda_p_nm=nm_from_ev(ev_from_nm(590.0) - 0.060),
+                        lambda_f_nm=nm_from_ev(ev_from_nm(590.0) - 0.060) / 1.03,
+                        lambda_00_nm=590.0, purcell=10.0, film_um=1.0, tau_s=234e-12, x_cap=0.02,
+                        eta_abs_fixed=1.0, family='silica-TDBC J-aggregate',
+                        platform='organic_solid_j_aggregate'),
+}
+
+
 class DyeExtractor(object):
-    """R101/R640-class dye on v98's volumetric route, eqs. (8.4)-(8.7) and the ladder (8.9).
+    """R101/R640-class dye on the book's volumetric route (v100 §8.3.3: eqs. 8.6-8.8, ladder scored
+    by 8.11; v98 numbered these 8.5, 8.7, 8.9 -- the physics did not move between v98 and v100).
 
     Per unit volume, at the transparency ceiling (pump far above saturation)::
 
-        p_max(T) = n_t * x_max(T) * (F_P / tau) * hbar w_p * eta_cool(T)
-        x_max(T) = [1 + exp((E_00 - E_p) / kT)]^-1                       (5.7)
-        eta_cool  = eta_abs * eta_EQE * lambda_p / lambda_f - 1             (8.5)
+        p_max(T) = n_t * x_max(T) * Gamma_tot * hbar w_p * eta_cool(T)      (v100 8.8)
+        x_max(T) = [1 + exp((E_00 - E_p) / kT)]^-1                          (5.7)
+        eta_cool  = eta_abs * eta_EQE * lambda_p / lambda_f - 1               (v100 8.6)
         eta_abs   = alpha_r / (alpha_r + alpha_b),  alpha_r = ln10 * C * eps(lambda_p, T)
-        eps(E, T) = eps(E_0) exp[sigma (E - E_0) / kT]                      (9.5)
+        eps(E, T) = eps(E_0) exp[sigma (E - E_0) / kT]                        (9.5)
+        Gamma_tot = F_P / tau, or (F_P iqe0 + 1 - iqe0) / tau for a low-IQE emitter (v100 8.4)
 
-    and ``Pcool/A = p_max d`` (8.9). ``T`` is the extractor's own temperature. ``T_design_K`` is
+    and ``Pcool/A = p_max d`` (v100 §8.3.3). ``T`` is the extractor's own temperature. ``T_design_K`` is
     only a label for the rung the preset came from; the curve is evaluated wherever the tile is.
     Reproduces v98 Table 8.1 to the printed digit and Table 8.2's rungs (tests).
     """
@@ -249,7 +287,23 @@ class DyeExtractor(object):
                  film_um=50.0, T_design_K=400.0, eta_EQE=1.0, sigma=DYE_SIGMA_BOOK,
                  background='kedenburg', alpha_b_cm=None, tau_s=DYE_TAU_S,
                  eps_anchor=DYE_EPS_ANCHOR, lambda_anchor_nm=DYE_LAMBDA_ANCHOR_NM,
-                 lambda_00_nm=DYE_LAMBDA_00_NM, rung=None, label=None):
+                 lambda_00_nm=DYE_LAMBDA_00_NM, rung=None, label=None,
+                 iqe0=None, x_cap=None, eta_abs_fixed=None, platform=None, family='R640-SMILES'):
+        # v100 additions (9 Sep 2026), for the two organic rows v100 adds to Table 1.1:
+        #   iqe0          bare internal quantum yield of a low-IQE emitter. The Purcell factor acts
+        #                 on the RADIATIVE rate only (v100 eq. 8.4): IQE(F_P) = F_P iqe0 /
+        #                 (F_P iqe0 + 1 - iqe0), and the cycling rate is (F_P iqe0 + 1 - iqe0)/tau,
+        #                 not F_P/tau. With iqe0 set, eta_EQE defaults to IQE(F_P).
+        #   x_cap         an excited-fraction cap below the McCumber one -- exciton-exciton
+        #                 annihilation in a J-aggregate (v100 §8.3.6, x ~ 0.02).
+        #   eta_abs_fixed the book's eta_abs -> 1 assumption for rows whose tail is not the R640
+        #                 tail this class anchors on (low-alpha_b host, fully absorbed pump).
+        self.iqe0 = None if iqe0 is None else float(iqe0)
+        self.x_cap = None if x_cap is None else float(x_cap)
+        self.eta_abs_fixed = None if eta_abs_fixed is None else float(eta_abs_fixed)
+        if platform is not None:
+            self.platform = platform
+        self.family = family
         self.N_t_M = float(N_t_M)
         self.N_t = molar_to_per_cm3(N_t_M)                    # cm^-3
         self.lambda_p = float(lambda_p_nm)
@@ -259,7 +313,8 @@ class DyeExtractor(object):
         self.purcell = float(purcell)
         self.film_um = float(film_um)
         self.T_design = float(T_design_K)
-        self.eta_EQE = float(eta_EQE)
+        self.eta_EQE = (float(eta_EQE) if self.iqe0 is None
+                        else iqe_under_purcell(float(purcell), self.iqe0) * float(eta_EQE))
         self.sigma = float(sigma)
         self.background = background
         self.alpha_b = float(alpha_b_cm if alpha_b_cm is not None else DYE_BACKGROUND_CM[background])
@@ -268,8 +323,8 @@ class DyeExtractor(object):
         self.E_anchor = ev_from_nm(lambda_anchor_nm)
         self.E_00 = ev_from_nm(lambda_00_nm)
         self.rung = rung
-        self.label = label or ('R640-SMILES {:.0e} M, {:.0f} nm pump, lambda_f {:.0f} nm, F_P {:.0f}, '
-                               '{:.0f} um{}'.format(self.N_t_M, self.lambda_p, self.lambda_f,
+        self.label = label or ('{} {:.0e} M, {:.0f} nm pump, lambda_f {:.0f} nm, F_P {:.0f}, '
+                               '{:.0f} um{}'.format(self.family, self.N_t_M, self.lambda_p, self.lambda_f,
                                                     self.purcell, self.film_um,
                                                     '' if rung is None else ' (rung {})'.format(rung)))
 
@@ -295,24 +350,30 @@ class DyeExtractor(object):
         return math.log(10.0) * self.N_t_M * self.epsilon(T_K)
 
     def eta_abs(self, T_K):
+        if self.eta_abs_fixed is not None:
+            return self.eta_abs_fixed
         a = self.alpha_r(T_K)
         return a / (a + self.alpha_b)
 
     def eta_q(self):
-        """Quantum-defect ceiling (8.10): lambda_p / lambda_f - 1."""
+        """Quantum-defect ceiling: lambda_p / lambda_f - 1 (v100 Table 8.3)."""
         return self.lambda_p / self.lambda_f - 1.0
 
     def eta_cool(self, T_K):
-        """Realised per-absorbed-photon efficiency (8.5) at extractor temperature ``T``."""
+        """Realised per-absorbed-photon efficiency (v100 eq. 8.6; v98 8.5) at temperature ``T``."""
         return self.eta_abs(T_K) * self.eta_EQE * (1.0 + self.eta_q()) - 1.0
 
     def x_max(self, T_K):
-        """Transparency ceiling on the excited fraction (5.7)."""
-        return 1.0 / (1.0 + math.exp((self.E_00 - self.E_p) / (K_B_EV * float(T_K))))
+        """Transparency ceiling on the excited fraction (5.7), or the annihilation cap if lower."""
+        x = 1.0 / (1.0 + math.exp((self.E_00 - self.E_p) / (K_B_EV * float(T_K))))
+        return x if self.x_cap is None else min(x, self.x_cap)
 
     def gamma_tot(self):
-        """Purcell-enhanced cycling rate F_P / tau [s^-1]."""
-        return self.purcell / self.tau
+        """Cycling rate [s^-1]: F_P / tau, or (F_P iqe0 + 1 - iqe0) / tau for a low-IQE emitter
+        (v100 eq. 8.4 -- the Purcell factor acts on the radiative rate only)."""
+        if self.iqe0 is None:
+            return self.purcell / self.tau
+        return (self.purcell * self.iqe0 + 1.0 - self.iqe0) / self.tau
 
     def saturation_intensity_W_per_mm2(self, T_K):
         """I_sat = hbar w_p / (sigma_a tau) with sigma_a = alpha_r / n_t, per (8.4)."""
@@ -321,7 +382,7 @@ class DyeExtractor(object):
 
     # -- the ledger ---------------------------------------------------------------------------
     def cooling_per_volume_W_per_mm3(self, T_K):
-        """p_max (8.7) at extractor temperature ``T`` [W/mm^3]; negative means heating."""
+        """p_max (v100 eq. 8.8; v98 8.7) at extractor temperature ``T`` [W/mm^3]; negative = heating."""
         if not (float(T_K) > 50.0):
             return 0.0
         n_m3 = self.N_t * 1e6
@@ -329,7 +390,7 @@ class DyeExtractor(object):
                 * self.eta_cool(T_K)) * 1e-9                           # W/m^3 -> W/mm^3
 
     def cooling_density_W_per_mm2(self, T_K):
-        """Areal cooling flux ``p_max d`` (8.9) at extractor temperature ``T``."""
+        """Areal cooling flux ``Pcool/A = p_max d`` (v100 §8.3.3, after eq. 8.8; v98 8.9)."""
         if not (float(T_K) > 50.0):
             return 0.0
         return self.cooling_per_volume_W_per_mm3(T_K) * (self.film_um * 1e-3)
@@ -358,7 +419,10 @@ class DyeExtractor(object):
                 'N_t_M': self.N_t_M, 'lambda_p_nm': self.lambda_p, 'lambda_f_nm': self.lambda_f,
                 'purcell': self.purcell, 'film_um': self.film_um, 'T_design_K': self.T_design,
                 'eta_EQE': self.eta_EQE, 'sigma': self.sigma, 'background': self.background,
-                'alpha_b_cm': self.alpha_b, 'tau_s': self.tau,
+                'alpha_b_cm': self.alpha_b, 'tau_s': self.tau, 'iqe0': self.iqe0,
+                'x_cap': self.x_cap, 'eta_abs_fixed': self.eta_abs_fixed,
+                'gamma_tot_per_s': self.gamma_tot(),
+                'p_at_design_W_per_mm3': self.cooling_per_volume_W_per_mm3(self.T_design),
                 'eta_q': self.eta_q(),
                 'x_max_at_design': self.x_max(self.T_design),
                 'h_at_design_W_per_mm2': self.cooling_density_W_per_mm2(self.T_design),
@@ -726,6 +790,8 @@ EXTRACTORS = {
     'dye-600K': lambda **kw: DyeExtractor.from_rung(7, **kw),
     'dye-rung3': lambda **kw: DyeExtractor.from_rung(3, **kw),
     'dye-rung4': lambda **kw: DyeExtractor.from_rung(4, **kw),
+    'nir-cyanine': lambda **kw: DyeExtractor(**dict(TABLE_1_1_ORGANIC['nir-cyanine'], **kw)),
+    'j-aggregate': lambda **kw: DyeExtractor(**dict(TABLE_1_1_ORGANIC['j-aggregate'], **kw)),
     'cr-lisaf': lambda **kw: CrLiSAFExtractor(**kw),
     'gaas': lambda **kw: SemiconductorExtractor(**kw),
     'gaas-retuned': lambda **kw: SemiconductorExtractor(retune_pump=True, **kw),

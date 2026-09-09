@@ -116,7 +116,7 @@
     {
      "file": "recovery_at_temperature.json",
      "from": "docs/evidence/recovery_at_temperature.json",
-     "sha256": "b07d77e2104146777194883fa0fe7d3e791b9f3c9b922480426c844f5f7856e3"
+     "sha256": "ef9ac208040821afb4a4940e15a47c1a3ef5bb9e06b7e6d81df3984c080f2b9f"
     }
    ],
    "missing": [],
@@ -159,7 +159,7 @@
     {
      "file": "extractor_cooling_curves.json",
      "from": "docs/evidence/extractor_cooling_curves.json",
-     "sha256": "7e2a0d4f3a0a9b30b7acec675e11a949cdf7940634b75e3a74e5154ccc834a84"
+     "sha256": "2632c86fdd3ab6c76accf63f7c29daf4a92c2105d191cdfeb323257ce19428d5"
     },
     {
      "file": "extractor_armD.json",

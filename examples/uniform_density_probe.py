@@ -148,7 +148,7 @@ def main():
     # `[!]` DEFAULT 'pipeline', and it must stay that way -- same discipline as --rbb-policy.
     # Every recorded density result was solved on the pipeline curve; changing the default would
     # silently move all of them. The simulated curve (P0.13) is a deliberate, flagged re-run.
-    ap.add_argument('--leakage-curve', default='pipeline', choices=list(LEAKAGE_CURVES),
+    ap.add_argument('--leakage-curve', default='simulated', choices=list(LEAKAGE_CURVES),
                     help='which leakage-vs-temperature curve to solve on. pipeline = CACTI\'s '
                          '11 hard-coded numbers (the recorded catalogue); simulated = BSIM-CMG '
                          'on the ASAP7 card (P0.13); simulated-gidl-off = the other bracket')

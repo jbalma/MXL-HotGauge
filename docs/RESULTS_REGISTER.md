@@ -41,7 +41,7 @@ catalogue was computed under.
 
 | flag | value | meaning |
 |---|---|---|
-| `--leakage-curve` | `pipeline` | CACTI's 11 hard-coded numbers. `[!]` **Still the default. §P0.18.0 recommends `simulated` with reasoning; the flip is the user's call — see §3.** |
+| `--leakage-curve` | `simulated` | BSIM-CMG on the ASAP7 card (§P0.13). **Flipped from `pipeline` on 9 Sep 2026** (user's decision, §P0.18.0): an un-flagged run is now arm D exactly. `pipeline` (CACTI's 11 numbers) stays selectable for reproduction. |
 | `--array-coverage` | `1.0` | fraction of the pixel layer's footprint that is emitting extractor (areal). New 3 Sep (§P0.18.1); 1.0 is every recorded result |
 | `--mr-zone-mode` | `single` | one extractor material over the whole array (architecture-agnostic). `dual` = the flagged cold-zone / hot-zone arrangement laid out against this floorplan (`--mr-cold-extractor cr-lisaf` on tiles majority-under `--mr-cold-zone-pattern '^(L2\|L3)'`), a per-architecture product kept for measurement, never the default. New 8 Sep (§P0.21) |
 | `--rbb-policy` | `amortized` | the results-broadcast bus folded onto the execution units it spans |
@@ -53,7 +53,8 @@ catalogue was computed under.
 `--leakage-curve pipeline --rbb-policy stock --core-other-policy stock --mr-h-max 250`
 (`--mr-eta-asf` needs no flag — 0.32 is still the default.)
 
-`[!]` **The shipped default is not one of the four measured arms.** Arms A–D were
+`[+]` **Since 9 Sep the shipped default IS arm D** (measured 159/159). Between 3 and 9 Sep it was
+the unmeasured `(pipeline, amortized, hierarchy-consistent)`: Arms A–D were
 `(pipeline, stock, stock)`, `(simulated, stock, stock)`, `(simulated, amortized, stock)`,
 `(simulated, amortized, hierarchy-consistent)`. The default is now
 `(pipeline, amortized, hierarchy-consistent)`, which nobody has run end to end. See §3.
@@ -137,6 +138,7 @@ These are ordered by how likely they are to resurface.
 |---|---|---|
 | **"The cold-zone prize is 30 % of die power."** | ~6 % or ~14 % (§1.2), or better, the 2.23× | Rested on a static fraction and cache share computed on **one core's leaves against the whole chip's L3**, on the trace's **warm-up slice**. Reproduced exactly and shown to be a scope-and-slice error. |
 | **"Yb:YLF is the cold-zone material."** | **Cr:LiSAF** (decided 8 Sep, §P0.21) | Yb:YLF is 2–3 orders below both shipping platforms and a decade below Cr:LiSAF. It is retained **only** so the pre-30-Aug catalogue reproduces. It is not a zone material at all. |
+| **"Recovery crosses to export at 408 K"** (Test 9 summary, 30 Aug) | **614 K** for the v91-target + 90 % laser preset; 408 K is the *self-powering* temperature (v91 condition 1.15, pump covered, LPC not counted) | The JSON's summary field quoted the self-powering temperature and called it the crossing; its own rows only change sign between 600 and 700 K. Found by the user 9 Sep; `recovery_at_temperature.py` now reports `export_crossing_temperatures` by bisection on the rows' own expression, and `self_powering_temperatures` under its right name. Still an upper bound by construction. |
 | **"Both thin films cover the cold zone"** (3 Sep rule, as a *zone assignment*) | Cr:LiSAF is the storage-zone material; the dye is the hot-zone material (§P0.21) | True as a *capability* statement at 250–320 K, wrong as an assignment: the dye's transparency cap collapses on cooling (263 W/mm² at 263 K, 11 at 200 K, §P0.20), so it is a hot-die platform. Withdrawn 8 Sep on the user's decision. |
 | **"η_ASF ≈ 0.02 is the demonstrated state of the art."** | 0.10–0.60 across MVP stages; 0.32 the working point | That figure is Yb:YLF. The phrase "0.02 demonstrated" must not appear in proposal text. |
 | **"The part never reaches its 100 °C spec limit — it runs away first."** | It reaches spec at **every** cooling point tested | An artefact of the recorded curve's hot tail, ~47× too steep at 500 K. The **clocks** in that table survive; the mechanism does not. |
@@ -161,7 +163,7 @@ These are ordered by how likely they are to resurface.
 
 | question | why it matters | what it needs |
 |---|---|---|
-| **Should `--leakage-curve` default to `simulated`?** | The shipped default is currently a combination nobody measured. It is the largest single mover (57 of 145 points). | **Recommendation made, not applied (§P0.18.0): flip to `simulated`**, making the default arm D exactly (measured 159/159). The reproducibility argument for `pipeline` was spent when the other two defaults moved; every §1 number already sits on `simulated`; `pipeline` is not a device. The flip touches four driver defaults, one test, the `CLAUDE.md` rule and §0 above. **The user's call.** |
+| ~~**Should `--leakage-curve` default to `simulated`?**~~ **Decided and applied 9 Sep** | The shipped default was a combination nobody measured. | Flipped to `simulated` on the user's decision: four driver defaults, the pinning test, the `CLAUDE.md` rule and §0. No result moved — every §1 number was already on `simulated`. Open remainder: the curve × accounting interaction term (a small flagged study, `(p,a,hc)` as a fifth arm, ~3.5 h) if anyone needs it. |
 | **Maximum temperature lift of the stage (`dt_max`)** | Was load-bearing: the measured 34-core rescue failed on it, and the 50 mV `V_t` step sits at 45–60 K. | `[+]` **Reframed and measured (§P0.19).** With the extractor's own curve as the per-tile cap, no tile on this die is ever driven within 6 K of any platform's `T_min` (coldest 263 K at 2.60 W/mm²) — the lift does not bind. The remaining ask is to *confirm the bracket*: the dye tail at the pump at two temperatures, the host loss on a SMILES film, and pump retuning for GaAs. `[!]` The scalar 45 K still binds the **1.15 W/mm² baseline-path** point (hot-branch baseline, 45 K lifted, 111 °C) while 850 W/mm² was available — a planner-mode limitation, §3 below. |
 | **η_ASF(T) curve inside each thermal window** | Zone-by-zone extractor selection needs it. | v91 gives the principle and the endpoints, not the curve. |
 | Behaviour above 400 K | Neither shipping platform is tabulated there; McPAT refuses input there. | Does not bind today — report >127 °C as non-viable rather than as a number. |

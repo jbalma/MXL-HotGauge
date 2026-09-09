@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-"""The extractor's cooling flux versus its own temperature, per platform, on v98's volumetric route
--- where ``dt_max`` comes from (§P0.19, rebuilt on v98 in §P0.20).
+"""The extractor's cooling flux versus its own temperature, per platform, on the book's volumetric
+route (v98 §P0.20, re-checked against v100 on 9 Sep 2026: same numbers, renumbered equations, two
+new Table 1.1 organic rows) -- where ``dt_max`` comes from (§P0.19).
 
     python examples/extractor_curves.py       # pure arithmetic; no solver, runs anywhere
 
@@ -42,7 +43,14 @@ def main():
     args = ap.parse_args()
     T = np.arange(120.0, 620.0 + 1e-9, 10.0)
 
-    # --- the dye on v98's route: every rung, and the target device with its sigma bracket ------
+    # --- v100 Table 1.1's other organic rows (ceilings; cascade stages, not the target device) --
+    organic = {}
+    for name in ('nir-cyanine', 'j-aggregate'):
+        x = make_extractor(name)
+        organic[name] = {'inputs': x.describe(), 'curve': curve(x, T),
+                         'h_at': {str(t): x.cooling_density_W_per_mm2(t) for t in (263.0, 300.0, 330.0, 365.0, 400.0)},
+                         'T_min_K': x.t_min_K()}
+    # --- the dye on the book's route: every rung, and the target device with its sigma bracket --
     ladder = {}
     for r in sorted(DYE_LADDER):
         d = DyeExtractor.from_rung(r)
@@ -88,13 +96,14 @@ def main():
 
     out = {
         'note': __doc__.strip(),
-        'source': 'docs/Photonic_Cooling_Devices___v98.pdf (8 Sep 2026): eqs. 5.7, 8.4-8.9, 9.5-9.7; Tables 1.1, 8.1, 8.2, 8.3, 9.2',
+        'source': 'docs/Photonic_Cooling_Devices___v100.pdf (9 Sep 2026; v98 numbers unchanged): eqs. 5.7, 8.4, 8.6-8.11, 9.5-9.7; Tables 1.1, 8.1, 8.2, 8.3, 9.2',
         'model': ('p_max = n_t x_max(T) (F_P/tau) hbar w_p eta_cool(T), x_max = [1 + exp((E_00 - E_p)/kT)]^-1 '
                   '(the transparency cap, thermal by construction), eta_cool = eta_abs eta_EQE lambda_p/lambda_f - 1, '
                   'eps(E,T) = 4290 exp[sigma (E - E_600)/kT]; Pcool/A = p_max d. GaAs: A,B,C balance with photon '
                   'recycling, Urbach tail, Varshni gap, v98 (9.6)-(9.7).'),
         'dye_ladder_table_8_2': ladder,
         'target_device_table_1_1_rung_6': target,
+        'table_1_1_organic_rows_v100': organic,
         'die_demand_from_coverage_ladder': demand,
         'rung_needed_for_this_die': rung_needed,
         'gaas': gaas,

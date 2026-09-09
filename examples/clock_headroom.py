@@ -594,7 +594,7 @@ def main():
     # Every recorded result in this driver's catalogue was solved on the pipeline curve; changing
     # the default would silently move all of them. A non-default curve is a deliberate, flagged
     # re-run. See §P0.13/§P0.14 and thermal.leakage_feedback.load_leakage_model.
-    ap.add_argument('--leakage-curve', default='pipeline', choices=list(LEAKAGE_CURVES),
+    ap.add_argument('--leakage-curve', default='simulated', choices=list(LEAKAGE_CURVES),
                     help='which leakage-vs-temperature curve to solve on. pipeline = CACTI\'s '
                          '11 hard-coded numbers (the recorded catalogue); simulated = BSIM-CMG '
                          'on the ASAP7 card (P0.13); simulated-gidl-off = the other bracket')

@@ -2661,6 +2661,37 @@ rather than a re-run, so the two campaigns were produced by the same code at dif
 
 ---
 
+## `[x]` §P0.21.5 — 9 September corrections: the leakage default flipped, the recovery crossing named, v100 read  `[x]` 9 Sep 2026
+
+- **`--leakage-curve` default → `simulated`** (user's decision on the §P0.18.0 recommendation).
+  Four drivers, `test_leakage_curve_select.py` inverted (24 passed), `CLAUDE.md`, register §0/§3.
+  No result moved: every §1 number was already on `simulated`. An un-flagged run is now arm D.
+- **`recovery_at_temperature.json` contradicted its own rows** (user, 9 Sep). The summary's
+  658 / 528 / 408 K are the *self-powering* temperatures (v91 condition 1.15: recovered
+  electricity covers the pump); the rows compute net electrical cost per lifted watt *with the
+  LPC*, which for the 90 %-laser preset only changes sign between 600 and 700 K. The driver now
+  bisects the rows' own expression: **export crossing 614 K** (90 % laser); the other presets never
+  export inside 350–800 K. Register §2 carries the withdrawal; the 30 Aug handoff line is struck.
+- **v100 (`docs/Photonic_Cooling_Devices___v100.pdf`) supersedes v98.** Checked against the
+  code: Tables 8.1, 8.2 (all eight rungs), 1.1's R640 row, §8.1.2's Cr:LiSAF numbers and Table 9.2's
+  GaAs anchor are **unchanged to the printed digit**, so the target device (rung 6) and the
+  storage-zone material stand as tested. What moved: (a) chapter-8 equation numbers (η_cool 8.6,
+  p_max 8.8, d_min 8.9, Strickler–Berg 8.10, ladder score 8.11) — docstrings and `REFERENCES.md`
+  updated; (b) **Table 1.1 gains two organic rows** — a 980 nm-pumped NIR tricarbocyanine
+  (1.7×10⁵ W/mm³, 8×10³ W/mm² at 50 µm, η_cool 13 % at η_q 18 %, IQE 0.2 → 0.96 by F_P = 100
+  through the new eq. 8.4) and a superradiant silica-TDBC J-aggregate (10⁶ W/mm³, 10³ W/mm²
+  from 1 µm, annihilation-capped x ≈ 0.02) — both added as presets `nir-cyanine` and
+  `j-aggregate` on the same volumetric route, with `iqe_under_purcell` (8.4), an `x_cap` and the
+  book's η_abs → 1 for rows outside the R640 tail model; tests reproduce the rows to 15–25 %;
+  (c) **§1.18 (thermally-limited architecture design points)** and **§10.9 (thermal heterogeneity
+  as a design knob)** are new and are exactly the frame the evolution ladder needs — eq. (1.32)
+  is the architectural budget inequality, (1.33) the hybrid cap ∝ 1/(1−s), the cubic-regime
+  2^(1/3) clock per doubling, the three constraints that bound the three-zone template (BEOL
+  400 K wall, extractor material wall, thermal-gradient / packaging wall). `[!]` v100 Table 10.8
+  still names Yb:YLF for the storage zone; the 8 Sep decision (Cr:LiSAF) stands and is recorded
+  as a deliberate departure. The R101 EQE point at 3×10⁻³ M is re-derived in v100 (60 %, replacing
+  45 %); nothing in the code used the 45 %.
+
 ## `[~]` §P0.21 — zone materials decided: Cr:LiSAF storage zone, dye hot zone, and the dual-material array is a FLAG, not the default  `[~]` 8 Sep 2026
 
 **The decision (user, 8 Sep).** The "storage zone material" concept stands, but the material is
@@ -3070,7 +3101,7 @@ Three items, in the order the handoff listed them. Item 0 is a decision, not a r
 are a build followed by a ladder, with the predictions written **before** the launch, as the
 standing rule requires.
 
-### §P0.18.0 — `--leakage-curve` default: RECOMMENDATION, not applied
+### §P0.18.0 — `--leakage-curve` default: RECOMMENDATION, not applied — `[x]` **APPLIED 9 Sep 2026 on the user's decision** (four drivers, `test_leakage_curve_select.py` inverted, `CLAUDE.md`, register §0/§3; no result moved)
 
 **Recommend flipping the default to `simulated`**, so the shipped default becomes arm D exactly.
 Not applied in this session — the handoff asked for a recommendation with reasoning and said not

@@ -51,7 +51,8 @@ here disagree, the doc is newer — fix `CLAUDE.md`.
    25 mV step sits inside the demonstrated 45 K. `LADDER_GEN0` §2's table is superseded.
 8. **`dt_max` is a curve now, not a number, and it does not bind on this die** (§P0.19). Keep
    the scalar 45 K alongside the curve — it shapes the plan.
-9. **v98 is the device authority, and the target device is its Table 1.1** (§P0.20). v91's
+9. **v100 is the device authority (9 Sep; v98 numbers unchanged, equations renumbered, §1.18 and
+   §10.9 added), and the target device is its Table 1.1 R640 row** (§P0.20, §P0.21.5). v91's
    10³–10⁴ W/mm² for a *bulk* dye film is withdrawn by v98; the dye is a hot-die platform and
    the extractor's temperature dependence is the transparency cap, not the tail.
 10. **Zone materials are decided (§P0.21): Cr:LiSAF storage zone, dye hot zone, no Yb:YLF.** And

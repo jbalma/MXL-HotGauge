@@ -828,7 +828,10 @@ so it wants to ride one deliberate catalogue re-run rather than drift in.
   min-dimension 45.4 µm), not the device.
 - **Granularity worth 2.77× on a hotspot, nothing on a flat die.** Robust to the 4× envelope
   refresh, as is the budget cliff — both are geometry, not actuator.
-- **Recovery crosses to export at 408 K** with the v91 target extractor and a 90 % laser.
+- ~~**Recovery crosses to export at 408 K**~~ **corrected 9 Sep: the export crossing is 614 K** with
+  the v91 target extractor and a 90 % laser; 408 K is the *self-powering* temperature (condition
+  1.15, pump covered), a different quantity the JSON summary had labelled "the crossing" against
+  its own rows. `examples/recovery_at_temperature.py` now reports both.
 - **Self-powering at 658 K shipped / 452 K at η_P 0.90** — validated against v91 §1.12 Examples 1–3.
 
 ## What was withdrawn last night, and why
