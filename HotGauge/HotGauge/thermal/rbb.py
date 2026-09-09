@@ -288,19 +288,33 @@ def amortize_rbb(trace, floorplan, policy='stock', leakage_ref=None, name_map=No
     return out_trace, (leaks if leaks is not None else None), meta
 
 
-def add_rbb_argument(ap, default='stock'):
+#: The shipped default. `[!]` Changed 'stock' -> 'amortized' on 2 Sep 2026 (§P0.17), on the
+#: evidence the standing rule asked for: "``stock`` ships as the default until a catalogue re-run
+#: says otherwise". The re-run said otherwise. §P0.16's arm B -> arm C isolates this flag across
+#: 145 catalogue points and flips **no verdict in either direction**; it moves temperatures a
+#: little (control −0.55 K mean, array arm −3.02 K). §P0.10 had already settled the semantics from
+#: McPAT's own source (``core.cc`` folds the bus's ``Area Overhead`` into the Execution Unit).
+#: `[!]` The recorded catalogue is still reproducible EXACTLY -- pass ``--rbb-policy stock``.
+DEFAULT_RBB_POLICY = 'amortized'
+
+
+def add_rbb_argument(ap, default=None):
     """Add ``--rbb-policy`` to a driver's parser.
 
     Kept here so every driver spells the flag, the choices and the help text identically -- a
     results table that mixes ``--rbb`` and ``--rbb-policy`` across drivers is a table nobody can
-    re-run. Default is ``stock``: the shipped placement, so an un-flagged re-run reproduces the
-    recorded catalogue.
+    re-run. Default is :data:`DEFAULT_RBB_POLICY`; pass ``default='stock'`` to pin the shipped
+    placement for a driver that must reproduce a recorded row un-flagged.
     """
+    if default is None:
+        default = DEFAULT_RBB_POLICY
     ap.add_argument('--rbb-policy', choices=RBB_POLICIES, default=default,
                     help='how to treat the results-broadcast bus. "stock" (default) places it '
                          'as a block, as shipped HotGauge does. "amortized" moves its power onto '
                          'the execution-unit blocks it spans, which is what McPAT\'s "Area '
-                         'Overhead" means -- see HotGauge.thermal.rbb.')
+                         'Overhead" means. "stock" places it as a block, as shipped HotGauge '
+                         'does, and reproduces the recorded catalogue -- see '
+                         'HotGauge.thermal.rbb.')
     ap.add_argument('--rbb-span', choices=sorted(SPANS), default='exec',
                     help='with --rbb-policy amortized, which blocks receive the power '
                          '(default: exec -- the Execution Unit, which is where McPAT books the '

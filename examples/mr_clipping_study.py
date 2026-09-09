@@ -48,13 +48,16 @@ from HotGauge.thermal.ICE import Floorplan
 from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power,
                                                die_power_of_trace,
                                                mcpat_flp_name_map, load_calibrated_leakage_model,
+                                               load_leakage_model, LEAKAGE_CURVES,
                                                mcpat_tref_from_trace_dir)
+from HotGauge.power.core_other import (CORE_OTHER_POLICIES, resolve_trace_dir,
+                                      DEFAULT_CORE_OTHER_POLICY)
 from HotGauge.thermal.rbb import amortize_rbb, add_rbb_argument
 from HotGauge.thermal.sink_models import (ThermalResistanceSink, render_stack_with_sink,
                                           chip_area_m2_from_floorplan)
 from HotGauge.thermal.sink_models import spreading_sink_for_stack
 from HotGauge.thermal.die_stack import stack_for_spreading
-from HotGauge.thermal.mr_array import wiring_for_stack, DEFAULT_PITCH_UM
+from HotGauge.thermal.mr_array import wiring_for_stack, DEFAULT_PITCH_UM, DEFAULT_COVERAGE
 from HotGauge.thermal.microrefrigeration import (MRParams, run_mr_clipping, mr_accounting,
                                                  DEFAULT_H_MAX_W_PER_MM2, DEFAULT_DT_MAX_K, DEFAULT_ETA_ASF, DEFAULT_LASER_WALLPLUG, DEFAULT_LPC_EFFICIENCY)
 from HotGauge.power.performance_model import FMaxModel, performance_summary
@@ -114,6 +117,14 @@ def main():
     ap.add_argument('--stack', default='skylake')
     ap.add_argument('--pitch-um', type=float, default=DEFAULT_PITCH_UM,
                     help='cooling tile pitch; the array is a second powered die above the silicon')
+    ap.add_argument('--array-coverage', type=float, default=DEFAULT_COVERAGE,
+                    help='fraction of the pixel layer\'s footprint that is emitting extractor '
+                         '(AREAL). The device\'s couplers, waveguides, fibre access and '
+                         'monolithic-backside LPC share that footprint with the tiles (v91 '
+                         'Figs. 9.1/9.8/9.12), so < 1 charges the array its own area; the '
+                         'uncovered silicon is cooled only by what spreads sideways through '
+                         'the burial depth. 1.0 is every recorded result. Cannot move a '
+                         'control-arm ceiling: the control has no array. See P0.18.')
     ap.add_argument('--no-array', action='store_true',
                     help='legacy placement: subtract the plan from the processor trace instead of putting it on the array. An upper bound, not the device -- see CoolingApplication')
     ap.add_argument('--cell-um', type=float, default=50.0,
@@ -125,6 +136,24 @@ def main():
     ap.add_argument('--r-th', type=float, default=0.3, help='bulk cooler [K/W]')
     ap.add_argument('--ambient-K', type=float, default=303.15)
     ap.add_argument('--leakage-cal', default='leakage_calibration/leakage_calibration.json')
+    # `[!]` DEFAULT 'pipeline', and it must stay that way -- same discipline as --rbb-policy.
+    # Every recorded result in this driver's catalogue was solved on the pipeline curve; changing
+    # the default would silently move all of them. A non-default curve is a deliberate, flagged
+    # re-run. See §P0.13/§P0.14 and thermal.leakage_feedback.load_leakage_model.
+    ap.add_argument('--leakage-curve', default='pipeline', choices=list(LEAKAGE_CURVES),
+                    help='which leakage-vs-temperature curve to solve on. pipeline = CACTI\'s '
+                         '11 hard-coded numbers (the recorded catalogue); simulated = BSIM-CMG '
+                         'on the ASAP7 card (P0.13); simulated-gidl-off = the other bracket')
+    # §P0.16. `stock` (default) reproduces the recorded catalogue exactly; `hierarchy-consistent`
+    # undoes the `2 * runtime_dynamic` in scripts/mcpat_to_blk_lvl_power_dict.py and residualises
+    # the bare Core<N> row, so `core_other` carries leakage only. Additive: the non-default branch
+    # is placed AHEAD of the existing path, which stays reachable and unmodified.
+    ap.add_argument('--core-other-policy', default=DEFAULT_CORE_OTHER_POLICY,
+                    choices=list(CORE_OTHER_POLICIES),
+                    help='how to treat McPAT\'s per-core accounting. "hierarchy-consistent" '
+                         '(default since P0.17) removes the converter\'s '
+                         '2x on itemised per-core dynamic and gives core_other the true leakage '
+                         'remainder (raises the die static fraction ~1.74x). See P0.16.')
     ap.add_argument('--doubling', type=float, default=15.0)
     ap.add_argument('--mr-target-C', type=float, default=85.0,
                     help='temperature MR clips hot blocks down to')
@@ -154,6 +183,10 @@ def main():
     ap.add_argument('--max-iter', type=int, default=15)
     ap.add_argument('--out-dir', default=None)
     args = ap.parse_args()
+    # §P0.16: under a non-stock core_other policy, solve against a corrected copy of
+    # the trace. Returns args.trace_dir unchanged under the default, so the recorded
+    # path is byte-identical.
+    args.trace_dir = resolve_trace_dir(args.trace_dir, args.core_other_policy)
 
     args.flp_template = args.flp_template or os.path.join(
         _HERE, 'floorplans', 'outputs',
@@ -167,7 +200,11 @@ def main():
                      'min_dim_um': float(min(e.width, e.height))} for e in flp.elements}
     name_map = mcpat_flp_name_map(include_core_idx=(args.num_cores > 1))
 
-    if os.path.isfile(args.leakage_cal):
+    if args.leakage_curve != 'pipeline':
+        leak_model, t_ref = load_leakage_model(args.leakage_curve,
+                                               calibration=args.leakage_cal)
+        leak_src = 'leakage curve {!r} (P0.13/P0.14)'.format(args.leakage_curve)
+    elif os.path.isfile(args.leakage_cal):
         leak_model, t_ref = load_calibrated_leakage_model(args.leakage_cal)
         leak_src = 'MEASURED McPAT curve'
     else:
@@ -212,7 +249,7 @@ def main():
     # silicon, so burial depth is inert by construction.
     wiring = wiring_for_stack(stack, args.flp_template, args.out_dir,
                               want_array=not args.no_array, pitch_um=args.pitch_um,
-                              cell_um=args.cell_um)
+                              cell_um=args.cell_um, coverage=args.array_coverage)
 
     rows = []
     for p_w in args.powers:
@@ -346,7 +383,11 @@ def main():
 
     out = os.path.join(args.out_dir, 'mr_study.json')
     with open(out, 'w') as f:
-        json.dump({'r_th': args.r_th, 'mr': repr(mr), 'rbb': rbb_meta, 'rows': rows},
+        json.dump({'r_th': args.r_th, 'mr': repr(mr), 'rbb': rbb_meta,
+                   # The array charged its own footprint (P0.18); one wiring per run here.
+                   'array_coverage': args.array_coverage,
+                   'array': (wiring.area_fields() if wiring else None),
+                   'rows': rows},
                   f, indent=2, default=str)
     print('\n  written: {}'.format(out))
     return 0

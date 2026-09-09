@@ -34,9 +34,36 @@ Within the practical range it is far worse than that: 0.5 → 0.02 K/W is 25× t
 clock, and the last 2.5× (0.05 → 0.02) buys **1.1%**. That is the constriction floor
 (β−α = 1.042 K/W, conduction, airflow-independent) expressed in the unit a customer buys.
 
-Note the `limited by` column. Above 0.1 K/W the part does not reach its 100 °C spec limit at
+~~Note the `limited by` column. Above 0.1 K/W the part does not reach its 100 °C spec limit at
 all — it **runs away first**, at 85.7 °C with a 1.0 K/W cooler. The leakage instability, not the
-temperature spec, is what caps the clock on a poorly-cooled die.
+temperature spec, is what caps the clock on a poorly-cooled die.~~
+
+`[!]` **WITHDRAWN, 31 August 2026 (§P0.15).** The `limited by` column above is a property of the
+**leakage curve**, not of the part. Re-run on the simulated BSIM-CMG curve (§P0.13) at all six of
+these cooling points, the die reaches its 100 °C spec at **every** one — the runaway is gone, and
+with it the claim that leakage instability rather than the temperature spec caps a poorly-cooled
+die. Both GIDL brackets agree.
+
+`[+]` **The clocks in the table survive; the mechanism does not.** The sustainable clock is
+unchanged to the search's own 0.05 GHz resolution at five of six cooling points, and moves +3.1 %
+at the sixth (1.0 K/W, where the pipeline curve's phantom runaway costs real headroom). So "a 50×
+better cooler buys +55 % clock and never reaches 5.0 GHz" stands. "It runs away before it reaches
+spec" does not.
+
+The cause is the pipeline curve's hot tail, which §P0.13 measured at **47× too steep at 500 K**.
+`[!]` And this is the opposite corner from where §P0.14 put it: §P0.14 argued the tail
+disagreement "lives where the answer does not", because a die that survives never gets that hot.
+True for a fixed-density **divergence test**, whose reported point is one the die survives — false
+for a **search**, which probes points the die does not survive and reads its answer off where they
+begin. Which part of a leakage curve is load-bearing is a property of the experiment, not of the
+curve.
+
+`[!]` The absolute clocks in this 14 August table also predate the RBB work, the residual/
+backtracking convergence fix and `verify=True`, all of which raise them (0.1 K/W: 4.203 here
+against 4.484 today). Compare within a campaign, not against this table.
+
+Evidence: `docs/evidence/clock_headroom_curve_compare.json`,
+`examples/clock_headroom_curve_compare.py`, `scripts/clock_headroom_curves.sh`.
 
 ## What MR adds on top
 

@@ -1,0 +1,196 @@
+{
+ "kind": "quotable",
+ "built_from": "docs/RESULTS_REGISTER.md",
+ "note": "sha256 is of the SOURCE file in docs/evidence at build time; --verify re-checks the copy against it",
+ "items": [
+  {
+   "slug": "01-rescue-microrefrigeration",
+   "files": [
+    {
+     "file": "mr_catalogue_curve_compare.json",
+     "from": "docs/evidence/mr_catalogue_curve_compare.json",
+     "sha256": "4eba00ea4dcd3ec489ff848ae0a4f3d3a100498d07a202a5a399fd5bb3f33b90"
+    },
+    {
+     "file": "airflow_ladder_solved.json",
+     "from": "docs/evidence/airflow_ladder_solved.json",
+     "sha256": "f238d08a6f5430f71040fca74e17bba949cb435665ce1aebc24d4929d924e770"
+    },
+    {
+     "file": "mr_rescue_cost_34core.json",
+     "from": "docs/evidence/mr_rescue_cost_34core.json",
+     "sha256": "b4f1831ebb54ff0225fa0bc542701dbd4d2a9443434f27bd25af7f93d8d0a09b"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/mr_curve_compare"
+   ]
+  },
+  {
+   "slug": "02-cold-zone",
+   "files": [
+    {
+     "file": "cold_zone_prize_simulated.json",
+     "from": "docs/evidence/cold_zone_prize_simulated.json",
+     "sha256": "38f80bc6495b1c19d0fbd92945632f81e3162682346e20295215a313a6618a75"
+    },
+    {
+     "file": "cold_zone_prize_core_other_consistent.json",
+     "from": "docs/evidence/cold_zone_prize_core_other_consistent.json",
+     "sha256": "07494310ca495de0b4a68c76d7fd36c716e8da8efdaa2ad2664ae842c774e68c"
+    },
+    {
+     "file": "thermal_zone_separability.json",
+     "from": "docs/evidence/thermal_zone_separability.json",
+     "sha256": "04b54aecb227a99e1ad81ac541e03d9e70a8b64f6aa2880d18ed27f6e8d40025"
+    },
+    {
+     "file": "exergy_map.json",
+     "from": "docs/evidence/exergy_map.json",
+     "sha256": "cb11edb98d95a05854607d04d6dd4cdc5e0486a66a74688e182cb8159f97ed63"
+    }
+   ],
+   "missing": [],
+   "raw": []
+  },
+  {
+   "slug": "03-density-and-concentration",
+   "files": [
+    {
+     "file": "tile_pitch_concentrated.json",
+     "from": "docs/evidence/tile_pitch_concentrated.json",
+     "sha256": "4a688acfbf1d531bf79686141bc00913d099ddecd57bed7f06ab462947a39979"
+    },
+    {
+     "file": "tile_pitch_uniform.json",
+     "from": "docs/evidence/tile_pitch_uniform.json",
+     "sha256": "96d053db0214015620210c44677116ad1c4041824202e7a9f8dd0b24642ebf9d"
+    },
+    {
+     "file": "mr_catalogue_curve_compare.json",
+     "from": "docs/evidence/mr_catalogue_curve_compare.json",
+     "sha256": "4eba00ea4dcd3ec489ff848ae0a4f3d3a100498d07a202a5a399fd5bb3f33b90"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/uniform_density_armD"
+   ]
+  },
+  {
+   "slug": "04-accounting-corrections",
+   "files": [
+    {
+     "file": "catalogue_arm_compare.json",
+     "from": "docs/evidence/catalogue_arm_compare.json",
+     "sha256": "24fca19c8344b36101ec475ab35a7f341c7bdda62d933dd75fd6d438febd94ff"
+    },
+    {
+     "file": "device_leakage_asap7.json",
+     "from": "docs/evidence/device_leakage_asap7.json",
+     "sha256": "52a1a854097fe95d21da137d8cde51da816beb4c6cb1913ff218f1dd00d0bad4"
+    },
+    {
+     "file": "device_leakage_spice_asap7.json",
+     "from": "docs/evidence/device_leakage_spice_asap7.json",
+     "sha256": "56c92e9a4cdfcbb6e5c8201f86d1192683dc2284467d4a2d56e4baf42ea8ea50"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/rerun_arm_A",
+    "results/rerun_arm_B",
+    "results/rerun_arm_C",
+    "results/rerun_arm_D"
+   ]
+  },
+  {
+   "slug": "05-recovery-and-thermodynamics",
+   "files": [
+    {
+     "file": "findings_recovery_correction.json",
+     "from": "docs/evidence/findings_recovery_correction.json",
+     "sha256": "0ee454d96f3e3b01e5c1b210c46dc3a2f46d2b27f2350e3b6dd5866cc573fbd0"
+    },
+    {
+     "file": "recovery_at_temperature.json",
+     "from": "docs/evidence/recovery_at_temperature.json",
+     "sha256": "b07d77e2104146777194883fa0fe7d3e791b9f3c9b922480426c844f5f7856e3"
+    }
+   ],
+   "missing": [],
+   "raw": []
+  },
+  {
+   "slug": "06-transistor-simulated",
+   "files": [
+    {
+     "file": "device_leakage_spice_asap7.json",
+     "from": "docs/evidence/device_leakage_spice_asap7.json",
+     "sha256": "56c92e9a4cdfcbb6e5c8201f86d1192683dc2284467d4a2d56e4baf42ea8ea50"
+    },
+    {
+     "file": "device_vt_vf_asap7.json",
+     "from": "docs/evidence/device_vt_vf_asap7.json",
+     "sha256": "e1d74b306a4c529aa8d710f7d1adc1235149840bce3e962842c2bd83de9617d1"
+    }
+   ],
+   "missing": [],
+   "raw": []
+  },
+  {
+   "slug": "07-array-coverage",
+   "files": [
+    {
+     "file": "array_coverage_armD.json",
+     "from": "docs/evidence/array_coverage_armD.json",
+     "sha256": "66b91631c775bd415bf908c8177e347ba8c3582803f74911d950084dc0f8242d"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/array_coverage_armD"
+   ]
+  },
+  {
+   "slug": "08-extractor-lift",
+   "files": [
+    {
+     "file": "extractor_cooling_curves.json",
+     "from": "docs/evidence/extractor_cooling_curves.json",
+     "sha256": "7e2a0d4f3a0a9b30b7acec675e11a949cdf7940634b75e3a74e5154ccc834a84"
+    },
+    {
+     "file": "extractor_armD.json",
+     "from": "docs/evidence/extractor_armD.json",
+     "sha256": "f1b97176af35ba9940dceb639dd9cf8b9b33bc7a8694a18d99726e7d0ecd94c6"
+    },
+    {
+     "file": "extractor_v98.json",
+     "from": "docs/evidence/extractor_v98.json",
+     "sha256": "ccfbf10ff89994f46434601fe75cb44914a87d2e1d9c5704c42322c738c470b4"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/extractor_armD",
+    "results/extractor_v98"
+   ]
+  },
+  {
+   "slug": "09-zone-mode",
+   "files": [
+    {
+     "file": "zone_mode_smoke.json",
+     "from": "docs/evidence/zone_mode_smoke.json",
+     "sha256": "5d091dd1a2c81ab574479b4f66c19ae662673f732c46da6eeb4d2f7bc8a2bac9"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/zone_mode_smoke"
+   ]
+  }
+ ]
+}

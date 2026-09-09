@@ -6,7 +6,7 @@ why; this says what is done.
 
 Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
-Last updated: 29 August 2026, fifth session — **P0.7: the power-recovery reframing. The objective
+Last updated: 8 September 2026 — **P0.21: zone materials decided by the user — Cr:LiSAF storage zone, dye hot zone, no Yb:YLF — and the cold plate we test is SINGLE-material by default (`--mr-zone-mode single`); the floorplan-matched dual arrangement is a flag for Phase 2 / die-integrated arrays. Smoke point at 2.00 W/mm²: the default reproduces P0.20 exactly, the dual arrangement is a 1 % effect on the hot-spot objective (0.1 W shortfall, 80 cold tiles). P1 of P0.21 found and fixed a latent P0.20 bug (uncapped first-plan re-cap tripped the stale-plan guard).** Earlier — **P0.20: v98 supersedes v91; the target device is Table 1.1's R640-SMILES row (rung 6 of the photonic ladder), its temperature dependence is the transparency cap (thermal by construction, so the T_min bracket collapses without a measurement), it is invisible on this die (identical plans, 0 tiles capped), the near-term film delivers 17 W of the 198 W a 2.00 W/mm² rescue needs, and rung 4 (broadband Purcell) is the requirements flow-down. Both notes to the author are resolved in v98. Open: v98's zone materials vs the 3 Sep rule.** Earlier — **P0.19: `dt_max` is DERIVED from the extractor's own cooling curve (v91's constitutive parameters, no Yb:YLF) and it never binds on this die — the coldest tile the array is driven to is 263 K against floors of 207–259 K; a fixed-wavelength GaAs pump has a HOT-side limit near 380 K instead; the converged energy cap takes one rung off the array ceiling (2.40–2.60 W/mm²); and the scalar 45 K turns out to shape the plan, so keep it alongside the curve. Two notes for the book (eq. 9.5 is 3.3× its own benchmark; Fig. 9.9's scale is not the ledger's η_ext).** Earlier — **P0.18: the array charged its own footprint, and at 500 µm pitch / 200 µm burial the charge is ZERO — quarter coverage (644 of 1126 blocks under gaps, 75 mm² reserved) holds the same ceiling on the same minimum plan to ~1 %. The array-assisted ceiling under arm D is 2.60–3.00 W/mm², a full W/mm² above the recorded 1.60–1.80, but it is an ENVELOPE result (the array removes more than the die dissipates at 2.60) — quote the rescue range and cost ladder, not the top rung. SPICE now gives V_t(T), SS(T), DIBL, I_on(V,T) and a fitted alpha (1.45) from the same card; the V_t lever re-priced 2× dearer in cooling (50 mV ≈ 45–60 K, not 22 K). `--leakage-curve` default: RECOMMEND `simulated`, not applied. Two of five predictions wrong, both favourable, both from carrying a derived estimate past a measured neighbour.** Earlier — **P0.16: the MR catalogue is OFF the old leakage curve, and it barely noticed. All 18 airflow rescues survive (6/6 on pipeline, `simulated` and `simulated-gidl-off`), the clipping efficacy moves 2-4 % and the budget cliff does not move — against a 14 % move on the density ladder. So `--leakage-curve` is NOT a reason to re-run the MR catalogue; the density and clock families are the ones that moved. Four of five §P0.16 predictions were wrong, both failures from turning a CURVE ratio into a RESULT ratio. Also: `core_other`'s 2.0000x is a literal `2 *` in `scripts/mcpat_to_blk_lvl_power_dict.py` (die total and static fraction safe; `core_other`'s share of on-die LEAKAGE overstated ~1.75x), the 36 net-generating `p_mr_net_W` rows are corrected by algebra with no re-solves, and the full catalogue re-run is priced at 6.3 h wall, not 63 days.** Earlier — **P0.13/P0.14: the leakage curve is SIMULATED, and spending it moved two recorded numbers in OPPOSITE directions — the cold-zone prize is 2.2x BIGGER and the density ceiling is one rung LOWER (P0.12 predicted higher; that claim is withdrawn). Read P0.14 before quoting either.** Earlier — **P0.13: ngspice 47 + OSDI + OpenVAF-compiled BSIM-CMG evaluates the ASAP7 card directly; the tooling task P0.12 called the project's highest-value one is finished and Xyce was not needed. Two results move recorded numbers in opposite directions: the cold floor is **GIDL, not gate leakage**, so the cold-zone prize is **~20x smaller** than P0.12 promised, and the hot tail is gentler still (500 K: 5820x pipeline, 349x analytic, **123x simulated**). `[!]` P0.13 inferred from that tail that P0.11's ceiling is more conservative than recorded; **P0.14 measured it and the opposite is true** — see P0.14. Read both before quoting anything that rests on leakage-vs-temperature. Earlier — **P0.7: the power-recovery reframing. The objective
 now has a second axis (exergy, phi = 1 - T0/Th) and the book's three-zone template was tested:
 40 W of removal on a 60.7 W die buys 1.24 K of gradient against the 150 K asked for, confirmed by
 two independent methods to within 1.7x. Read docs/POWER_RECOVERY_PLAN.md first. Earlier, P0.5h: the book's three-zone template measured
@@ -2254,6 +2254,2303 @@ point, not the operating temperature.** What binds above 400 K is our leakage mo
 silicon is no longer a switch there, and the hot zone posits SiC/GaN, which CACTI cannot represent.
 **Recommendation: extend `LeakageModel.from_table_extrapolated` and settle it with PTM SPICE cards
 — the same campaign already flagged for the cold zone. One effort settles both ends.**
+
+## P0.14 — The simulated curve, consumed: prize 2.2x bigger, ceiling one rung LOWER  `[x]` 31 Aug 2026
+
+`HotGauge/thermal/leakage_feedback.load_leakage_model` + `LEAKAGE_CURVES`,
+`device_leakage.SimulatedLeakageCurve.as_leakage_model`, 12 new tests,
+`examples/cold_zone_prize.py`, `docs/evidence/cold_zone_prize_simulated.json`,
+`--leakage-curve` on `uniform_density_probe.py`,
+`scripts/uniform_density_ladder_simulated.sh`, `examples/density_ceiling_curve_compare.py`.
+Suite **863 passed, 1 skipped** (was 842 + 1).
+
+§P0.13 built the simulator and produced a curve; nothing consumed it. This wires it in and spends
+it on the two questions that were explicitly waiting on it.
+
+### The wiring, and the one rule it keeps
+
+`load_leakage_model('pipeline'|'simulated'|'simulated-gidl-off')` returns the same
+`(LeakageModel, T_ref_K)` pair `load_calibrated_leakage_model` always did, so a study swaps curves
+with a flag. **`pipeline` is the default everywhere and stays that way** — same discipline as
+`--rbb-policy stock`: every recorded result was solved on the pipeline curve and changing the
+default would silently move all of them. A test asserts the default rather than trusting it.
+
+Both curves are anchored at the same 330 K, so the swap changes the *shape* of leakage-vs-
+temperature and nothing else — no level is smuggled in with it. The simulated curve still
+extrapolates above its table (a clamped hot tail freezes the feedback and turns a divergent
+configuration into an apparently convergent one), with an Arrhenius tail fitted to simulated
+points: **Ea = 0.341 eV against the pipeline's 0.799 eV**, which is the gentler tail in one number.
+
+### `[+]` The cold-zone prize: the 2.3x spread is closed, and the book was right
+
+`cold_zone_prize_bounds.json` called this *"the single number the architecture argument is most
+uncertain about"* and named exactly what would settle it: SPICE cards, because *"McPAT rejects
+input outside 300-400 K"*. Cooling the cache from 350 K:
+
+| T_cold | pipeline | **simulated** | GIDL-off bracket |
+|---|---|---|---|
+| 300 K | 1.73x | **6.1x** | 9.0x |
+| 280 K | 1.73x | **10.3x** | 25.8x |
+| 250 K | 1.73x | **15.0x** | 134.6x |
+| 200 K | 1.73x | **16.6x** | 711.5x |
+
+The pipeline curve is stuck at 1.73x at every temperature **because it clamps below 300 K** — it
+reports the same leakage at 200 K as at 300 K. That clamp was read as a floor for the whole
+cold-zone argument; it is where CACTI's table stops.
+
+**The prize grows 2.23x.** Recorded: 13.5 % of die power (our curve) against 31.7 % (the book's
+Section 10.8), a 2.3x spread. Simulated: the book's end of that *spread*. `[!]` Not the book's
+absolute number — see §P0.15, which re-derives the conversion ratios and puts the prize at ~6 % of
+die power.
+
+### `[!]` Quote the 2.2x, not the percentage — and the percentage is now ~6 %, not 10-30 %
+
+The reduction factors are measured here. The conversion to "% of die power" needs two ratios — the
+static fraction and the cache share of leakage — and §P0.14 could not reproduce the recorded pair
+(34.64 %, 92.6 %), so it quoted the absolute prize as a **10-30 %** range. **§P0.15 reproduced it
+exactly and it is a scope error.** See "§P0.15 — the conversion ratios, re-derived" below. The
+absolute prize is **~6 % of die power**; the 30 % end is withdrawn.
+
+`[+]` **The 2.23x improvement is unchanged**, because every conversion multiplies the same
+`1 - 1/reduction` by a constant. The claim "our own curve understated the cold-zone prize 2.2x,
+because it clamps" is robust and untouched; "the prize is 30 % of die power" is withdrawn.
+
+## `[+]` §P0.15 — the GIDL-off density ladder: the bracket does NOT move the flat-die ceiling
+
+§P0.14 called this *"the highest-value open item"*: the ceiling is decided at 310-330 K, which is
+where the two GIDL brackets disagree most, so the bracket that was harmless for the cold-zone knee
+should be **load-bearing for the ceiling**. Twenty solves, `scripts/uniform_density_ladder_gidl_off.sh`.
+
+**It is not load-bearing, on the arm that carries the claim.**
+
+| arm | pipeline | simulated (GIDL on) | simulated-gidl-off |
+|---|---|---|---|
+| shaped | 0.60 → **0.80** | 0.60 *unconverged* → **0.80** | *(none holds)* → **0.60** |
+| **uniform** (the flat-die ceiling) | 1.00 → **1.20** | 0.80 → **1.00** | 0.80 → **1.00** |
+
+`[+]` **On the uniform arm the two brackets are identical** — same highest holding rung, same
+lowest failing rung. §P0.11's flat-die ceiling and §P0.14's one-rung move are therefore **not
+GIDL artefacts**, and the ASAP7 GIDL coefficient uncertainty does not propagate into them. That
+removes a caveat that was recorded as blocking.
+
+`[!]` On the shaped arm the bracket does one small thing: 0.60 moves from **unconverged** — neither
+a hold nor a failure — to **diverged**. That is a point becoming decidable, not a ceiling moving;
+the fine ladder has both simulated brackets diverging at 0.65 as well.
+
+### `[!]` Why the prediction failed: it compared LEVELS where its own finding says compare SLOPES
+
+§P0.14 established the mechanism itself — runaway is a local instability set by
+`d(ln P_leak)/dT`, **not** by the leakage level. It then argued the bracket matters because the two
+brackets "differ 14-15 % at 450-500 K but far more at 310-330 K". That is true of the *level* and
+false of the *gain*. Measured in the band the holding points actually occupy (**316-328 K**):
+
+| quantity | pipeline → simulated | simulated → GIDL-off |
+|---|---|---|
+| `d(ln P_leak)/dT` ratio | **6.1 - 13.6×** | **1.16 - 1.27×** |
+
+The curve swap carries an order of magnitude of feedback gain; the bracket carries ~20 %. One rung
+moved for the first and none for the second, which is exactly proportionate. **§P0.14 applied its
+own key insight to the wrong quantity** — it is the correction that matters here, more than the
+ladder result.
+
+`[+]` **So the bracket question is CLOSED**, and closed cheaply: §P0.14 listed it as the single
+highest-value outstanding item, and it turns out to change nothing that is quoted.
+
+### `[+]` And the fine ladder turns "one rung" into a number — 14 %, on one arm only
+
+The coarse ladder's rungs are 0.20 W/mm² apart, so "the ceiling moves down one rung" resolved the
+move only to an interval. Refined to 0.05 W/mm² on all three curves
+(`scripts/uniform_density_ladder_fine.sh`, 27 points):
+
+| arm | pipeline | simulated | simulated-gidl-off |
+|---|---|---|---|
+| **uniform** | 1.05 → **1.10** | 0.90 → **0.95** | 0.85 → **0.95** *(0.90 unconverged)* |
+| shaped | 0.60 → **0.65** | 0.55 → **0.65** *(0.60 unconverged)* | 0.55 → **0.60** |
+
+**The flat-die ceiling moves ~14 %** — 1.05-1.10 W/mm² on the pipeline curve against 0.90-0.95
+simulated (−14.3 % on the highest holding rung, −13.6 % on the lowest failing one). The coarse
+ladder could only say "somewhere between 0.05 and 0.35".
+
+`[!]` **And the move is on the uniform arm alone.** At 0.05 W/mm² the shaped arm's *failing* rung
+is **identical at 0.65** on both curves; only its holding rung differs, by one 0.05 step, and the
+point between them is unconverged on the simulated curve. §P0.14 recorded "the shaped arm's failing
+rung is unchanged" from a coarse ladder where it could equally have been an artefact of 0.20-wide
+rungs. It is not — it survives a 4x finer ladder.
+
+`[+]` **The simulated shaped arm now has a demonstrable hold, which it did not before.** Every
+rung on the coarse ladder was either diverged or unconverged, so §P0.14 could state no shaped
+ceiling at all on that curve. It holds at **0.55 W/mm² (69.0 °C)**, verified.
+
+`[+]` **The GIDL brackets still agree, at 4x the resolution.** Both hold 0.55 on the shaped arm and
+both fail by 0.65; both fail at 0.95 on the uniform arm. The only differences are which single
+point comes back *unconverged* — 0.60 shaped under GIDL-on, 0.90 uniform under GIDL-off — and an
+unconverged point is neither a hold nor a failure. The negative result survives refinement.
+
+`[!]` The **pipeline** shaped arm is also tighter than §P0.11 recorded: it fails at **0.65**, not
+0.80. The recorded 0.60-0.80 bracket was correct and merely coarse.
+
+`[!]` **A process note that cost six solves.** The first refinement pass was sited off the coarse
+GIDL-off ladder while it was **16 of 20 complete**, and put all six GIDL-off points above a cliff
+that turned out to be below them. The four unfinished points were the four *nearest the cliff* —
+which is the only region a refinement cares about. Do not site a refinement off an unfinished
+ladder. They were cheap (a point far above the cliff diverges quickly; the expensive points are the
+ones that converge) and are kept, since "0.85 through 1.50 all diverge" is a real row.
+
+`[!]` **"Diverging points finish in minutes" is only true far from the cliff.** The four slowest
+coarse points all *diverged*, and took over two hours each: near the cliff the solver grinds
+through every damping level before it can call a divergence genuine. Progress that looks stalled at
+a rung adjacent to a cliff is not evidence of a hang.
+
+Evidence `docs/evidence/uniform_density_curve_compare_gidl_off.json`.
+
+## `[!]` §P0.15 — the conversion ratios, re-derived, and the prize moves DOWN
+
+§P0.14 left one cheap open item: re-derive the static fraction and cache share so the cold-zone
+prize has an absolute number instead of a 10-30 % range. Done, and it went further than expected —
+the recorded pair is not merely unreproduced, it is **reproducible and wrong**.
+
+### The provenance, pinned to the last digit
+
+`cold_zone_prize_bounds.json`'s measured baseline is
+`mcpat_runs/7nm/linpack_3.8GHz/block_powers_split_400000000000.json`, summed over the **true leaves
+of Core0 alone**, with `Processor/Total L3s` bridged in. All four recorded quantities come back
+exactly:
+
+| quantity | recorded | reproduced |
+|---|---|---|
+| die dynamic | 2.6062 W | **2.6062 W** |
+| die static | 1.3812 W | **1.3812 W** |
+| cache leakage | 1.2784 W | **1.2784 W** |
+| static fraction | 34.64 % | **34.64 %** |
+| cache share of leakage | 92.6 % | **92.56 %** |
+| "L3 alone is 89 % of it" | 89 % | **88.69 %** |
+
+`[!]` It took a *structural* leaf test to get there. Dropping the four names in `_AGGREGATES` is
+not enough: McPAT's **intermediate** parents — `Core0/Load Store Unit`, `Core0/Renaming Unit`,
+`Core0/Instruction Fetch Unit` — restate their children exactly as `Processor` does and are on no
+aggregate list. They carry 0.8 mW each, and including them gives 1.3837 W against the recorded
+1.3812 W. That 2.5 mW is the difference between a near-miss and a settled provenance, and it is
+why §P0.14's hand attempts landed close and stopped.
+
+### Two defects, and they compound
+
+- **Scope.** One core's leaves are weighed against the **whole chip's** L3 — the cache share is
+  divided by an eighth of the core power it should be. 66.8 % becomes 92.6 %.
+- **Slice.** Tick 4e11 is the trace's warm-up: only Core0 has ramped, so die dynamic power is a
+  third of steady state. That lifts the static fraction from 15.5 % to 34.6 % — and it hits this
+  scope hardest precisely because Core0 is the one core the rule keeps.
+
+### `[!]` §P0.14's hypothesis is WITHDRAWN
+
+§P0.14 guessed the pair had been measured *after* leakage feedback converged at the operating
+temperature (where leakage is ~3x its 330 K value), with L3 bridged. It was not, and the recorded
+numbers refute it without any re-solve: **dynamic power does not depend on temperature**, and the
+recorded 2.6062 W is that slice's `T_ref` dynamic to four decimal places. No feedback and no
+temperature is involved. It is scope and slice arithmetic, and the hypothesis cost nothing to
+check because it was falsifiable from the recorded numbers alone.
+
+### What replaces it
+
+The denominator for "% of die power" has one defensible definition in this project: the power that
+lands on a real floorplan block, which is what `die_power_of_trace` returns and what every recorded
+thermal result is a fraction of. Computed that way over the steady slices:
+
+| conversion | static | cache share (L3+L2) | ceiling | prize at 200 K |
+|---|---|---|---|---|
+| recorded — **withdrawn** | 34.64 % | 92.56 % | 32.1 % | 30.1 % |
+| McPAT leaves, all 8 cores, steady — *upper bound* | 14.45 % | 66.77 % | 9.6 % | 9.1 % |
+| **pipeline die (`prepare_dice_trace`), steady** | **15.98 %** | **38.24 %** | **6.1 %** | **5.7 %** |
+
+The gap between the last two rows is **`core_other`** — McPAT's un-itemised per-core power on the
+tiler's slab, **42 % of the leakage that reaches the die**. It is absent from any leaf sum, which
+is what makes the leaf view an upper bound rather than an answer. If the cold die carries L3 only
+rather than L3+L2, the prize is **4.5 %**.
+
+### `[!]` So the absolute prize moves DOWN, and it is a smaller win than recorded
+
+**~4-10 % of die power, best estimate ~6 %**, against §P0.14's 10-30 % and the book's 31.7 %. The
+inherited pair was never one plausible reading among two — it was arithmetic on the wrong scope and
+the wrong slice — and should not be used again.
+
+`[+]` **The 2.23x improvement is untouched**, which is the point of having quoted it rather than a
+percentage: every conversion multiplies the same `1 - 1/reduction` by a constant, so the ratio
+cancels it exactly. §P0.14's decision to lead with the improvement is what kept the headline claim
+safe through this correction.
+
+`[!]` What this *does* change is the size of the win a separate cold cache die is being built to
+collect, and that is a first-order input to whether it pays for itself. What it does not change:
+the cold zone still has to be a separate die (TEST 1), and the knee is still ~280 K.
+
+Driver: `examples/cold_zone_prize.py` (`recorded_pair_provenance`, `die_ratios`, `trace_ratios`);
+evidence `docs/evidence/cold_zone_prize_simulated.json` (`provenance_of_recorded_pair`,
+`ratios.rederived_pipeline_die`); 5 new tests in
+`HotGauge/HotGauge/power/test_cold_zone_prize.py`.
+
+### `[+]` §P0.15 — `--leakage-curve` reaches the rest of the catalogue
+
+`clock_headroom.py`, `mr_comparison.py` and `mr_clipping_study.py` all called
+`load_calibrated_leakage_model` directly, so the pipeline curve was hard-wired into them and only
+`uniform_density_probe.py` could be re-run on a measured one. All three now take
+`--leakage-curve {pipeline,simulated,simulated-gidl-off}`, **defaulting to `pipeline`**.
+
+The change is **additive by construction**: the non-default curve is a new branch placed *ahead*
+of the existing `load_calibrated_leakage_model` call, which stays reachable and unmodified, so at
+the default each driver takes the path it always took. Both properties are now tested for all four
+drivers (`test_leakage_curve_select.py`), which is stricter than the single-driver check that was
+there before. `mr_comparison.py`'s `--no-leakage-extrapolation` is a property of the pipeline
+curve's Arrhenius tail and is **ignored** rather than half-applied on the other curves.
+
+### `[!]` The clock-headroom prediction was WRONG, and what the run found instead
+
+**Prediction, made before the run and recorded here rather than removed.** The clock-headroom
+search is the one recorded study whose criterion is a **temperature limit** rather than a
+divergence test. §P0.14's explanation for why the density ladder moved only one rung — runaway is
+a *local* instability, decided by `d(ln P_leak)/dT` at one temperature — predicted this study
+should move **more**, because the simulated curve is steeper through the entire operating band
+(~9x the feedback gain at 320 K) rather than only at a cliff.
+
+**It moved less.** `scripts/clock_headroom_curves.sh`, control arm, the six R_th points of
+`docs/CLOCK_HEADROOM.md` × all three curves, 18 solves:
+
+| R_th K/W | pipeline | simulated | GIDL-off |
+|---|---|---|---|
+| 1.0 | 2.984, **runaway** | 3.078, spec limit | 3.031, *unverified* |
+| 0.5 | 3.734, **runaway** | 3.734, spec limit | 3.734, spec limit |
+| 0.3 | 4.109, **runaway** | 4.109, spec limit | 4.109, spec limit |
+| 0.1 | 4.484, spec limit | 4.484, spec limit | 4.484, spec limit |
+| 0.05 | 4.625, spec limit | 4.625, spec limit | 4.625, spec limit |
+| 0.02 | 4.672, spec limit | 4.672, spec limit | 4.672, spec limit |
+
+The sustainable clock is unchanged at **five of six** cooling points, to the bisection's own
+0.05 GHz resolution, and moves **+3.1 %** at the sixth. Against a full-rung move on the density
+ladder, that is less, not more. **The prediction is withdrawn.**
+
+### `[+]` But the *limiter* changes, and that kills a recorded claim
+
+At **three of six** points the clock is identical and the reason it stops is not: the pipeline
+curve ends the search with a **thermal runaway**, both simulated curves end it at the **100 °C spec
+limit**. `docs/CLOCK_HEADROOM.md` builds a headline on the pipeline behaviour —
+
+> *"Above 0.1 K/W the part does not reach its 100 °C spec limit at all — it **runs away first**, at
+> 85.7 °C with a 1.0 K/W cooler. The leakage instability, not the temperature spec, is what caps
+> the clock on a poorly-cooled die."*
+
+On the measured curve the part reaches spec at **every** cooling point tested. `[!]` **That claim
+is withdrawn** (struck through in `CLOCK_HEADROOM.md`). The clocks in its table survive; the
+mechanism does not. At 1.0 K/W the phantom runaway also costs real headroom — the +3.1 %.
+
+### `[!]` So the hot tail matters to a SEARCH and not to a LADDER — §P0.14 refined, not withdrawn
+
+§P0.14 argued the pipeline curve's 47x-too-steep hot tail "lives where the answer does not",
+because a die that survives never gets that hot, and concluded the defect worth fixing is the
+curve's **flatness at 310-330 K**. That reasoning is correct for a **fixed-density divergence
+test**, whose reported point is one the die survives. It is wrong for a **search**, which
+deliberately probes operating points the die does *not* survive and reads its answer off where
+they begin — so the tail decides whether the last failing step failed by running away or by
+exceeding spec.
+
+`[+]` **The generalisation worth carrying: which part of a leakage curve is load-bearing is a
+property of the EXPERIMENT, not of the curve.** A divergence test at fixed power is decided by the
+local slope at the operating temperature; a limit search is decided by the tail as well. §P0.14's
+"one clamp, two wrong answers" becomes "one curve, and which of its defects bites depends on what
+you are asking it".
+
+`[+]` **The GIDL bracket is worth nothing here** — the two brackets agree on the clock at every
+point (within the search's own 0.05 GHz) and on the limiter at every point where the limiter is
+judgeable. §P0.14 flagged it as load-bearing for the density ceiling because that is decided at
+310-330 K; nothing in this study is.
+
+`[!]` One point needs stating rather than rounding off. The GIDL-off run at 1.0 K/W stopped on a
+step the damping check **rejected**, so its `limited_by` is `unverified`: the 3.031 GHz clock is a
+demonstrated hold, but *why* the search stopped there is not known. The comparison lists it and
+excludes it from the limiter tally rather than counting it either way — the same treatment an
+unconverged rung gets on the density ladder. Counting it as a disagreement would have
+manufactured one (it is the only thing that made the brackets look like they differed); counting
+it as agreement would have laundered it. The clock and the limiter are therefore reported as two
+separate questions, so neither can absorb the other.
+
+`[!]` The `pipeline` rows are the **control for this campaign, not a reproduction** of the 14 Aug
+table in `CLOCK_HEADROOM.md`, which predates the RBB work, the residual/backtracking convergence
+fix and `verify=True` — all of which raise the clock (0.1 K/W: 4.203 there, 4.484 here. Treating
+it as a reproduction target would have read a real improvement as a regression.) Additivity of the
+new flag is checked structurally instead (`test_leakage_curve_select.py`) and by the density
+comparison driver's output being byte-identical at its default.
+
+Driver `examples/clock_headroom_curve_compare.py`, evidence
+`docs/evidence/clock_headroom_curve_compare.json`, 6 tests in
+`HotGauge/HotGauge/thermal/test_clock_headroom_curve_compare.py`.
+
+### `[!]` The density ceiling moves — DOWN, and the predicted direction was wrong
+
+`scripts/uniform_density_ladder_simulated.sh` (20 points, ladder extended to 4.00 W/mm² in case
+the ceiling moved past the old top rung), `examples/density_ceiling_curve_compare.py`,
+`docs/evidence/uniform_density_curve_compare.json`. Same die, package, RBB policy, arms and
+convergence settings — verified field by field against the recorded P0.11 ladder. One input
+changed.
+
+§P0.12 predicted the ceiling would move **up**: the pipeline's Arrhenius tail is ~6x too steep at
+450 K, a gentler tail runs away later, so P0.11's 1.0-1.2 W/mm² flat-die ceiling is *conservative*.
+§P0.13 then measured a **47x** gap at 500 K, which made the prediction look safe.
+
+**Both arms degrade, in two different ways.** 2 of 16 common points flip verdict:
+
+| arm | pipeline | simulated | |
+|---|---|---|---|
+| shaped | holds 0.60 (73.48 °C), fails **0.80** | 0.60 **UNCONVERGED** (85.54 °C), fails **0.80** | failing rung unchanged; the last hold is no longer demonstrable |
+| uniform | holds 1.00 (65.99 °C), fails **1.20** | holds 0.80, fails **1.00** | **one rung DOWN** |
+
+- `uniform` at 1.00 W/mm² held at 65.99 °C on the pipeline curve and **diverges** on the simulated
+  one — resolved by the solver's own guard as a *genuine runaway at minimum damping*, not flagged
+  as a damping artefact. That is the ceiling moving.
+- `shaped` at 0.60 no longer converges at **any** of the three damping levels (residual stalls at
+  0.146 K against a 0.100 K tolerance), so it is **not a demonstrated hold** and its peak must not
+  be quoted. Its peak is nevertheless stable to 0.01 K across all three levels at **85.54 °C**,
+  against 73.48 °C on the pipeline curve — **+12.1 K at the same density**. Flagged, directional,
+  and not a number to cite.
+
+`[!]` **The "P0.11's ceiling is conservative" claim is WITHDRAWN. The recorded ceilings are
+optimistic instead.**
+
+`[+]` The two points that survive on *both* curves (uniform 0.60 and 0.80) move only −3.16 K and
+−0.69 K — **cooler**, not hotter. Combined with shaped 0.60's +12.1 K, that is the signature of a
+curve which is *steeper through the operating band*: it sits below the pipeline curve at 317-329 K
+and above it by ~346 K, so cool points cool and hot points heat. The crossover is near 345 K.
+
+### `[+]` Why — runaway is decided where the die sits, not at 500 K
+
+Thermal runaway is a **local instability**: what matters is `d(ln P_leak)/dT` at the temperature
+the die is actually at, not the leakage at 500 K. By 500 K a block has already run away under
+either curve, so the 47x disagreement lives entirely where the answer does not.
+
+| T | pipeline gain /K | simulated gain /K | sim/pipe |
+|---|---|---|---|
+| 310 K | 0.0013 | 0.0357 | **27.8x** |
+| 320 K | 0.0041 | 0.0373 | **9.2x** |
+| 330 K | 0.0091 | 0.0378 | **4.1x** |
+| 350 K | 0.0613 | 0.0364 | 0.59x |
+| 500 K | 0.0411 | 0.0191 | 0.46x |
+
+The surviving points occupy roughly **317-347 K**, and in that band the ordering **reverses**: the
+pipeline curve is nearly flat there — the clamp again — while the simulated one runs ~0.036/K
+throughout. The two cross over near **345 K**. More gain runs away earlier, and the surviving
+points sit below the crossover. That is the whole mechanism.
+
+### `[!]` And it relocates the defect worth fixing
+
+The pipeline curve's most consequential error for the density ceiling is **not** its 47x-too-steep
+hot tail — a surviving die never reaches that region. It is that the curve is nearly **flat at
+310-330 K**, understating the feedback gain by roughly an order of magnitude exactly where dies
+operate. **The same flatness is what made the cold-zone prize look small.** One clamp, two wrong
+answers, in opposite directions — and neither was the error P0.12 went looking for.
+
+`[!]` **The GIDL bracket is load-bearing here, unlike for the cold-zone knee.** The two brackets
+differ 14-15 % at 450-500 K (well inside a rung) but much more at 310-330 K — the band this
+finding says decides the ceiling. Only the full-GIDL bracket was run, so **running the ladder on
+`simulated-gidl-off` is the highest-value open item**.
+
+### Honest limits
+
+The ladder resolves a move only to the nearest rung (0.20-0.40 W/mm² near the cliff); the sub-rung
+evidence is the peak temperatures. Rows flagged `unconverged` are counted as neither holding nor
+failing by the comparison driver — the stock `uniform_density_report.cliff` counts any non-diverged
+row as holding, which was right for the recorded ladder where nothing was flagged, but would
+promote a damping artefact into a ceiling here. The pipeline ladder is the **recorded** P0.11 one
+rather than a re-run, so the two campaigns were produced by the same code at different times.
+
+---
+
+---
+
+## `[~]` §P0.21 — zone materials decided: Cr:LiSAF storage zone, dye hot zone, and the dual-material array is a FLAG, not the default  `[~]` 8 Sep 2026
+
+**The decision (user, 8 Sep).** The "storage zone material" concept stands, but the material is
+**Cr³⁺:LiSAF**, not Yb:YLF; the "hot zone material" is the dye extractor. And the photonic cold
+plate we test is **single-material by default**: a cold-zone / hot-zone tile arrangement has to
+be laid out against the chip's floorplan, i.e. designed with the vendor for every architecture,
+which defeats the architecture-agnostic premise of the product. The dual arrangement is kept as
+a flag so its impact can be measured once the floorplan is itself a swept variable (Phase 2) or
+the array is integrated at die manufacture, where the dependence is less of a product problem.
+
+**What this closes.** The §3 register row "which extractor covers which zone — v98 versus the
+3 Sep correction" is resolved by decision, not by evidence: v98 Table 10.8's Yb:YLF cold zone is
+declined, its dye-is-a-hot-die-platform reading is accepted, and Cr:LiSAF takes the cold zone
+on v98's own numbers (§8.1.2, Table 1.1, Table 8.4). The 3 Sep rule's "both thin films cover
+the cold zone" is withdrawn as a *zone assignment* — the dye's transparency cap collapses on
+cooling (§P0.20), so it is not the cold-zone cooler at any rung — but it stays true as a
+*capability* statement at 250–320 K.
+
+### §P0.21.0 — the build
+
+- `thermal.extractor.CrLiSAFExtractor` (`make_extractor('cr-lisaf')`): the same volumetric route
+  as the dye (v98 8.7 / 8.9), `x_max` from the McCumber crossing at 815 nm (3.2×10⁻³ at 290 K
+  against the book's rounded 4×10⁻³), pump absorption on the measured disorder tail (σ = 0.26,
+  anchored σ_a = 4×10⁻²³ cm² at 900 nm / 290 K), quantum defect 5.9 % (900 on 850 nm), N = 10²¹
+  cm⁻³, τ = 67 µs. Reproduces Table 1.1's 20–80 W/mm³ at F_P 30–100 (17.6 / 59 W/mm³ at 290 K)
+  and Table 8.4's breakeven (negative at η_EQE = 0.90, positive at 0.97). **Every areal figure is
+  a ceiling at η_EQE = 1.** Its capability collapses on cooling like every anti-Stokes emitter
+  (0.18 W/mm² at 290 K, 0.013 at 200 K, per 10 µm): it is a leakage-suppression tile, not a
+  hot-spot razor.
+- `thermal.extractor.DualZoneExtractor(cold, hot, cold_tiles)`: one array, two curves, dispatched
+  per tile inside `extractor_tile_caps` (the planner's per-tile cap). Without a tile it reports
+  the hot curve. `mr_array.tiles_over_blocks(tiles, blocks, pattern)`: a tile is cold when more
+  than half the block area under it matches the pattern — **this function is the floorplan
+  dependence the default avoids, made explicit.**
+- `examples/mr_comparison.py --mr-zone-mode {single,dual}` (**default `single`**),
+  `--mr-cold-zone-pattern` (default `^(L2|L3)`), `--mr-cold-extractor` (default `cr-lisaf`).
+  Rows stamp `mr_zone_mode` and `n_cold_zone_tiles`.
+- `ZONE_EXTRACTORS`: cold_cache → `('cr_lisaf',)` at 150–320 K, hot_compute →
+  `('sin_encapsulated_dye',)` at 320–450 K; `PLATFORMS_V91['cr_lisaf']` added; Yb:YLF still
+  banned from every zone (`test_platform_materials.py`, rewritten to the decision).
+
+### §P0.21.1 — smoke point, predictions written before the run
+
+Arm D, 34 cores, 88 CFM, target 92 °C, full coverage, 2.00 W/mm², target device (rung 6),
+scalar 45 K kept. Reference: `results/extractor_v98/dye_dt45/d2.00` (plan 138.73 W, peak
+93.875 °C, 0 tiles capped, 384 tiles).
+
+- **P1 (regression of the default):** `--mr-zone-mode single` reproduces the reference row to
+  the last digit (138.73 W, 93.875 °C, `mr_zone_mode = single`, `n_cold_zone_tiles = 0`).
+- **P2 (cold-zone size):** with pattern `^(L2|L3)` on the 34-core skylake floorplan (34 L3
+  slices + 34 L2s), **100–170 of 384 tiles** are majority-cache.
+- **P3 (the dual arrangement loses the hold):** every engaged cold tile caps at ≈ 0.04 W (0.15
+  W/mm² × 0.25 mm² at 290 K tiles), the shortfall against the 138.7 W plan is **10–40 W** (the
+  cache tiles' share of the sensitivity-weighted envelope), and the re-applied first plan under
+  the cap does **not** hold 92 °C: peak lands **2–8 K above** the single-mode 93.9 °C, the row
+  reports `extractor_bound` with `n_tiles_capped` equal to the engaged cold-tile count.
+- **P4 (why it is a flag):** the impact is entirely a floorplan statement (which tiles sit over
+  which blocks); no number in the row transfers to a different architecture.
+
+### `[x]` §P0.21 RESULT — the default reproduces exactly; the dual arrangement is nearly invisible at 2.00 W/mm² on this die
+
+`results/zone_mode_smoke/{single,dual}_d2.00`, `docs/evidence/zone_mode_smoke.json`
+(`examples/zone_mode_report.py`).
+
+| point | cold tiles | plan | peak | tiles capped | shortfall |
+|---|---|---|---|---|---|
+| P0.20 reference (rung 6, pre-fix code) | — | 138.73 W | 93.875 °C | 0 | 0 |
+| **`single` (default)** | 0 / 384 | **138.73 W** (Δ 2×10⁻¹³) | **93.875 °C** (Δ 0) | 0 | 0 |
+| `dual` (Cr:LiSAF on `^(L2\|L3)` tiles, dye elsewhere) | **80** / 384 | 140.04 W (+1.3 W) | 93.824 °C (−0.05 K) | 23 | **0.10 W** |
+
+**Scorecard: P1 confirmed exactly; P2 wrong (80 cold tiles, under the 100–170 predicted);
+P3 wrong** — the dual arrangement holds, the shortfall is 0.1 W, not 10–40 W, and the plan
+moves 1 %. P4 stands as a statement, not a measurement. The failure of P3 is instructive: the
+sensitivity-weighted envelope at 2.00 W/mm² puts almost nothing over the cache tiles (23 of 80
+cold tiles are asked for more than the ~0.04 W a Cr:LiSAF tile can give at 290 K, and the sum
+of what they cannot give is 0.1 W), so the storage-zone tiles are not doing the rescue's work
+on this die — the compute-zone dye tiles are, and the coldest engaged tile is 290.7 K in both
+modes. That is consistent with §P0.15: the array as planned here never drives the caches cold
+at all, so a storage-zone material has nothing to do until the planner is *asked* to cool the
+caches (the cold-zone prize is a different objective from holding the hot spot).
+
+`[!]` **A latent P0.20 bug found by P1.** The first single-mode run died on `ArrayWiring`'s
+stale-plan guard: the §P0.20 first-plan re-cap *applied* the plan to learn its shortfall and
+only solved it when the cap bound, so every uncapped run tripped the guard on the next
+application. The P0.20 target-device rows (09:50–09:55) pre-date that block (10:01) and had
+never been reproduced on the final code; the capped rows (near-term, rung 3) had. Fixed by
+previewing the shortfall (`CoolingApplication.preview_shortfall`) and applying only when it
+will be solved; regression test
+`test_an_uncapped_first_plan_does_not_trip_the_stale_plan_guard` fails on the old code. The
+single-mode row above is the reproduction of the P0.20 reference on the fixed code: identical.
+
+`[+]` **What this says.** (1) The user's decision costs nothing on the recorded ladders: the
+default is single-material and reproduces every P0.20 number. (2) The dual arrangement, as a
+*hot-spot* rescue at 2.00 W/mm², is a 1 % effect on this floorplan — which is exactly the
+architecture-agnostic argument from the other side: the layout-specific product buys nothing
+here. (3) Its real test is not this objective. The place to measure it is a planner objective
+that cools the caches for leakage (the 2.23× prize), on a separate-die cold zone (§P0.7), or in
+Phase 2 where the floorplan is the variable. Do not run a dual-mode ladder against the
+hot-spot objective; it will keep saying 1 %.
+
+## `[x]` §P0.20 — the target device is v98 Table 1.1, and it closes the `T_min` question without a measurement  `[x]` 8 Sep 2026
+
+### What v98 changed under §P0.19
+
+`docs/Photonic_Cooling_Devices___v98.pdf` supersedes v91 as the authority. Three things bear on
+the extractor model directly:
+
+1. **The transparency cap** (eq. 5.7, §8.3.3): `x_max = [1 + exp((E_00 − E_p)/kT)]⁻¹`, the
+   largest excited fraction the pump can sustain against its own stimulated emission. The v91
+   first cut let every chromophore cycle at the Purcell rate and reproduced v91's eq. 8.4
+   (10³–10⁴ W/mm² for a bulk film); **v98 withdraws that figure** — a 10⁻² M × 5 µm film tops
+   out at 0.03–0.09 W/mm² at 300 K (Table 8.1), and 10³ is the Tier-I *design point* after the
+   photonic ladder (Table 8.2), not a bulk property. The 5 Sep evidence row (819 W/mm², `T_min`
+   207 K) rested on the withdrawn figure and is **superseded**.
+2. **The tail model is stated** (eq. 9.5): `ε(E,T) = 4290 exp[σ(E − E_600)/kT]`, σ = 1 the
+   Boltzmann limit as the design input (σ = 0.26 measured for Cr:LiSAF as the disorder end),
+   Kedenburg ethanol background, `λ_00` = 588 nm, τ = 4.3 ns, `λ̄_f` 618/630/590 nm. My
+   "thermal fraction of the tail" bracket is the book's σ.
+3. **Both notes sent to the author are resolved**: eq. 9.6 now carries 4/27 and states the 3×
+   overstatement; the breakeven is `A < A_0`; Fig. 9.9's caption names the plotted quantity as
+   the escape efficiency under reabsorption recycling. And §9.3.2 now cites the three-tile
+   fixed-pump GaAs finding of §P0.19.
+
+**Rebuilt** `DyeExtractor` on eqs. 8.4–8.9 with the rungs of Table 8.2 as presets
+(`DyeExtractor.from_rung`, `--mr-extractor dye` = rung 6 = **Table 1.1's R640-SMILES row, the
+target device going forward**; `dye-near` = rung 2, the near-term experimental point). It
+reproduces **every printed entry of Tables 8.1 and 8.2**, Table 8.3's η_q, §8.3.5's optima
+(651/672/702 nm, +5.3/+8.7/+13 %, required EQE 0.95/0.92/0.885) and Table 1.1 (5.9 × 10³ W/mm²
+at 50 µm); the GaAs closed form now matches v98 (9.6) and the Table 1.1 GaAs row (N ≈ 2 × 10¹⁹,
+10⁵–10⁶ W/mm³). 36 tests.
+
+### `[+]` Why this closes the `T_min` question
+
+`x_max` is a Boltzmann population ratio between the absorption and emission cross-sections at
+the pump (McCumber). It is **thermal by construction and independent of how the tail is
+broadened**, so the capability's collapse on cooling does not depend on σ at all:
+
+| target device (rung 6) | 400 K | 365 K | 330 K | 300 K | 263 K | 230 K | 200 K |
+|---|---|---|---|---|---|---|---|
+| `h` (W/mm²), σ = 1 and σ = 0.26 alike | **5900** | 3343 | 1676 | 813 | **263** | 68 | 11 |
+
+`T_min`, where net cooling vanishes, is 176 K at σ = 1 and below 80 K at σ = 0.26 — but the
+capability is under 0.2 % of design at either, so the bracket the device team was asked to
+close no longer decides anything the die can see. What remains uncertain (the tail beyond
+620 nm, which v98 itself names as the priority experiment) moves the *optimum pump wavelength*
+by ~20 nm and the peak efficiency by ±30 %, not the temperature dependence.
+
+`[!]` **The dye is a hot-die platform** (v98 §8.3.3, §8.4, Table 10.8): the design point is at
+400 K and the capability falls 7× to 300 K and 22× to 263 K. On this die the array's tiles sit
+at 263–330 K, so the target device runs at 5–20× below its design capability there — still
+263–1700 W/mm² against a demand that never exceeded 8 W/mm² per tile at full coverage.
+
+### PREDICTIONS, before the run
+
+`scripts/extractor_rescue_points.sh` with `EXTRACTORS="dye dye-near dye-rung3 dye-rung4"`,
+`dt45`, densities 2.00 / 2.40 / 2.60 (rung 3/4 at 2.00 only), plus the target device with
+`--mr-energy-cap converged` at 2.40 / 2.60. Reference: `results/array_coverage_armD/c1.00`.
+
+- **P1 — the target device never binds on this die.** Rung 6 reproduces §P0.18.2 at every
+  rung with 0 tiles capped (h ≥ 263 W/mm² at the coldest tile against ≤ 8 W/mm² asked).
+  Falsifier: any tile capped.
+- **P2 — the near-term film cannot rescue this die.** Rung 2 gives 0.08–0.53 W/mm² at 263–330 K
+  tiles, i.e. ≤ 0.13 W per 0.25 mm² tile, against plans of 139–251 W over 384 tiles with the
+  hottest tiles asking 2–8 W/mm². Prediction: **every tile capped, shortfall > 85 %, no hold at
+  2.00–2.60** (`envelope insufficient` or holds-but-not-target). Falsifier: a hold at 2.00.
+- **P3 — the die needs rung 4.** At 300 K tiles rung 3 gives 0.8 W/mm² (fails the 8 W/mm² demand)
+  and rung 4 gives 24 W/mm² (covers it): rung 3 does not hold 2.00, rung 4 does. Falsifier: rung 3
+  holding 2.00, or rung 4 failing it.
+- **P4 — the converged cap on the target device** repeats §P0.19's P3: 2.40 holds, 2.60 does not.
+
+### `[x]` §P0.20 RESULT — the target device is invisible on this die; the near-term film cannot rescue it; rung 4 is the requirement
+
+`results/extractor_v98/` (10 points), `docs/evidence/extractor_v98.json`, reference
+`results/array_coverage_armD/c1.00`.
+
+| extractor (scalar 45 K kept) | 2.00 | 2.40 | 2.60 | tiles capped (reported field) | `h` at coldest engaged tile |
+|---|---|---|---|---|---|
+| **target device** (rung 6, Table 1.1) | holds, 138.7 W (ref 138.7) | holds, 221.5 (221.5) | holds, 251.2 (251.2) | **0 / 0 / 0** | 632 / 305 / 266 W/mm² |
+| near-term film (rung 2) | **runaway** — 197.9 W asked, **17.4 W deliverable**, 322 tiles capped | runaway, 237 asked / 17.4 | runaway, 257 asked / 17.4 | 322 / 329 / 334 | 0.17–0.18 |
+| rung 3 (+ blue-edge emission) | runaway — 197.9 asked, **52.1 deliverable**, 317 capped | — | — | 317 | 0.54 |
+| rung 4 (+ broadband Purcell 30) | **holds, 138.7 W**, identical to the reference | — | — | 0 | 19 |
+| target device, converged energy cap | — | holds, 213.0 W (die 222 W) | **does not hold**: 257 W needed, 239 dissipated | 0 | 382 / 334 |
+
+**Scorecard: P1, P2, P3, P4 all confirmed.** The first pass of this campaign reported the
+near-term film *holding* 2.00 W/mm² with no tile capped; that was a wiring flaw (a solve that
+diverged *because* the cap starved the tiles cleared the cap, and the next uncapped application
+was reported), fixed by persisting the last converged tile field and re-applying the first
+envelope plan under the cap before it can stand as a hold. Tested; the flawed rows are
+overwritten.
+
+`[+]` **What this says.** (1) With v98's target device the extractor's lift plays no role on
+this die at any rung of the ladder the array is asked to hold — the array's ceiling is set by
+conservation (2.40–2.60 W/mm²) and the die's bistability, exactly as §P0.19 found with the
+v91-based curve, now on the book's own constitutive model with no measurement input. (2) **The
+requirements flow-down is rung 4**: a 34-core rescue at 2.00 W/mm² needs ≥ 19 W/mm² per tile at
+290 K tiles, which the ladder first provides at rung 4 (broadband Purcell F̄_P = 30 on top of
+SMILES 10⁻¹ M, a 400 K-class film and blue-edge emission); rungs 2 and 3 deliver 9 % and 26 % of
+the needed watts. That is a statement the device roadmap can use: the photonic-engineering rungs,
+not the chemistry rungs, are what turn the dye into a chip cooler at room-temperature tiles.
+(3) The dye's capability on *this* die is 7–22× below its 400 K design point because the tiles
+run at 263–330 K; v98's own reading — the dye is a hot-die platform — is what the die sees.
+
+`[!]` Open for the user: v98 Table 10.8's zone materials (Yb:YLF cold, dye hot) against the 3 Sep
+rule; the code keeps the 3 Sep rule until adjudicated (`RESULTS_REGISTER.md` §3).
+
+---
+
+## `[x]` §P0.19 — `dt_max` derived from the extractor's own cooling curve  `[x]` 5 Sep 2026
+
+### The idea, and what it replaces
+
+`MRParams.dt_max_K` = 45 K was a scalar copied from Draft_5's Yb:YLF bench, capping how far the
+planner may pull a *block*. Nothing made the extractor's cooling power depend on how cold the
+extractor itself had become, which is the physics that limits the lift; the consequence showed
+at the top of the coverage ladder, where the array pulled 12 W more than the die dissipated.
+
+`HotGauge/thermal/extractor.py` derives the cooling flux `h(T_ext)` per platform from the
+constitutive parameters (the volumetric route: concentration or carrier density × per-emitter
+rate × photon energy, v91 eq. 8.3 made explicit and given its temperature dependence):
+
+- **absorption of the red-tail pump** is an Urbach edge, `σ_a(E_p,T) ∝ exp(−(E_edge − E_p)/E_U(T))`
+  (v91 eq. 9.4; the same rule for the dye's vibronic tail);
+- **emission** follows from absorption by McCumber (eq. 5.19) on the thermalised core — applied
+  to the exponential tail it diverges whenever `E_U > kT`, which is a statement that the far
+  tail is not a thermalised manifold, so it is excluded from the emission side;
+- **cooling per absorbed photon** is eq. 1.5 with Table 1.1's parasitic split (`η_abs =
+  α_dye/(α_dye + α_b)`); the dye at saturation, the semiconductor at the optimum carrier density
+  with **photon recycling** (only the escaped fraction of radiative recombination is replenished
+  by the pump — without it the Table 9.2 benchmark never cools).
+
+`h(T)` falls as the extractor cools and crosses zero at `T_min`. Wired into the planner as a
+**per-tile cap applied at delivery** (`extractor_tile_caps`, `mr_array.deliver_capped`,
+`CoolingApplication.tile_caps_fn`, `run_mr_clipping(tile_temps_fn=…)`): the tile is where the
+extractor is, a tile asked for more than `h(T_tile) × A_tile` delivers the cap, and the blocks
+that asked are scaled back in proportion so the planner reasons about the plan that was applied
+(`delivered`). The solver reports the array die's tile temperatures
+(`ICEThermalSolver(mr_temps=True)`, split off from the block field), snapshotted per solve so the
+stamp describes the *reported* field, not the last probe. `[!]` The cap has to
+be solved **self-consistently** with the tile's response: evaluating the curve at the last
+solve's tile temperature oscillates whenever the tile cools by more than a degree per watt
+(over-pull, freeze-out, plan zero, warm up, over-pull). `extractor_tile_caps` solves `φ = h(T_now +
+s_t (φ_last − φ))` per tile with the tile's measured response `s_t`; the toy fixed point (12 W,
+364 K) is a test. `dt_max_K=None` is now legal with an extractor; `--mr-energy-cap converged`
+makes the conservation cap follow the converged die power. 20 + 9 tests.
+
+`[!]` **The first campaign pass was wrong and is superseded** (`results/extractor_armD_blockcap_superseded/`).
+It applied the cap per *block* in `clipping_plan`; since `h × A_block` is under a watt for the
+die's smallest blocks against the recorded envelope's 45 W-per-block seed, the cap reshaped the
+envelope even with the scalar kept, the descents landed on different cool-branch islands, and the
+GaAs first-envelope solves froze tiles to 50 K with no retry. Two more defects came out with it,
+both pre-existing: a row's die power and performance were built from the **last solve executed**
+rather than the reported field (a bisection ends on a failing probe: `p_chip` 1527 W on a 263 W
+die at 91 °C), fixed by matching the reported temperature trace's identity; and the stamp read
+the last probe's tiles for the same reason. The `dtnone` variant is dropped from the second pass
+(kept behind `DTNONE=1`); its shape lesson stands from the smoke test.
+
+### Anchors — none of them Yb:YLF
+
+| anchor | book | model |
+|---|---|---|
+| Table 8.1, η_c per pump wavelength (R101/R640, λ̄_f 605 nm) | 2.5 … 22.3 % | reproduced to 0.1 pp at all seven |
+| eq. 8.4, dye flux at 10⁻² M × 5 µm, Purcell 10⁹/s, 680 nm | 10³–10⁴ W/mm² | **819 W/mm²** at 300 K |
+| Table 9.2 / eq. 9.7, GaAs optimum | 5.7 × 10¹⁷ cm⁻³, 80 W/mm³ | **5.5 × 10¹⁷, 74 W/mm³** |
+| eq. 9.6, the A₀ breakeven | passivated cools; 100× worse does not | A = 5×10⁴ cools, 5×10⁶ does not |
+| Fig. 9.9 structure | 10⁻⁴ M plane infeasible; 10⁻² M broadly feasible; purity enlarges | reproduced (with `α_b` placeholders set there) |
+| McCumber reciprocity, saturation `I_sat = ħω_p/(σ_a τ)`, exergy bound 1.13 | identities | tested |
+
+`[!]` **Two things for the book's author, found by checking.** (1) Eq. 9.5 as printed evaluates
+to **263 W/mm³** with Table 9.2's own inputs, 3.3× the table's 80 and 3.6× the numeric optimum
+of the same balance: the optimum carries 4/27 where 9.5 has 4/9 (or 9.5 assumes `C′ ≈ 1.8 C`
+from free-carrier absorption without saying so). (2) The first-law ledger cannot require an
+escape efficiency below `ω_p/ω̄_f` (0.84 at 720/605 nm), so Fig. 9.9's 0.25–0.5 colour scale
+must be a different quantity than the caption's `η_ext` — per-cycle escape under reabsorption,
+most likely.
+
+### What the curves say before any solve (`docs/evidence/extractor_cooling_curves.json`)
+
+| extractor | `h(300 K)` | `T_min` |
+|---|---|---|
+| dye, tail purely thermal, "original" host loss | 819 W/mm² | **207 K** (161 K with Kedenburg-class loss) |
+| dye, tail static or mixed | 819 | none above 120 K |
+| GaAs Table 9.2 bulk, pump fixed at 890 nm | 0.074 W/mm² per µm | **259 K** (Varshni widens the gap; the pump sinks into the tail) |
+| GaAs, pump retuned to the gap | 0.074 | none; flux **rises** on cooling (Auger suppressed) |
+| GaAs photonically enhanced (η_e 0.99, Purcell 6×, 2 µm — what Table 8.2's 10³ implies) | 2150 W/mm² | 257 K fixed / none retuned |
+
+`[!]` So `T_min` depends first on **how much of the dye's absorption tail is thermal** (one
+measured tail at two temperatures pins it), second on the **host background absorption** at the
+pump, and for GaAs on whether **the pump follows the extractor**. None of these is `dt_max`; all
+are easier to measure. The bracket is carried in the code (`DYE_TAIL_BRACKET`,
+`DYE_BACKGROUND_CM`, `retune_pump`) rather than collapsed to a number.
+
+### PREDICTIONS, before the node run
+
+`scripts/extractor_rescue_points.sh` → `results/extractor_armD/`: arm D flags, 34-core, 88 CFM,
+target 92 °C, full coverage, `--arms array_on` (control and idle are unchanged and shared from
+`results/array_coverage_armD/c1.00`). Densities **1.15, 2.00, 2.40, 2.60** × {`dye`,
+`gaas-enhanced`, `gaas-retuned-enhanced`} × {**`dt45`**: scalar cap kept, extractor added as a
+further cap; **`dtnone`**: extractor alone}, plus `dye`/`dt45` with `--mr-energy-cap converged`
+at **2.40, 2.60, 3.00**. 27 points.
+
+`[!]` **Why two variants — found in the smoke test at 1.30 W/mm² before the campaign.** With the
+scalar cap dropped, nothing but `h(T_tile) × area` (820 × 101 mm² ≈ 83 kW) and the energy cap
+bounds the envelope plan, so the descent starts from an **area-weighted** shape instead of the
+recorded **sensitivity-weighted** one (`45 K / s` per block), and the bisection only scales that
+shape. It landed on **41.0 W** against §P0.18.2's **31.1 W** at the same rung — 32 % dearer with
+the *same* physics binding nothing. So `dt_max` was doing a second job all along: it shaped the
+plan. The `dt45` variant holds that shape fixed so any difference is the extractor's physics;
+the `dtnone` variant is the honest "curve only" regime and is reported with this caveat, never
+compared with §P0.18.2's Q. (The planner's shape rule is a separate open item: a minimum over
+*shape* as well as scale, e.g. sensitivity-weighted seeding of the envelope, is the fix.)
+
+- **P1 — the dye's lift never binds on this die.** With `T_min` ≤ 207 K and the tiles of a
+  92 °C-target rescue sitting well above ambient, no dye point up to 2.60 has a block bound by
+  the extractor (`n_blocks_bound_by_extractor` = 0), the verdicts and minimum plans match
+  §P0.18.2 to 1 %, and the coldest engaged tile at 2.60 is above 250 K. **`dt_max` was never the
+  binding physics for the dye platform.** Falsifier: any dye point at ≤ 2.00 bound by the
+  extractor.
+- **P2 — the fixed-pump GaAs binds only where the array over-pulls.** `gaas-enhanced` (fixed
+  890 nm, `T_min` 257 K) binds at 2.60, where §P0.18.2 found the pixel layer sub-ambient, and
+  the coldest engaged tile stops at 257 ± 3 K; it does not bind at ≤ 2.00. `gaas-retuned-
+  enhanced` binds nowhere. Falsifier: `gaas-enhanced` bound at 2.00.
+- **P3 — the converged energy cap takes one rung off the array ceiling.** With the cap following
+  the converged die power the 2.60 rescue (251 W removed from a die dissipating 239 W) is no
+  longer available: **2.60 fails, 2.40 holds**, and the removed power at 2.40 is ≤ the converged
+  die power. Falsifier: 2.60 still holds under the converged cap → the over-pull was not what
+  held it.
+- **P4 — the emergent lift at the 1.15 airflow anchor** (control and idle both diverge) is
+  reported as the coldest engaged tile against the block it cools; predicted coldest tile
+  ≥ 300 K for every extractor, i.e. more than 60 K of unused lift at the operating point.
+- **P5 — the `dtnone` shape penalty travels.** From the 1.30 smoke test (+32 %), the `dtnone`
+  minimum plans land 15–45 % above the `dt45` ones at 2.00–2.60 for every extractor, with the
+  same verdicts. Falsifier: a `dtnone` plan *cheaper* than its `dt45` twin at any rung.
+
+Predictions P1, P2 and P4 are scored on the `dt45` variant. P5 is **not run** in the second pass
+(the `dtnone` variant was dropped; the +32 % smoke-test figure and the first pass's hot-branch
+landing at 2.40 under `dtnone` are its record).
+
+---
+
+### `[x]` §P0.19 RESULT — the extractor's lift never binds on this die; a fixed-wavelength pump has a HOT-side limit
+
+`results/extractor_armD/` (17 points, tile-level cap, converged-field caps only),
+`examples/extractor_report.py` → `docs/evidence/extractor_armD.json`. Reference rows from
+`results/array_coverage_armD/c1.00`.
+
+| variant (scalar 45 K kept) | 2.00 | 2.40 | 2.60 | tiles capped | coldest engaged tile |
+|---|---|---|---|---|---|
+| `dye` | holds, 138.5 W (ref 138.7) | holds, 221.5 (221.5) | holds, 251.2 (251.2) | **0 / 0 / 0** | 291 / 267 / **263 K** |
+| `gaas-enhanced` (fixed 890 nm, `T_min` 257 K) | holds, 138.7 | holds, 221.5 | holds, 251.2 | 0 / 0 / 0 | 291 / 267 / 263 K, flux there **1299 W/mm²** and falling |
+| `gaas-retuned-enhanced` | holds, 138.5 | holds, 221.5 | holds, 251.2 | 0 / 0 / 0 | same tiles; flux **rising** to 5988 W/mm² |
+
+**Every rung reproduces §P0.18.2 to 0.1 % at a common landing peak, with no tile capped.** The
+coldest tile the array is ever driven to on this die is **263 K** (at 2.60 W/mm², the top holding
+rung), 6 K above the fixed-pump GaAs `T_min` and 56 K above the dye's most pessimistic
+(purely thermal tail) `T_min`. So, as measured:
+
+- `[+]` **`dt_max` in its cold-side sense is not the binding physics on this die.** What bounds
+  the array-assisted ceiling is energy conservation and the die's bistability (§P0.18.2), not
+  the extractor's lift. The device-team ask changes accordingly: not "what is the lift" but the
+  three inputs `T_min` depends on, and only to confirm it stays below ~260 K.
+- `[!]` **The inference behind P2 was wrong.** §P0.18.2 called the pixel layer "sub-ambient" at
+  2.60; the tiles bottom out at 263 K, 32 K below the 295 K ambient — sub-ambient indeed, but
+  not below `T_min`. P2 (binding at 2.60) is scored **not as predicted**; the fixed pump gets
+  within 6 K of its floor there, so the next rung would have bound it had 3.00 held.
+- `[!]` **A fixed-wavelength GaAs pump has a HOT-side limit, and it bit.** As the Varshni gap
+  narrows on heating the 890 nm pump crosses it near **380 K** and the extractor heats instead
+  of cooling. On the 1.15 W/mm² point, whose baseline holds on the hot branch at 184 °C, the
+  fixed-pump extractor capped **3 tiles to zero** while the retuned one capped none. v91's
+  per-temperature `ω_p*` (§9.2 Level 1) is therefore *necessary* for a GaAs array over a hot
+  die, not an optimisation; the dye at 680 nm has no such ceiling within 500 K. (The first
+  pass, before the diverged-field exclusion, read this hot-side limit on runaway fields at every
+  rung and called the envelope insufficient — an artefact, recorded above.)
+- **P1 confirmed, P4 confirmed** (coldest tile ≥ 328 K at the 1.15 anchor for every extractor).
+
+`[!]` **The 1.15 point is the scalar's, not the extractor's.** Under arm D the idle array holds
+the 1.15 die on the *hot branch* (184 °C), so the planner takes the baseline path, and with the
+scalar cap kept it stops after lifting exactly 45 K: "envelope insufficient: dt_max binds" at
+111 °C, while the extractor above the die had 850 W/mm² available at 333 K. With the curve alone
+(`dtnone`) the baseline-path descent then runs out of iterations at 1.7 W (a lower bound, 98 °C)
+— the *planner* cannot build a rescue from a hot-branch baseline in six steps. Two planner items
+follow, neither physics: the baseline path should hand a hot-branch baseline to the envelope
+path, and the plan's shape should be a minimum over shape as well as scale (`RESULTS_REGISTER.md`
+§3).
+
+**P3 — the converged energy cap takes one rung off the array ceiling: CONFIRMED.** With the
+conservation cap following the *converged* die power (`--mr-energy-cap converged`), **2.40 holds**
+at 92.9 °C on **213.0 W** against a cooled die dissipating 222 W, and **2.60 does not hold the
+target**: holding it needs 257 W from a die dissipating 239 W, so at the cap the die sits at
+106.7 °C ("conservation binds … the array would be refrigerating the heat sink"). 3.00 stays
+diverged. `[!]` **The array-assisted ceiling under conservation is therefore 2.40–2.60 W/mm²**,
+one rung below §P0.18.2's 2.60–3.00; the register's §1.3 row now carries both. The first two
+passes of this campaign let the uncapped first envelope plan stand as the reported hold — the
+cap has to re-cap and re-solve that plan before it can count (fixed, tested).
+
+**Scorecard:** P1 confirmed, P2 not as predicted (the tiles stop 6 K above the fixed-pump
+floor), P3 confirmed, P4 confirmed, P5 not run. Two of four wrong-or-right calls rested on an
+inference about the pixel layer's temperature that the array die's own output has now replaced
+with a measurement — which is the point of reporting the tiles.
+
+Suite after the final build: see `NEXT_SESSION.md`.
+
+---
+
+## `[x]` §P0.18 — the array charged its own footprint, the array-arm ceiling under arm D, and SPICE beyond leakage  `[x]` 3 Sep 2026
+
+Three items, in the order the handoff listed them. Item 0 is a decision, not a run; items 1 and 2
+are a build followed by a ladder, with the predictions written **before** the launch, as the
+standing rule requires.
+
+### §P0.18.0 — `--leakage-curve` default: RECOMMENDATION, not applied
+
+**Recommend flipping the default to `simulated`**, so the shipped default becomes arm D exactly.
+Not applied in this session — the handoff asked for a recommendation with reasoning and said not
+to flip it silently — so an un-flagged run today is still `(pipeline, amortized,
+hierarchy-consistent)`, which nobody has measured.
+
+Why `simulated` rather than a fifth arm:
+
+- **The only argument for keeping `pipeline` was reproducibility of the recorded catalogue, and
+  that argument was already spent on 2–3 September.** Once `--rbb-policy` and
+  `--core-other-policy` moved, an un-flagged run stopped reproducing the recorded catalogue
+  anyway. Reproduction now goes through the explicit flag set in `RESULTS_REGISTER.md` §0, and
+  `test_rbb_default.py` / `test_core_other.py` pin it. Adding `--leakage-curve pipeline` to that
+  set costs nothing; keeping it as the default buys nothing.
+- **`pipeline` is not a device** (§P0.12: CACTI's eleven numbers, activation energy 0.016–1.081 eV,
+  69×, non-monotone). `simulated` is BSIM-CMG on the ASAP7 card, fitted to nothing, checked
+  (I_off 0.232 nA/µm, SS 61.7 mV/dec, three model versions agree to 0.4 %). A default should be
+  the best available physics, and the other two defaults already moved for exactly that reason.
+- **Every §1 quotable number already sits on `simulated`.** The 2.23× cold-zone prize, the 280 K
+  knee, the 0.85–0.90 flat-die ceiling, the 1.4× concentration ratio and the 35/35 rescues were
+  all measured on it (arm D, the arm-D ladder, `mr_curve_compare`). The default should match the
+  evidence base the register quotes from.
+- **Arm D is the measured combination** — 159/159, zero anomalies, no `unconverged` rows on its
+  ladder. Flipping makes the default a measured point; running `(p,a,hc)` as a fifth arm would
+  spend ~3.5 h measuring a combination whose only justification is the order in which the flags
+  happened to move, and whose curve is known not to be a device.
+- **What a fifth arm would add** is the interaction term between the curve and the accounting,
+  which A→B (curve under stock accounting) does not isolate. That is a real, small question; it
+  is not a reason to ship the non-device curve as a default. It can be run later as a flagged
+  study if anyone needs it.
+
+What the flip touches, so it can be done in one commit: the four `--leakage-curve` defaults
+(`mr_comparison.py`, `mr_clipping_study.py`, `clock_headroom.py`, `uniform_density_probe.py`),
+`test_every_driver_defaults_to_the_pipeline_curve` in `test_leakage_curve_select.py` (rename and
+invert, keeping the additivity test that the pipeline branch is untouched), the `[!]` standing
+rule in `CLAUDE.md` ("Default `pipeline` everywhere and it must stay that way"), and §0 of
+`RESULTS_REGISTER.md` (add `--leakage-curve pipeline` to the reproduce line; move the §3 row).
+
+### §P0.18.1 — the array's own area: what it physically is, and what it can and cannot move
+
+`[!]` **Read v91 before assuming the array steals silicon.** The tile is coupler / extractor /
+back-reflector / sensor; the pump arrives by hollow-core fibre or waveguide to a structured
+coupler *at the top of the tile*; the LPC is monolithic-backside on the semiconductor platform
+(v91 Figs. 9.1, 9.8, 9.12; §9.5 lists the LPC integration modes as *external recovery /
+monolithic backside / LPC-on-back-reflector*). All of it is stacked **above** the exposed
+silicon. Tiles, waveguides and LPC cells therefore do not occupy logic area on the die; they
+share the **pixel layer's footprint** with each other. What the power map has not charged for
+is that the emitting extractor covers only a fraction of that footprint — the recorded catalogue
+solved tiles filling it edge to edge (`mr_array.DEFAULT_FILL = 1.0`, never swept, never plumbed
+to a driver).
+
+**So the honest correction is an areal coverage on the pixel layer, and this narrows the claim
+in `ARCHITECTURE_EVOLUTION.md` §4 and `START_HERE.md`.** The control arm has no array. No
+control-arm ceiling — the flat-die 0.85–0.90 W/mm², the shaped 0.60–0.65, the 1.4× between
+them — can move with coverage, by construction. What coverage bounds is the **array-assisted**
+density and the array's cost, and the only array-assisted ceiling on record (§P0.10: 1.60 holds,
+1.80/2.00 fails) was measured on the pipeline curve with stock accounting. That is the number
+that was "optimistic by an unquantified amount", and it was optimistic twice over: full coverage
+*and* uncorrected inputs.
+
+**Built:** `mr_array.DEFAULT_COVERAGE`, `fill_for_coverage` (coverage is **areal**; `tile_grid`'s
+`fill` is linear, so a "50 % array" written straight into it is a 25 % one),
+`array_area_ledger` (footprint / extractor / reserved mm², **achieved** coverage after grid
+snapping — 0.50 at 500 µm on a 50 µm grid is a 350 µm tile and 0.49), `tile_flux_report`
+(per-**tile** flux against `h_max`; the planner caps per block, the device emits per tile),
+`ArrayWiring(coverage=)` stamping `array_coverage`, `array_coverage_achieved`,
+`array_extractor_mm2`, `array_reserved_mm2` on every row, and `--array-coverage` on the three
+catalogue CPU drivers. Default 1.0, so the recorded catalogue is byte-identical un-flagged; a
+test pins the default in each driver and that the flag actually reaches the wiring. 17 tests in
+`thermal/test_array_area.py`.
+
+`[!]` **A block under a gap is cooled by the nearest tile — found by the first reduced-coverage
+points failing.** `project_plan_to_tiles` used to refuse a block that overlaps no tile ("the plan
+would silently lose 0.108 W", on `FreeList_0`, 26 × 53 µm, at coverage 0.75); at full coverage
+that branch is unreachable, so nine array-only points failed in the first pass before the rule
+existed. The rule now (`gap_policy='nearest'`, default): the block's removal goes to the nearest
+tile by rectangle distance, split equally between equidistant tiles; the watts are conserved and
+3D-ICE decides what the block actually gets through the burial depth. That *is* the physics of a
+gapped array — the extractor cannot be over the block — and it is the effect the ladder measures.
+`ArrayWiring.gap_blocks` counts such blocks and `array_n_gap_blocks` is stamped on every row.
+The rule applies only to blocks *inside* the array's footprint; a block outside it is still the
+coordinate-frame error the strict path always refused (the full suite caught the first cut of
+the rule swallowing that guard). Six more tests; the failed points were re-run.
+
+Thermal semantics of a gap, stated so nobody has to guess: the pixel die is a 30 µm GaAs slab
+with the tiles as its floorplan; a gap is the same slab with no floorplan element, i.e.
+unpowered GaAs. Physically the gap holds couplers/waveguides/LPC of other materials, but 30 µm
+of anything is small next to 200 µm of silicon, so the conduction difference is not modelled
+and is stated here rather than pretended.
+
+### §P0.18.2 — the coverage ladder under arm D. PREDICTIONS, before the run
+
+`scripts/array_coverage_ladder_armD.sh` → `results/array_coverage_armD/`. Arm D flags
+(`--leakage-curve simulated --rbb-policy amortized --core-other-policy hierarchy-consistent`),
+canonical `$ARM_ARGS` (direct die, 500 µm pitch, 200 µm burial, 50 µm cell, `--spreading`),
+34-core, 88 CFM, target 92 °C, spot 10 µm dilute, `--recovery-at-junction`, `h_max` 1000 W/mm².
+Densities **1.00–1.80 in 0.10 rungs, plus 2.00**. Coverage **1.00** with all three arms;
+**0.75 / 0.50 / 0.25** with `--arms array_on` only (the control and idle arms carry no coverage
+— an unpowered gap and an unpowered tile are the same GaAs — so they are shared from the 1.00
+run rather than re-solved 30 times).
+
+**The measured neighbours, array_on, 34-core, 88 CFM, target 92 °C, 500 µm:**
+
+| configuration | 1.15 | 1.20 | 1.60 | 1.80 | 2.00 |
+|---|---|---|---|---|---|
+| `(p,s,s)` recorded, §P0.10 | 93.9 °C, Q 18.3 W | 93.96, Q 26.0 | 92.8, Q 112.5 | 78.1 (overshoot), Q 181 | DIV |
+| `(p,a,s)` §P0.10 bracket | — | 87.2, Q 26.8 | 90.8, Q 89.6 | **DIV** | DIV |
+| `(s,s,s)` arm B, `mr_curve_compare` | 91.3, Q 26.3 | — | — | — | — |
+| `(s,a,hc)` **arm D** | control **diverges at 1.00**; `array_idle` holds 1.00 at 89.1 °C with **0 W removed** (nothing above target); **nothing measured above 1.00** | | | | |
+
+So under arm D the array arm has never been run in the regime where the laser does the work.
+That is the first gap this ladder closes, and it is the neighbour the coverage result has to be
+read against.
+
+**Prediction 1 — the array-assisted ceiling under arm D, coverage 1.00.** `array_on` **holds at
+1.60** and **fails at 1.80 or 2.00**: highest holding rung in **1.50–1.70**, lowest failing rung
+≤ 2.00. Reasoning from neighbours, not from a curve ratio: the two flags that separate `(p,a,s)`
+from arm D pull opposite ways on this arm. The accounting fix removes the artificial `core_other`
+slab hotspot, which §P0.10 named as the runaway block at *every* diverging point on this ladder
+under both RBB policies (favourable, and measured at 22 conversions on the catalogue), while the
+same fix raises the die-wide static fraction 1.27× (unfavourable, and what took the *uniform*
+ceiling down one rung in §P0.17). The simulated curve carries less feedback gain above 345 K,
+where every point on this ladder sits (favourable, 57 catalogue conversions). Net: at or slightly
+above `(p,a,s)`'s 1.60. **Named falsifier:** highest holding rung **≤ 1.40** → the recorded
+1.60–1.80 array ceiling does not survive corrected inputs and is withdrawn.
+
+**Prediction 2 — coverage.** The mechanism is that 200 µm of silicon between the tiles and the
+active layer smears a gap of a few hundred µm, and the measured neighbour is the coupled pitch
+ladder at 1.15 on the simulated curve: 50/100/200 µm cost 19.476/19.476/19.470 W, **500 µm costs
+26.3 W** (+35 %), 1000 µm 26.2 W, 2000 µm 33.1 W. So at 500 µm pitch the tile is already in the
+regime where it spends watts on cool silicon; shrinking it for coverage makes it *finer in
+extent* (toward the cheaper 200 µm tile) while opening gaps (toward losing the hot block). The
+sign at moderate coverage is therefore **not predicted**, only its size:
+
+- coverage **0.75** (450 µm tiles, 50 µm gaps — one cell): indistinguishable from 1.00, |ΔQ| < 5 %
+  at every density that holds in both, same rung.
+- coverage **0.50** (350 µm tiles, 150 µm gaps): |ΔQ| ≤ 20 %, sign not predicted, **same rung**.
+- coverage **0.25** (250 µm tiles, 250 µm gaps): Q **up ≥ 10 %**, and the ceiling **may lose one
+  rung**.
+
+**Named falsifier:** coverage 0.50 losing a rung (0.10 W/mm²) against 1.00 → the burial-depth
+smearing argument is wrong and the array's area is a first-order thermal term at the shipped
+pitch, not a second-order one.
+
+**Prediction 3 — the per-tile flux ledger.** Max tile flux **< 100 W/mm²** at every point and
+every coverage ≥ 0.25 (a 250 µm tile is 0.0625 mm²; the largest single-tile share of a ~100 W
+plan spread over tens of tiles is a few watts). So `h_max` = 1000 W/mm² never binds through
+area, and the area charge, where it shows up at all, is **thermal** (spreading through the
+burial depth), not an envelope cap. **Named falsifier:** any engaged tile above **250 W/mm²**,
+the Draft_5 demonstrated density — at that coverage the demonstrated envelope would bind and
+the ladder would have to be re-read with `--mr-h-max 250`.
+
+`[!]` Standing caveat on reading Q across rows: all rows here share one curve, one policy and one
+target, so the cross-curve normalisation trap does not apply, but the minimum-plan descent still
+stops wherever it first holds target, so peaks land at 90–94 °C rather than at 92.0. Compare Q at
+matched density and report the landing peak beside it.
+### `[x]` §P0.18.2 RESULT — coverage costs nothing at this pitch, and the array-assisted ceiling is an envelope, not a package
+
+`results/array_coverage_armD/`, 56 points (the ladder was **extended to 2.20–3.00 after the
+first pass**, because `array_on` held at every rung to 2.00 and a ceiling that is not bracketed
+is not a ceiling), `examples/array_coverage_report.py` → `docs/evidence/array_coverage_armD.json`.
+No `unconverged` rows anywhere.
+
+| arm | holds to | fails at |
+|---|---|---|
+| control (grease, no array) | — | **1.00** (the arm-D cliff, as before) |
+| `array_idle` (GaAs, laser off) | 1.10 | 1.20 |
+| `array_on`, coverage **1.00** | **2.60** | **3.00** |
+| `array_on`, coverage 0.82 / 0.50 / 0.26 (achieved) | **2.60** | **3.00** |
+
+**Minimum-plan cost at matched density, normalised to a common landing peak at 0.3247 K/W:**
+coverage 0.82 within **0.9 %** of full coverage at every rung, 0.50 within **2.9 %** (the 2.9 % is
+the 0.8 W plan at 1.10, where 0.02 W is 3 %; ≤ 0.9 % elsewhere), 0.26 within **1.6 %** (≤ 1.3 %
+above 1.10). Raw Q differs by up to 6.9 % at 1.70 and 3.6 % at 2.40 and *both are landing-peak
+artefacts* — the full-coverage descent stopped 1.9 K and 2.5 K below target there; at a common
+peak they are −0.3 % and −0.1 %. Same trap as §P0.16, caught by the same rule.
+
+#### `[+]` The array's own area is free at 500 µm pitch and 200 µm burial
+
+At 0.26 coverage **644 of 1126 blocks sit under a gap** and 74.8 of the 101.1 mm² footprint is
+reserved for couplers, waveguides, fibre access and LPC — and the die holds the same ceiling on
+the same minimum plan. The 200 µm of silicon between the tiles and the transistors smears a
+250 µm gap as completely as it smeared the 50–200 µm pitch ladder (§P0.16: 19.476 / 19.476 /
+19.470 W). **So the pixel layer can give three quarters of its footprint to everything that is not
+extractor with no thermal penalty on this die at this pitch.** That is a manufacturability
+result of the same kind as the 200 µm plateau, and it is the answer to "charge the array its own
+area": charged, and at this geometry the charge is zero.
+
+What is *not* free is the per-tile flux: it scales as 1/coverage, **35 W/mm² at 0.26 and 2.60
+against 7.9 W/mm² at full coverage** (41 at the diverged 3.00 point). Against `h_max` = 1000 W/mm²
+that is 25× under; against Draft_5's demonstrated 250 W/mm² still 7× under. The area charge
+shows up as flux, and the flux does not bind.
+
+`[!]` Caveats that travel with it. (1) At ≥ 1.20 W/mm² the rescue plan engages **all 1126
+blocks** (envelope-mode descent from a diverging baseline), so the coverage test above 1.10 is a
+test of a gapped array's *uniformity*, not of its ability to hit one hot block; the targeted
+regime is the single 1.10 rung (18 targets), which agrees. (2) 500 µm pitch only. A 50 µm tile at
+quarter coverage is 25 µm, below the 50 µm mesh, so the fine end of the pitch ladder cannot be
+run with coverage at this grid. (3) A gap is unpowered GaAs; the couplers and LPC that physically
+fill it are other materials, 30 µm thick, not modelled.
+
+#### `[!]` The array-assisted ceiling under corrected inputs is 2.60–3.00 W/mm², and it is an ENVELOPE result
+
+The recorded `(p,s,s)` ceiling was 1.60 holds / 1.80 overshoots / 2.00 fails; `(p,a,s)` 1.60 /
+**1.80 fails**. Under arm D the array holds **2.60** and fails at 3.00 — a full watt per mm²
+higher. Read it carefully before quoting it:
+
+- **Above ~2.0 W/mm² the array carries essentially all of the heat.** At 2.60 the injected die
+  power is 263 W, the converged die dissipates 239 W (cooling lowered its leakage), and the array
+  removes **251 W** — more than the die dissipates. The pixel layer is sub-ambient and the cold
+  plate is pulling 12 W *out of the room*. Net electrical cost 154 W (effective COP 1.64 with
+  recovery). The planner's energy cap is the *injected* power (263 W), so the plan passes it.
+- **The failure at 3.00 is the actuator, not the package:** `envelope insufficient: no steady
+  state even at full MR capability`. Full capability = `min(h_max·A, dt_max/sensitivity, die
+  power)` per block; `dt_max` = 45 K is bounded per *block* (P0.3, still open) and nothing bounds
+  the tile.
+- So **2.60–3.00 is where the 45 K-per-block, 1000 W/mm² envelope runs out on this die**, not a
+  thermal limit of the package, and it is not an operating point anyone would choose (the cooler
+  draws 65 % of the die's power). **Quote the rescue *range* — idle fails at 1.20, the laser holds
+  from there — and the cost ladder (17 W at 1.20 → 139 W at 2.00 removed; 11 → 84 W net), not the
+  top rung.**
+- `[!]` **Two things this exposes for the planner.** The energy cap should be the *converged*
+  die power, not the injected one (a 12 W over-pull is invisible today), and a per-tile lift cap
+  (P0.3) would bind before the per-block one at the top of this ladder. Neither changes any row
+  below 2.40. Filed in `RESULTS_REGISTER.md` §3.
+
+#### The predictions, scored
+
+| | predicted | measured | verdict |
+|---|---|---|---|
+| **P1** array ceiling, coverage 1.00 | highest hold 1.50–1.70, fails ≤ 2.00; falsifier ≤ 1.40 | holds **2.60**, fails 3.00 | **wrong — too low by a full W/mm²** |
+| **P2** coverage 0.75 | ‖ΔQ‖ < 5 %, same rung | ≤ 0.9 % at a common peak, same rung | confirmed |
+| **P2** coverage 0.50 | ‖ΔQ‖ ≤ 20 %, same rung | ≤ 2.9 %, same rung | confirmed |
+| **P2** coverage 0.25 | Q up ≥ 10 %, may lose a rung | ≤ 1.6 %, **same rung** | **wrong — no effect at all** |
+| P2 named falsifier | 0.50 loses a rung → smearing wrong | 0 rungs lost | survives |
+| **P3** tile flux | < 100 W/mm²; falsifier > 250 | max 41 (35 at the top hold) | confirmed |
+
+Two of five wrong, both in the favourable direction, and **both from the same habit the register
+warns about**: P1 carried the `(p,a,s)` rung loss forward as if the accounting fix and the curve
+would net to a small move, when the measured neighbour that mattered — arm D's *control* cliff
+moving from 1.10 to 1.00 while its `array_idle` moved *up* to 1.10 — already said the array arm
+responds to these flags differently from the control. P2's 0.25 estimate assumed a 250 µm gap is
+"too coarse" when the measured pitch plateau already extended to 200 µm tiles; the derived
+estimate lost to the measured neighbour again.
+
+---
+
+### `[x]` §P0.18.3 — SPICE now gives `V_t(T)`, `SS(T)`, `I_dsat(V,T)` and a device-derived V/F shape
+
+`HotGauge/power/spice_sim.py` (`vt_deck`, `idsat_deck`, `parse_iv`, `constant_current_vt`,
+`subthreshold_swing_mV_per_dec`, `dibl_mV_per_V`, `fit_alpha_power`),
+`HotGauge/power/device_vf.py` (`DeviceVFModel`, `load_device_vf`),
+`examples/device_vt_vf_spice.py` → **`docs/evidence/device_vt_vf_asap7.json`**,
+`clock_headroom.py --vf-source spice[:<T_K>]`. 21 tests in `power/test_spice_vt_vf.py`.
+Same ngspice 47 + OSDI + OpenVAF BSIM-CMG 110 on the same ASAP7 `nmos_rvt` card; two more decks,
+no new device. ~1 s of simulator time for 1134 operating points.
+
+| quantity, 300 K unless stated | value | how |
+|---|---|---|
+| `V_t,lin` / `V_t,sat` | **0.301 / 0.284 V** | constant-current, 100 nA × W_eff/L_drawn per fin (3.36e-7 A) |
+| DIBL | 26 mV/V | from the two thresholds |
+| subthreshold swing | **61.0 mV/dec**, rising **0.203 mV/dec per K** (ideality 1.02) | fitted over two decades below the criterion |
+| `dV_t/dT`, 250–400 K | **−0.39 mV/K (lin), −0.46 mV/K (sat)** | linear fit |
+| `I_on` at 0.70 V | 501 µA/µm; 0.942 of its 300 K value at 400 K | diagonal `V_gs = V_ds` |
+| alpha-power exponent | **1.45** (1.35 at 200 K → 1.62 at 500 K), rms 0.04 in ln I | **fitted**, above `V_t,sat` |
+| `I_off(T)` vs the leakage evidence file | agree to **0.76 %** | same card, different deck and session |
+
+`[+]` **Two things worth saying plainly.** The textbook `alpha = 1.4` that `irds_vf` assumes is
+**right at room temperature** for this card (1.45), and it is not constant: it climbs 0.27 across
+200–500 K. And the two SPICE evidence files reproduce each other's `I_off(T)` to under 1 %, which
+is the check that both are the same device rather than two plausible curves.
+
+`[!]` **The V/F *shape* differs from the roadmap's by up to 44 % — and it is the threshold, not the
+exponent.** Normalised to `f(0.70 V)`, the simulated `I_on(V)/V` and the IRDS 2024 alpha-power
+curve differ by 44 % at 0.45 V and converge toward `V_dd`. With the same `alpha` (1.45 vs 1.4) the
+whole difference is `V_t`: 0.284 V on the card against the roadmap's 0.156 V. **These are
+different devices** (a 2016 predictive 7 nm PDK against a 2024 roadmap "3 nm" row), and the
+comparison is of shape, never of level. Anchored on the trace's 3.8 GHz at 0.70 V the device
+curve puts the 10 % overdrive ceiling at **4.17 GHz** (IRDS: 4.15). `clock_search` uses ratios
+and is insensitive to the anchor; `f_max` inherits it and says so.
+
+### `[!]` §P0.18.3 — the `V_t` lever re-priced on the device: 50 mV costs **45–60 K**, not 22 K
+
+`docs/LADDER_GEN0.md` §2 priced the lever with the roadmap's 82 mV/dec and the **pipeline**
+curve's local doubling temperature (10.9 K at 370 K). Both terms are now simulated, and both
+moved against the lever:
+
+| T | ΔV_t | clock (device / IRDS) | leakage cost (device SS / IRDS SS) | doubling K, simulated curve | cooling that pays for it |
+|---|---|---|---|---|---|
+| 300 K | 25 mV | +7.6 % / +6.5 % | 2.57× @ 61.0 / 2.02× @ 82 | 22.1 K | **30.0 K** |
+| 300 K | 50 mV | +15.1 % / +13.1 % | 6.59× / 4.07× | 22.1 K | **60.1 K** |
+| 350 K | 25 mV | +7.6 % | 2.24× @ 71.2 | 19.2 K | **22.4 K** |
+| 350 K | 50 mV | +15.0 % | 5.04× | 19.2 K | **44.8 K** |
+| 400 K | 25 mV | +7.5 % | 2.03× @ 81.2 | 23.3 K | **23.9 K** |
+| 400 K | 50 mV | +14.9 % | 4.13× | 23.3 K | **47.7 K** |
+| 400 K | 75 mV | +22.2 % | 8.38× | 23.3 K | **71.6 K** |
+
+`[!]` **So on the measured physics only the 25 mV step (22–30 K) sits inside the demonstrated
+45 K lift; 50 mV sits at its edge (45–48 K at 350–400 K, 60 K at 300 K) and 75 mV is outside it
+everywhere.** The recorded "50 mV ≈ 22 K, 75 mV ≈ 33 K, both inside 45 K" is **withdrawn**
+(`RESULTS_REGISTER.md` §2). The reason is the same crossover fact as everything else this week:
+above 345 K the simulated curve carries *less* gain than the pipeline one, so a kelvin of cooling
+buys less leakage there — the doubling temperature is 19–23 K where the pipeline's was ~11 K — and
+that is exactly the regime where the lever lives. The clock side of the trade is slightly
+*better* on the device (+15 % per 50 mV against the roadmap's +13 %); the cost side is 1.2–1.6×
+worse and the payback 2× slower.
+
+`[!]` This is a **re-derivation on measured inputs**, not a thermal measurement. The lever has still
+not been run end to end (a low-`V_t` die under the array through the coupled solve), and
+`dt_max` is still the device team's number. What changed is that the two inputs it will be run
+with are now the card's rather than the roadmap's and CACTI's.
+
+---
+
+### `[x]` §P0.17 RESULT — the density ceiling under arm D, and the two arms move in OPPOSITE directions
+
+22 rungs, 0.05 W/mm² apart, `--leakage-curve simulated --rbb-policy amortized
+--core-other-policy hierarchy-consistent`. `results/uniform_density_armD/`.
+
+| arm | pipeline (§P0.15) | simulated (§P0.15) | **arm D** |
+|---|---|---|---|
+| **uniform** (the flat-die ceiling) | 1.05 → 1.10 | 0.90 → 0.95 | **0.85 → 0.90** |
+| **shaped** (the real power map) | 0.60 → 0.65 | 0.55 → 0.65 | **0.60 → 0.65** |
+
+Every rung is decided — **no `unconverged` rows in either arm**, which is unusual for a ladder this
+close to a cliff and makes both brackets clean.
+
+#### The prediction: direction RIGHT on both arms, magnitude OVERSTATED on one
+
+- `[+]` **Uniform moved DOWN**, as predicted, and for the predicted reason: the Gini-0 arm has no
+  hotspot to redistribute, so the only channel the accounting fix has is the scalar
+  `leak_fraction`, which rises **1.27x** (0.3860 → 0.4883) and works strictly against stability.
+- `[!]` **But only one rung.** The prediction's band was **0.70-0.85** and the measured highest hold
+  is **0.85** — the band's top edge. A 1.27x rise in leakage fraction bought a **5.6 %** ceiling
+  move, not the ~20 % the band's midpoint implied. **The magnitude claim is withdrawn; the
+  direction stands.** Same failure mode as §P0.16's two wrong predictions, one notch smaller:
+  an input ratio was carried too directly into a result ratio.
+- `[+]` **Shaped moved UP, and that was the discriminating prediction.** §P0.17 predicted the
+  shaped arm would move *less than the uniform arm or even up*, because it carries a real power map
+  and therefore does get redistribution benefit to offset the higher fraction. Measured: shaped
+  goes **0.55 → 0.60** on the highest holding rung, one rung **up**, while uniform goes one rung
+  **down**. `[+]` **The two arms moving in opposite directions under the same flag is the
+  mechanism confirming itself** — redistribution helps only where there is concentration to
+  redistribute.
+
+#### `[!]` What this means for the ceiling claims
+
+`[+]` **§P0.11's headline survives and is now on corrected inputs.** Concentration is still worth
+roughly **1.4x** (0.85-0.90 uniform against 0.60-0.65 shaped), against the ~1.5x recorded — the
+same result, slightly smaller, and no longer resting on an accounting defect.
+
+`[!]` **The absolute flat-die ceiling is LOWER than any previously recorded value**: 0.85-0.90
+W/mm² against the pipeline curve's 1.05-1.10. Two independent corrections both push it down, and
+neither is a modelling preference. **A flat die at ~1 W/mm² is no longer supportable on this
+package and this leakage model.**
+
+`[!]` This does **not** contradict §P0.16's 94 → 8 divergence collapse. That was measured on
+*heterogeneous catalogue points* at product densities, where the die runs hot and the corrected
+accounting removes an artificial hotspot; this is a *uniform* arm at 322-333 K with no hotspot to
+remove. Same flag, opposite sign, for the reason §P0.16 named: **which part of an input is
+load-bearing is a property of the experiment.**
+
+---
+
+## `[x]` §P0.17 — the density ceiling under arm D. PREDICTION, before the run
+
+§P0.16's four-arm result deliberately did **not** restate the density ceiling: its points are
+heterogeneous catalogue operating points, not a ladder, and §P0.11's Gini-0 arm is not among them.
+This runs the ladder itself under arm D's configuration
+(`--leakage-curve simulated --rbb-policy amortized --core-other-policy hierarchy-consistent`).
+
+### `[+]` First: the probe DOES consume all three flags — checked before spending the run
+
+The `tile_pitch_sweep` lesson (§P0.16: it holds no leakage model, so `--leakage-curve` there was a
+no-op) says to verify consumption first. `uniform_density_probe.py` accepts all three flags **and**
+derives its die-wide `leak_fraction` from the split file, which is the quantity `core_other` moves:
+
+| policy | `leak_fraction` |
+|---|---|
+| `stock` | **0.3860** — the value §P0.11 recorded |
+| `hierarchy-consistent` | **0.4883** |
+
+**1.27x higher.** So the flag reaches the experiment, and it reaches it through exactly one channel.
+
+### `[!]` The prediction: the ceiling moves DOWN — the OPPOSITE way to the catalogue
+
+§P0.16 measured `core_other` converting **22 catalogue points from diverging to holding**. The naive
+extrapolation is that the ceiling rises. **It should fall instead, and the reason is the whole
+point of running the ladder rather than inferring from the catalogue.**
+
+`core_other`'s benefit in the catalogue came from **redistributing** power off an artificial
+hotspot — the slab was carrying ~32 % of die dynamic on one leftover-area block per core. The
+uniform density probe has **no such hotspot to fix**: its uniform arm is Gini 0 by construction, and
+neither arm inherits the per-unit map (§P0.11: the probe uses a *flat die-wide* leakage fraction
+"rather than the per-unit split"). So the redistribution channel is **closed**, and the only channel
+left open is the scalar `leak_fraction` — which goes **up 1.27x**, i.e. strictly against stability.
+
+**Predicted, on the uniform arm:** the recorded pipeline ceiling is 1.05-1.10 W/mm² and the
+simulated one 0.90-0.95 (§P0.15's fine ladder). Under arm D I predict **0.70-0.85 W/mm²** — below
+the simulated curve's, by roughly the 1.27x leakage increase working through the same feedback.
+
+`[!]` **Named falsifier.** If the arm-D uniform ceiling comes back **at or above 0.90**, this
+reasoning is wrong: it would mean the flat-fraction channel is not what sets the uniform arm's
+cliff, and the 22 catalogue conversions would need a different explanation than redistribution.
+
+`[+]` **Prediction for the shaped arm, which discriminates the mechanism.** The shaped arm *does*
+carry a real power map, so it has hotspots — but they are the *recorded* map's, and `core_other`
+sits in it. Predict the shaped arm moves **less** than the uniform arm, or even up, because it gets
+some redistribution benefit to offset the higher fraction. If both arms move down by the same
+proportion, redistribution contributes nothing here and the effect is purely the scalar.
+
+`[!]` The last four §P0.16 predictions were wrong in ways that shared one cause — turning an input
+ratio into a result ratio. This one is deliberately stated as a **direction plus a named falsifier**
+rather than a computed magnitude, and the 0.70-0.85 band is a bracket, not an arithmetic claim.
+
+---
+
+### `[+]` §P0.17 — the cold-zone prize re-derived under `hierarchy-consistent`: **5.7 % -> 13.8 %**
+
+`examples/cold_zone_prize.py --core-other-policy hierarchy-consistent`,
+`docs/evidence/cold_zone_prize_core_other_consistent.json`. The recorded evidence file is untouched;
+this writes beside it. The `stock` run still reproduces §P0.15's pair exactly (15.98 % / 38.24 % /
+`core_other` 42.27 %), which is the check that the flag is the only thing that moved.
+
+| ratio (steady slices, power landing on a real floorplan block) | `stock` | `hierarchy-consistent` |
+|---|---|---|
+| static fraction | 15.98 % | **27.13 %** |
+| cache share of leakage (L3+L2) | 38.24 % | **54.14 %** |
+| `core_other` share of leakage | 42.27 % | **18.26 %** |
+| L3 share of leakage | 28.35 % | 40.14 % |
+| **prize at 200 K** | **5.7 %** | **13.8 %** |
+| ceiling (all cache leakage removed) | 6.1 % | **14.7 %** |
+
+### `[!]` The prediction said ~10 %. It is 13.8 %, and the miss is instructive
+
+§P0.16 predicted the prize would rise "~1.74x, ~6 % -> ~10 %" by scaling the **static fraction
+alone**. The static fraction did move as predicted (1.70x). What the prediction missed is that the
+**cache share moves too** — 38.24 % -> 54.14 %, a further 1.42x — and the two multiply:
+1.70 x 1.42 = **2.4x**, not 1.74x.
+
+`[+]` The mechanism is the same correction seen from the other side. Undoing the `2 *` takes
+leakage **off** the `core_other` slab (42.3 % -> 18.3 %) and puts it back on the real blocks it
+belongs to — **including the caches**. So one correction raises *both* terms of the conversion: the
+numerator's share and the die's static fraction. Scaling one term and holding the other fixed is
+the same class of error as §P0.16's two failed predictions — treating a multi-term conversion as if
+one factor carried it.
+
+### `[+]` §P0.15's "leaf view is an upper bound" SURVIVES — but only read within a policy
+
+13.8 % exceeds §P0.15's 9.1 % leaf-view "upper bound", which looks like a contradiction and is not.
+The leaf view moves under the policy as well, because its static fraction carries the same doubled
+dynamic:
+
+| | leaf-view prize | die-view prize |
+|---|---|---|
+| `stock` | 9.1 % | 5.7 % |
+| `hierarchy-consistent` | **15.7 %** | **13.8 %** |
+
+The ordering holds under both. `[!]` **The two views are only comparable within one policy** — the
+9.1 % bound belongs to `stock` and must not be held against a `hierarchy-consistent` number. (The
+leaf *cache share* is identical at 66.77 % under both, as it must be: the leaf view has no
+`core_other`, and leakage never took the factor, so only the static fraction moves.)
+
+`[+]` **The 2.23x improvement is untouched, for the fourth time.** Every conversion multiplies the
+same `1 - 1/reduction` by a constant, so the ratio cancels it. `[+]` And the **280 K knee is
+untouched** — it is a property of the leakage curve, not of the power accounting, so the design
+target is still barely sub-ambient.
+
+`[!]` **What to quote now.** The prize is **~14 % of die power** under the corrected accounting and
+**~6 %** under the recorded one, and which is right depends on a decision that is now made below
+(§P0.17 defaults). Neither is the book's 31.7 %. The **2.23x improvement** remains the number that
+survives every one of these revisions and is still the one to lead with.
+
+---
+
+### `[x]` §P0.17 — the two defaults are changed, and the third is now the open question
+
+Both flags the §P0.16 re-run was run to decide have been flipped, each in **one** place
+(`thermal/rbb.DEFAULT_RBB_POLICY`, `power/core_other.DEFAULT_CORE_OTHER_POLICY`) with the five
+drivers pointing at those constants.
+
+| flag | was | **now** | why |
+|---|---|---|---|
+| `--rbb-policy` | `stock` | **`amortized`** | §P0.10 settled the semantics from `McPAT/core.cc`; §P0.16's B→C isolates it across 145 points and flips **no verdict either way** |
+| `--core-other-policy` | `stock` | **`hierarchy-consistent`** | the stock accounting is **provably wrong**, not merely disfavoured — validated leaf-by-leaf against raw McPAT, 864 leaves, 3 nodes, **exactly zero error** |
+
+`[!]` **These are different kinds of decision and the docs should keep them apart.** The RBB flip is
+a *semantics* call backed by a null result: the evidence says it is safe, not that it is necessary.
+The `core_other` flip is a *defect* fix: the stock die reports 18.43 % static against McPAT's own
+Processor-level **29.36 %**, roughly half, which is exactly what a `2 *` on the dynamic column alone
+predicts. If either were ever revisited, they would be revisited for different reasons.
+
+`[+]` **The recorded catalogue stays exactly reproducible**, and that is asserted rather than
+assumed: `--rbb-policy stock --core-other-policy stock` reproduces it, `apply_core_other_policy(...,
+'stock')` is a verified identity, and `add_rbb_argument(ap, default='stock')` still lets a driver
+pin the shipped placement un-flagged. Arm A's flag set **is** the recorded configuration.
+Tests: `power/test_core_other.py`, `thermal/test_rbb_default.py`.
+
+#### `[!]` The consequence, which is the next decision and is NOT made here
+
+The default is now **`pipeline` + `amortized` + `hierarchy-consistent`** — and that combination is
+**not one of the four arms that were measured**. The arms were
+A `(p,s,s)`, B `(s,s,s)`, C `(s,a,s)`, D `(s,a,hc)`. Nobody has run `(p,a,hc)`.
+
+That is a real gap: the shipped default should be a configuration somebody has measured end to end.
+Two ways to close it, and the choice is the user's:
+
+1. `[+]` **Also default `--leakage-curve` to `simulated`** — the default becomes **arm D exactly**,
+   which is measured at 159/159 points with zero anomalies. This is the recommendation. The
+   pipeline curve is CACTI's eleven hard-coded numbers (§P0.12: bit-for-bit
+   `I_off_n[0][*]`, implied activation energy spanning 69x and non-monotone); the simulated curve is
+   ngspice + BSIM-CMG on the ASAP7 card, fitted to nothing (§P0.13). `[!]` But this is the flag with
+   the **largest** effect — 57 of 145 control points — and CLAUDE.md carries an emphatic standing
+   rule to keep it at `pipeline`, so it should be flipped deliberately and not as a side effect of
+   this change.
+2. Run the `(p,a,hc)` combination as a fifth arm so the shipped default is measured. ~3.5 h.
+
+`[!]` Until one of those happens, **an un-flagged run is a configuration with no catalogue behind
+it.** That is stated here rather than left implicit, because the whole point of the four-arm design
+was that every quoted configuration should have been measured.
+
+---
+
+### `[x]` §P0.17 — both §P0.16 defects fixed, each with tests and a re-run
+
+#### 1. `__agg__L3` was placeable and is not a block — **fixed at the source**
+
+`thermal/microrefrigeration.py` now filters bookkeeping keys out of the cooling plan:
+
+```python
+SYNTHETIC_TEMP_PREFIX = '__agg__'
+def is_synthetic_temp_key(name): ...      # matched on the PREFIX
+```
+
+`[+]` **Matched on the prefix rather than importing `BRIDGEABLE_AGGREGATES`**, for two reasons: the
+planner then carries no dependency on the feedback layer, and **a future bridged aggregate is
+excluded automatically** instead of having to be remembered. A test asserts every current member of
+`BRIDGEABLE_AGGREGATES` is caught by the prefix, so the two cannot drift apart.
+
+`[!]` The filter is on the **key**, not on the MR target, because §P0.16 established the trigger is
+arm-dependent — the same point raised in arm B and completed in arm D, since the synthetic key's
+*temperature* moves with the leakage curve and the `core_other` policy. The earlier fixed
+`--mr-target-C <= 45` rule stays withdrawn.
+
+`[!]` **It took TWO sites, and a one-site fix looked like it worked.** `clipping_plan` is not the
+only place block temperatures become plannable candidates: `run_mr_clipping`'s
+sensitivity-calibration **probe** builds its own plan from `base_hot` and hands it straight to
+`apply_plan` -> `project_plan_to_tiles`, never passing through the planner. Filtering only
+`clipping_plan` left the probe raising the identical `KeyError` from a different stack, and the
+"fixed" re-run failed **10 of 11 points**. An intermediate check that reported "zero errors" had
+simply been taken before the runs reached the probe.
+
+`[+]` Both sites are filtered, and the second lesson is pinned rather than remembered: a test
+asserts there are **exactly two** temperature-to-candidate sites in the module, so a third cannot
+appear silently.
+
+7 tests (`thermal/test_synthetic_temp_keys.py`), including the array-valued case (Tflp temperatures
+arrive as per-timestep arrays, so the filter must run *before* the array is read) and a sweep over
+MR targets from 30 to 90 C.
+
+`[+]` **VERIFIED on the 11 affected points** (`results/agg_l3_fix/`): **0 failures, 0 `__agg__L3`
+errors, 11/11 with output**, where all 11 raised within ~110 s before. The recovered physics is
+coherent rather than merely non-crashing — both device sweeps are monotone in the expected
+direction (`--mr-dt-max` 5 -> 40 gives peaks 71.1 -> 46.3 C; `--mr-h-max` 5 -> 50 gives 53.9 ->
+46.5 C) and the three `A_ceiling_T{30,40,50}` points hold at 37.8 / 46.3 / 54.6 C, tracking their
+targets. `[!]` These 11 were **unrunnable in the recorded catalogue** — the recorded rows for them
+predate `bridge_aggregates` and come from a different code path — so this restores points nobody
+could reproduce.
+
+#### 2. `stacked_memory_study` — the failure is SIZE, and the defect is that it was SILENT
+
+Not a code bug in the driver. Measured discriminator across arm D's eleven stacked-memory points:
+
+| configuration | unknowns | outcome |
+|---|---|---|
+| 50 µm cells + 4-8 memory dies | **1,098,144** | **failed 4 / 4** |
+| 100 µm cells + 4-8 memory dies | 274,536 | succeeded 4 / 4 |
+| 50 µm cells + default die count | small | succeeded 3 / 3 |
+
+Largest system **measured** to factorise on this toolchain: **366,048** unknowns
+(`session_memory.json`, the 34-core two-die session). The failing stack is 12400 × 8200 µm at 50 µm
+over 27 layers — **3.0x that**. So the driver is total unknowns, fed by *both* the cell size and the
+die count, and `--cell-um 100` (which quarters the system) already works and is already in the
+catalogue.
+
+`[!]` **The real defect is the silence.** 3D-ICE exits during *"Preparing thermal data"* with an
+**empty stderr** when SuperLU 4.3 cannot factorise the system, so the only symptoms are an
+`ExecutableJobError` and a long wall time — **~75 minutes per point, four times over**, before
+anyone looked. `thermal/leakage_feedback.py` now attaches a diagnosis to that exception naming the
+measured size, the largest size known to work, the `--cell-um` that fixes it, and the cost of taking
+it (a coarser grid smooths lateral gradients, so a 100 µm run must not be compared against a 50 µm
+one).
+
+`[+]` **It diagnoses; it does not gate.** An ordinary failure on a normal-sized stack is passed
+through untouched, and an unreadable `.stk` never masks the original error — both asserted. Nothing
+that currently runs is refused. 5 tests (`thermal/test_stack_size_diagnosis.py`).
+
+`[!]` **Not fixed: why SuperLU gives up at ~1.1 M.** That is a toolchain limit, not something this
+session established a remedy for beyond coarsening. The four 50 µm points remain unrun; their
+100 µm counterparts are in the catalogue and are the ones to quote.
+
+---
+
+## `[x]` §P0.16 — the MR catalogue on the measured curves  `[x]` 1 Sep 2026
+
+### The PREDICTION, recorded before the run (and largely WRONG — kept in place)
+
+*Written 1 Sep 2026 **before any solve was launched**. §P0.12, §P0.14 (twice) and §P0.15 each made
+a prediction here and all four were wrong; writing them down first is the only reason the
+corrections were findable. This one is recorded the same way and will be marked right or wrong in
+place, not reworked.*
+
+`mr_comparison.py` and `mr_clipping_study.py` gained `--leakage-curve` in §P0.15 but have only ever
+been **run** on `pipeline`. The 22 rescues, the clipping study, the granularity result and the
+budget cliff are all still on CACTI's eleven hard-coded numbers.
+
+### The quantity that decides it, and where each study sits on it
+
+§P0.15's transferable result: which part of a leakage curve is load-bearing is a property of the
+**experiment**, not of the curve, and the deciding quantity is `d(ln P_leak)/dT` **at the
+temperature the die actually sits at**. The pipeline and simulated curves **cross over near 345 K**
+— simulated is far steeper below it, far gentler above. Measured here on `dP_leak/dT` (level x
+log-slope, which is the term that enters the loop gain), pipeline vs simulated:
+
+| T | 320 K | 330 K | 345 K | 367 K | 380 K | 390 K | 400 K | 420 K | 460 K |
+|---|---|---|---|---|---|---|---|---|---|
+| sim/pipe `dP_leak/dT` | **5.2x more** | 4.1x more | ~1.0 | **0.42** | 0.38 | 0.19 | 0.15 | 0.077 | 0.026 |
+
+The MR families do **not** all sit on one side of this:
+
+| study / arm | sits at | sim vs pipeline |
+|---|---|---|
+| density ladder (uniform arm) | ~322 K | 7.4x more gain → **ceiling moved DOWN 14 %** (measured, §P0.15) |
+| density ladder (**shaped** arm) | ~346 K | ~1.0 → **failing rung identical at 0.65** (measured, §P0.15) |
+| MR airflow ladder, **array** arm | 367 K (93.9 °C) | 0.42 — 2.4x **less** |
+| MR airflow ladder, **control** arm | **runs away — adjudicated at 400+ K** | 0.15 or less — 7x+ less |
+| MR clipping study, baseline | 344.9 K | ~1.0 — on the crossover |
+| MR clipping study, **MR** arm | **326.1 K** | ~5x **more** |
+
+`[!]` **The control arm is the piece the 367 K framing misses, and it is the piece that decides
+the headline.** A rescue is recorded as *"control has no steady state, array holds target"*. The
+control arm has no operating temperature — it diverges — so its verdict is not read off 367 K at
+all. It is read off wherever the runaway is adjudicated, and that is **hot**. This is exactly
+§P0.15's search-vs-ladder distinction applied one level down: the MR rescue test is a **divergence
+test on the array arm and a limit search on the control arm**, in the same run. The tail is
+invisible to the first and load-bearing to the second.
+
+### `[+]` The control arm's loop gain is recoverable from the recorded logs, with no re-solve
+
+The runaway message prints the residual on either side of one rejected step at a known damping, and
+`anchor_residual` is re-anchored every iteration in that branch (`power/leakage.py` ~633), so the
+printed pair is **one iteration apart**. With `T_{n+1} = (1-r)T_n + r f(T_n)` the residual
+multiplier is `(1-r) + rG`, so `G = 1 + (ratio - 1)/r` at `r = min_relax = 0.025`:
+
+| CFM | residual, one step | **loop gain G** | cut in `dP_leak/dT` needed to hold |
+|---|---|---|---|
+| 120 | 46.686 → 49.717 K | **3.60** | 3.60x |
+| 88 | 55.072 → 58.894 K | **3.78** | 3.78x |
+| 60 | 78.831 → 85.025 K | **4.14** | 4.14x |
+| 45 | 146.700 → 186.478 K | **11.85** | 11.85x |
+| 30 | 144.149 → 182.738 K | **11.71** | 11.71x |
+| 20 | 27.939 → 30.040 K | **4.01** | 4.01x |
+
+Reading the required cut off the table above: **3.6-4.1x is available above ~385 K (112 °C), and
+11.9x above ~418 K (145 °C)**. Every one of these trajectories is already 28-186 K of residual
+above a die whose array arm holds at 94 °C, so all six are being adjudicated well above 385 K and
+the two worst (45/30 CFM, residuals 147-186 K) well above 418 K.
+
+### The prediction
+
+1. `[!]` **The rescues are LOST AS RECORDED — I predict 6 of 6 airflow-ladder control arms acquire
+   a steady state on `simulated`, and the same for `simulated-gidl-off`.** Not because
+   microrefrigeration got worse: because the pipeline curve's 47x-too-steep hot tail is what was
+   killing the control, and it is an artefact. **Predicted count of surviving rescues in the
+   airflow family: 0 of 6.** If exactly one survives it will be **20 CFM** (smallest residual, so
+   the coolest adjudication, so the smallest available cut); the **most** certain to convert are
+   45 and 30 CFM, despite needing 12x, because their trajectories are the hottest.
+2. `[+]` **But the physics claim survives, and the recorded criterion is what fails.** I predict
+   the converted controls hold at **> 112 °C, most likely 120-160 °C** — past the 100 °C spec, and
+   above 127 °C in the range `CLAUDE.md` says to report as non-viable rather than as a number. So
+   the die is still unusable and MR still takes it to 93.9 °C. **Prediction: the rescue claim is
+   true under a spec-relative criterion ("control cannot hold ≤ 100 °C") and false under the
+   divergence-relative one it is currently written in.** The recommendation that follows, if this
+   lands: **restate the 22 rescues spec-relative**, which is invariant to the curve swap, rather
+   than divergence-relative, which is not.
+   `[!]` **Falsifier, named:** if a control converts and holds **below 100 °C**, prediction 2 is
+   wrong and the rescue is genuinely gone — that would be a real weakening of the headline and must
+   be reported as one, not absorbed.
+3. `[+]` **The array arm gets EASIER and CHEAPER, at all six airflows.** At 367 K simulated is
+   0.74x the level and 0.57x the slope. Predict: `peak_C` pinned at target (93-94 °C) by
+   construction, `chip_W` down **5-12 %**, and `Q_rem_W` / `array_W` down by a similar fraction —
+   e.g. 120 CFM `array_W` 5.84 → **~5.0-5.5 W**, 20 CFM 41.3 → **~36-39 W**. `gpw` up a few
+   percent. No array arm diverges.
+4. `[!]` **The clipping study moves the OPPOSITE way — it gets HARDER to beat and MR gets MORE
+   effective.** Its baseline sits at **344.9 K**, on the crossover (predict: baseline peak moves
+   < 2 K), and its MR arm at **326.1 K**, where simulated carries **~5x more** `dP_leak/dT`. A
+   steeper curve at the cooled temperature means each watt removed sheds *more* leakage on top, so
+   predict the **same budget removes more effective heat**: MR-arm peak drops further below
+   baseline than the recorded 71.8 → 53.0 °C, and the **budget cliff moves to a LOWER budget**.
+   Predict at least one recorded `MR LOSES on GFLOP/s/W` verdict **flips to a win**.
+   `[!]` This is the sharp one: **two MR studies on the same die, same package, same flag, moving
+   in opposite directions** — a direct instance of §P0.15's transferable result, and the reason the
+   catalogue cannot be re-run "in one direction".
+5. `[+]` **Granularity (2.77x on a hotspot) and the budget cliff survive within ~20 %** — 2.2-3.3x.
+   Both are geometry rather than actuator and both already survived a 4x envelope refresh; a 1.35x
+   level change is a smaller perturbation than that. They are ratios between two arms at the same
+   temperature, so the curve swap largely cancels.
+
+`[!]` **What would make all of this wrong in one step:** if the control arms' runaways are actually
+adjudicated *below* ~385 K rather than above it, the available cut is only 2.4-2.6x against a
+required 3.6-11.9x, and **every rescue survives untouched**. That is the single hinge, it is one
+number per run (the peak temperature along the control trajectory), and the re-runs report it.
+
+---
+
+### `[!]` §P0.16 RESULT — the airflow rescues all survive, and the prediction above was WRONG
+
+`scripts/mr_curve_compare_joblist.sh`, `examples/mr_curve_compare.py`, evidence
+`docs/evidence/mr_catalogue_curve_compare.json`. Twelve new points (6 airflows x 2 measured
+curves), three arms each, every argument character-identical to the recorded
+`scripts/build_joblist.sh` B family except `--leakage-curve` and `--out-dir`. The recorded tree
+under `results/overnight_forward/` was never written to and supplies the pipeline control.
+
+| curve | 120 | 88 | 60 | 45 | 30 | 20 | rescues |
+|---|---|---|---|---|---|---|---|
+| pipeline (recorded) | YES | YES | YES | YES | YES | YES | **6/6** |
+| **simulated** | YES | YES | YES | YES | YES | YES | **6/6** |
+| **simulated-gidl-off** | YES | YES | YES | YES | YES | YES | **6/6** |
+
+`[+]` **18 of 18. The control arm has no steady state at any airflow on any curve, and the array
+holds target at all of them — including at a fifth of baseline airflow.** `array_idle` diverges
+everywhere too, so "the LASER rescues it, the unpowered array does not" is intact. The headline
+claim *"across 20 → 120 CFM the unassisted die diverges at every airflow while the array holds at
+all"* survives the swap **unchanged**, and it is no longer resting on CACTI's eleven numbers.
+
+`[!]` **§P0.16's prediction 1 — "0 of 6 rescues survive" — is WRONG, and prediction 3 is wrong in
+direction too.** Both are withdrawn. The prediction did name its own hinge (*"if the control arms'
+runaways are adjudicated below ~385 K, every rescue survives untouched"*), and that is the branch
+that fired — but the reasoning that made 385 K the threshold is itself the error, and it is worth
+more than the result.
+
+#### `[!]` Why it failed: the loop gain at a runaway is set by the STOPPING RULE, not the curve
+
+The prediction measured `G` from the recorded logs, found 3.6-11.9, and asked what a 2.4x cut in
+`dP_leak/dT` would do to it. Measured on the new runs, `G` **barely moved** — but the residual at
+which the runaway was called grew a lot:
+
+| | 120 | 88 | 60 | 45 | 30 | 20 |
+|---|---|---|---|---|---|---|
+| `G` pipeline | 3.60 | 3.78 | 4.14 | 11.85 | 11.71 | 4.01 |
+| **`G` simulated** | **3.22** | **3.38** | **3.61** | **3.15** | **3.48** | **4.87** |
+| residual at the call, pipeline (K) | 47 | 55 | 79 | 147 | 144 | 28 |
+| **residual at the call, simulated (K)** | **65** | **78** | **95** | **89** | **116** | **171** |
+
+`[+]` **The generalisation: `G` at the give-up point is not a property of the configuration — it is
+whatever the divergence test's stopping rule selects.** `d(ln P_leak)/dT` rises with temperature on
+both curves, and a die with no fixed point simply climbs until the test fires. A gentler curve does
+not stop the runaway; it moves the runaway **further out in temperature**, arriving at a similar
+gain. So a measured `G` can be compared across *operating points* and must **not** be treated as an
+invariant to divide a curve ratio into. The prediction did exactly that.
+
+`[!]` **The evidence that was already on the shelf and would have got it right was §P0.15's fine
+ladder.** It measured this arm directly: the **shaped** arm's failing rung is *identical at
+0.65 W/mm² on the pipeline and simulated curves*. The airflow ladder's control runs at
+**1.15 W/mm²** — 1.77x past that cliff on **both** curves — so it cannot hold on either, and the
+rescue cannot be lost. The prediction had that argument, wrote it down as its second handle, and
+then let the loop-gain algebra override it. **The measured ladder was the better predictor than an
+analytic estimate built on top of it.**
+
+`[+]` **And the crossover framing is vindicated, just not where the prediction applied it.** The
+shaped arm sits at ~346 K, right at the 345 K crossover, which is exactly why its cliff does not
+move — while the uniform arm at ~322 K moved 14 %. The MR studies inherit the shaped arm's
+insensitivity. The prediction was right that the MR families sit on the far side of the crossover
+and wrong about what that buys.
+
+#### `[!]` What the array arm costs — and the difference is a LANDING POINT, not physics
+
+Prediction 3 said the array would get cheaper. It got **more expensive at the well-cooled end**
+(net W, simulated ÷ pipeline: 1.87x at 120 CFM, 1.45x at 88, 1.25x at 60) and **cheaper at
+30 CFM** (0.80x). That looks like a real and confusing effect. It is not:
+
+| CFM | extra heat removed `dQ` (W) | extra temperature drop `dT` (K) | **`dT/dQ`** |
+|---|---|---|---|
+| 120 | 8.178 | 2.539 | 0.3104 |
+| **88** | **8.056** | **2.615** | **0.3245** |
+| 60 | 7.162 | 2.437 | 0.3403 |
+
+The measured 34-core spreading boundary **at 88 CFM** is **0.3247 K/W**
+(`spreading_boundary_by_die.json`). The 88 CFM row reproduces it to **0.06 %**. `[+]` **So the
+entire extra array cost is the cost of landing 2.4-2.6 K cooler, at the package's own thermal
+resistance — the leakage curve does not change what MR costs per kelvin.** What it changes is where
+the planner's minimum-plan descent stops: on the pipeline curve the plan settles at 93.9 °C, on the
+simulated ones at 91.3 °C. 120 and 60 CFM bracket the 88 value because the boundary resistance
+genuinely varies with airflow; below 45 CFM the resistance is far enough different that the check no
+longer applies and the sign even reverses.
+
+`[!]` **So array costs are NOT comparable across curves as recorded**, because the two arms stop at
+different peaks. Any future comparison of MR cost between curves has to be made at a matched peak,
+or read as `dT/dQ` rather than as watts.
+
+`[+]` **The die itself barely moved: `p_chip_W` changes by −0.9 to −1.1 % at 45-120 CFM** (116.6 →
+115.5 W), because `--density 1.15` pins the die power and the curve only re-weights the leakage
+inside it. Prediction 3's "chip_W down 5-12 %" is withdrawn; the true figure is ~1 %.
+
+`[+]` **The GIDL bracket is worth nothing here either**, which now makes three studies in a row
+(§P0.15's density ladder, §P0.15's clock search, this). Same 6/6 rescues, same arms diverging, `G`
+within 0.3-0.7 of the full-GIDL run at every airflow. Stop carrying the ASAP7 GIDL uncertainty as a
+caveat on anything but sub-ambient leakage.
+
+#### `[!]` The clipping study: prediction 4 right in DIRECTION, wrong by two orders in SIZE
+
+Fourteen more points (7 budgets x 2 measured curves), `--powers 25 --r-th 0.3 --mr-target-C 40`,
+the E family of `build_joblist.sh` character-identical apart from the flag. This family was
+predicted to move **hard and the other way**: its baseline sits at **344.9 K** (on the 345 K
+crossover) and its MR arm at **326.1 K**, where the simulated curve carries **~5x** the
+`dP_leak/dT` of the pipeline one. A steeper curve at the cooled temperature means each watt removed
+sheds more leakage on top, so the same budget should buy more.
+
+**It does — by 2-4 %.**
+
+| K per watt removed | 0.5 W | 1 W | 2 W | 3 W | 5 W | 8 W | 12 W |
+|---|---|---|---|---|---|---|---|
+| pipeline | 6.070 | 6.048 | 6.007 | 5.596 | 3.759 | 2.438 | 1.704 |
+| **simulated** | 6.212 | 6.198 | 6.167 | 5.740 | 3.900 | 2.539 | 1.778 |
+| simulated-gidl-off | 6.254 | 6.237 | 6.198 | 5.769 | 3.929 | 2.558 | 1.793 |
+| **simulated ÷ pipeline** | **1.023** | 1.025 | 1.027 | 1.026 | 1.038 | 1.041 | **1.043** |
+
+`[+]` **The direction is right and the mechanism is confirmed** — MR is more effective on the
+measured curve, more so as the budget grows and the arm sits colder, which is the crossover story
+working. `[!]` **The size is not.** A ~5x difference in `dP_leak/dT` produces a **2-4 %** change in
+what a watt of clipping buys, because `dT/dQ` at a targeted block is dominated by the local thermal
+path and the leakage feedback rides on top as a second-order term. **A curve ratio is not a result
+ratio**, and §P0.16 conflated them — the same error, in the other direction, that made prediction 1
+wrong.
+
+`[!]` **Two specific sub-predictions are WRONG:**
+- *"the budget cliff moves to a LOWER budget"* — **it does not move at all.** The knee sits between
+  3 and 5 W on all three curves and `dT` saturates at 20.5 K (pipeline) against 21.3 K (simulated),
+  a 4 % difference at 12 W. **The budget cliff is geometry, and it survives the leakage curve
+  exactly as it survived the 4x envelope refresh.**
+- *"at least one `MR LOSES on GFLOP/s/W` verdict flips to a win"* — **none flips.** MR loses on
+  perf/W at all 7 budgets on all 3 curves.
+
+`[+]` **The GIDL bracket again changes nothing** (1.023 vs 1.030 at 0.5 W): four studies in a row.
+
+#### `[!]` The granularity ladder — and the recorded one CANNOT be re-run on a measured curve
+
+The handoff proposed re-running the granularity result (2.77x on a hotspot) with `--leakage-curve`.
+**That experiment does not exist.** `examples/tile_pitch_sweep.py`, which produced the recorded
+number, holds **no leakage model and never calls the feedback loop** — its own output note says
+*"Linear solves, no leakage feedback."* Adding the flag there would be a literal no-op and the
+output byte-identical. `[!]` **Before re-running a study on a new input, check the study consumes
+that input.**
+
+The coupled form of the same question runs the pitch ladder through `mr_comparison.py`, which does
+solve the coupled problem and does take the flag. Held at the airflow ladder's own operating point
+(density 1.15, 88 CFM, target 92 °C) so the 500 µm rung reproduces that family exactly. 18 points.
+
+`[+]` **The control arm diverges at every pitch on every curve** — so the rescue survives across
+the whole granularity ladder as well as the whole airflow ladder. Combined: **35 of 35 measured
+rescue points intact.**
+
+`[+]` **Fine pitch saturates below ~200 µm.** On the simulated curve 50, 100 and 200 µm cost
+19.476 / 19.476 / 19.470 W — identical to four figures across an **813x** range in tile count
+(40,672 / 10,168 / 2,542 tiles). The recorded *"optics requirement ~50 µm, not 10"* is if anything
+conservative: **200 µm buys everything 50 µm buys**, and that is a directly useful relaxation for
+the device roadmap.
+
+`[!]` **The coarse-vs-fine penalty appears to move, and it does not — the raw ratio is a landing-
+point artefact, and correcting it REVERSES the ordering:**
+
+| curve | raw 2000 µm ÷ 200 µm | **normalised to a common 93.5 °C peak** |
+|---|---|---|
+| pipeline | 1.30x | **1.29x** |
+| simulated | **1.70x** | **1.18x** |
+| simulated-gidl-off | 1.71x | 1.18x |
+
+On the simulated curve the 2000 µm rung's descent stops **3.3 K below** the 200 µm rung's (90.20 vs
+93.48 °C), and buying those kelvin at the package's own 0.3247 K/W is most of its extra cost. The
+pipeline rung barely moves under the same correction (1.30 -> 1.29) precisely because its peaks were
+already uniform. `[!]` **So "granularity matters 30 % more on the measured curve" is withdrawn
+before it was ever quoted**; the honest statement is that the granularity penalty **does not clearly
+move with the leakage curve**, consistent with the airflow and clipping families.
+
+`[+]` This is the third time this session that a minimum-plan comparison across curves has been
+confounded by where the descent stopped, and the second time the correction changed the answer's
+**sign**. **Any cross-curve MR cost comparison must be normalised to a common peak before it is
+read.** That is now a standing rule, not an observation.
+
+### `[+]` §P0.16's real conclusion: the MR catalogue does NOT need a curve-driven re-run
+
+Both MR families are **insensitive** to the leakage curve — 18/18 rescues intact, clipping efficacy
+within 4 %, budget cliff unmoved — while the density ladder moved 14 % and the clock search lost a
+headline. That is the transferable result sharpened one more turn: **§P0.15 said which part of a
+curve is load-bearing depends on the experiment; §P0.16 adds that for a whole family of experiments
+the answer can be "no part of it".** The MR studies sit at or above the 345 K crossover, where the
+two curves nearly agree, and they are ratios between two arms at the same temperature, so what
+disagreement remains largely cancels.
+
+**Practical consequence for §3's decision:** `--leakage-curve` is **not** a reason to re-run the MR
+catalogue. It is a reason to re-run the **density and clock** families, which are the ones that
+moved. `--rbb-policy` and the `core_other` accounting still argue for one full pass.
+
+#### Prediction scorecard — final
+
+| # | prediction | outcome |
+|---|---|---|
+| 1 | 0 of 6 rescues survive | **WRONG — 18/18 survive** |
+| 2 | converted controls hold > 112 °C | **vacuous — nothing converted** |
+| 3 | array cheaper, `chip_W` −5-12 % | **WRONG in direction** — up to 1.87x dearer (a landing-point artefact), `chip_W` −1 % |
+| 4 | clipping harder/more effective, cliff moves, a verdict flips | **direction RIGHT, size wrong (2-4 %, not ~5x); cliff does not move; no verdict flips** |
+| 5 | granularity + budget cliff survive within ~20 % | **RIGHT — budget cliff unmoved (4 %)**; granularity not re-run this session |
+
+`[!]` **The one methodological lesson worth carrying out of four wrong predictions in a row:** both
+of this session's failures came from turning a **curve ratio** into a **result ratio** — dividing a
+measured loop gain by 2.4x in prediction 1, multiplying a clipping efficacy by ~5x in prediction 4.
+Neither survived contact. Where a directly comparable **measurement** already existed (§P0.15's fine
+ladder, which had the shaped arm's cliff identical on both curves), it predicted the outcome
+correctly and the analytic estimate built on top of it did not.
+
+### `[+]` §P0.16 — the 36 net-generating rows are corrected, by algebra, with no re-solves
+
+`examples/findings_recovery_correction.py`,
+`docs/evidence/findings_recovery_correction.json`, 5 tests in
+`HotGauge/HotGauge/thermal/test_findings_recovery_correction.py`.
+
+`FINDINGS.json` carried **36 negative `p_mr_net_W` entries** — a cooler that returns more power
+than it draws, the first-law recovery bug in pure form. No solve is needed to fix them:
+`recovery_at_junction` is post-hoc accounting, and `net = gross * (1 - ratio)` with `ratio` a
+function of the MR params and `T_h` alone, so
+
+    net_new = net_old * (1 - ratio_new) / (1 - ratio_old),
+    ratio_new = params.breakeven_ratio_at(peak_C + 273.15)
+
+**All 36 are corrected and all 36 flip sign.** Recorded total **−5.879 W → +32.672 W**. The audited
+row `overnight3[11]` goes **−0.596 W → +3.354 W**, matching the +3.35 W the audit predicted, and
+its implied `ratio_old` recovers `MRParams.breakeven_ratio` to four significant figures.
+
+`[+]` **`gross`, `cop` and spot dilution all cancel in the ratio form, which is what makes it exact
+— and it mattered.** `overnight3[26]` (`p4_spot_s100_dilute`) has `net/q = −0.6210` where every
+other row has `−0.1185`, which reads as a *different efficiency preset*. It is not: it is a **5.24x
+spot-dilution overhead** — 100 µm spots on the `dilute` policy, billing the laser for the whole
+pixel. Identifying a preset per row from `net/q`, the obvious approach, would have mis-assigned
+that row; the ratio form never asks. A test pins this.
+
+`[!]` A row with no `peak_C` has no `T_h` and is **refused rather than guessed**. None of the 36
+hit that path, but the driver would report it rather than silently correcting.
+
+`[!]` These are corrected values for the *recorded* rows, not a re-run: they inherit whatever
+`peak_C` the recorded solve produced, so if the catalogue is re-run under any of the three flags
+above, the correction must be recomputed against the new `peak_C`.
+
+### `[+]` §P0.16 — the catalogue re-run is priced: **6.3 h wall**, and three flags now want it
+
+`python scripts/catalogue_rerun.py` re-planned 1 Sep 2026 against the current batch scripts (it
+reads the point list out of them, so nothing was re-listed by hand):
+
+```
+points           : 252 invocations from 12 batch scripts
+arms             : 578 (three per planner point -- control, array_idle, array_on)
+distinct matrices: 64 in 41 groups
+streams          : 6 concurrent, peak 83.5 GB of a 200 GB budget
+solves           : ~161,218
+estimated        : 32.0 h total = 3.2 h factorising + 28.8 h solving
+                   **6.3 h wall on the longest stream**
+```
+
+`[!]` **The "80,330 solves / 63.5 days" figure that gets quoted is the COLD cost and should stop
+being quoted.** Warm — reusing each factorisation across every point sharing its system matrix —
+the whole catalogue is an **overnight run**. Concurrency is memory-bound, not core-bound: the
+widest single session is 28.8 GB, so ~6 streams fill a 200 GB budget on a 96-core node. The count
+has roughly doubled from §P0.5b's ~155,000/5.3 h estimate only because every planner point now
+emits three arms and the control arm's stack (30 µm of grease) is a *different matrix* from the
+array arms' (30 µm of GaAs pixels).
+
+**So the decision is not "is a 14 % move worth 63 days". It is "is it worth one night", and there
+are now three separate reasons to spend it, which is the argument for spending it once:**
+
+1. **`--leakage-curve`.** §P0.14/§P0.15 moved the flat-die ceiling ~14 % and withdrew a
+   `CLOCK_HEADROOM.md` headline. §P0.16 shows the MR families are *insensitive* — 18/18 rescues —
+   so the curve does **not** force a re-run on their account. It is the density and clock families
+   that carry the move.
+2. **`--rbb-policy stock` vs `amortized`.** Still undecided, still moves every recorded thermal
+   number, and §P0.10 settled the semantics in `amortized`'s favour.
+3. `[!]` **New this session: the `core_other` accounting** (see below). It leaves the die total and
+   the static fraction intact but overstates `core_other`'s share of on-die **leakage** ~1.75x, and
+   `core_other_<N>` is the block that runs away at every diverging point on the density ladder.
+
+`[!]` **Do not spend the run on one flag and then need it again for the next.** All three change
+the same numbers on the same points, and the plan above costs one night whether it carries one
+change or three. **This is a decision for the user, not a run to start unilaterally** — item 3 in
+particular is a change to a stock converter that the entire recorded catalogue rests on, and
+nothing in it has been modified.
+
+### `[+]` §P0.16 — `core_other` explained: the 2.0000x is a literal `2 *` in our own converter
+
+`core_other_<N>` is stock HotGauge's map of McPAT's **bare `Core<N>` row**
+(`HotGauge/configuration/mcpat.py`, `MCPAT_UNIT_NAME_MAP['Core'] = 'core_other'`). It is 32-42 % of
+on-die leakage and ~38 % of die power, it is the block that runs away at **every** diverging point
+on the density ladder, and nothing had ever checked what it contains. Three things were measured on
+1 Sep and flagged as *an observation, not a conclusion*: leaves summing to exactly `2.0000x` the
+bare row on dynamic across all 8 cores / 16 slices / 3 nodes, `0.684-0.694x` on leakage, and bare
+rows summing **exactly** to `Processor/Total Cores`.
+
+**All three are now explained, from `McPAT/`'s raw print and our own converter rather than the
+JSON, and the explanation is one line of source.**
+
+`scripts/mcpat_to_blk_lvl_power_dict.py`, `get_per_core_total_power` — applied to every *itemised*
+per-core unit:
+
+```python
+total_dynamic_power = 2 * runtime_dynamic          # <- the 2.0000x, literally
+total_leakage_power = subthreshold_leakage + gate_leakage    # <- no factor
+```
+
+and ~25 lines below, the bare `Core<N>` row is built by a **different code path with no factor**:
+
+```python
+runtime_dynamic = mcpat_output_dict['Core'][core_num]['Runtime Dynamic']
+thermal_input_dict['Core' + str(core_num)] = [runtime_dynamic, total_leakage_power]
+```
+
+That accounts for every part of the observation at once, and for why it hits dynamic *only*:
+
+| observation | cause |
+|---|---|
+| dynamic leaves = **exactly** 2.0000x the bare row, every node, every slice | a literal `2 *` on the child path and none on the parent path — a constant, so it cannot vary |
+| leakage leaves = 0.684/0.688/0.694x, **node-dependent** | no factor on either path, so this is the **genuine** un-itemised leakage remainder |
+| bare rows sum exactly to `Processor/Total Cores` | both are 1x and McPAT's own hierarchy closes |
+
+`[+]` **Verified against raw McPAT (`mcpat_output_*.txt`), which is the part that settles it.** In
+McPAT's own print the `Core` row's direct children sum to **1.0000x** the bare row for *Runtime
+Dynamic* and for *Peak Dynamic*, and every intermediate parent closes on its children to 1.00000.
+So **McPAT itemises 100 % of a core's dynamic power — there is no un-itemised dynamic remainder at
+all.** Leakage does not close (children are 0.70x the parent), so the un-itemised slab is **real
+for leakage and fictitious for dynamic**. Confirmed exact (`min == max == 2.000000` over all 24
+leaves) at 10 nm and 14 nm as well as 7 nm.
+
+`[!]` A parser trap worth recording, because it cost the first pass: McPAT prints the per-core
+`L2` block as a section header **with no trailing colon**, and prints `L2`'s attributes at the
+**same** indent as that header rather than under it. A parser that pops on `indent >= ` re-parents
+the whole L2 block onto `Core`, and the bare `Core` row then appears to hold L2's numbers. Pop on
+strictly-greater.
+
+#### `[!]` Is the recorded die power consistent? **NO — and a first correction of this section was wrong**
+
+`[!]` **This subsection replaces an earlier version of itself, written the same day, whose numbers
+were wrong.** That version reported the static fraction as *safe* (18.43 % -> 18.59 %) and said
+`core_other`'s corrected 2.006 W of dynamic was "entirely the modelled IMC/IO/SoC power". Both came
+from a scratch McPAT text parser that keyed section headers on `raw.split(':')[0]`. McPAT prints
+`Integer ALUs (Count: 6 ):`, `Floating Point Units (FPUs) (Count: 2 ):` and
+`Complex ALUs (Mul/Div) (Count: 1 ):` — so that rule yielded `Integer ALUs (Count`, matched no JSON
+key, and **silently dropped the three highest-power execution rows of every core into the
+remainder**. Sniper's own parser keys on `^( *)([^:(]*)`, stopping at `:` **or** `(`, which is why
+the recorded JSON has clean names. `[+]` The production module never had this bug — it works from
+the JSON's own key structure and never parses the text — and the corrected figures below are
+**its** output, validated leaf-by-leaf against raw McPAT (864 leaves, 3 nodes, **exactly 0**
+relative error; corrected `core_other` dynamic 7.4e-06 W).
+
+Measured end to end through `prepare_dice_trace` onto the real 34-core floorplan, 7 nm linpack
+tick 2e12:
+
+| variant | die dynamic | die leakage | **static fraction** | `core_other` % of dyn | **`core_other` % of leakage** |
+|---|---|---|---|---|---|
+| recorded (as built) | 22.71 W | 5.13 W | **18.43 %** | 32.0 % | **35.6 %** |
+| undouble dynamic only | 15.45 W | 5.13 W | 24.93 % | 47.0 % | 35.6 % |
+| residualise `Core` only | 8.20 W | 3.86 W | 32.03 % | **−88.6 %** | 14.4 % |
+| **both — hierarchy-consistent** | **8.20 W** | **3.86 W** | **32.03 %** | **0.0 %** | **14.4 %** |
+
+`[!]` **The static fraction is NOT safe: it moves 18.43 % -> 32.03 %, a factor of 1.74.** The
+earlier "0.16 pp, they cancel" claim is **withdrawn** — the apparent cancellation was the missing
+ALU/FPU rows inflating the corrected die's dynamic.
+
+`[+]` **And a third, independent check says the corrected value is the right one.** McPAT's own
+`Processor` block reports `Runtime Dynamic = 7.3851 W`, `Subthreshold Leakage = 3.05158 W`,
+`Gate Leakage = 0.0182661 W` — a **29.36 %** static fraction. The hierarchy-consistent die lands at
+32.03 % (the 2.7 pp gap is L3 bridging and which blocks the floorplan carries); the as-built die
+lands at **18.43 %, roughly half**, which is exactly what a `2 *` on the dynamic column alone
+predicts. The as-built die does not reproduce McPAT's own ratio and the corrected one does.
+
+`[!]` **`core_other` should carry NO dynamic power at all**, only the leakage remainder
+(0.0697 W per core at this slice). Its corrected dynamic is 7.4e-06 W across all 144 cores checked.
+The earlier "2.006 W of IMC/IO/SoC" is withdrawn — that was the dropped ALUs and FPUs.
+
+`[!]` **`core_other`'s share of on-die leakage is overstated 2.47x**, 35.6 % -> 14.4 % (not the
+1.75x first reported).
+
+`[!]` **Neither fix is usable alone.** Undoubling alone gives 24.93 %; residualising alone puts
+**negative** power on `core_other` (−88.6 % of die dynamic), because it subtracts doubled children
+from an undoubled parent. They are one correction, not two.
+
+#### `[!]` And the `core_other` accounting moves a DENSITY CEILING, on one paired solve
+
+Two `mr_comparison.py` runs at density **0.85 W/mm², 88 CFM**, identical in every argument except
+`--core-other-policy` (`results/_co_smoke*`):
+
+| policy | control arm | peak block |
+|---|---|---|
+| `stock` (recorded) | **RUNAWAY — no steady state** | — |
+| `hierarchy-consistent` | **converges, 95.2 °C** | `RBB_0 -> RBB_16` |
+
+Same die, same die power (renormalised by `--density` in both), same package, same curve, same RBB
+policy. **The only difference is how McPAT's per-core power is distributed across the floorplan** —
+and it decides whether the die has a steady state at all.
+
+`[+]` **The mechanism is exactly what §P0.16 predicted from the accounting.** As built,
+`core_other_<N>` carries ~32 % of die dynamic and ~36 % of die leakage concentrated on one
+leftover-area slab per core. That is an artificial hotspot, and it is why `core_other_0` is
+recorded as *"the block that runs away at every diverging point on the density ladder"* (§P0.10,
+§P0.11). Under the corrected accounting `core_other` carries **no dynamic at all** and the peak
+block becomes **RBB**, which is a real block with a real floorplan location.
+
+`[!]` **This puts §P0.11's density ceiling in question, and in the optimistic direction** — the
+recorded ceiling may be pessimistic because of an accounting artefact rather than physics. It does
+**not** overturn it: §P0.11's flat-die (Gini 0) arm has *no* hot block to blame and would be far
+less sensitive to how one slab is weighted, and this is **one paired point, not a ladder**. `[!]`
+Do not quote a new ceiling from this. The four-arm catalogue re-run (below) carries the measurement
+that would settle it, and until it lands the recorded ceilings stand with this caveat attached.
+
+### `[+]` §P0.16 RESULT — the four-arm catalogue re-run: most recorded divergence is an ARTEFACT
+
+`scripts/catalogue_rerun_arms.sh`, `examples/catalogue_arm_compare.py`,
+`docs/evidence/catalogue_arm_compare.json`. Four arms, each differing from the previous by
+**exactly one flag**, 158-159 reachable points apiece, **all four complete, zero data anomalies**
+(every point carries all three MR arms; no holding row has a missing or implausible peak).
+
+#### The control arm — the arm the density ceiling and the rescue claim both rest on
+
+| arm | curve | RBB | `core_other` | holds | **diverged** | unconverged |
+|---|---|---|---|---|---|---|
+| **A** | pipeline | stock | stock | 50 | **94** | 1 |
+| **B** | simulated | stock | stock | 107 | **27** | 11 |
+| **C** | simulated | amortized | stock | 107 | **30** | 8 |
+| **D** | simulated | amortized | hierarchy-consistent | 134 | **8** | 4 |
+
+Paired, one flag at a time, on the 145 points common to all arms (`unconverged` counted as
+neither, so every flip below is decided → decided):
+
+| step | isolates | verdict flips | peak on points holding in BOTH |
+|---|---|---|---|
+| **A → B** | the leakage curve | **57 diverged → holds** | mean **+0.28 K** |
+| **B → C** | the RBB policy | **none** (134/145 unchanged) | mean −0.55 K, largest −5.35 K |
+| **C → D** | the `core_other` accounting | **22 diverged → holds** | mean **−5.38 K**, largest −12.73 K |
+
+`[!]` **The recorded catalogue's control arm diverges at 94 of 145 points. Under the best available
+physics it diverges at 8.** Two changes account for essentially all of it, and neither is a
+cooling improvement — both are corrections to inputs that were wrong:
+
+- **the leakage curve is worth 57 points**, and
+- **the `core_other` accounting is worth 22**.
+
+`[+]` **The RBB policy is worth nothing to the verdicts, and that finally settles the open
+question.** B → C flips **no** point in either direction; it moves temperatures a little (control
+mean −0.55 K, array arm mean −3.02 K). §P0.10 predicted exactly this — *"converging points move a
+lot, the ceiling does not move at all"* — and the catalogue-wide re-run confirms it at 145 points
+instead of a ladder. **Switching the default to `amortized` is therefore low-risk**: it changes no
+verdict anywhere in the catalogue, and §P0.10's source reading (`McPAT/core.cc`) argues for it.
+
+#### `[!]` This looks like it contradicts §P0.14's density ceiling, and it does not
+
+§P0.14/§P0.15 measured the simulated curve moving the flat-die ceiling **DOWN 14 %** — *more*
+divergence. Here the same swap converts **57 points from diverging to holding** — far *less*.
+Both are right, and the crossover is why. The two curves cross near **345 K**: the simulated curve
+carries more feedback gain below it and less above.
+
+- §P0.14's uniform density arm sits at **~322 K**, below the crossover -> more gain -> ceiling down.
+- The catalogue's control points at product densities run **hot**, above the crossover -> less gain
+  -> they stop running away.
+
+`[+]` So this is a **confirmation** of §P0.14's mechanism at catalogue scale, not a contradiction —
+and it sharpens the rule: **the sign of the leakage curve's effect on a point depends on which side
+of 345 K that point sits.** Neither "the curve makes things worse" nor "better" is a statement that
+survives on its own.
+
+`[+]` Consistent with that, A → B barely moves the temperature of points that hold in **both**
+arms (mean +0.28 K): the curve swap matters at the **stability boundary**, not for comfortable
+points. `core_other` is the opposite — it moves *every* point (mean −5.38 K, up to −12.73 K),
+because it redistributes power rather than changing a feedback slope.
+
+#### The MR arm is far more robust than the control arm
+
+Same chain, `array_on`: **no verdict flips at A → B or B → C**, and only **3** at C → D. The array
+holds essentially everywhere under every combination. `[+]` **That is the strongest form yet of
+§P0.16's other result** — the MR catalogue is insensitive to all of this, while the *control* arm,
+which is what the ceiling claims rest on, is highly sensitive. The rescue claim survives because it
+is a difference, and the array side of that difference barely moves.
+
+`[!]` **What this does NOT license.** It does not restate the density ceiling as a number: these
+are catalogue points at heterogeneous densities and coolings, not a ladder, and §P0.11's flat
+(Gini 0) arm — the one with no hot block to blame — is not among them. The honest claim is
+**"most of the recorded catalogue's divergence is an artefact of two corrected inputs"**, and the
+ceiling itself wants the density ladder re-run under arm D's configuration. That is the obvious
+next measurement and it is cheap.
+
+`[!]` **`unconverged` rows moved too and must not be read as holds** (A 1, B 11, C 8, D 4). They
+are excluded from every flip count above.
+
+#### `[!]` A latent MR-planner bug found by the re-run: `__agg__L3` is placeable and is not a block
+
+Ten points of every arm fail with
+
+    KeyError: "plan names block '__agg__L3', which is not in the floorplan"
+
+**Cause.** `bridge_aggregates=True` injects a *synthetic* temperature key for the bridged L3
+aggregate (`leakage_feedback.AGG_L3_TEMP_KEY = '__agg__L3'`,
+`BRIDGEABLE_AGGREGATES = {'Processor/Total L3s': AGG_L3_TEMP_KEY}`) so L3 leakage can feed back —
+the +45 % in CLAUDE.md. The MR planner in `thermal/microrefrigeration.py` then treats **every**
+above-target key as a placeable block: it contains no reference to `AGG_L3_TEMP_KEY` or `__agg__`
+anywhere, so it never filters the synthetic ones. When the plan is handed back for placement, the
+floorplan has no such block and it raises.
+
+**Trigger — the MR target, and the boundary is measured.** The synthetic key only enters the plan
+once it is *above target*, so the bug is invisible at ordinary targets and fires at low ones:
+
+| point | `--mr-target-C` | outcome |
+|---|---|---|
+| 16 `A_ceiling_T50` | 50 | **ok** |
+| 17 `A_ceiling_T40` | 40 | **raised** |
+| 18 `A_ceiling_T30` | 30 | raised |
+| 19-26 `A_dtmax_*`, `A_hmax_*` | 40 | raised |
+| 27 `rescue_d0.80` | 98 | ok |
+
+`[!]` **That bracket is WITHDRAWN as a fixed rule.** The table above is arm D. The *same* point 16
+(`A_ceiling_T50`, target 50) **raised in arm B**, where it completed in arm D. The bug fires when
+the synthetic key's **temperature** exceeds the target, and that temperature depends on the leakage
+curve and the `core_other` policy — so the trigger is **physics-dependent and arm-dependent**, and
+no fixed `--mr-target-C` threshold expresses it. `[+]` It is also a small independent corroboration
+of the `core_other` finding: arm D's corrected accounting leaves the die cool enough that a point
+failing elsewhere succeeds there.
+
+`[+]` **Not caused by this session, and not by any of the three flags.** Arm **B** reproduces it
+with `--core-other-policy stock`, and the discriminator is the *target*, not a flag. It is a latent
+bug that `bridge_aggregates` introduced and that only a low-target point reaches.
+
+`[!]` It affects **most** points in every arm, but *not* identically — see the withdrawal above.
+The four-arm comparison is still unharmed:
+`catalogue_arm_compare.py` compares only points present in **both** arms of a pair, so these are
+skipped rather than counted as a change. The catalogue re-run loses 10 of 180 points per arm.
+
+`[!]` **It also puts a caveat on recorded low-target results.** `results/followon/A_ceiling_T40`
+and friends exist in the recorded tree, so they ran successfully *before* `bridge_aggregates` was
+added — they are from a different code path than anything solved today, and they cannot currently
+be reproduced at all.
+
+**The fix, not applied here:** filter `BRIDGEABLE_AGGREGATES.values()` out of the planner's
+candidate blocks (they are a leakage-feedback bookkeeping device, never a coolable surface).
+`[!]` Deliberately **not** done mid-run: it changes MR planning behaviour, so applying it now would
+leave some points solved with it and some without, inside arms that exist to isolate one flag. It
+wants its own change, its own test, and its own re-run of the affected points.
+
+#### `[~]` An operational signal from the running re-run — **PROVISIONAL, partial campaign**
+
+`[!]` **Do not quote this. It is a partial campaign and §P0.15 lost six solves to exactly this
+mistake.** It is recorded because it is a *memory* diagnosis that happens to be predictive, and
+because it should be checked against the finished arms rather than rediscovered.
+
+Arm D (`hierarchy-consistent`) holds **136 GB** of node-06 against arm A's (`stock`) **85 GB**,
+on identical point lists. The cause is convergence rate: a converging point holds its factorised
+session for many more solves, so more of them are live at once. Scored so far:
+
+| arm | arms scored | converged | diverged |
+|---|---|---|---|
+| A (`stock`) | 114 | 89 (**78 %**) | 25 |
+| D (`hierarchy-consistent`) | 219 | 217 (**99 %**) | 2 |
+
+Consistent with the paired 0.85 W/mm² solve above (stock runs away, corrected holds at 95.2 °C),
+and with the mechanism: the `2 *` concentrates ~32 % of die dynamic on one leftover-area slab per
+core, and removing it removes the artificial hotspot. `[!]` **If it survives to completion it means
+a large part of the recorded catalogue's divergence is an accounting artefact** — which is a much
+bigger claim than "the ceiling moves 14 %", and precisely why it must wait for the full arms.
+
+`[+]` A useful side-effect worth keeping: **arm D is also FASTER** (219 arms scored against 114 in
+the same wall time), because a divergence adjacent to a cliff costs hours while a converging point
+does not.
+
+#### `[!]` What this does to §P0.15's cold-zone prize
+
+§P0.15's re-derived **static 15.98 %** was computed on the as-built die, so it carries the same
+factor. Under the consistent policy it should rise by roughly **1.74x**, and the prize with it —
+from ~5.7 % of die power toward **~10 %**, i.e. back to the McPAT-leaf value §P0.15 called an upper
+bound. `[!]` **That is a direction and a rough size, not a re-derivation** — it must be recomputed
+on the steady slices under the policy, not scaled by hand, and until it is, quote §P0.15's ~6 % with
+this caveat attached. **The 2.23x improvement is untouched either way**, which is once again why
+that is the number to lead with.
+
+`[!]` **Nothing was changed.** The recorded catalogue rests on the as-built converter, the standing
+rule is that stock-file changes stay additive, and the static fraction shows the aggregate is
+sound. This is a finding for the **catalogue re-run decision** (§3), not a patch to land mid-flight
+— and it is a second reason that re-run wants to be one deliberate pass rather than several.
+
+---
+
+## P0.13 — The curve is simulated now, and the cold end of P0.12 was wrong  `[x]` 31 Aug 2026
+
+`HotGauge/HotGauge/power/spice_sim.py` + `device_leakage.SimulatedLeakageCurve`, 21 new tests,
+`examples/device_leakage_spice.py`, `docs/evidence/device_leakage_spice_asap7.json`,
+`MXL_SPICE_fixes/`, `scripts/spice_env.sh`. Toolchain in `spice_toolchain/` (gitignored, 6.5 GB).
+
+### The tooling task is finished
+
+§P0.12 ended with "getting a BSIM-CMG-capable simulator is now the highest-value tooling task in
+the project". It is built, all three of `docs/BSIMCMG_TOOLCHAIN.md`'s checkpoints pass, and
+**Xyce was never needed**:
+
+- **ngspice 47** from source with OSDI (conda-forge's 41 is built `--disable-osdi` and has no CMG);
+- **OpenVAF 23.5.0** compiling BSIM-CMG Verilog-A to `.osdi` — after fixing a **segfault-on-every-
+  input UB bug in OpenVAF itself**, one character, `MXL_SPICE_fixes/`;
+- the vendored ASAP7 card evaluated directly, all ~130 parameters, **no fit to anything**.
+
+The doc's own Checkpoint 1 was testing the wrong spelling (`pre_osdi` is a netlist directive, not
+a command); corrections are recorded there rather than silently applied.
+
+### `[+]` It is a device, and that is checked rather than asserted
+
+| check | result |
+|---|---|
+| I_off at 300 K | **0.232 nA/µm** — an HP 7 nm FinFET |
+| subthreshold swing at 300 K | **61.7 mV/dec** against a 59.5 ideal |
+| BSIM-CMG 110 vs 111.2.1 vs Xyce tree | agree to **0.37 %** normalised |
+| parameters the model rejects | `capmod`, `coremod`, `version` — switches **removed after 107**, not dropped values |
+| numerical convergence (10× `nfin`) | **0.036 %** |
+
+### `[!]` The three curves, and they disagree in both directions
+
+Relative to 330 K, `nmos_rvt`, V_gs = 0, V_ds = 0.7 V:
+
+| T | pipeline (CACTI) | analytic (P0.12) | **simulated** | sim, GIDL off |
+|---|---|---|---|---|
+| 200 K | 0.923 (clamped) | 0.0060 | **0.126** | 0.0032 |
+| 250 K | 0.923 (clamped) | 0.0110 | **0.140** | 0.0167 |
+| 310 K | 0.923 (clamped) | 0.344 | **0.481** | 0.406 |
+| 400 K | 36.1 | 19.4 | **10.9** | 12.3 |
+| 450 K | 600 | 95.4 | **41.4** | 47.3 |
+| 500 K | 5820 | 349 | **123** | 141 |
+
+### `[!]` Finding 1 — the cold-zone prize is ~20× smaller than P0.12 promised
+
+P0.12 said leakage keeps falling below 310 K until a **gate**-leakage floor takes over at ≈ 244 K.
+The floor is real; **the mechanism was wrong and so was its height**. Simulated, the cold floor is
+**GIDL — 98 % of the leakage at 200 K** — and it sits about **40× above** the gate floor P0.12
+assumed. Decomposed rather than argued: `igcmod = 0` barely moves the curve, `gidlmod = 0` drops
+200 K by ~40×.
+
+This was foreseeable from P0.12's own text, which lists GIDL as omitted and says it "would raise
+leakage at both ends". What that note got wrong is the reasoning that GIDL "needs a negative gate
+bias to matter": the bias that matters is gate-to-**drain**, which in the ordinary off state is
+−V_dd. **GIDL is on in every off device on the die**, not in an exotic corner.
+
+At 200 K the pipeline says 0.923, P0.12 said 0.0060, and the simulator says **0.126**. The true
+answer is between the two previous ones and much closer to neither.
+
+`[!]` **Carry this as a bracket, not a number.** ASAP7 is a *predictive* PDK; its GIDL
+coefficients (`agidl = 1e-12`, `bgidl = 1e7`, `egidl = 0.35`) are a model choice, not a
+measurement of a fabricated part. The GIDL-off column is in the table above and in every row of
+the evidence file for exactly that reason, and `load_simulated_curve(mechanism=...)` serves both.
+
+### `[+]` Finding 2 — the hot tail is gentler still (but see the `[!]` below)
+
+At 500 K: pipeline **5820×**, P0.12's analytic model **349×**, simulator **123×**. Both
+replacements agree the pipeline's Arrhenius tail is far too steep, and the simulator is gentler
+than the analytic model by another **2.8×**.
+
+`[!]` **This section originally concluded that §P0.11's flat-die ceiling is therefore
+*conservative*, reasoning that a gentler tail runs away later. §P0.14 measured it and the ceiling
+moved the other way.** The inference was wrong because runaway is decided by the curve's *slope
+near the operating point*, not by its value at 500 K — and there the pipeline curve is the flatter
+of the two. The claim is withdrawn; see §P0.14.
+
+### `[+]` What P0.12 got right
+
+Inside **310–400 K** — the only window McPAT will simulate at all — the analytic model and the
+simulator agree to better than **2×**, from completely different assumptions (a two-parameter fit
+to CACTI's table versus the vendor's full model in a solver). That is a real cross-check and it is
+asserted as a test. P0.12's central claims stand: the pipeline curve *is* a pass-through of
+CACTI's `I_off_n[0][*]`, its implied activation energy *is* unphysical, and both of its ends move
+by a lot. Only the *size and mechanism* of the cold-end correction changed.
+
+### `[!]` What nearly produced a plausible wrong curve, and is now guarded
+
+Not the card — the arithmetic. **One 7 nm fin leaks a few pA, below what ngspice's linear solve
+can resolve**: with the default SPARSE solver every current came back an exact multiple of
+2⁻⁴³ A. KLU moves the 250 K point 2.3 %; the real fix is to simulate **1000 fins and divide**, DC
+current being exactly linear in fin count. At `nfin = 1` the GIDL-off point at 200 K was **70 %
+wrong**, and the Xyce-tree cross-check appeared to disagree by **10 %** where it actually agrees to
+0.37 %. That 10 % would have been written up as a model difference. `spice_sim.DEFAULT_NFIN` is
+1000, the driver asserts convergence against a 10× re-run, and both are tested.
+
+### Honest limits
+
+One device (`nmos_rvt`), one bias corner, one fin's worth of geometry, no self-heating
+(`shmod = 0`). A die leaks at a distribution of biases, stack heights and flavours, so **what
+transfers downstream is the shape of I_off(T), not the amps**. And ASAP7 remains predictive
+silicon, not measured silicon.
+
+### Next
+
+Re-run the density ladder and the cold-zone prize on the simulated curve, **on the same 34-core
+die** — the one-die constraint holds. Both directions have moved: the cold zone is worth much less
+and the hot ceiling is further away than recorded.
+
+---
+
+## P0.12 — The leakage curve is eleven hard-coded numbers, and they are not a device  `[x]` 31 Aug 2026
+
+`HotGauge/HotGauge/power/spice_cards.py`, `device_leakage.py`, 21 tests,
+`examples/device_leakage_calibration.py`, `spice_leakage/` (vendored card + provenance),
+`docs/evidence/device_leakage_asap7.json`.
+
+### `[!]` The curve every thermal result rests on is a pass-through
+
+`leakage_calibration.json` came from eleven McPAT runs whose XML differs in **one line** (the
+temperature — verified by diff). Normalised, the resulting chip subthreshold power is
+**bit-for-bit CACTI's hard-coded `I_off_n[0][*]` array for "16nm DG HP"** — ratio 1.000 at all ten
+points, max deviation **3.8e-6**. No device mix, no aggregation, no structure dependence: McPAT is
+a pass-through for this quantity.
+
+That array is written at `McPAT/cacti/technology.cc:1610` as literals like `1.52e-7/1.5*1.2*1.07`
+— 32 nm numbers times three fudge factors — and the **same table is reused unchanged for 32, 22 and
+16 nm**.
+
+### `[!]` And its shape is not a device
+
+Back out the local activation energy, `Ea = −k·d(ln I)/d(1/T)`. One barrier gives one `Ea`,
+drifting smoothly. This table gives:
+
+| between | 300–310 | 330–340 | 350–360 | 370–380 | 390–400 |
+|---|---|---|---|---|---|
+| `Ea` (eV) | **0.016** | 0.119 | 0.740 | 0.561 | **1.081** |
+
+A **69× spread, and not monotone**. 0.016 eV is *below kT at room temperature* (0.026 eV); 1.081 eV
+is essentially the silicon bandgap (1.125 eV). Those are different mechanisms. **It is an
+interpolation, and this project has been treating it as a measurement.**
+
+### What a real device card says
+
+ASAP7's BSIM-CMG 107 7 nm FinFET card (BSD-3-Clause, vendored with provenance), in the analytic
+off-state limit. Two barrier forms — one with its temperature *shape* locked to the card's own
+Varshni bandgap, one with a free slope — **agree with each other within 4 % out to 500 K**, so the
+answer does not depend on that choice.
+
+| T | pipeline today | card-based | pipeline / card |
+|---|---|---|---|
+| 200 K | 0.923 (clamped) | 0.0060 | **155×** |
+| 250 K | 0.923 (clamped) | 0.0110 | **84×** |
+| 310 K | 0.923 (clamped) | 0.344 | 2.7× |
+| 400 K | 36.1 | 19.4 | 1.9× |
+| 450 K | 600 | 95.4 | **6.3×** |
+| 500 K | 5820 | 349 | **17×** |
+
+- **Cold zone: the clamp is not physics.** Leakage keeps falling below 310 K, until the
+  temperature-independent **gate-leakage floor takes over at ≈ 244 K**. That is where the
+  cold-zone prize actually ends — not at 310 K, which is merely where CACTI's table stops.
+- **Hot zone: the Arrhenius tail is too steep**, by 6× at 450 K and 17× at 500 K.
+
+### `[!]` What this does to §P0.11 — **superseded by §P0.14, and it was backwards**
+
+The flat-die ceiling of **1.0–1.2 W/mm² was solved on the pipeline curve**, whose tail is ~6×
+steeper at 450 K than the card-based physics. A gentler tail runs away *later*, so **that ceiling
+is conservative** and must be quoted "on the current leakage curve" until this is settled.
+
+`[!]` **That inference was tested in §P0.14 and it is wrong.** Runaway is decided by
+`d(ln P_leak)/dT` near the *operating* temperature, not by leakage at 450-500 K, and in that band
+the pipeline curve is the **flatter** of the two. Measured, the uniform arm's ceiling moves one
+rung **down**, so the recorded ceilings are optimistic rather than conservative. The paragraph
+above is kept as written because it is what the evidence supported at the time; do not quote it.
+
+### `[!]` Honest limits — this is not a SPICE run
+
+The cards are real; the simulation is not. **No simulator here can evaluate BSIM-CMG**:
+conda-forge's `ngspice-41` is built without it *and* without OSDI, there is no `xyce` package, and
+OpenVAF ships no binary — compiling the Verilog-A means building a Rust/LLVM toolchain first.
+`ptm.asu.edu` no longer resolves at all, which is why ASAP7 (same group, published, BSD) stands in
+for PTM. Also: the model is fitted to the very table it criticises, so it inherits that table's
+*level* and only its *shape* is independent; its two parameters are **degenerate** over a 90 K
+window, so neither may be quoted as a device property; and GIDL is not modelled, which would raise
+leakage at both ends.
+
+**Getting a BSIM-CMG-capable simulator is now the highest-value tooling task in the project.**
+
+---
 
 ## P0.11 — The ceiling has two terms, and neither is an accounting artefact  `[x]` 31 Aug 2026
 

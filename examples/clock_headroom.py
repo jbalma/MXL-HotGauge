@@ -64,7 +64,10 @@ from HotGauge.thermal.ICE import Floorplan
 from HotGauge.thermal.leakage_feedback import (die_power_of_trace, mcpat_flp_name_map,
                                                replicate_trace_cores, peak_temp_K,
                                                load_calibrated_leakage_model,
+                                               load_leakage_model, LEAKAGE_CURVES,
                                                mcpat_tref_from_trace_dir)
+from HotGauge.power.core_other import (CORE_OTHER_POLICIES, resolve_trace_dir,
+                                      DEFAULT_CORE_OTHER_POLICY)
 from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           render_stack_with_sink, spreading_sink_for_stack,
                                           chip_area_m2_from_floorplan, simscale_fan_power,
@@ -74,7 +77,7 @@ from HotGauge.thermal.microrefrigeration import (MRParams, run_mr_clipping, mr_a
                                                  DEFAULT_SPOT_MIN_UM, DEFAULT_SPOT_POLICY,
                                                  DEFAULT_H_MAX_W_PER_MM2, DEFAULT_DT_MAX_K, DEFAULT_ETA_ASF, DEFAULT_LASER_WALLPLUG, DEFAULT_LPC_EFFICIENCY)
 from HotGauge.thermal.mr_array import (wiring_for_stack, DEFAULT_PITCH_UM,
-                                       device_pitch_range_um)
+                                       device_pitch_range_um, DEFAULT_COVERAGE)
 from HotGauge.thermal.die_stack import DEFAULT_DIRECT_SOURCE_DEPTH_UM
 from HotGauge.thermal.ice_server import ICESessionCache
 from HotGauge.power.process_nodes import NODES, describe_assumptions, TRACE_REFERENCE_GHZ
@@ -400,8 +403,21 @@ def _parse_vf_source(spec):
     spec = (spec or 'table').strip()
     if spec == 'table':
         return None
+    if spec.startswith('spice'):
+        # P0.18: the V/F SHAPE simulated from the ASAP7 card (I_on(V)/V on the diagonal), at the
+        # tabulated temperature nearest the one asked for; anchored on the trace's clock at the
+        # card's nominal supply. See HotGauge.power.device_vf.
+        from HotGauge.power.device_vf import load_device_vf
+        parts = spec.split(':')
+        T_K = float(parts[1]) if len(parts) > 1 and parts[1] else 300.0
+        try:
+            return load_device_vf(T_K=T_K)
+        except (OSError, ValueError, KeyError) as e:
+            raise SystemExit('--vf-source {}: {} (run examples/device_vt_vf_spice.py first)'
+                             .format(spec, e))
     if not spec.startswith('irds'):
-        raise SystemExit("--vf-source must be 'table' or 'irds:<year>[:<anchor>]', got %r" % spec)
+        raise SystemExit("--vf-source must be 'table', 'irds:<year>[:<anchor>]' or "
+                         "'spice[:<T_K>]', got %r" % spec)
     from HotGauge.power.irds_vf import IRDSVFModel
     parts = spec.split(':')
     year = int(parts[1]) if len(parts) > 1 and parts[1] else 2024
@@ -452,6 +468,14 @@ def main():
                          '50/100/200/500/1000/2000 um); a single value here holds it fixed while '
                          'the clock search sweeps. The device is a tile COUNT, annotated per die '
                          'by mr_array.device_pitch_range_um')
+    ap.add_argument('--array-coverage', type=float, default=DEFAULT_COVERAGE,
+                    help='fraction of the pixel layer\'s footprint that is emitting extractor '
+                         '(AREAL). The device\'s couplers, waveguides, fibre access and '
+                         'monolithic-backside LPC share that footprint with the tiles (v91 '
+                         'Figs. 9.1/9.8/9.12), so < 1 charges the array its own area; the '
+                         'uncovered silicon is cooled only by what spreads sideways through '
+                         'the burial depth. 1.0 is every recorded result. Cannot move a '
+                         'control-arm ceiling: the control has no array. See P0.18.')
     ap.add_argument('--burial-um', type=float, default=DEFAULT_DIRECT_SOURCE_DEPTH_UM,
                     help='active-layer depth below the cooled surface; identical in every arm')
     ap.add_argument('--spreading', action='store_true',
@@ -513,7 +537,10 @@ def main():
                     help="V/F curve: 'table' (shipped VF_PAIRS, the default and what every "
                          "existing result used) or 'irds:<year>[:<anchor>]', e.g. irds:2024 or "
                          "irds:2031:cpu. The IRDS curve also caps the search at that node's "
-                         "overdrive limit (~4.15 GHz for 2024) instead of 5.0 GHz")
+                         "overdrive limit (~4.15 GHz for 2024) instead of 5.0 GHz. "
+                         "'spice[:<T_K>]' (P0.18) takes the SHAPE from the ASAP7 card's "
+                         "simulated I_on(V)/V at that temperature, anchored on the trace's "
+                         "3.8 GHz at 0.70 V; needs docs/evidence/device_vt_vf_asap7.json")
     ap.add_argument('--above-vf-table', action='store_true',
                     help='allow searching past %.1f GHz, where the V/F table clamps the voltage '
                          'and the power cost of the clock is UNDERSTATED' % VF_TABLE_MAX_GHZ)
@@ -563,6 +590,24 @@ def main():
     # --- solver ---
     ap.add_argument('--leakage-cal', default=os.path.join(
         _REPO, 'leakage_calibration', 'leakage_calibration.json'))
+    # `[!]` DEFAULT 'pipeline', and it must stay that way -- same discipline as --rbb-policy.
+    # Every recorded result in this driver's catalogue was solved on the pipeline curve; changing
+    # the default would silently move all of them. A non-default curve is a deliberate, flagged
+    # re-run. See §P0.13/§P0.14 and thermal.leakage_feedback.load_leakage_model.
+    ap.add_argument('--leakage-curve', default='pipeline', choices=list(LEAKAGE_CURVES),
+                    help='which leakage-vs-temperature curve to solve on. pipeline = CACTI\'s '
+                         '11 hard-coded numbers (the recorded catalogue); simulated = BSIM-CMG '
+                         'on the ASAP7 card (P0.13); simulated-gidl-off = the other bracket')
+    # §P0.16. `stock` (default) reproduces the recorded catalogue exactly; `hierarchy-consistent`
+    # undoes the `2 * runtime_dynamic` in scripts/mcpat_to_blk_lvl_power_dict.py and residualises
+    # the bare Core<N> row, so `core_other` carries leakage only. Additive: the non-default branch
+    # is placed AHEAD of the existing path, which stays reachable and unmodified.
+    ap.add_argument('--core-other-policy', default=DEFAULT_CORE_OTHER_POLICY,
+                    choices=list(CORE_OTHER_POLICIES),
+                    help='how to treat McPAT\'s per-core accounting. "hierarchy-consistent" '
+                         '(default since P0.17) removes the converter\'s '
+                         '2x on itemised per-core dynamic and gives core_other the true leakage '
+                         'remainder (raises the die static fraction ~1.74x). See P0.16.')
     ap.add_argument('--tol', type=float, default=0.5)
     ap.add_argument('--max-iter', type=int, default=60)
     ap.add_argument('--relax', type=float, default=0.5)
@@ -579,6 +624,10 @@ def main():
                     help='sink temperature for the Carnot factor, with --recovery-at-junction')
     ap.add_argument('--out-dir', default=None)
     args = ap.parse_args()
+    # §P0.16: under a non-stock core_other policy, solve against a corrected copy of
+    # the trace. Returns args.trace_dir unchanged under the default, so the recorded
+    # path is byte-identical.
+    args.trace_dir = resolve_trace_dir(args.trace_dir, args.core_other_policy)
     global ARGS
     ARGS = args
     args.out_dir = os.path.abspath(args.out_dir or os.path.join(os.getcwd(), 'clock_headroom'))
@@ -595,7 +644,18 @@ def main():
         args.tech_node = node_obj.tech_node
         args.node = '{}nm'.format(node_obj.tech_node)
 
-    if os.path.isfile(args.leakage_cal):
+    if args.leakage_curve != 'pipeline':
+        # `[!]` §P0.14 predicts this study should move MORE than the density ladder did. The
+        # ladder is a divergence test, decided by d(ln P_leak)/dT at the temperature the die
+        # reaches; this search is temperature-LIMITED -- it asks for the highest clock that holds
+        # a limit -- so a curve that is steeper through the whole operating band (the simulated
+        # one carries ~9x more feedback gain at 320 K) eats headroom continuously rather than only
+        # at the cliff. A prediction worth recording before the run, and worth withdrawing in the
+        # docs if it comes out otherwise.
+        leak_model, t_ref = load_leakage_model(args.leakage_curve,
+                                               calibration=args.leakage_cal, extrapolate=True)
+        leak_src = 'leakage curve {!r} (P0.13/P0.14)'.format(args.leakage_curve)
+    elif os.path.isfile(args.leakage_cal):
         leak_model, t_ref = load_calibrated_leakage_model(args.leakage_cal, extrapolate=True)
         leak_src = 'MEASURED McPAT curve + Arrhenius tail above 400 K'
     else:
@@ -724,7 +784,8 @@ def main():
                       else wiring_for_stack(stack, flp,
                                             os.path.join(args.out_dir, 'array', sub),
                                             want_array=True, pitch_um=args.pitch_um,
-                                            cell_um=args.cell_um))
+                                            cell_um=args.cell_um,
+                                            coverage=args.array_coverage))
             seen = {}
 
             def evaluate(f, _sub=sub, _mr=use_mr, _sink=arm_sink, _stack=stack, _w=wiring):
@@ -749,6 +810,7 @@ def main():
                                  else 'in_source_layer' if use_mr else 'none'),
                    'n_tiles': len(wiring.tiles) if wiring else 0,
                    'pitch_um': args.pitch_um if wiring else None,
+                   **(wiring.area_fields() if wiring else {}),
                    'burial_um': args.burial_um,
                    'f_sustainable_GHz': f_s, 'limited_by': search['limited_by'],
                    'at_ceiling': search['at_ceiling'],
@@ -809,6 +871,7 @@ def main():
                    'arms': list(arms), 'stack': args.stack, 'no_array': bool(args.no_array),
                    'spreading': bool(args.spreading), 'base_mm2': args.base_mm2,
                    'pitch_um': args.pitch_um, 'burial_um': args.burial_um,
+                   'array_coverage': args.array_coverage,
                    'mr_material': args.mr_material, 'cell_um': args.cell_um,
                    'rated_GHz': node_obj.f_nominal_GHz if node_obj else None,
                    'rows': rows}, f, indent=2)

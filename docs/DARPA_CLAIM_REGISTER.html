@@ -97,6 +97,7 @@
   .note{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--accent);
         border-radius:0 6px 6px 0;padding:14px 17px;margin:1.1em 0}
   .note.no{border-left-color:var(--no-edge)}
+  .note.ok{border-left-color:var(--ok-edge)}
   .note p{font-size:.96rem;margin:0 0 .65em}
   .note p:last-child{margin-bottom:0}
   .note .lbl{font-family:var(--f-ui);font-size:.71rem;font-weight:700;letter-spacing:.1em;
@@ -201,12 +202,17 @@
     </div></div>
 
     <div class="claim ok"><span class="tag">measured</span><div class="body">
-      <p class="say">The cold zone is <strong>already where the leakage lives</strong> — it is not a
+      <p class="say">The cold zone is <strong>where the leakage is most concentrated</strong> — it is not a
       partition anyone has to impose.</p>
-      <p class="why">Static power is <strong>34.6&nbsp;%</strong> of die power and
-      <strong>89&nbsp;% of it sits in L3 alone</strong>. This is the measured basis for the
-      cold&#8209;cache half of the two&#8209;sided design point.</p>
-      <p class="src">leakage_targeting_policy.json</p>
+      <p class="why">Static power is <strong>16.0&nbsp;%</strong> of die power and
+      <strong>28&nbsp;% of it sits in L3</strong>, rising to <strong>38&nbsp;%</strong> with the
+      per&#8209;core L2. Cache is the densest concentration of leakage on the die and the part that can
+      move to a separate die. <strong>`[!]` Corrected 31&nbsp;Aug&nbsp;2026.</strong> This claim
+      previously read <em>34.6&nbsp;% static, 89&nbsp;% in L3</em>. Those figures are reproducible and
+      wrong: they weigh <em>one core&rsquo;s</em> blocks against the <em>whole chip&rsquo;s</em> L3, on the
+      trace&rsquo;s warm&#8209;up slice. The corrected pair is computed on the same die power every other
+      number here is a fraction of.</p>
+      <p class="src">cold_zone_prize_simulated.json · PHASE0_CHECKLIST &sect;P0.15</p>
     </div></div>
 
     <div class="claim ok"><span class="tag">validated</span><div class="body">
@@ -337,9 +343,15 @@
       <p class="say">&ldquo;&eta;<sub>ASF</sub>&nbsp;&asymp;&nbsp;0.02 is the demonstrated state of the
       art.&rdquo;</p>
       <p class="why">That is Yb:YLF, which at 1&ndash;10&nbsp;W/mm&sup2; is two to three orders below
-      the current platforms and is now correctly scoped as the <strong>cold&#8209;zone</strong>
-      material only. <strong>The phrase &ldquo;0.02 demonstrated&rdquo; should not appear in
-      proposal text.</strong></p>
+      the current platforms. <strong class="bad">Corrected 3&nbsp;September 2026:</strong> an
+      earlier revision of this entry said it was &ldquo;correctly scoped as the cold&#8209;zone
+      material&rdquo;. <strong>It is not the cold&#8209;zone material and is not a zone material at
+      all.</strong> The shipping platform is a thin film of <strong>GaAs</strong> or
+      <strong>SiN&#8209;encapsulated molecular dye</strong> &mdash; both &gt;&nbsp;1000&nbsp;W/mm&sup2;,
+      both &eta;<sub>ASF</sub>&nbsp;0.10&ndash;0.30 &mdash; and both cover the cold zone. Yb:YLF is
+      retained only so the pre&#8209;30&#8209;Aug catalogue reproduces under
+      <code>--mr-h-max 250 --mr-eta-asf 0.035</code>. <strong>Neither &ldquo;0.02
+      demonstrated&rdquo; nor any Yb:YLF figure should appear in proposal text.</strong></p>
       <p class="src">v91 Table 8.2 · PLATFORMS_V91 in microrefrigeration.py</p>
     </div></div>
 
@@ -441,6 +453,57 @@
     <p class="src">leakage_extrapolation_gate.json &middot; high_density_artifact.json</p>
   </div>
 
+  <div class="note ok">
+    <span class="lbl">31 Aug, later &mdash; that campaign has been run, and the gate is largely lifted</span>
+    <p><strong>The simulator exists.</strong> ngspice&nbsp;47 built with OSDI, loading BSIM-CMG
+    compiled from Verilog-A by OpenVAF, evaluates the ASAP7 7&nbsp;nm card directly. PTM itself is
+    gone &mdash; <span class="mono">ptm.asu.edu</span> no longer resolves &mdash; so ASAP7, the same
+    group&rsquo;s published successor work, stands in. It is a device and that is checked:
+    <strong>0.232&nbsp;nA/&micro;m</strong> at 300&nbsp;K, subthreshold swing
+    <strong>61.7&nbsp;mV/dec</strong> against a 59.5 ideal, three BSIM-CMG versions agreeing to
+    <strong>0.37&nbsp;%</strong>.</p>
+    <p><strong>The unbounded-extrapolation problem is gone at the hot end.</strong> The curve is now
+    simulated across <strong>200&ndash;500&nbsp;K</strong> rather than calibrated over
+    310&ndash;400&nbsp;K, so a block at 450&nbsp;K is interpolated within data instead of
+    extrapolated past it. The bracket that ran 36&times;&ndash;5820&times; at 400&ndash;500&nbsp;K
+    collapses to a single simulated <strong>10.9&times; at 400&nbsp;K and 123&times; at
+    500&nbsp;K</strong>. The pipeline tail was ~47&times; too steep at 500&nbsp;K.</p>
+    <p><strong>`[!]` But the density ceiling moved DOWN, not up, and the prediction in this register
+    was backwards.</strong> A gentler tail was expected to run away later. Measured, the uniform arm
+    now fails one rung <em>lower</em> (1.00&nbsp;W/mm&sup2; where it held at 65.99&nbsp;&deg;C).
+    Runaway is a <em>local</em> instability decided by the curve&rsquo;s slope at
+    <strong>317&ndash;347&nbsp;K</strong>, not at 500&nbsp;K &mdash; and there the pipeline curve is
+    the <em>flatter</em> of the two, by up to <strong>9.2&times;</strong>, because it clamps.
+    <strong>So the recorded density ceilings are optimistic rather than conservative.</strong></p>
+    <p><strong>What this does and does not unblock.</strong> Quantities above 400&nbsp;K now rest on
+    simulated device physics rather than an unbounded extrapolation, so the <em>reason</em> for the
+    blanket withdrawal is resolved. The withdrawn claims are <em>not</em> thereby reinstated: they
+    were computed on the old curve and must be re-run on the new one before being quoted, and the
+    one re-run done so far moved its answer. <strong>`[+]` The bracket that was flagged here as
+    &ldquo;the binding one&rdquo; has since been run, and it binds nothing.</strong> The ceiling is
+    decided at 310&ndash;330&nbsp;K, which is where the GIDL-on and GIDL-off variants of the card
+    disagree most in leakage <em>level</em> &mdash; but runaway is set by the <em>slope</em>, and
+    across that band the two brackets' slopes differ by only 1.16&ndash;1.27&times; against the
+    6&ndash;14&times; the curve swap itself carries. Measured: the flat-die arm holds 0.80 and fails
+    1.00&nbsp;W/mm&sup2; under <em>both</em> brackets, identically. The predictive-PDK GIDL
+    uncertainty therefore does not reach the density ceiling.</p>
+    <p><strong>`[+]` And the cold end paid off as promised.</strong> The prize the register called
+    uncertain by 2.3&times; is settled: leakage falls <strong>16.6&times;</strong> cooling cache
+    350&nbsp;&rarr;&nbsp;200&nbsp;K where the old curve said 1.73&times; at <em>every</em>
+    temperature because it clamps &mdash; a <strong>2.2&times; larger prize</strong>, and it
+    saturates by <strong>280&nbsp;K</strong>, so the target is barely sub-ambient rather than
+    cryogenic. Quote the 2.2&times;, which is what survives every accounting choice.</p>
+    <p><strong>`[!]` And the absolute prize is smaller than this register said.</strong> The two
+    conversion ratios were inherited and unreproduced; they are now reproduced <em>exactly</em> and
+    they are a scope error &mdash; one core&rsquo;s blocks against the whole chip&rsquo;s L3, on a
+    warm&#8209;up slice. Re&#8209;derived on the die power the pipeline actually solves, the prize is
+    <strong>~6&nbsp;% of die power</strong> &mdash; not the 10&ndash;30&nbsp;% previously quoted, and not
+    the book&rsquo;s 31.7&nbsp;%. The 2.2&times; improvement is untouched, because every conversion
+    multiplies the same saturating factor by a constant, which is why it was the number to lead
+    with.</p>
+    <p class="src">device_leakage_spice_asap7.json &middot; cold_zone_prize_simulated.json &middot; uniform_density_curve_compare.json</p>
+  </div>
+
   <p class="kicker">Open</p>
   <h2>Name these before a reviewer does</h2>
   <div class="claims">
@@ -465,14 +528,18 @@
       <p class="src">v91 &sect;8.4 · ZONE_EXTRACTORS_V91</p>
     </div></div>
 
-    <div class="claim qual"><span class="tag">uncertain 2.3&times;</span><div class="body">
-      <p class="say">The cold&#8209;zone prize.</p>
-      <p class="why">Our calibrated leakage curve flattens at 310&nbsp;K and clamps below; the
-      architecture assumes it keeps falling to 200&nbsp;K. That is <strong>13.5&nbsp;% of die power
-      against 31.7&nbsp;%</strong>. PTM SPICE cards would settle it — and the same campaign settles
-      the &gt;400&nbsp;K extrapolation at the hot end. <strong>One measurement, both ends of the
-      template.</strong></p>
-      <p class="src">cold_zone_prize_bounds.json · MCPAT_HIGH_TEMPERATURE.md</p>
+    <div class="claim ok"><span class="tag">closed</span><div class="body">
+      <p class="say">The cold&#8209;zone prize. <strong>Settled — and it came out smaller than
+      either bound.</strong></p>
+      <p class="why">This was the register&rsquo;s largest open uncertainty: 13.5&nbsp;% of die power
+      against 31.7&nbsp;%, waiting on SPICE cards. The cards were built (&sect;P0.13) and the curve
+      re&#8209;run. Two corrections, in opposite directions: leakage really does keep falling below
+      310&nbsp;K, so the <em>improvement</em> is <strong>2.2&times;</strong> — the upper end of the
+      spread; but the conversion to % of die power rested on a scope error, and re&#8209;derived the
+      prize is <strong>~6&nbsp;%</strong> — below the <em>lower</em> end. <strong>Both recorded
+      bounds are withdrawn.</strong> It saturates by 280&nbsp;K, so the cold die is barely
+      sub&#8209;ambient rather than cryogenic.</p>
+      <p class="src">cold_zone_prize_simulated.json · PHASE0_CHECKLIST &sect;P0.14, &sect;P0.15</p>
     </div></div>
 
     <div class="claim qual"><span class="tag">accounting</span><div class="body">

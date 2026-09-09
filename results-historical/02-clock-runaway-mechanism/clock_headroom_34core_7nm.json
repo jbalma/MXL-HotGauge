@@ -1,0 +1,400 @@
+{
+  "note": "Sustainable-clock search (P2.6). 34-core 7nm, thermal limit 100 C, damping-verified coupled solves. Clock is the OUTPUT, not an input.",
+  "driver": "examples/clock_headroom.py",
+  "runs": {
+    "rth0.02": {
+      "mr_target_C": null,
+      "leak_v_exponent": 1.0,
+      "thermal_limit_C": 100.0,
+      "rows": [
+        {
+          "r_th": 0.02,
+          "cfm": null,
+          "mr": false,
+          "f_sustainable_GHz": 4.34375,
+          "limited_by": "over_thermal_limit",
+          "peak_C": 97.09414062500002,
+          "p_chip_W": 122.41690145535918,
+          "heat_removed_W": 0.0,
+          "p_mr_net_W": 0.0,
+          "gflops": 4726.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            4.34375,
+            4.390625
+          ]
+        },
+        {
+          "r_th": 0.02,
+          "cfm": null,
+          "mr": true,
+          "f_sustainable_GHz": 4.390625,
+          "limited_by": "over_thermal_limit",
+          "peak_C": 96.32686767578127,
+          "p_chip_W": 127.68479776741162,
+          "heat_removed_W": 0.46592097222437556,
+          "p_mr_net_W": 0.8120336944481976,
+          "gflops": 4777.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            4.390625,
+            4.4375
+          ]
+        }
+      ]
+    },
+    "rth0.05": {
+      "mr_target_C": null,
+      "leak_v_exponent": 1.0,
+      "thermal_limit_C": 100.0,
+      "rows": [
+        {
+          "r_th": 0.05,
+          "cfm": null,
+          "mr": false,
+          "f_sustainable_GHz": 4.296875,
+          "limited_by": "over_thermal_limit",
+          "peak_C": 97.38018188476565,
+          "p_chip_W": 117.64499200682634,
+          "heat_removed_W": 0.0,
+          "p_mr_net_W": 0.0,
+          "gflops": 4675.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            4.296875,
+            4.34375
+          ]
+        },
+        {
+          "r_th": 0.05,
+          "cfm": null,
+          "mr": true,
+          "f_sustainable_GHz": 4.34375,
+          "limited_by": "thermal_runaway",
+          "peak_C": 97.80690917968752,
+          "p_chip_W": 122.56201648537765,
+          "heat_removed_W": 0.620220185814565,
+          "p_mr_net_W": 1.0809551809910989,
+          "gflops": 4726.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            4.34375,
+            4.390625
+          ]
+        }
+      ]
+    },
+    "rth0.1": {
+      "mr_target_C": null,
+      "leak_v_exponent": 1.0,
+      "thermal_limit_C": 100.0,
+      "rows": [
+        {
+          "r_th": 0.1,
+          "cfm": null,
+          "mr": false,
+          "f_sustainable_GHz": 4.203125,
+          "limited_by": "over_thermal_limit",
+          "peak_C": 96.2764831542969,
+          "p_chip_W": 108.25043653050287,
+          "heat_removed_W": 0.0,
+          "p_mr_net_W": 0.0,
+          "gflops": 4573.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            4.203125,
+            4.25
+          ]
+        },
+        {
+          "r_th": 0.1,
+          "cfm": null,
+          "mr": true,
+          "f_sustainable_GHz": 4.25,
+          "limited_by": "thermal_runaway",
+          "peak_C": 98.25850830078127,
+          "p_chip_W": 112.99377750413292,
+          "heat_removed_W": 0.6114184070073504,
+          "p_mr_net_W": 1.0656149379270965,
+          "gflops": 4624.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            4.25,
+            4.296875
+          ]
+        }
+      ]
+    },
+    "rth0.3": {
+      "mr_target_C": null,
+      "leak_v_exponent": 1.0,
+      "thermal_limit_C": 100.0,
+      "rows": [
+        {
+          "r_th": 0.3,
+          "cfm": null,
+          "mr": false,
+          "f_sustainable_GHz": 3.828125,
+          "limited_by": "thermal_runaway",
+          "peak_C": 97.13155517578127,
+          "p_chip_W": 83.44585858094706,
+          "heat_removed_W": 0.0,
+          "p_mr_net_W": 0.0,
+          "gflops": 4165.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            3.828125,
+            3.875
+          ]
+        },
+        {
+          "r_th": 0.3,
+          "cfm": null,
+          "mr": true,
+          "f_sustainable_GHz": 3.875,
+          "limited_by": "unverified",
+          "peak_C": 99.01210937500002,
+          "p_chip_W": 86.39827663004428,
+          "heat_removed_W": 0.7159603933306432,
+          "p_mr_net_W": 1.2433026371757814,
+          "gflops": 4216.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            3.875,
+            3.921875
+          ]
+        }
+      ]
+    },
+    "rth0.5": {
+      "mr_target_C": null,
+      "leak_v_exponent": 1.0,
+      "thermal_limit_C": 100.0,
+      "rows": [
+        {
+          "r_th": 0.5,
+          "cfm": null,
+          "mr": false,
+          "f_sustainable_GHz": 3.5,
+          "limited_by": "thermal_runaway",
+          "peak_C": 96.06960449218752,
+          "p_chip_W": 67.22879134345558,
+          "heat_removed_W": 0.0,
+          "p_mr_net_W": 0.0,
+          "gflops": 3808.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            3.5,
+            3.546875
+          ]
+        },
+        {
+          "r_th": 0.5,
+          "cfm": null,
+          "mr": true,
+          "f_sustainable_GHz": 3.5,
+          "limited_by": "thermal_runaway",
+          "peak_C": 93.9031921386719,
+          "p_chip_W": 66.75734357759322,
+          "heat_removed_W": 0.10257403868124333,
+          "p_mr_net_W": 0.1787718959873098,
+          "gflops": 3808.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            3.5,
+            3.546875
+          ]
+        }
+      ]
+    },
+    "rth1.0": {
+      "mr_target_C": null,
+      "leak_v_exponent": 1.0,
+      "thermal_limit_C": 100.0,
+      "rows": [
+        {
+          "r_th": 1.0,
+          "cfm": null,
+          "mr": false,
+          "f_sustainable_GHz": 2.796875,
+          "limited_by": "thermal_runaway",
+          "peak_C": 85.70440063476565,
+          "p_chip_W": 41.034382285272464,
+          "heat_removed_W": 0.0,
+          "p_mr_net_W": 0.0,
+          "gflops": 3043.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            2.796875,
+            2.84375
+          ]
+        },
+        {
+          "r_th": 1.0,
+          "cfm": null,
+          "mr": true,
+          "f_sustainable_GHz": 2.796875,
+          "limited_by": "unverified",
+          "peak_C": 85.70440063476565,
+          "p_chip_W": 41.034382285272464,
+          "heat_removed_W": 0.0,
+          "p_mr_net_W": 0.0,
+          "gflops": 3043.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            2.796875,
+            2.84375
+          ]
+        }
+      ]
+    },
+    "clock_target_T65": {
+      "mr_target_C": null,
+      "leak_v_exponent": 1.0,
+      "thermal_limit_C": 100.0,
+      "rows": [
+        {
+          "r_th": 0.1,
+          "cfm": null,
+          "mr": false,
+          "f_sustainable_GHz": 4.203125,
+          "limited_by": "over_thermal_limit",
+          "peak_C": 96.2764831542969,
+          "p_chip_W": 108.25043653050287,
+          "heat_removed_W": 0.0,
+          "p_mr_net_W": 0.0,
+          "gflops": 4573.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            4.203125,
+            4.25
+          ]
+        },
+        {
+          "r_th": 0.1,
+          "cfm": null,
+          "mr": true,
+          "f_sustainable_GHz": 4.296875,
+          "limited_by": "over_thermal_limit",
+          "peak_C": 96.61654052734377,
+          "p_chip_W": 101.73598609193239,
+          "heat_removed_W": 24.846904941893424,
+          "p_mr_net_W": 43.13955773510065,
+          "gflops": 4675.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            4.296875,
+            4.34375
+          ]
+        }
+      ]
+    },
+    "clock_target_T78": {
+      "mr_target_C": null,
+      "leak_v_exponent": 1.0,
+      "thermal_limit_C": 100.0,
+      "rows": [
+        {
+          "r_th": 0.1,
+          "cfm": null,
+          "mr": false,
+          "f_sustainable_GHz": 4.203125,
+          "limited_by": "over_thermal_limit",
+          "peak_C": 96.2764831542969,
+          "p_chip_W": 108.25043653050287,
+          "heat_removed_W": 0.0,
+          "p_mr_net_W": 0.0,
+          "gflops": 4573.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            4.203125,
+            4.25
+          ]
+        },
+        {
+          "r_th": 0.1,
+          "cfm": null,
+          "mr": true,
+          "f_sustainable_GHz": 4.25,
+          "limited_by": "over_thermal_limit",
+          "peak_C": 94.71529541015627,
+          "p_chip_W": 108.88117499900403,
+          "heat_removed_W": 4.613525175751992,
+          "p_mr_net_W": 8.023762054382576,
+          "gflops": 4624.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            4.25,
+            4.296875
+          ]
+        }
+      ]
+    },
+    "leakv_e0": {
+      "mr_target_C": null,
+      "leak_v_exponent": 0.0,
+      "thermal_limit_C": 100.0,
+      "rows": [
+        {
+          "r_th": 0.1,
+          "cfm": null,
+          "mr": false,
+          "f_sustainable_GHz": 4.203125,
+          "limited_by": "over_thermal_limit",
+          "peak_C": 96.0513854980469,
+          "p_chip_W": 107.4182138000136,
+          "heat_removed_W": 0.0,
+          "p_mr_net_W": 0.0,
+          "gflops": 4573.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            4.203125,
+            4.25
+          ]
+        }
+      ]
+    },
+    "leakv_e2": {
+      "mr_target_C": null,
+      "leak_v_exponent": 2.0,
+      "thermal_limit_C": 100.0,
+      "rows": [
+        {
+          "r_th": 0.1,
+          "cfm": null,
+          "mr": false,
+          "f_sustainable_GHz": 4.203125,
+          "limited_by": "thermal_runaway",
+          "peak_C": 99.7684265136719,
+          "p_chip_W": 109.86491518010669,
+          "heat_removed_W": 0.0,
+          "p_mr_net_W": 0.0,
+          "gflops": 4573.0,
+          "at_ceiling": false,
+          "vf_clamped": false,
+          "bracket_GHz": [
+            4.203125,
+            4.25
+          ]
+        }
+      ]
+    }
+  }
+}

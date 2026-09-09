@@ -10,8 +10,8 @@
 # once per point -- that is the 169x the whole ordering of Phase 0 was chosen for.
 #
 # Concurrency is bounded by MEMORY, not by cores. A solve is single-threaded and node-06
-# has 96 of them, but one factorised two-die session is 14.4 GB on the largest die here,
-# so 4 processes fill a 70 GB budget. Sized on PEAK RSS, which runs ~1.3x steady
+# has 96 of them, but one factorised two-die session is 28.8 GB on the largest die here,
+# so 6 processes fill a 200 GB budget. Sized on PEAK RSS, which runs ~1.3x steady
 # (docs/evidence/session_memory.json) -- sizing on steady oversubscribes the node during
 # exactly the factorisation transient that makes it peak.
 #
@@ -19,45 +19,141 @@
 set -uo pipefail
 JOBID="${1:?usage: run_rerun.sh <slurm_jobid>}"
 REPO=/mnt/nfs01/scratch/jbalma/MXL-HotGauge
-OUT=/mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_accel
-MAX_CONC="${MAX_CONC:-4}"
+OUT=/mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D
+MAX_CONC="${MAX_CONC:-6}"
 mkdir -p "$OUT/logs"
 log() { printf "[%s] %s\n" "$(date +%H:%M:%S)" "$*" | tee -a "$OUT/driver.log"; }
 throttle() { while [ "$(jobs -rp | wc -l)" -ge "$MAX_CONC" ]; do sleep 20; done; }
 
-log "=== catalogue re-run: 4 streams, max concurrency $MAX_CONC ==="
-log "    estimated 12.7 h of solver work, 3.3 h wall"
+log "=== catalogue re-run: 16 streams, max concurrency $MAX_CONC ==="
+log "    estimated 20.2 h of solver work, 3.8 h wall"
 
-# 19 point(s), ~3.02 h, 14.4 GB peak
-if [ -f "$OUT/logs/sf00_accelerator_study.done" ]; then log "SKIP sf00_accelerator_study"; else
+# 11 point(s), ~5.30 h, 28.8 GB peak
+if [ -f "$OUT/logs/sf04_mr_comparison.done" ]; then log "SKIP sf04_mr_comparison"; else
   throttle
-  log "START sf00_accelerator_study (19 points)"
+  log "START sf04_mr_comparison (11 points)"
   srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
-    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/accelerator_study.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_accel/sf00_accelerator_study.json --keep-going --out-root $OUT/sf00_accelerator_study > $OUT/logs/sf00_accelerator_study.log 2>&1 && touch $OUT/logs/sf00_accelerator_study.done" &
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/mr_comparison.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf04_mr_comparison.json --keep-going --out-root $OUT/sf04_mr_comparison > $OUT/logs/sf04_mr_comparison.log 2>&1 && touch $OUT/logs/sf04_mr_comparison.done" &
 fi
 
-# 18 point(s), ~2.87 h, 14.4 GB peak
-if [ -f "$OUT/logs/sf01_accelerator_study.done" ]; then log "SKIP sf01_accelerator_study"; else
+# 9 point(s), ~4.41 h, 28.8 GB peak
+if [ -f "$OUT/logs/sf05_mr_comparison.done" ]; then log "SKIP sf05_mr_comparison"; else
   throttle
-  log "START sf01_accelerator_study (18 points)"
+  log "START sf05_mr_comparison (9 points)"
   srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
-    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/accelerator_study.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_accel/sf01_accelerator_study.json --keep-going --out-root $OUT/sf01_accelerator_study > $OUT/logs/sf01_accelerator_study.log 2>&1 && touch $OUT/logs/sf01_accelerator_study.done" &
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/mr_comparison.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf05_mr_comparison.json --keep-going --out-root $OUT/sf05_mr_comparison > $OUT/logs/sf05_mr_comparison.log 2>&1 && touch $OUT/logs/sf05_mr_comparison.done" &
 fi
 
-# 18 point(s), ~2.87 h, 14.4 GB peak
-if [ -f "$OUT/logs/sf02_accelerator_study.done" ]; then log "SKIP sf02_accelerator_study"; else
+# 39 point(s), ~3.53 h, 5.7 GB peak
+if [ -f "$OUT/logs/sf00_mr_comparison.done" ]; then log "SKIP sf00_mr_comparison"; else
   throttle
-  log "START sf02_accelerator_study (18 points)"
+  log "START sf00_mr_comparison (39 points)"
   srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
-    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/accelerator_study.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_accel/sf02_accelerator_study.json --keep-going --out-root $OUT/sf02_accelerator_study > $OUT/logs/sf02_accelerator_study.log 2>&1 && touch $OUT/logs/sf02_accelerator_study.done" &
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/mr_comparison.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf00_mr_comparison.json --keep-going --out-root $OUT/sf00_mr_comparison > $OUT/logs/sf00_mr_comparison.log 2>&1 && touch $OUT/logs/sf00_mr_comparison.done" &
 fi
 
-# 17 point(s), ~2.72 h, 14.4 GB peak
-if [ -f "$OUT/logs/sf03_accelerator_study.done" ]; then log "SKIP sf03_accelerator_study"; else
+# 33 point(s), ~2.99 h, 5.7 GB peak
+if [ -f "$OUT/logs/sf01_mr_comparison.done" ]; then log "SKIP sf01_mr_comparison"; else
   throttle
-  log "START sf03_accelerator_study (17 points)"
+  log "START sf01_mr_comparison (33 points)"
   srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
-    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/accelerator_study.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_accel/sf03_accelerator_study.json --keep-going --out-root $OUT/sf03_accelerator_study > $OUT/logs/sf03_accelerator_study.log 2>&1 && touch $OUT/logs/sf03_accelerator_study.done" &
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/mr_comparison.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf01_mr_comparison.json --keep-going --out-root $OUT/sf01_mr_comparison > $OUT/logs/sf01_mr_comparison.log 2>&1 && touch $OUT/logs/sf01_mr_comparison.done" &
+fi
+
+# 33 point(s), ~2.99 h, 5.7 GB peak
+if [ -f "$OUT/logs/sf03_mr_comparison.done" ]; then log "SKIP sf03_mr_comparison"; else
+  throttle
+  log "START sf03_mr_comparison (33 points)"
+  srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/mr_comparison.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf03_mr_comparison.json --keep-going --out-root $OUT/sf03_mr_comparison > $OUT/logs/sf03_mr_comparison.log 2>&1 && touch $OUT/logs/sf03_mr_comparison.done" &
+fi
+
+# 31 point(s), ~2.81 h, 5.7 GB peak
+if [ -f "$OUT/logs/sf02_mr_comparison.done" ]; then log "SKIP sf02_mr_comparison"; else
+  throttle
+  log "START sf02_mr_comparison (31 points)"
+  srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/mr_comparison.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf02_mr_comparison.json --keep-going --out-root $OUT/sf02_mr_comparison > $OUT/logs/sf02_mr_comparison.log 2>&1 && touch $OUT/logs/sf02_mr_comparison.done" &
+fi
+
+# 3 point(s), ~0.31 h, 5.7 GB peak
+if [ -f "$OUT/logs/sf04_clock_headroom.done" ]; then log "SKIP sf04_clock_headroom"; else
+  throttle
+  log "START sf04_clock_headroom (3 points)"
+  srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/clock_headroom.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf04_clock_headroom.json --keep-going --out-root $OUT/sf04_clock_headroom > $OUT/logs/sf04_clock_headroom.log 2>&1 && touch $OUT/logs/sf04_clock_headroom.done" &
+fi
+
+# 6 point(s), ~0.20 h, 2.8 GB peak
+if [ -f "$OUT/logs/sf02_thermal_tiers.done" ]; then log "SKIP sf02_thermal_tiers"; else
+  throttle
+  log "START sf02_thermal_tiers (6 points)"
+  srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/thermal_tiers.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf02_thermal_tiers.json --keep-going --out-root $OUT/sf02_thermal_tiers > $OUT/logs/sf02_thermal_tiers.log 2>&1 && touch $OUT/logs/sf02_thermal_tiers.done" &
+fi
+
+# 1 point(s), ~0.13 h, 5.7 GB peak
+if [ -f "$OUT/logs/sf01_clock_headroom.done" ]; then log "SKIP sf01_clock_headroom"; else
+  throttle
+  log "START sf01_clock_headroom (1 points)"
+  srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/clock_headroom.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf01_clock_headroom.json --keep-going --out-root $OUT/sf01_clock_headroom > $OUT/logs/sf01_clock_headroom.log 2>&1 && touch $OUT/logs/sf01_clock_headroom.done" &
+fi
+
+# 1 point(s), ~0.13 h, 5.7 GB peak
+if [ -f "$OUT/logs/sf02_clock_headroom.done" ]; then log "SKIP sf02_clock_headroom"; else
+  throttle
+  log "START sf02_clock_headroom (1 points)"
+  srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/clock_headroom.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf02_clock_headroom.json --keep-going --out-root $OUT/sf02_clock_headroom > $OUT/logs/sf02_clock_headroom.log 2>&1 && touch $OUT/logs/sf02_clock_headroom.done" &
+fi
+
+# 1 point(s), ~0.13 h, 5.7 GB peak
+if [ -f "$OUT/logs/sf03_clock_headroom.done" ]; then log "SKIP sf03_clock_headroom"; else
+  throttle
+  log "START sf03_clock_headroom (1 points)"
+  srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/clock_headroom.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf03_clock_headroom.json --keep-going --out-root $OUT/sf03_clock_headroom > $OUT/logs/sf03_clock_headroom.log 2>&1 && touch $OUT/logs/sf03_clock_headroom.done" &
+fi
+
+# 1 point(s), ~0.13 h, 5.7 GB peak
+if [ -f "$OUT/logs/sf05_clock_headroom.done" ]; then log "SKIP sf05_clock_headroom"; else
+  throttle
+  log "START sf05_clock_headroom (1 points)"
+  srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/clock_headroom.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf05_clock_headroom.json --keep-going --out-root $OUT/sf05_clock_headroom > $OUT/logs/sf05_clock_headroom.log 2>&1 && touch $OUT/logs/sf05_clock_headroom.done" &
+fi
+
+# 3 point(s), ~0.11 h, 2.8 GB peak
+if [ -f "$OUT/logs/sf01_stacked_memory_study.done" ]; then log "SKIP sf01_stacked_memory_study"; else
+  throttle
+  log "START sf01_stacked_memory_study (3 points)"
+  srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/stacked_memory_study.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf01_stacked_memory_study.json --keep-going --out-root $OUT/sf01_stacked_memory_study > $OUT/logs/sf01_stacked_memory_study.log 2>&1 && touch $OUT/logs/sf01_stacked_memory_study.done" &
+fi
+
+# 3 point(s), ~0.11 h, 2.8 GB peak
+if [ -f "$OUT/logs/sf03_stacked_memory_study.done" ]; then log "SKIP sf03_stacked_memory_study"; else
+  throttle
+  log "START sf03_stacked_memory_study (3 points)"
+  srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/stacked_memory_study.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf03_stacked_memory_study.json --keep-going --out-root $OUT/sf03_stacked_memory_study > $OUT/logs/sf03_stacked_memory_study.log 2>&1 && touch $OUT/logs/sf03_stacked_memory_study.done" &
+fi
+
+# 3 point(s), ~0.11 h, 2.8 GB peak
+if [ -f "$OUT/logs/sf05_stacked_memory_study.done" ]; then log "SKIP sf05_stacked_memory_study"; else
+  throttle
+  log "START sf05_stacked_memory_study (3 points)"
+  srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/stacked_memory_study.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf05_stacked_memory_study.json --keep-going --out-root $OUT/sf05_stacked_memory_study > $OUT/logs/sf05_stacked_memory_study.log 2>&1 && touch $OUT/logs/sf05_stacked_memory_study.done" &
+fi
+
+# 2 point(s), ~0.08 h, 2.8 GB peak
+if [ -f "$OUT/logs/sf02_stacked_memory_study.done" ]; then log "SKIP sf02_stacked_memory_study"; else
+  throttle
+  log "START sf02_stacked_memory_study (2 points)"
+  srun --jobid="$JOBID" --overlap -n1 --cpu-bind=none bash -lc \
+    ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && OMP_NUM_THREADS=1 python -u scripts/sweep_runner.py examples/stacked_memory_study.py /mnt/nfs01/scratch/jbalma/MXL-HotGauge/results/rerun_arm_D/sf02_stacked_memory_study.json --keep-going --out-root $OUT/sf02_stacked_memory_study > $OUT/logs/sf02_stacked_memory_study.log 2>&1 && touch $OUT/logs/sf02_stacked_memory_study.done" &
 fi
 
 log "all streams queued; waiting"

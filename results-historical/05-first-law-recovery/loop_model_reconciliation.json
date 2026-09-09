@@ -1,0 +1,289 @@
+{
+ "note": "Test 7: reconciling the two loop models, which disagreed about whether the loop self-powers.\n\n    python examples/reconcile_loop_models.py\n\nThis repository carried two independent statements of the same photonic loop, and at the shipped\ndefaults they gave qualitatively different answers:\n\n    microrefrigeration.MRParams.breakeven_ratio = eta_laser * eta_LPC * coll * (1 + eta_ASF)\n    exergy.loop_gain                            = eta_L     * eta_c            * (1 + eta_AS * phi)\n\n`eta_AS` and `eta_ASF` are the same quantity -- the anti-Stokes up-conversion efficiency -- so the\ntwo expressions differ by **exactly the factor phi multiplying it**, and the first is the\n`phi -> 1` limit of the second. phi = 1 - T_0/T_h reaches 1 only as `T_h -> infinity`.\n\nWhat that omission was doing\n----------------------------\nThe first-law form credits the ENTIRE fluorescence stream `(1 + eta_ASF)` as convertible to\nelectricity at `eta_LPC`. Only the pump-derived part is work-like; the heat-derived part is\nCarnot-limited, and that is what `phi` accounts for. At the shipped defaults the difference flips\nthe verdict: the first-law ledger returns **1.032 and reports the loop as net-generating**, while\nthe second-law value is **0.821 at 350 K** and does not reach 1.0 at any temperature silicon can\nsurvive. Every `mr_accounting` result recorded before 30 August 2026 carries the optimistic term.\n\nThe check that did not catch it was `first_law_ok`, which tests `recovered <= gross + heat`. That\nis the first law, and the first law is satisfied -- the recovered energy really is available. It is\nthe SECOND law that forbids converting it at that efficiency, and nothing was testing it.\n\nWhy this matters for architecture rather than just bookkeeping\n-------------------------------------------------------------\nBecause `phi` is set by `T_h`, the corrected model says the required extractor efficiency falls\nsteeply with die temperature -- which is the whole case for running logic hot. This file prints\nthat curve. The uncomfortable part is where the toolchain stops: McPAT refuses temperatures above\n400 K, and 400 K is a point at which the requirement is still unphysical.",
+ "design_map_self_powering_T_h": [
+  {
+   "eta_ASF": 0.12,
+   "eta_P": 0.85,
+   "self_powering_T_h_K": null
+  },
+  {
+   "eta_ASF": 0.12,
+   "eta_P": 0.9,
+   "self_powering_T_h_K": 3982.500000000024
+  },
+  {
+   "eta_ASF": 0.12,
+   "eta_P": 0.95,
+   "self_powering_T_h_K": 525.4687499999997
+  },
+  {
+   "eta_ASF": 0.22,
+   "eta_P": 0.85,
+   "self_powering_T_h_K": 1490.9459459459474
+  },
+  {
+   "eta_ASF": 0.22,
+   "eta_P": 0.9,
+   "self_powering_T_h_K": 596.0204081632656
+  },
+  {
+   "eta_ASF": 0.22,
+   "eta_P": 0.95,
+   "self_powering_T_h_K": 387.7672955974841
+  },
+  {
+   "eta_ASF": 0.3,
+   "eta_P": 0.85,
+   "self_powering_T_h_K": 716.4285714285717
+  },
+  {
+   "eta_ASF": 0.3,
+   "eta_P": 0.9,
+   "self_powering_T_h_K": 468.529411764706
+  },
+  {
+   "eta_ASF": 0.3,
+   "eta_P": 0.95,
+   "self_powering_T_h_K": 357.76595744680844
+  },
+  {
+   "eta_ASF": 0.35,
+   "eta_P": 0.85,
+   "self_powering_T_h_K": 595.0000000000001
+  },
+  {
+   "eta_ASF": 0.35,
+   "eta_P": 0.9,
+   "self_powering_T_h_K": 432.2093023255815
+  },
+  {
+   "eta_ASF": 0.35,
+   "eta_P": 0.95,
+   "self_powering_T_h_K": 347.2123893805309
+  },
+  {
+   "eta_ASF": 0.4,
+   "eta_P": 0.85,
+   "self_powering_T_h_K": 527.8947368421053
+  },
+  {
+   "eta_ASF": 0.4,
+   "eta_P": 0.9,
+   "self_powering_T_h_K": 408.4615384615385
+  },
+  {
+   "eta_ASF": 0.4,
+   "eta_P": 0.95,
+   "self_powering_T_h_K": 339.69696969696963
+  }
+ ],
+ "eta_cpl_used": 1.0,
+ "defaults": {
+  "eta_ASF": 0.32,
+  "eta_LPC": 0.92,
+  "collection": 1.0,
+  "eta_laser": 0.85,
+  "T_0_K": 295.0
+ },
+ "first_law_breakeven_ratio": 1.03224,
+ "ladder": [
+  {
+   "T_h_K": 330,
+   "phi": 0.10606060606060608,
+   "mr_ratio": 0.8085406060606061,
+   "exergy_loop_gain": 0.8788484848484848,
+   "models_agree": false,
+   "self_powering": false,
+   "overstatement_vs_first_law": 1.1745369284876908
+  },
+  {
+   "T_h_K": 350,
+   "phi": 0.15714285714285714,
+   "mr_ratio": 0.8213234285714286,
+   "exergy_loop_gain": 0.8927428571428571,
+   "models_agree": false,
+   "self_powering": false,
+   "overstatement_vs_first_law": 1.1562568008705116
+  },
+  {
+   "T_h_K": 373,
+   "phi": 0.2091152815013405,
+   "mr_ratio": 0.8343290080428954,
+   "exergy_loop_gain": 0.9068793565683645,
+   "models_agree": false,
+   "self_powering": false,
+   "overstatement_vs_first_law": 1.1382329882400244
+  },
+  {
+   "T_h_K": 400,
+   "phi": 0.26249999999999996,
+   "mr_ratio": 0.8476880000000001,
+   "exergy_loop_gain": 0.9214,
+   "models_agree": false,
+   "self_powering": false,
+   "overstatement_vs_first_law": 1.1202952029520297
+  },
+  {
+   "T_h_K": 450,
+   "phi": 0.34444444444444444,
+   "mr_ratio": 0.8681937777777778,
+   "exergy_loop_gain": 0.9436888888888889,
+   "models_agree": false,
+   "self_powering": false,
+   "overstatement_vs_first_law": 1.0938350680544435
+  },
+  {
+   "T_h_K": 500,
+   "phi": 0.41000000000000003,
+   "mr_ratio": 0.8845984,
+   "exergy_loop_gain": 0.9615199999999999,
+   "models_agree": false,
+   "self_powering": false,
+   "overstatement_vs_first_law": 1.0735502121640736
+  },
+  {
+   "T_h_K": 550,
+   "phi": 0.4636363636363636,
+   "mr_ratio": 0.8980203636363635,
+   "exergy_loop_gain": 0.9761090909090908,
+   "models_agree": false,
+   "self_powering": false,
+   "overstatement_vs_first_law": 1.057504749841672
+  },
+  {
+   "T_h_K": 600,
+   "phi": 0.5083333333333333,
+   "mr_ratio": 0.9092053333333333,
+   "exergy_loop_gain": 0.9882666666666667,
+   "models_agree": false,
+   "self_powering": false,
+   "overstatement_vs_first_law": 1.0444954128440367
+  },
+  {
+   "T_h_K": 700,
+   "phi": 0.5785714285714285,
+   "mr_ratio": 0.9267817142857142,
+   "exergy_loop_gain": 1.0073714285714284,
+   "models_agree": false,
+   "self_powering": true,
+   "overstatement_vs_first_law": 1.0246865959498557
+  },
+  {
+   "T_h_K": 800,
+   "phi": 0.63125,
+   "mr_ratio": 0.9399639999999999,
+   "exergy_loop_gain": 1.0216999999999998,
+   "models_agree": false,
+   "self_powering": true,
+   "overstatement_vs_first_law": 1.010316139767055
+  },
+  {
+   "T_h_K": 1000,
+   "phi": 0.7050000000000001,
+   "mr_ratio": 0.9584192,
+   "exergy_loop_gain": 1.04176,
+   "models_agree": false,
+   "self_powering": true,
+   "overstatement_vs_first_law": 0.9908616187989556
+  }
+ ],
+ "eta_ASF_required": [
+  {
+   "T_h_K": 330,
+   "phi": 0.10606060606060608,
+   "eta_ASF_required": 1.6638655462184875,
+   "within_mcpat_domain": true,
+   "requires_eta_above_1": true
+  },
+  {
+   "T_h_K": 350,
+   "phi": 0.15714285714285714,
+   "eta_ASF_required": 1.1229946524064174,
+   "within_mcpat_domain": true,
+   "requires_eta_above_1": true
+  },
+  {
+   "T_h_K": 373,
+   "phi": 0.2091152815013405,
+   "eta_ASF_required": 0.8438914027149322,
+   "within_mcpat_domain": true,
+   "requires_eta_above_1": false
+  },
+  {
+   "T_h_K": 400,
+   "phi": 0.26249999999999996,
+   "eta_ASF_required": 0.6722689075630255,
+   "within_mcpat_domain": true,
+   "requires_eta_above_1": false
+  },
+  {
+   "T_h_K": 450,
+   "phi": 0.34444444444444444,
+   "eta_ASF_required": 0.5123339658444024,
+   "within_mcpat_domain": false,
+   "requires_eta_above_1": false
+  },
+  {
+   "T_h_K": 500,
+   "phi": 0.41000000000000003,
+   "eta_ASF_required": 0.4304160688665711,
+   "within_mcpat_domain": false,
+   "requires_eta_above_1": false
+  },
+  {
+   "T_h_K": 550,
+   "phi": 0.4636363636363636,
+   "eta_ASF_required": 0.38062283737024233,
+   "within_mcpat_domain": false,
+   "requires_eta_above_1": false
+  },
+  {
+   "T_h_K": 600,
+   "phi": 0.5083333333333333,
+   "eta_ASF_required": 0.347155255544841,
+   "within_mcpat_domain": false,
+   "requires_eta_above_1": false
+  },
+  {
+   "T_h_K": 700,
+   "phi": 0.5785714285714285,
+   "eta_ASF_required": 0.30501089324618746,
+   "within_mcpat_domain": false,
+   "requires_eta_above_1": false
+  },
+  {
+   "T_h_K": 800,
+   "phi": 0.63125,
+   "eta_ASF_required": 0.2795573675014561,
+   "within_mcpat_domain": false,
+   "requires_eta_above_1": false
+  },
+  {
+   "T_h_K": 1000,
+   "phi": 0.7050000000000001,
+   "eta_ASF_required": 0.2503128911138924,
+   "within_mcpat_domain": false,
+   "requires_eta_above_1": false
+  }
+ ],
+ "best_within_mcpat_domain": {
+  "T_h_K": 400,
+  "phi": 0.26249999999999996,
+  "eta_ASF_required": 0.6722689075630255,
+  "within_mcpat_domain": true,
+  "requires_eta_above_1": false
+ },
+ "first_temperature_not_requiring_eta_above_1": {
+  "T_h_K": 373,
+  "phi": 0.2091152815013405,
+  "eta_ASF_required": 0.8438914027149322,
+  "within_mcpat_domain": true,
+  "requires_eta_above_1": false
+ },
+ "THE_TWO_MODELS_DIFFER_BY_EXACTLY_PHI": "eta_AS and eta_ASF are the same quantity, so breakeven_ratio and loop_gain differ only by phi multiplying it, and the first is the phi -> 1 limit of the second. Verified identical at every temperature in this ladder to 1e-12. The first-law form credits the whole fluorescence stream as convertible work; only the pump-derived part is, and the heat-derived part is Carnot-limited.",
+ "WHAT_IT_CHANGED": "At the shipped defaults the first-law ledger returns 1.03224 and reports the loop as NET-GENERATING. The second-law value is 0.89274 at 350 K and 1.04176 even at 1000 K -- it never reaches 1.0 at any temperature silicon survives. The self-powering result was entirely the missing Carnot factor. The guard that should have caught it, first_law_ok, tests recovered <= gross + heat: that is the FIRST law and it passes. Nothing was testing the second.",
+ "ETA_P_IS_NOW_THE_BINDING_TERM": "The required eta_ASF is 0.176/phi, and that numerator is 1/(eta_P*eta_cpl) - 1, which is very steep near unity. Moving the laser wall-plug from 0.85 to 0.90 drops the self-powering temperature at eta_ASF = 0.30 from 716 K to 469 K; at 0.95 it falls to 358 K. Section 1.12 Example 3 makes the same point about eta_cpl: a single 20 % front-end loss roughly doubles the extractor target. With the v91 materials the extractor is no longer the hard part -- THE LASER AND THE OPTICAL PATH ARE. That is a different programme from the one this project has been costing.",
+ "WHAT_THE_v91_MATERIALS_CHANGE": "Yb:YLF at eta_ASF ~ 0.02-0.035 and 1-10 W/mm^2 is SUPERSEDED for compute tiles and must not be quoted as the state of the art. v91 Table 8.2 gives two platforms at 10^3-10^4 W/mm^2 -- direct-bandgap GaAs/GaInP epitaxy, and SMILES-R640-in-polymer thin films which reach the same density at ROOM TEMPERATURE, solution-processed, on any planar substrate. Table 8.1 gives the anti-Stokes ladder: eta_ASF 0.124 at a 680 nm pump rising to 0.221 at 740 nm, with eta_EQE 0.99 at Nt >= 1e-2 M. Against the corrected requirement that changes the verdict at achievable temperatures: 0.347 is needed at 600 K and 0.305 at 700 K, so an extractor at or above 0.30 -- the current experimental claim, beyond Table 8.1's tabulated range -- closes the loop in the 400-600 K hot-compute zone of Section 10.8.",
+ "THE_400_K_CEILING_STILL_BITES_BUT_DIFFERENTLY": "With the corrected coupling term the requirement at 400 K is 0.672, not the >1 this file previously reported -- so McPAT's domain is no longer a wall of impossibility. It is still the wrong place to stop: the requirement roughly halves again between 400 K and 600 K (0.672 -> 0.347), and 400-600 K is exactly the hot-compute zone the architecture proposes. The tooling answer has not changed either way -- McPAT is not in the temperature loop (docs/MCPAT_HIGH_TEMPERATURE.md).",
+ "ZONE_MATCHED_EXTRACTORS_CLOSE_A_RECORDED_GAP": "This project recorded \"eta_AS(T_h) is not modelled at all\" as an open gap. v91 s8.4 answers it structurally rather than numerically: a heterogeneous die does not use one extractor material across its area. Yb:YLF/Yb:silica for cold storage tiles (150-300 K), Yb:ZBLAN or fluoride glass for warm interconnect (300-400 K), Ho3+/Tm3+ fluorides or Cr3+ colquiriites for hot compute (400-600 K), and SiC:Er or GaN:Yb above 600 K -- the same wide-bandgap families as the compute devices there. Per-tile temperature targeting requires per-tile extractor selection."
+}

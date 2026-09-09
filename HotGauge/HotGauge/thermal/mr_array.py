@@ -68,6 +68,96 @@ DEFAULT_PITCH_UM = 500.0
 #: spreads sideways to a neighbour.
 DEFAULT_FILL = 1.0
 
+#: Fraction of the pixel layer's FOOTPRINT that is emitting extractor -- the array charged its own
+#: area (§P0.18). `[!]` AREAL, unlike ``fill`` above, which is the linear edge fraction
+#: ``tile_grid`` shrinks each tile by, so a ``fill`` of 0.5 covers a QUARTER of the footprint.
+#: Every user-facing knob is stated as coverage and converted with :func:`fill_for_coverage`.
+#:
+#: What the uncovered footprint is. In the v91 device the tile is coupler / extractor /
+#: back-reflector / sensor, the pump arrives by hollow-core fibre or waveguide to a structured
+#: coupler at the top of the tile, and the LPC is monolithic-backside on the semiconductor
+#: platform (v91 Fig. 9.1, 9.8, 9.12). None of that sits in the silicon: it is stacked ABOVE it,
+#: sharing the pixel layer's footprint with the emitting tiles. So the area the array has to be
+#: charged is not logic area on the die -- it is the fraction of the cooled surface that is
+#: routing, couplers, fibre access and LPC rather than extractor. That fraction is this number.
+#:
+#: `[!]` Consequence worth stating before anyone re-runs a control ladder on it: the CONTROL arm has
+#: no array, so no control-arm ceiling (the flat-die 0.85-0.90 W/mm^2, the shaped 0.60-0.65) can
+#: move with coverage. What coverage bounds is the ARRAY-assisted density and the array's cost.
+#:
+#: 1.0 reproduces every recorded result: the whole catalogue was solved with tiles filling the
+#: footprint edge to edge. The uncovered silicon under a gap is cooled only by what spreads
+#: sideways through the burial depth to a neighbouring tile, which is exactly the effect the
+#: coverage ladder exists to measure rather than assume.
+DEFAULT_COVERAGE = 1.0
+
+
+def fill_for_coverage(coverage):
+    """Linear tile edge fraction that gives an AREAL coverage of ``coverage``: ``sqrt``.
+
+    ``tile_grid`` shrinks width and height by ``fill`` each, so covered area goes as ``fill**2``.
+    Stating the knob as coverage and converting here is what stops a "50 % array" quietly meaning
+    a 25 % one.
+    """
+    coverage = float(coverage)
+    if not 0.0 < coverage <= 1.0:
+        raise ValueError('array coverage must be in (0, 1], got {!r}'.format(coverage))
+    return math.sqrt(coverage)
+
+
+def array_area_ledger(tiles, chip_w_um, chip_h_um):
+    """What the array occupies, in mm^2, against the footprint it sits on.
+
+    ``coverage_achieved`` is the number to report: snapping to the thermal grid means the tiles
+    cover what the grid allows, not exactly what was asked for (a 0.50 request at 500 um pitch on
+    a 50 um grid gives 350 um tiles and 0.49). ``reserved_mm2`` is the footprint charged to
+    everything that is not extractor -- couplers, waveguides, fibre access, LPC.
+    """
+    footprint = float(chip_w_um) * float(chip_h_um) / 1.0e6
+    extractor = sum(t['w'] * t['h'] for t in tiles) / 1.0e6
+    if footprint <= 0.0:
+        raise ValueError('array footprint has no area')
+    return {'n_tiles': len(tiles),
+            'footprint_mm2': footprint,
+            'extractor_mm2': extractor,
+            'reserved_mm2': footprint - extractor,
+            'coverage_achieved': extractor / footprint,
+            'tile_mm2_max': (max(t['w'] * t['h'] for t in tiles) / 1.0e6) if tiles else 0.0}
+
+
+def tile_flux_report(tile_plan_W, tiles, h_max_W_per_mm2):
+    """Cooling flux per tile against the device's own ceiling -- the per-TILE envelope check.
+
+    The planner caps removal per *block* (``h_max * block_area``, see ``clipping_plan``); the
+    device delivers it per *tile*, which after projection can carry several blocks' removal on
+    a footprint that coverage has shrunk. This reports the worst tile so that a plan whose
+    per-block caps are all satisfied cannot hide a tile asked for more than the extractor can
+    emit. ``tile_plan_W`` is POSITIVE removal per tile name (the planner's convention, not the
+    stack's); zeros and absent tiles are idle.
+    """
+    h_max = float(h_max_W_per_mm2)
+    rows = []
+    for t in tiles:
+        q = float(tile_plan_W.get(t['name'], 0.0))
+        if q <= 0.0:
+            continue
+        area = t['w'] * t['h'] / 1.0e6
+        rows.append((q / area if area > 0 else float('inf'), q, t['name'], area))
+    if not rows:
+        return {'n_engaged': 0, 'max_flux_W_per_mm2': 0.0, 'max_flux_tile': None,
+                'mean_flux_W_per_mm2': 0.0, 'h_max_W_per_mm2': h_max,
+                'n_tiles_over_h_max': 0, 'over_h_max': False, 'W_total': 0.0}
+    rows.sort(reverse=True)
+    total_q = sum(r[1] for r in rows)
+    total_a = sum(r[3] for r in rows)
+    return {'n_engaged': len(rows),
+            'max_flux_W_per_mm2': rows[0][0], 'max_flux_tile': rows[0][2],
+            'mean_flux_W_per_mm2': total_q / total_a if total_a > 0 else 0.0,
+            'h_max_W_per_mm2': h_max,
+            'n_tiles_over_h_max': sum(1 for r in rows if r[0] > h_max),
+            'over_h_max': bool(rows[0][0] > h_max),
+            'W_total': total_q}
+
 #: Below this many tiles over the whole die, the array has no spatial structure worth the name
 #: and ``ArrayWiring`` says so. Four is where a plan can first distinguish one quadrant from
 #: another; at two, "which tile" is not a question it can answer, and at one the array is a
@@ -196,7 +286,185 @@ def _overlap(ax0, ay0, ax1, ay1, bx0, by0, bx1, by1):
             max(0.0, min(ay1, by1) - max(ay0, by0)))
 
 
-def project_plan_to_tiles(plan_W, blocks, tiles, strict=True):
+def _rect_distance2(cx, cy, t):
+    """Squared distance from a point to a tile's rectangle; 0 inside it."""
+    dx = max(t['x'] - cx, 0.0, cx - (t['x'] + t['w']))
+    dy = max(t['y'] - cy, 0.0, cy - (t['y'] + t['h']))
+    return dx * dx + dy * dy
+
+
+def nearest_tiles(block, tiles, tol_um2=1e-6):
+    """The tile(s) nearest a block's centre, by rectangle distance; several if equidistant."""
+    bx, by, bw, bh = block
+    cx, cy = bx + bw / 2.0, by + bh / 2.0
+    d = [(_rect_distance2(cx, cy, t), t['name']) for t in tiles]
+    best = min(x[0] for x in d)
+    return [n for dist, n in d if dist <= best + tol_um2]
+
+
+def _max_gap(intervals):
+    """Largest gap between consecutive (start, end) intervals along one axis; 0 if they abut."""
+    iv = sorted(set(intervals))
+    gap = 0.0
+    for (a0, a1), (b0, _) in zip(iv, iv[1:]):
+        if b0 > a1:
+            gap = max(gap, b0 - a1)
+    return gap
+
+
+def _inside_footprint(block, tiles):
+    """Is the block's centre inside the array's footprint?
+
+    The footprint is the tile grid's extent widened by the inter-tile gap on each side: a gapped
+    grid stops half a gap short of the chip edge, so an edge block is inside the footprint even
+    though it is outside every tile. At full coverage the gap is zero and this is exactly the
+    grid's extent, i.e. the chip -- the recorded behaviour.
+    """
+    bx, by, bw, bh = block
+    cx, cy = bx + bw / 2.0, by + bh / 2.0
+    gx = _max_gap([(t['x'], t['x'] + t['w']) for t in tiles])
+    gy = _max_gap([(t['y'], t['y'] + t['h']) for t in tiles])
+    x0 = min(t['x'] for t in tiles) - gx
+    y0 = min(t['y'] for t in tiles) - gy
+    x1 = max(t['x'] + t['w'] for t in tiles) + gx
+    y1 = max(t['y'] + t['h'] for t in tiles) + gy
+    return x0 <= cx <= x1 and y0 <= cy <= y1
+
+
+def block_tile_temps(tile_temps_K, blocks, tiles):
+    """The temperature of the extractor ABOVE each block: area-weighted over the tiles the block
+    overlaps, or the nearest tile's for a block under a gap (§P0.19).
+
+    This is what a temperature-dependent cooling cap has to be evaluated at -- the extractor
+    sits at the tile's temperature, not the block's. ``tile_temps_K`` maps tile name -> K (the
+    array die's solved field); tiles absent from it are skipped, and a block with no readable
+    tile is omitted so the caller falls back to its temperature-independent cap.
+    """
+    out = {}
+    for name, (bx, by, bw, bh) in blocks.items():
+        hits = []
+        for t in tiles:
+            if t['name'] not in tile_temps_K:
+                continue
+            a = _overlap(bx, by, bx + bw, by + bh,
+                         t['x'], t['y'], t['x'] + t['w'], t['y'] + t['h'])
+            if a > 0:
+                hits.append((a, float(tile_temps_K[t['name']])))
+        tot = sum(a for a, _ in hits)
+        if tot > 0:
+            out[name] = sum(a * T for a, T in hits) / tot
+            continue
+        near = [n for n in nearest_tiles((bx, by, bw, bh), tiles) if n in tile_temps_K]
+        if near:
+            out[name] = sum(float(tile_temps_K[n]) for n in near) / len(near)
+    return out
+
+
+def tiles_over_blocks(tiles, blocks, pattern, majority=0.5):
+    """Tiles whose covered area is mostly under blocks whose name matches ``pattern`` (a regex).
+
+    The dual-zone arrangement's cold tiles (§P0.21): a tile is 'cold' when more than ``majority``
+    of the block area beneath it belongs to matching blocks (the caches, by default). Returns the
+    tile names. This is exactly the floorplan-dependence the single-material default avoids.
+    """
+    import re
+    rx = re.compile(pattern)
+    out = set()
+    for t in tiles:
+        tot, match = 0.0, 0.0
+        for name, (bx, by, bw, bh) in blocks.items():
+            a = _overlap(bx, by, bx + bw, by + bh, t['x'], t['y'], t['x'] + t['w'], t['y'] + t['h'])
+            if a <= 0:
+                continue
+            tot += a
+            if rx.search(name):
+                match += a
+        if tot > 0 and match / tot > majority:
+            out.add(t['name'])
+    return out
+
+
+def gap_blocks(blocks, tiles):
+    """Blocks that overlap no tile at all -- the ones a gapped array cools only sideways."""
+    out = []
+    for name, (bx, by, bw, bh) in blocks.items():
+        if not any(_overlap(bx, by, bx + bw, by + bh,
+                            t['x'], t['y'], t['x'] + t['w'], t['y'] + t['h']) > 0
+                   for t in tiles):
+            out.append(name)
+    return sorted(out)
+
+
+def project_plan_shares(plan_W, blocks, tiles, strict=True, gap_policy='nearest'):
+    """``{block: {tile: watts}}`` -- the same projection as :func:`project_plan_to_tiles`, kept per
+    block so a per-tile cap can be mapped back onto the blocks that asked (§P0.19)."""
+    if gap_policy not in ('nearest', 'error'):
+        raise ValueError("gap_policy must be 'nearest' or 'error', got {!r}".format(gap_policy))
+    shares = {}
+    for name, watts in plan_W.items():
+        if watts is None or watts <= 0:
+            continue
+        if name not in blocks:
+            if strict:
+                raise KeyError('plan names block {!r}, which is not in the floorplan'.format(name))
+            continue
+        bx, by, bw, bh = blocks[name]
+        hits = []
+        for t in tiles:
+            a = _overlap(bx, by, bx + bw, by + bh,
+                         t['x'], t['y'], t['x'] + t['w'], t['y'] + t['h'])
+            if a > 0:
+                hits.append((t['name'], a))
+        total = sum(a for _, a in hits)
+        if total <= 0:
+            if gap_policy == 'nearest' and tiles and _inside_footprint(blocks[name], tiles):
+                near = nearest_tiles(blocks[name], tiles)
+                shares[name] = {tn: watts / len(near) for tn in near}
+                continue
+            if strict:
+                raise ValueError(
+                    'block {!r} at ({:.0f}, {:.0f}) {:.0f}x{:.0f} um overlaps no cooling tile; '
+                    'the plan would silently lose {:.3f} W'.format(name, bx, by, bw, bh, watts))
+            continue
+        shares[name] = {tn: watts * a / total for tn, a in hits}
+    return shares
+
+
+def deliver_capped(plan_W, blocks, tiles, tile_caps_W, strict=True, gap_policy='nearest'):
+    """Project a plan onto the tiles and clip each tile at ``tile_caps_W`` (§P0.19).
+
+    Returns ``(tile_plan, delivered_block_plan, shortfall_W, n_capped)``. A tile asked for more
+    than the extractor above it can remove at its own temperature delivers the cap, and the
+    blocks that asked get their requests scaled back in the same proportion -- so the plan the
+    planner reasons about (sensitivities, accounting, the reported cost) is the plan that was
+    actually applied, not the one that was asked for.
+    """
+    shares = project_plan_shares(plan_W, blocks, tiles, strict=strict, gap_policy=gap_policy)
+    requested = {t['name']: 0.0 for t in tiles}
+    for bl in shares.values():
+        for tn, w in bl.items():
+            requested[tn] += w
+    factor, delivered, n_capped, shortfall = {}, {}, 0, 0.0
+    for tn, q in requested.items():
+        cap = tile_caps_W.get(tn) if tile_caps_W else None
+        if cap is not None and q > cap:
+            cap = max(float(cap), 0.0)
+            factor[tn] = cap / q if q > 0 else 0.0
+            delivered[tn] = cap
+            n_capped += 1
+            shortfall += q - cap
+        else:
+            factor[tn] = 1.0
+            delivered[tn] = q
+    block_plan = {}
+    for name, bl in shares.items():
+        got = sum(w * factor[tn] for tn, w in bl.items())
+        if got > 0.0:
+            block_plan[name] = got
+    return delivered, block_plan, shortfall, n_capped
+
+
+def project_plan_to_tiles(plan_W, blocks, tiles, strict=True, gap_policy='nearest'):
     """Spread a plan expressed over processor blocks onto the tiles above them.
 
     ``plan_W`` maps floorplan block name -> watts to remove (positive means removal).
@@ -208,10 +476,25 @@ def project_plan_to_tiles(plan_W, blocks, tiles, strict=True):
     geometric cost visible: a 142 x 13 um block cannot be cooled in isolation, because the tile
     above it is hundreds of microns across and cools everything else under it as well.
 
-    With ``strict``, a block that overlaps no tile is an error rather than a silent loss of
-    cooling -- a plan that quietly evaporates would look like an expensive device that does not
-    work, which is the wrong conclusion to draw from a coordinate-frame mistake.
+    **A block under a gap** (§P0.18 -- possible only when the array's coverage is below 1, since
+    a full-coverage grid tiles the whole footprint) is handled by ``gap_policy``:
+
+    * ``'nearest'`` (default): its removal goes to the nearest tile by rectangle distance,
+      split equally between equidistant ones. That is the physics rather than a convenience --
+      the extractor cannot be over the block, so the heat has to cross to the nearest one
+      sideways through the burial depth, and 3D-ICE resolves what the block actually gets.
+      The plan's watts are conserved; whether they *help* is the solve's answer, which is
+      exactly what a coverage ladder measures. Unreachable at full coverage, so every recorded
+      result is unchanged.
+    * ``'error'``: refuse, as the ``strict`` path did before gaps existed.
+
+    With ``strict``, a plan naming a block that is not in the floorplan is an error rather than
+    a silent loss of cooling -- a plan that quietly evaporates would look like an expensive
+    device that does not work, which is the wrong conclusion to draw from a coordinate-frame
+    mistake.
     """
+    if gap_policy not in ('nearest', 'error'):
+        raise ValueError("gap_policy must be 'nearest' or 'error', got {!r}".format(gap_policy))
     out = {t['name']: 0.0 for t in tiles}
     for name, watts in plan_W.items():
         if watts is None or watts <= 0:
@@ -229,6 +512,14 @@ def project_plan_to_tiles(plan_W, blocks, tiles, strict=True):
                 hits.append((t['name'], a))
         total = sum(a for _, a in hits)
         if total <= 0:
+            # Only a block INSIDE the array's footprint is a gap block. One outside it is the
+            # coordinate-frame mistake the strict path has always refused, and routing it to
+            # the nearest tile would hide exactly that.
+            if gap_policy == 'nearest' and tiles and _inside_footprint(blocks[name], tiles):
+                near = nearest_tiles(blocks[name], tiles)
+                for tname in near:
+                    out[tname] += watts / len(near)
+                continue
             if strict:
                 raise ValueError(
                     'block {!r} at ({:.0f}, {:.0f}) {:.0f}x{:.0f} um overlaps no cooling tile; '
@@ -373,13 +664,17 @@ class ArrayWiring(object):
     """
 
     def __init__(self, flp_path, out_dir, pitch_um=DEFAULT_PITCH_UM, cell_um=50.0,
-                 flp_format='3D-ICE', name='MR.flp'):
+                 flp_format='3D-ICE', name='MR.flp', coverage=DEFAULT_COVERAGE):
         import math
         import os
         from HotGauge.utils.floorplan import Floorplan
 
         self.cell_um = float(cell_um)
         self.pitch_um = float(pitch_um)
+        # The array charged its own footprint (§P0.18). AREAL; converted to the linear fill the
+        # grid builder takes. 1.0 is every recorded result.
+        self.coverage = float(coverage)
+        fill = fill_for_coverage(self.coverage)
         self.blocks = blocks_from_floorplan(Floorplan.from_file(flp_path, frmt=flp_format))
         if not self.blocks:
             raise ValueError('no floorplan blocks parsed from {}'.format(flp_path))
@@ -388,7 +683,12 @@ class ArrayWiring(object):
         chip_h = int(math.ceil(max(b[1] + b[3] for b in self.blocks.values())
                                / self.cell_um) * self.cell_um)
         self.chip_um = (chip_w, chip_h)
-        self.tiles = tile_grid(chip_w, chip_h, pitch_um=self.pitch_um, cell_um=self.cell_um)
+        self.tiles = tile_grid(chip_w, chip_h, pitch_um=self.pitch_um, cell_um=self.cell_um,
+                               fill=fill)
+        self.ledger = array_area_ledger(self.tiles, chip_w, chip_h)
+        # Blocks with no tile above them at all; their removal is routed to the nearest
+        # tile (project_plan_to_tiles, gap_policy='nearest'). Empty at full coverage.
+        self.gap_blocks = gap_blocks(self.blocks, self.tiles)
         # A handful of tiles over a whole die is a uniform slab with one or two global knobs, and
         # it is easy to arrive at by accident -- converting the device's TILE COUNT into an
         # absolute pitch and applying it to a smaller die does exactly that. Everything still
@@ -487,9 +787,30 @@ class ArrayWiring(object):
         return {'tiles': self.tiles, 'tile_blocks': self.blocks,
                 'set_mr_powers': self.set_mr_powers}
 
+    def flux_report(self, h_max_W_per_mm2):
+        """Per-tile flux of the CURRENT plan against ``h_max`` -- see :func:`tile_flux_report`.
+
+        Reads the plan the wiring holds, which after ``run_mr_clipping`` returns is the plan
+        the reported field was solved on. Stack convention is negative, so it is flipped here.
+        """
+        return tile_flux_report({k: -v for k, v in self._powers.items()}, self.tiles,
+                                h_max_W_per_mm2)
+
+    def area_fields(self):
+        """The ledger as row fields, so every driver stamps the same names."""
+        L = self.ledger
+        return {'array_coverage': self.coverage,
+                'array_coverage_achieved': L['coverage_achieved'],
+                'array_extractor_mm2': L['extractor_mm2'],
+                'array_reserved_mm2': L['reserved_mm2'],
+                'array_footprint_mm2': L['footprint_mm2'],
+                'array_n_gap_blocks': len(self.gap_blocks),
+                'array_n_blocks': len(self.blocks)}
+
     def __repr__(self):
-        return ('<ArrayWiring {} tiles at {:.0f} um over {:.0f}x{:.0f} um>'
-                .format(len(self.tiles), self.pitch_um, *self.chip_um))
+        return ('<ArrayWiring {} tiles at {:.0f} um over {:.0f}x{:.0f} um, coverage {:.2f}>'
+                .format(len(self.tiles), self.pitch_um, self.chip_um[0], self.chip_um[1],
+                        self.ledger['coverage_achieved']))
 
 
 def stack_carries_an_array(stack_file):

@@ -104,7 +104,9 @@ def clock_power_factors(f_GHz, f_ref_GHz, leakage_voltage_exponent=1.0, vf_model
         v, clamp_a = vf_model.voltage(f_GHz)
         v_ref, clamp_b = vf_model.voltage(f_ref_GHz)
         dyn = ((v / v_ref) ** 2 * (float(f_GHz) / float(f_ref_GHz))) if v_ref > 0 else 1.0
-        source = 'irds:{}:{}'.format(vf_model.year, vf_model.anchor)
+        # A DeviceVFModel names itself by card and temperature; an IRDS model by year/anchor.
+        source = (getattr(vf_model, 'source_tag', None)
+                  or 'irds:{}:{}'.format(vf_model.year, vf_model.anchor))
     leak = (v / v_ref) ** float(leakage_voltage_exponent) if v_ref > 0 else 1.0
     return dyn, leak, {'V': v, 'V_ref': v_ref, 'vf_clamped': bool(clamp_a or clamp_b),
                        'vf_source': source}

@@ -1,0 +1,205 @@
+{
+ "note": "Does the SUSTAINABLE CLOCK move when the leakage curve is replaced by a simulated one?\n\n    python examples/clock_headroom_curve_compare.py\n\n`[!]` **The prediction this run was made to test is WRONG, and it is recorded here rather than\nquietly removed.** \u00a7P0.14 found the density ladder's ceiling moved by exactly one rung on one arm,\nand explained the small move: runaway is a *local* instability, decided by ``d(ln P_leak)/dT`` at\nthe single temperature the die sits at. From that it predicted the clock-headroom search should\nmove **more**, because its criterion is a *temperature limit* held across a whole bisection rather\nthan a divergence test at one operating point, so a curve that is steeper through the entire\noperating band should eat headroom continuously.\n\nMeasured across six cooling points and three curves: **the sustainable clock does not move at\nfive of six**, to the search's own 0.05 GHz resolution, and moves 3.1 % at the sixth. The\ntemperature-limited search moved **less** than the divergence test, not more. The prediction is\nwithdrawn.\n\n`[+]` What the run found instead, which is worth more\n-----------------------------------------------------\n**The binding constraint changes even where the clock does not.** On the pipeline curve the die\nstops being able to go faster because it *runs away*; on both simulated curves it stops because it\n*reaches its 100 C spec*. Same clock, different reason, at every cooling point of 0.3 K/W and\nworse.\n\nThat matters because `docs/CLOCK_HEADROOM.md` makes a headline claim out of exactly this:\n\n    \"Above 0.1 K/W the part does not reach its 100 C spec limit at all -- it **runs away first**,\n     at 85.7 C with a 1.0 K/W cooler. The leakage instability, not the temperature spec, is what\n     caps the clock on a poorly-cooled die.\"\n\nOn the measured curve that is false: the part reaches spec at every cooling point tested. The\nclaim is an artefact of the pipeline curve's hot tail, which \u00a7P0.13 measured at **47x too steep at\n500 K**.\n\n`[!]` And that is the *opposite* corner from where \u00a7P0.14 said the tail lives. \u00a7P0.14's argument --\nthat the 47x tail disagreement \"lives where the answer does not\", because a surviving die never\ngets that hot -- is correct for a **fixed-density divergence test**, where the reported point is\none the die survives. It fails for a **search**, which deliberately probes operating points the die\ndoes *not* survive and reads its answer off where they start. The tail is invisible to the ladder\nand load-bearing here, and the difference is the shape of the experiment rather than the physics.\n\n`[+]` The GIDL bracket is worth nothing at all in this study: the two brackets agree on the clock\nat every point and on the limiter at every point. Unlike the density ladder, where \u00a7P0.14 flagged\nit as load-bearing, here it can be ignored.",
+ "base": "results/clock_headroom_curves",
+ "f_tol_GHz": 0.05,
+ "curves": [
+  "pipeline",
+  "simulated",
+  "simulated-gidl-off"
+ ],
+ "rows": [
+  {
+   "r_th_K_per_W": 1.0,
+   "pipeline": {
+    "f_sustainable_GHz": 2.984375,
+    "limited_by": "thermal_runaway",
+    "peak_C": 87.53231201171877,
+    "p_chip_W": 46.03317161073295,
+    "peak_block": "RBB_0"
+   },
+   "simulated": {
+    "f_sustainable_GHz": 3.078125,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 99.39922485351565,
+    "p_chip_W": 53.37101945158915,
+    "peak_block": "RBB_0"
+   },
+   "simulated-gidl-off": {
+    "f_sustainable_GHz": 3.03125,
+    "limited_by": "unverified",
+    "peak_C": 99.53212890625002,
+    "p_chip_W": 53.0283083767928,
+    "peak_block": "RBB_0"
+   },
+   "delta_GHz_simulated_minus_pipeline": 0.09375,
+   "delta_pct": 3.141361256544503,
+   "clock_moved": true,
+   "limiter_changed": true
+  },
+  {
+   "r_th_K_per_W": 0.5,
+   "pipeline": {
+    "f_sustainable_GHz": 3.734375,
+    "limited_by": "thermal_runaway",
+    "peak_C": 98.25127563476565,
+    "p_chip_W": 78.52679451996983,
+    "peak_block": "RBB_0"
+   },
+   "simulated": {
+    "f_sustainable_GHz": 3.734375,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 96.9686218261719,
+    "p_chip_W": 79.78686427751374,
+    "peak_block": "RBB_0"
+   },
+   "simulated-gidl-off": {
+    "f_sustainable_GHz": 3.734375,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 99.01125488281252,
+    "p_chip_W": 81.00215721764991,
+    "peak_block": "RBB_0"
+   },
+   "delta_GHz_simulated_minus_pipeline": 0.0,
+   "delta_pct": 0.0,
+   "clock_moved": false,
+   "limiter_changed": true
+  },
+  {
+   "r_th_K_per_W": 0.3,
+   "pipeline": {
+    "f_sustainable_GHz": 4.109375,
+    "limited_by": "thermal_runaway",
+    "peak_C": 95.39296875000002,
+    "p_chip_W": 99.15235939041305,
+    "peak_block": "RBB_0"
+   },
+   "simulated": {
+    "f_sustainable_GHz": 4.109375,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 95.8408142089844,
+    "p_chip_W": 100.56746235906604,
+    "peak_block": "RBB_0"
+   },
+   "simulated-gidl-off": {
+    "f_sustainable_GHz": 4.109375,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 97.03090820312502,
+    "p_chip_W": 101.23928416297584,
+    "peak_block": "RBB_0"
+   },
+   "delta_GHz_simulated_minus_pipeline": 0.0,
+   "delta_pct": 0.0,
+   "clock_moved": false,
+   "limiter_changed": true
+  },
+  {
+   "r_th_K_per_W": 0.1,
+   "pipeline": {
+    "f_sustainable_GHz": 4.484375,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 97.38884887695315,
+    "p_chip_W": 137.79115114949093,
+    "peak_block": "RBB_16"
+   },
+   "simulated": {
+    "f_sustainable_GHz": 4.484375,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 97.36470947265627,
+    "p_chip_W": 137.94045744165868,
+    "peak_block": "RBB_16"
+   },
+   "simulated-gidl-off": {
+    "f_sustainable_GHz": 4.484375,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 97.36422119140627,
+    "p_chip_W": 138.1023327327894,
+    "peak_block": "RBB_16"
+   },
+   "delta_GHz_simulated_minus_pipeline": 0.0,
+   "delta_pct": 0.0,
+   "clock_moved": false,
+   "limiter_changed": false
+  },
+  {
+   "r_th_K_per_W": 0.05,
+   "pipeline": {
+    "f_sustainable_GHz": 4.625,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 99.59554443359377,
+    "p_chip_W": 154.996899253964,
+    "peak_block": "RBB_16"
+   },
+   "simulated": {
+    "f_sustainable_GHz": 4.625,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 99.5223327636719,
+    "p_chip_W": 154.68369320072574,
+    "peak_block": "RBB_16"
+   },
+   "simulated-gidl-off": {
+    "f_sustainable_GHz": 4.625,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 99.50991210937502,
+    "p_chip_W": 154.73319310618234,
+    "peak_block": "RBB_16"
+   },
+   "delta_GHz_simulated_minus_pipeline": 0.0,
+   "delta_pct": 0.0,
+   "clock_moved": false,
+   "limiter_changed": false
+  },
+  {
+   "r_th_K_per_W": 0.02,
+   "pipeline": {
+    "f_sustainable_GHz": 4.671875,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 97.93303833007815,
+    "p_chip_W": 160.9962244736837,
+    "peak_block": "RBB_16"
+   },
+   "simulated": {
+    "f_sustainable_GHz": 4.671875,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 97.83449707031252,
+    "p_chip_W": 160.23271524852944,
+    "peak_block": "RBB_16"
+   },
+   "simulated-gidl-off": {
+    "f_sustainable_GHz": 4.671875,
+    "limited_by": "over_thermal_limit",
+    "peak_C": 97.81670532226565,
+    "p_chip_W": 160.14695965141019,
+    "peak_block": "RBB_16"
+   },
+   "delta_GHz_simulated_minus_pipeline": 0.0,
+   "delta_pct": 0.0,
+   "clock_moved": false,
+   "limiter_changed": false
+  }
+ ],
+ "n_cooling_points": 6,
+ "n_where_clock_moved": 1,
+ "n_where_limiter_changed": 3,
+ "gidl_brackets_agree_on_clock": true,
+ "gidl_brackets_agree_on_limiter_where_judgeable": true,
+ "points_with_an_unverified_limiter": [
+  {
+   "r_th_K_per_W": 1.0,
+   "curves": [
+    "simulated-gidl-off"
+   ]
+  }
+ ],
+ "recorded_2026_08_14_for_reference_only": {
+  "1.0": 2.797,
+  "0.5": 3.5,
+  "0.3": 3.828,
+  "0.1": 4.203,
+  "0.05": 4.297,
+  "0.02": 4.344
+ },
+ "FINDING_1_THE_PREDICTION_IS_WITHDRAWN": "\u00a7P0.14 predicted that a temperature-LIMITED search would move more than the divergence test did, because the simulated curve is steeper through the whole operating band rather than only at a cliff. It moved LESS: the sustainable clock is unchanged at 5 of 6 cooling points to the search's own 0.05 GHz resolution. The density ladder moved a full rung on an arm; this moved nothing at almost every point. `[!]` The prediction was wrong and is withdrawn rather than reworded.",
+ "FINDING_2_BUT_THE_LIMITER_CHANGES_AND_THAT_KILLS_A_RECORDED_CLAIM": "At 3 of 6 cooling points the clock is identical and the REASON is not: the pipeline curve stops the die with a **thermal runaway**, both simulated curves stop it at the **100 C spec limit**. docs/CLOCK_HEADROOM.md builds a headline on the pipeline behaviour -- \"the part does not reach its 100 C spec limit at all, it runs away first ... the leakage instability, not the temperature spec, is what caps the clock on a poorly-cooled die\". On the measured curve the part reaches spec at every point tested, so **that claim is withdrawn**: it is an artefact of a hot tail \u00a7P0.13 measured at 47x too steep at 500 K. The clock it quotes survives; the mechanism does not.",
+ "FINDING_3_THE_HOT_TAIL_MATTERS_TO_A_SEARCH_AND_NOT_TO_A_LADDER": "\u00a7P0.14 argued the 47x tail disagreement \"lives where the answer does not\", because a die that survives never gets that hot. That is right for a fixed-density divergence test, whose reported point is one the die survives. It is wrong for a SEARCH, which probes operating points the die does not survive and reads its answer off where they begin -- so the tail decides whether the last failing step failed by running away or by exceeding spec. `[+]` The generalisation worth keeping: which part of a leakage curve is load-bearing is a property of the EXPERIMENT, not of the curve. A divergence test at fixed power is decided by the local slope at the operating temperature; a limit search is decided by the tail as well.",
+ "FINDING_4_THE_GIDL_BRACKET_IS_WORTH_NOTHING_HERE": "The two GIDL brackets agree on the clock AND on the limiter at every cooling point. \u00a7P0.14 flagged the bracket as load-bearing for the density ceiling because that is decided at 310-330 K; nothing in this study is. It can be ignored here. `[!]` One caveat rather than an exception: at R_th 1.0 the GIDL-off search stopped on an UNVERIFIED step, so its clock is a demonstrated hold but the REASON it stopped is not known. That point is excluded from the limiter comparison rather than counted either way."
+}

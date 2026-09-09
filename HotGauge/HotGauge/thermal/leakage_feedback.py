@@ -156,6 +156,65 @@ def _is_mcpat_aggregate(name):
 NON_BLOCK_TFLP_KEYS = frozenset(('Time',))
 
 
+#: Largest system MEASURED to factorise on this toolchain: the 34-core two-die session
+#: (``docs/evidence/session_memory.json``, 366,048 unknowns). Configurations at 275k also solve.
+#: The stacked-memory stack at 50 um x 27 layers is **1,098,144** and fails every time.
+LARGEST_MEASURED_UNKNOWNS = 366048
+
+
+def stack_unknowns(stack_file):
+    """``(unknowns, chip_um, cell_um, n_layers)`` read off a rendered ``.stk``, or ``None``.
+
+    Cheap and best-effort: this exists to put a NUMBER in a failure message, never to gate a run.
+    """
+    import re as _re
+    try:
+        txt = open(stack_file, errors='replace').read()
+    except Exception:
+        return None
+    dim = _re.search(r'chip\s+length\s+([\d.]+)\s*,\s*width\s+([\d.]+)', txt)
+    cel = _re.search(r'cell\s+length\s+([\d.]+)\s*,\s*width\s+([\d.]+)', txt)
+    if not dim or not cel:
+        return None
+    L, W = float(dim.group(1)), float(dim.group(2))
+    cl, cw = float(cel.group(1)), float(cel.group(2))
+    if cl <= 0 or cw <= 0:
+        return None
+    layers = len(_re.findall(r'^\s+(?:layer|die|source|solid)\b', txt, _re.M)) or 1
+    return int((L / cl) * (W / cw) * layers), (L, W), (cl, cw), layers
+
+
+def _with_stack_size_diagnosis(exc, sim):
+    """Return ``exc`` with a size diagnosis appended when the stack is oversized.
+
+    The failure mode this names is silent by construction -- 3D-ICE writes nothing to stderr --
+    so without this the only evidence is a wall-clock cost and an errno.
+    """
+    info = stack_unknowns(getattr(sim, 'stack_file', None) or '')
+    if not info:
+        return exc
+    n, (L, W), (cl, cw), layers = info
+    if n <= LARGEST_MEASURED_UNKNOWNS:
+        return exc
+    msg = (
+        '{}\n\n'
+        '  `[!]` This stack is {:,} unknowns ({:.0f}x{:.0f} um at {:.0f} um cells, {} layers).\n'
+        '  The largest system MEASURED to factorise on this toolchain is {:,} '
+        '(docs/evidence/session_memory.json).\n'
+        '  3D-ICE exits during "Preparing thermal data" with an EMPTY stderr when the system is '
+        'too large,\n'
+        '  so a silent failure after a long wall time is the expected symptom rather than a hang '
+        '(P0.17:\n'
+        '  measured ~75 min per point). Halving the grid quarters the system: --cell-um {:.0f} '
+        'gives {:,}.\n'
+        '  `[!]` A coarser grid smooths lateral gradients, so peaks on small blocks are '
+        'understated and a\n'
+        '  {:.0f} um run must not be compared against a {:.0f} um one.'
+    ).format(exc, n, L, W, cl, layers, LARGEST_MEASURED_UNKNOWNS,
+             cl * 2, int(n / 4), cl * 2, cl)
+    return type(exc)(getattr(exc, 'errno', 5), msg) if hasattr(exc, 'errno') else RuntimeError(msg)
+
+
 def die_block_temps(tflp_path_or_dict, t_floor_K=200.0):
     """Per-block die temperatures from a Tflp result, with non-block columns removed.
 
@@ -353,6 +412,61 @@ def load_calibrated_leakage_model(json_path, extrapolate=True):
     return model, float(cal['t_ref_xml_K'])
 
 
+def load_simulated_leakage_model(path=None, mechanism='full', extrapolate=True):
+    """``(LeakageModel, T_ref_K)`` from the SPICE run -- the simulated alternative to
+    :func:`load_calibrated_leakage_model`.
+
+    Same signature shape and same return contract, so a study can swap one for the other with a
+    flag. What changes underneath is everything that matters:
+
+    ================  ==================================  ==================================
+    ..                ``load_calibrated_leakage_model``    ``load_simulated_leakage_model``
+    ================  ==================================  ==================================
+    source            eleven McPAT runs                    ngspice + BSIM-CMG on the ASAP7 card
+    what it really is CACTI's hard-coded ``I_off_n[0][*]`` the vendor's model, fitted to nothing
+    range             300-400 K                            **200-500 K**
+    below range       clamps at 300 K                       clamps at 200 K
+    ================  ==================================  ==================================
+
+    `[!]` **The anchor is the same 330 K either way**, which is what makes the swap a controlled
+    one: both tables are renormalised at call time to the pipeline's own ``T_ref``
+    (``mcpat_tref``), so only the *shape* of the curve changes and no level is smuggled in with
+    it. See §P0.13.
+
+    ``mechanism`` selects the bracket: ``'full'`` is the card as ASAP7 wrote it, ``'gidl_off'``
+    the same card with GIDL disabled. They differ ~40x at 200 K and agree above 300 K, and ASAP7
+    is a *predictive* PDK, so **any sub-ambient number should be quoted across both**.
+    """
+    from HotGauge.power.device_leakage import load_simulated_curve
+    curve = load_simulated_curve(path=path, mechanism=mechanism)
+    model = curve.as_leakage_model(extrapolate=extrapolate)
+    return model, float(curve.meta['anchor_K'])
+
+
+#: The leakage curves a study driver may select, and what each one is.
+LEAKAGE_CURVES = ('pipeline', 'simulated', 'simulated-gidl-off')
+
+
+def load_leakage_model(which='pipeline', calibration=None, simulated=None, extrapolate=True):
+    """One entry point for all of :data:`LEAKAGE_CURVES`, returning ``(model, T_ref_K)``.
+
+    `[!]` ``'pipeline'`` is the **default everywhere and must stay that way** until a deliberate
+    catalogue re-run says otherwise -- exactly the discipline ``--rbb-policy`` follows. Every
+    recorded result in this project was produced on the pipeline curve; changing the default
+    would silently move all of them.
+    """
+    if which == 'pipeline':
+        if calibration is None:
+            raise ValueError("the 'pipeline' curve needs a calibration file path")
+        return load_calibrated_leakage_model(calibration, extrapolate=extrapolate)
+    if which == 'simulated':
+        return load_simulated_leakage_model(simulated, 'full', extrapolate)
+    if which == 'simulated-gidl-off':
+        return load_simulated_leakage_model(simulated, 'gidl_off', extrapolate)
+    raise ValueError('unknown leakage curve {!r}; expected one of {}'
+                     .format(which, LEAKAGE_CURVES))
+
+
 def find_split_files(trace_dir):
     """Return ``block_powers_split_*.json`` in ``trace_dir`` sorted by timestep tick."""
     import re
@@ -519,7 +633,7 @@ class ICEThermalSolver(object):
                  initial_temp=DEFAULT_TREF_K, plugin_args=None, num_cores=8,
                  core_sources=None, single_thread=True, steps_per_slot=None,
                  mode='transient', steady_reduce='mean', session_cache=None,
-                 extra_die_outputs=None, already_dice_named=False,
+                 extra_die_outputs=None, already_dice_named=False, mr_temps=False,
                  mr_flp_template=None, mr_powers=None):
         if mode not in self.SIM_MODES:
             raise ValueError('mode must be one of {}, got {!r}'.format(self.SIM_MODES, mode))
@@ -551,6 +665,12 @@ class ICEThermalSolver(object):
         # silently return only the logic layer -- and a memory layer that is never read cannot
         # be shown to be the binding constraint.
         self.extra_die_outputs = list(extra_die_outputs or [])
+        # §P0.19: report the photonic array's own tile temperatures. They come back in the same
+        # named field as the blocks and are SPLIT OFF into ``last_mr_temps`` -- a tile is not a
+        # block, and a sub-ambient tile in the block field would corrupt every peak, plateau
+        # and floorplan metric downstream. Needs the stack to carry a powered array.
+        self.mr_temps = bool(mr_temps)
+        self.last_mr_temps = None
         # Set when the incoming trace is already keyed by floorplan element name, which is the
         # case for a floorplan built outside the McPAT pipeline. See prepare_dice_trace.
         self.already_dice_named = bool(already_dice_named)
@@ -667,6 +787,12 @@ class ICEThermalSolver(object):
         # 'final' rather than per 'slot', so the Tflp file holds exactly one row per block.
         outputs = ([ICESteadySim.OUTPUT_TSTACK_FINAL, ICESteadySim.DIE_TFLP_OUTPUT]
                    + self.extra_die_outputs)
+        if self.mr_temps:
+            if not self.mr_powers:
+                raise ValueError('mr_temps=True asks for the array die\'s temperatures but this '
+                                 'solver carries no array (mr_flp_template/mr_powers)')
+            if MR_DIE_TFLP_OUTPUT not in outputs:
+                outputs = outputs + [MR_DIE_TFLP_OUTPUT]
         config = ICESimConfig(initial_temp=self.initial_temp, plugin_args=self.plugin_args,
                               output_list=outputs)
         sim = ICESteadySim(self.stack_template, self.flp_template, steady_trace, config, run_dir,
@@ -683,19 +809,29 @@ class ICEThermalSolver(object):
             session = self.session_cache.session(sim.stack_file)
             powers = self.session_powers(steady_trace, session)
             named = session.solve_named(powers)
+            named = self._split_mr_temps(named)
             steady = {b: np.array([t]) for b, t in named.items()}
             return broadcast_steady_temps(steady, n_steps)
 
-        if self.single_thread:
-            ICESteadySim.run([sim])
-        else:
-            ICESteadySim.run_with_parallels([sim])
+        try:
+            if self.single_thread:
+                ICESteadySim.run([sim])
+            else:
+                ICESteadySim.run_with_parallels([sim])
+        except Exception as exc:
+            # `[!]` 3D-ICE dies during "Preparing thermal data" with an EMPTY stderr when the
+            # system is larger than SuperLU 4.3 will factorise here, so the only symptom is an
+            # ExecutableJobError after a long wall time -- measured at ~75 minutes per point,
+            # four times over, in the §P0.17 catalogue re-run. Attach the size so the next
+            # reader gets the diagnosis instead of the symptom.
+            raise _with_stack_size_diagnosis(exc, sim)
 
         # One Tflp file per die, merged by block name. Reading the names from the files
         # themselves means nothing here assumes an ordering across dies -- which is exactly the
         # assumption a stacked run must not make silently.
         steady = {}
-        for line in [ICESteadySim.DIE_TFLP_OUTPUT] + self.extra_die_outputs:
+        for line in ([ICESteadySim.DIE_TFLP_OUTPUT] + self.extra_die_outputs
+                     + ([MR_DIE_TFLP_OUTPUT] if self.mr_temps else [])):
             tflp_file = os.path.join(sim.run_path, parse_file_name_from_output_line(line))
             if not os.path.isfile(tflp_file):
                 raise RuntimeError(
@@ -703,12 +839,29 @@ class ICEThermalSolver(object):
                     'instruction reports nothing.'.format(tflp_file, line))
             steady.update(die_block_temps(load_3DICE_block_file(tflp_file,
                                                                 convert_K_to_C=False)))
+        steady = self._split_mr_temps(steady)
         return broadcast_steady_temps(steady, n_steps)
+
+    def _split_mr_temps(self, named):
+        """Take the tile temperatures out of a solved field into ``last_mr_temps``."""
+        if not self.mr_temps or not self.mr_powers:
+            return named
+        tiles = set(self.mr_powers)
+        mr = {k: float(np.ravel(v)[-1]) for k, v in named.items() if k in tiles}
+        if not mr:
+            raise RuntimeError('mr_temps=True but the solved field carries no tile temperatures; '
+                               'the stack\'s output section does not report the array die')
+        self.last_mr_temps = mr
+        return {k: v for k, v in named.items() if k not in tiles}
 
 
 # ---------------------------------------------------------------------------
 # High-level entry point
 # ---------------------------------------------------------------------------
+#: The array die's average-temperature output instruction (die instance MR_ARRAY, see die_stack).
+MR_DIE_TFLP_OUTPUT = 'Tflp (MR_ARRAY, "mr_elements.temps", average, final ) ;'
+
+
 def peak_temp_K(temps, t_floor_K=200.0):
     """Hottest real block temperature in a solved field, or None if there is none.
 

@@ -1,0 +1,94 @@
+{
+ "note": "CONCENTRATED (--concentrate 4.0 on L3_4) -- the isolated-hotspot case. RE-MEASURED 27 Aug 2026 on the RESTORED PITCH LADDER (50/100/200/500/1000/2000 um) and at the settled 200 um burial depth. The previous file swept 2000-100 um at 100 um burial. Granularity is a swept variable: the ordering of coarse against fine REVERSES with the workload, so a single pitch reports a curve as a number.  ORIGINAL NOTE: peak reduction and kelvin-per-watt against cooling-tile pitch, at a FIXED removal budget. Collateral cooling helps a degenerate peak and wastes watts on an isolated one; this measures which. Linear solves, no leakage feedback.",
+ "driver": "examples/tile_pitch_sweep.py",
+ "floorplan": "skylake10nm_7core_0_3D-ICE_template.flp",
+ "target": "L3_4",
+ "target_um": [
+  2913.426,
+  241.183
+ ],
+ "die_W": 100.0,
+ "mr_W": 3.0,
+ "burial_um": 200.0,
+ "cell_um": 50.0,
+ "base_peak_C": 113.45700000000005,
+ "rows": [
+  {
+   "label": "2000",
+   "pitch_um": 2000.0,
+   "n_tiles": 12,
+   "n_engaged": 2,
+   "collateral_area_ratio": 12.38136617955514,
+   "peak_C": 110.52600000000001,
+   "peak_drop_K": 2.93100000000004,
+   "K_per_W": 0.9770000000000133,
+   "target_C": 110.52600000000001
+  },
+  {
+   "label": "1000",
+   "pitch_um": 1000.0,
+   "n_tiles": 48,
+   "n_engaged": 3,
+   "collateral_area_ratio": 4.696380275003674,
+   "peak_C": 109.202,
+   "peak_drop_K": 4.255000000000052,
+   "K_per_W": 1.4183333333333508,
+   "target_C": 109.202
+  },
+  {
+   "label": "500",
+   "pitch_um": 500.0,
+   "n_tiles": 204,
+   "n_engaged": 6,
+   "collateral_area_ratio": 2.205875583713847,
+   "peak_C": 108.25100000000003,
+   "peak_drop_K": 5.206000000000017,
+   "K_per_W": 1.7353333333333392,
+   "target_C": 108.25100000000003
+  },
+  {
+   "label": "200",
+   "pitch_um": 200.0,
+   "n_tiles": 1290,
+   "n_engaged": 45,
+   "collateral_area_ratio": 1.6793117346982835,
+   "peak_C": 107.97800000000001,
+   "peak_drop_K": 5.479000000000042,
+   "K_per_W": 1.8263333333333474,
+   "target_C": 107.97800000000001
+  },
+  {
+   "label": "100",
+   "pitch_um": 100.0,
+   "n_tiles": 5307,
+   "n_engaged": 90,
+   "collateral_area_ratio": 0.8254244119703427,
+   "peak_C": 107.93100000000004,
+   "peak_drop_K": 5.5260000000000105,
+   "K_per_W": 1.8420000000000034,
+   "target_C": 107.93100000000004
+  },
+  {
+   "label": "50",
+   "pitch_um": 50.0,
+   "n_tiles": 21350,
+   "n_engaged": 354,
+   "collateral_area_ratio": 0.0,
+   "peak_C": 107.89600000000002,
+   "peak_drop_K": 5.5610000000000355,
+   "K_per_W": 1.8536666666666786,
+   "target_C": 107.89600000000002
+  },
+  {
+   "label": "per-block",
+   "pitch_um": 0.0,
+   "n_tiles": 25,
+   "n_engaged": 5,
+   "collateral_area_ratio": 5.46843672930352,
+   "peak_C": 107.892,
+   "peak_drop_K": 5.565000000000055,
+   "K_per_W": 1.8550000000000182,
+   "target_C": 107.892
+  }
+ ]
+}

@@ -65,7 +65,10 @@ from HotGauge.thermal import get_stack_template, ICEThermalSolver, run_leakage_f
 from HotGauge.thermal.ICE import Floorplan
 from HotGauge.thermal.leakage_feedback import (prepare_dice_trace, replicate_trace_cores,
                                                load_calibrated_leakage_model,
+                                               load_leakage_model, LEAKAGE_CURVES,
                                                mcpat_tref_from_trace_dir, peak_temp_K)
+from HotGauge.power.core_other import (CORE_OTHER_POLICIES, resolve_trace_dir,
+                                      DEFAULT_CORE_OTHER_POLICY)
 from HotGauge.thermal.sink_models import (render_stack_with_sink, chip_area_m2_from_floorplan,
                                           spreading_sink_for_stack, BaffledFinSink,
                                           ThermalResistanceSink)
@@ -142,12 +145,33 @@ def main():
     add_rbb_argument(ap)
     ap.add_argument('--leakage-cal', default=os.path.join(
         _REPO, 'leakage_calibration', 'leakage_calibration.json'))
+    # `[!]` DEFAULT 'pipeline', and it must stay that way -- same discipline as --rbb-policy.
+    # Every recorded density result was solved on the pipeline curve; changing the default would
+    # silently move all of them. The simulated curve (P0.13) is a deliberate, flagged re-run.
+    ap.add_argument('--leakage-curve', default='pipeline', choices=list(LEAKAGE_CURVES),
+                    help='which leakage-vs-temperature curve to solve on. pipeline = CACTI\'s '
+                         '11 hard-coded numbers (the recorded catalogue); simulated = BSIM-CMG '
+                         'on the ASAP7 card (P0.13); simulated-gidl-off = the other bracket')
+    # §P0.16. `stock` (default) reproduces the recorded catalogue exactly; `hierarchy-consistent`
+    # undoes the `2 * runtime_dynamic` in scripts/mcpat_to_blk_lvl_power_dict.py and residualises
+    # the bare Core<N> row, so `core_other` carries leakage only. Additive: the non-default branch
+    # is placed AHEAD of the existing path, which stays reachable and unmodified.
+    ap.add_argument('--core-other-policy', default=DEFAULT_CORE_OTHER_POLICY,
+                    choices=list(CORE_OTHER_POLICIES),
+                    help='how to treat McPAT\'s per-core accounting. "hierarchy-consistent" '
+                         '(default since P0.17) removes the converter\'s '
+                         '2x on itemised per-core dynamic and gives core_other the true leakage '
+                         'remainder (raises the die static fraction ~1.74x). See P0.16.')
     ap.add_argument('--tol', type=float, default=0.1)
     ap.add_argument('--max-iter', type=int, default=60)
     ap.add_argument('--relax', type=float, default=0.5)
     ap.add_argument('--out-dir', default=os.path.join(_REPO, 'results', 'uniform_density'))
     ap.add_argument('--json-out', default=os.path.join(_EV, 'uniform_density_probe.json'))
     args = ap.parse_args()
+    # §P0.16: under a non-stock core_other policy, solve against a corrected copy of
+    # the trace. Returns args.trace_dir unchanged under the default, so the recorded
+    # path is byte-identical.
+    args.trace_dir = resolve_trace_dir(args.trace_dir, args.core_other_policy)
     os.makedirs(args.out_dir, exist_ok=True)
 
     flp = args.flp
@@ -157,7 +181,13 @@ def main():
 
     # Identical to mr_comparison's choice, so the two studies share a leakage model rather than
     # differing in one more thing than intended.
-    if os.path.isfile(args.leakage_cal):
+    if args.leakage_curve != 'pipeline':
+        # The simulated curve carries its own anchor (330 K, the pipeline's own T_ref), so the
+        # swap changes the SHAPE of leakage-vs-temperature and nothing else.
+        leak_model, t_ref = load_leakage_model(args.leakage_curve,
+                                               calibration=args.leakage_cal)
+        leak_src = leak_model.description
+    elif os.path.isfile(args.leakage_cal):
         leak_model, t_ref = load_calibrated_leakage_model(args.leakage_cal, extrapolate=True)
         leak_src = 'MEASURED McPAT curve + Arrhenius tail above 400 K'
     else:
@@ -247,6 +277,7 @@ def main():
                        else '{:.0f} CFM baffled fin'.format(args.cfm)),
            'spreading': bool(args.spreading),
            'leak_fraction': leak_fraction, 'leakage_model': leak_src,
+           'leakage_curve': args.leakage_curve, 'leakage_T_ref_K': t_ref,
            'rbb_policy': args.rbb_policy, 'rbb': rbb_meta,
            'real_map_concentration': c0,
            'cliff_by_arm': {a: cliff(a) for a in args.arms},

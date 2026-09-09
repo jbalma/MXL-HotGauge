@@ -1,0 +1,53 @@
+{
+ "note": "Colour a die by recoverable exergy instead of temperature.\n\n    python examples/exergy_map.py --out docs/figures/exergy_map.png\n\nEvery thermal figure in this project colours a die by temperature, which answers \"where is the\nproblem\". The power-recovery framing of ``docs/Photonic_Cooling_Devices___v9.pdf`` Chapter 1 asks a\ndifferent question -- \"where is the *opportunity*\" -- and it has a different answer, because the\nrecoverable work from a block is ``phi(T) * P``, which weights hot **and** dissipative together.\nA hot block with no power is worthless; a warm block carrying watts is not.\n\nNo new solves: this reads the per-block temperature fields the tier screens already wrote\n(``results/isa_fields/*/tiers.json``, 1126 blocks each) and the block powers from the floorplan.\n\n`[!]` What this figure may NOT be used to claim\n------------------------------------------------\n``phi`` here is computed on **junction** temperatures, because those are what the fields contain.\nThe Carnot factor is properly set by the extractor's temperature, which is lower by the conduction\ndrop up through the die -- so every ``phi`` on this map is an **overstatement**, and by a margin\nthat grows with power density. ``examples/thermal_zone_probe.py --mode extractor`` measures the\ndrop; until it is folded in, this is a map of *where* the exergy is, not *how much* there is.",
+ "variants": {
+  "x86_skylake": {
+   "die_power_W": 60.90018506413764,
+   "die_exergy_W": 4.41263253523874,
+   "die_mean_phi": 0.07245680009989348,
+   "T_0_K": 295.0,
+   "power_weighted_T_K": 318.1534238123617,
+   "phi_at_power_weighted_T": 0.07277439775728134,
+   "collapse_error": 0.004383269161072567,
+   "die_area_mm2": 101.09708178335367,
+   "temperature_is": "junction",
+   "note": "phi computed on junction temperatures. The Carnot factor is set by the reservoir the heat is lifted FROM, which is the extractor, not the junction -- junction temperatures overstate recoverable work by the conduction drop between them."
+  },
+  "arm_v1": {
+   "die_power_W": 42.53074484519948,
+   "die_exergy_W": 2.6527805829660083,
+   "die_mean_phi": 0.06237324534572388,
+   "T_0_K": 295.0,
+   "power_weighted_T_K": 314.67899812397843,
+   "phi_at_power_weighted_T": 0.06253673820400696,
+   "collapse_error": 0.0026212017248239405,
+   "die_area_mm2": 115.90754194064544,
+   "temperature_is": "junction",
+   "note": "phi computed on junction temperatures. The Carnot factor is set by the reservoir the heat is lifted FROM, which is the extractor, not the junction -- junction temperatures overstate recoverable work by the conduction drop between them."
+  },
+  "arm_a64fx": {
+   "die_power_W": 61.49432893473006,
+   "die_exergy_W": 4.496484119476516,
+   "die_mean_phi": 0.07312030552035252,
+   "T_0_K": 295.0,
+   "power_weighted_T_K": 318.3748256273551,
+   "phi_at_power_weighted_T": 0.07341920197771667,
+   "collapse_error": 0.0040877353457031695,
+   "die_area_mm2": 103.92191348653031,
+   "temperature_is": "junction",
+   "note": "phi computed on junction temperatures. The Carnot factor is set by the reservoir the heat is lifted FROM, which is the extractor, not the junction -- junction temperatures overstate recoverable work by the conduction drop between them."
+  },
+  "riscv_xiangshan": {
+   "die_power_W": 70.49148489491793,
+   "die_exergy_W": 5.46951509737371,
+   "die_mean_phi": 0.07759114601610603,
+   "T_0_K": 295.0,
+   "power_weighted_T_K": 319.97365763864786,
+   "phi_at_power_weighted_T": 0.07804910511368124,
+   "collapse_error": 0.0059022081911270785,
+   "die_area_mm2": 107.39489580743793,
+   "temperature_is": "junction",
+   "note": "phi computed on junction temperatures. The Carnot factor is set by the reservoir the heat is lifted FROM, which is the extractor, not the junction -- junction temperatures overstate recoverable work by the conduction drop between them."
+  }
+ }
+}

@@ -58,6 +58,16 @@ instead of in the array above it. They have to be re-run. At 34-core cost:
 | re-run cold, one stream | 80,330 × 68.3 s = **63.5 days** |
 | re-run warm, one stream | ~40 factorisations (46 min) + 80,330 × 0.37 s = **9.0 hours** |
 
+`[!]` **Superseded 1 Sep 2026 — re-planned against the CURRENT batch scripts (§P0.16).** The
+figures above predate the three-arm drivers. `python scripts/catalogue_rerun.py` now reports
+**252 points / 578 arms / 64 distinct matrices / ~161,218 solves**, 32.0 h of total compute
+(3.2 h factorising + 28.8 h solving) and **6.3 h wall** across 6 concurrent streams. The count
+roughly doubled because every planner point emits three arms and the control arm's stack (30 µm
+grease) is a *different matrix* from the array arms' (30 µm GaAs). Concurrency is **memory-bound,
+not core-bound**: the widest session is 28.8 GB, so ~6 streams fill a 200 GB budget on a 96-core
+node. **Quote the 6.3 h wall figure, not 63.5 days — the latter is the cold cost and is what makes
+this look like a decision when it is one night.**
+
 The ~40 distinct matrices is the one estimate in that table; everything else is measured. The
 matrix is set by stack and floorplan *geometry* — not by power, MR target or kernel — so it is
 bounded by the floorplan × sink × pitch × burial-depth combinations the catalogue actually visits.

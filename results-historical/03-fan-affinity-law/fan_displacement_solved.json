@@ -1,0 +1,27 @@
+{
+ "note": "Fan displacement measured through the coupled solver rather than by the (1-s)^5 closed form. The rows where the control arm diverges are the claim: the array holds target at an airflow the unassisted die cannot survive.",
+ "rows": [
+  {
+   "cfm": 45.0,
+   "fan_W": 26.685000000000002,
+   "control_diverged": true,
+   "control_peak_C": null,
+   "array_peak_C": 92.1130310058594,
+   "Q_rem_W": 40.85758708194757,
+   "array_W": 25.02913718440145,
+   "p_total_W": 168.47512835864444,
+   "gflops": 4386.324089062499
+  },
+  {
+   "cfm": 60.0,
+   "fan_W": 29.58,
+   "control_diverged": true,
+   "control_peak_C": null,
+   "array_peak_C": 93.28304443359377,
+   "Q_rem_W": 29.845703737816862,
+   "array_W": 18.215663020508245,
+   "p_total_W": 164.6731773547371,
+   "gflops": 4381.232190625
+  }
+ ]
+}

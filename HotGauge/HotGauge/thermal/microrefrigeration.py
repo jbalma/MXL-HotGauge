@@ -113,6 +113,20 @@ LEGACY_DT_MAX_K = 10.0
 #: 0.035 (s6.4.1); the previous default was 0.20.
 #:
 #: This is an OPTICAL efficiency. The electrical COP is eta_asf * eta_laser.
+#:
+#: The usable range is **0.10-0.60** -- Draft_5 s3.5.4's "10-60 % across MVP stages", which is a
+#: span of *stages*, not a single platform's tolerance. 0.32 is the middle ground and the default.
+#:
+#: `[!]` A 3 Sep 2026 revision narrowed this to 0.10-0.30 and moved the default to 0.20 on the
+#: reading that the shipping platform's own band was tighter. **That narrowing is withdrawn** --
+#: the full MVP-stage range stands and 0.32 is restored, so every recorded MR cost reproduces
+#: un-flagged. Sweep it with --mr-eta-asf rather than treating any point in it as settled.
+#:
+#: What eta_asf does and does not touch, which is worth knowing before sweeping it: it enters only
+#: through `cop = eta_asf * eta_laser`, and the planner sizes its removal from the THERMAL problem.
+#: So it moves every MR **cost** in proportion and moves **no** thermal result -- not a peak, not a
+#: rescue verdict, not a density ceiling.
+ETA_ASF_RANGE = (0.10, 0.60)
 DEFAULT_ETA_ASF = 0.32
 #: Laser diode wall-plug efficiency (electrical -> optical pump). **TARGET**. Draft_5 s3.5.4
 #: gives 70-75 % as *demonstrated* at 900-1000 nm, so 0.85 is beyond demonstrated and must be
@@ -141,47 +155,111 @@ DEMONSTRATED = {
 #: Platform table is v91 Table 8.2; the anti-Stokes ladder is v91 Table 8.1. Note the notation:
 #: Table 8.1's "eta_c" is the PER-PHOTON anti-Stokes shift, which v91 Table 1.1 renames; the
 #: composite is eta_ASF = eta_abs * eta_EQE * (per-photon shift).
+#: `[!]` CORRECTED 3 Sep 2026. The shipping platform is **two thin-film extractor options**, and
+#: neither is a rare-earth crystal:
+#:
+#:   * **semiconductor (GaAs) extractor tiles**, and
+#:   * **SiN-encapsulated molecular dyes**
+#:
+#: both reaching **> 1000 W/mm^2** cooling power density, across an eta_ASF range of
+#: **0.10-0.60** (Draft_5 s3.5.4, spanning the MVP stages; 0.32 is the working point). Yb:YLF is
+#: retained below ONLY as the historical baseline that the pre-30-Aug catalogue was computed
+#: against. `[!]` It is **not** the cold-zone material and must not be quoted as one -- an earlier
+#: revision of this file said it was "still the right choice for the COLD zone", which was wrong.
+#: Both current platforms cover the cold zone: GaAs is tabulated to 77 K and the dye to 250 K.
 PLATFORMS_V91 = {
-    'smiles_r640_polymer': {
+    'sin_encapsulated_dye': {
         'cooling_density_W_per_mm2': (1e3, 1e4),
         'eta_EQE': 0.99,                 # red-tail pump, Nt >= 1e-2 M
         'per_photon_shift': {680: 0.124, 700: 0.157, 720: 0.190, 740: 0.223},
         'eta_asf_tabulated': 0.123,      # 680 nm design point, eta_abs -> 1 via Purcell
         'eta_asf_best_tabulated': 0.221,  # 740 nm
         'T_range_K': (250.0, 400.0),
-        'note': 'v91 s8.3.2/8.3.3. Solution-processable, substrate-agnostic, room temperature. '
-                'Matches direct-bandgap semiconductor cooling density. SMILES = Small-Molecule '
-                'Ionic Isolation Lattices (NOT the chemical-notation format).',
+        'encapsulation': 'SiN',
+        'note': 'v91 s8.3.2/8.3.3. SiN-encapsulated molecular dye thin film. Solution-processable, '
+                'substrate-agnostic, room temperature; matches direct-bandgap semiconductor '
+                'cooling density. The dye chemistry is a SMILES lattice (Small-Molecule Ionic '
+                'Isolation Lattices -- NOT the chemical-notation format); the ENCAPSULATION is '
+                'SiN, not the polymer host an earlier revision of this table named.',
     },
     'gaas_gainp_epitaxy': {
         'cooling_density_W_per_mm2': (1e3, 1e4),
         'eta_EQE': 0.99,                 # low-temperature; 0.96 at 850 nm room temperature
         'eta_asf_tabulated': None,
         'T_range_K': (77.0, 400.0),
-        'note': 'v91 s8.2.1 Table 8.2. Monolithic with a co-designed multi-junction LPC; cost is '
-                'MBE/MOCVD lattice-matched growth and a substrate form-factor constraint.',
+        'form': 'thin-film extractor tiles',
+        'note': 'v91 s8.2.1 Table 8.2. Thin-film GaAs extractor tiles, monolithic with a '
+                'co-designed multi-junction LPC; cost is MBE/MOCVD lattice-matched growth and a '
+                'substrate form-factor constraint. Tabulated to 77 K, so this platform covers the '
+                'cold zone on its own.',
+    },
+    'cr_lisaf': {
+        'cooling_density_W_per_mm2': (0.2, 0.8),      # v98 Table 1.1: 20-80 W/mm^3 at 10 um, F_P 30-100
+        'cooling_density_W_per_mm3': (20.0, 80.0),
+        'eta_EQE': 0.9,                             # demonstrated 0.85-0.95; > 0.94 needed
+        'T_range_K': (150.0, 400.0),
+        'note': 'v98 §8.1.2 / Table 1.1 / Table 8.4. Cr3+:LiSAF, the STORAGE-ZONE material '
+                '(decided 8 Sep 2026). Allowed transition, 67 us lifetime, 1e21 cm^-3, disorder '
+                'tail sigma 0.26. A decade above Yb:YLF and two below the dye at the same '
+                'Purcell factor; fails the breakeven test at its demonstrated IQE, so every '
+                'figure is a ceiling at eta_EQE = 1.',
     },
     'yb_ylf_crystal': {
         'cooling_density_W_per_mm2': (1.0, 10.0),
         'eta_EQE': 0.97,
         'T_range_K': (150.0, 300.0),
-        'note': 'v91 Table 8.2. LEGACY for compute tiles -- 2-3 orders of magnitude below the '
-                'platforms above. Still the right choice for the COLD zone (150-300 K), where '
-                'eta_EQE is unchanged or improved on cooling.',
+        'note': 'v91 Table 8.2. `[!]` HISTORICAL BASELINE ONLY -- 2-3 orders of magnitude below '
+                'the two shipping platforms above, and NOT the cold-zone material. It is kept so '
+                'the pre-30-Aug catalogue (h_max 250 W/mm^2, eta_asf 0.035) can be reproduced with '
+                '--mr-h-max 250 --mr-eta-asf 0.035, and for no other purpose. An earlier revision '
+                'of this table recommended it for the cold zone; that recommendation is WITHDRAWN.',
     },
 }
 
-#: v91 s8.4: a heterogeneous-thermal die does NOT use one extractor material across its area.
-#: Each zone's extractor is selected for that zone's target T_j. This is the material-side
-#: counterpart of the s10.8 architectural template, and it is what closes the eta_ASF(T_h) gap
-#: this project had recorded as unmodelled.
-ZONE_EXTRACTORS_V91 = {
-    'cold_storage':      {'T_K': (150.0, 300.0), 'materials': ('Yb:YLF', 'Yb:silica')},
-    'warm_interconnect': {'T_K': (300.0, 400.0), 'materials': ('Yb:YLF', 'Yb:ZBLAN', 'fluoride glass')},
-    'hot_compute':       {'T_K': (400.0, 600.0), 'materials': ('Ho3+:fluoride', 'Tm3+:fluoride',
-                                                               'Cr3+:colquiriite')},
-    'exotic_hot_corner': {'T_K': (600.0, 1000.0), 'materials': ('SiC:Er', 'GaN:Yb')},
+#: `[!}` REPLACED 3 Sep 2026. The previous table assigned a different rare-earth crystal to each
+#: thermal zone (Yb:YLF cold, Ho/Tm-fluoride hot, SiC:Er above 600 K). **That is not the platform.**
+#: The shipping device is a thin film of GaAs *or* SiN-encapsulated molecular dye, and zone
+#: selection happens **within** those two options rather than by swapping to a rare-earth.
+#:
+#: What survives from v91 s8.4 is the *principle* -- a heterogeneous-thermal die does not use one
+#: extractor everywhere, because eta_ASF and the achievable lift both depend on the local T_j.
+#: What is withdrawn is the rare-earth material list.
+#: `[!]` DECIDED 8 Sep 2026 (§P0.21), on v98 Table 10.8 read against the 3 Sep rule: the storage
+#: (cold) zone material is **Cr:LiSAF** -- not Yb:YLF, which stays out of every zone -- and the
+#: hot zone is the dye extractor. And the DEFAULT cold plate is SINGLE-material (see
+#: `thermal.extractor.DEFAULT_ZONE_MODE`): a floorplan-matched dual-material arrangement is a
+#: per-architecture product and is a flagged experiment, never the default.
+ZONE_EXTRACTORS = {
+    'cold_cache': {
+        'T_K': (150.0, 320.0),
+        'platforms': ('cr_lisaf',),
+        'note': 'Storage / control zone. Cr3+:LiSAF (v98 §8.1.2, Table 1.1): 20-80 W/mm^3 at '
+                'F_P 30-100, quantum defect 5.9 % at 900 on 850 nm, needs eta_EQE > 0.94. Its '
+                'transparency cap collapses on cooling like every anti-Stokes emitter, so it '
+                'is a low-density, leakage-suppression tile, not a hot-spot razor.',
+    },
+    'hot_compute': {
+        'T_K': (320.0, 450.0),
+        'platforms': ('sin_encapsulated_dye',),
+        'note': 'Compute zone. The R640-SMILES film (v98 Table 1.1 row, rung 6 of the ladder) is '
+                'intrinsically a hot-die platform: its tail absorption and transparency ceiling '
+                'both grow exponentially with T. GaAs/GaInP remains a platform alternative with '
+                'a retuned pump (§9.3.2) but is not the zone assignment.',
+    },
+    'above_tabulated': {
+        'T_K': (400.0, None),
+        'platforms': (),
+        'note': '`[!]` OPEN. Neither shipping platform is tabulated above 400 K in v91. This is an '
+                'honest gap, not a material recommendation -- do not fill it with the retired '
+                'rare-earth list. It also does not bind today: a die that survives does not reach '
+                'it, and CLAUDE.md already says to report >127 C as non-viable rather than as a '
+                'number.',
+    },
 }
+
+#: Kept under the old name so nothing imports a hole, but it is the same corrected table.
+ZONE_EXTRACTORS_V91 = ZONE_EXTRACTORS
+PLATFORMS = PLATFORMS_V91
 
 #: The previous defaults, as one dict, so a driver can offer --legacy-envelope and a test can
 #: assert the old catalogue still reproduces.
@@ -238,7 +316,8 @@ class MRParams(object):
                  eta_asf=DEFAULT_ETA_ASF, spot_min_um=DEFAULT_SPOT_MIN_UM,
                  spot_policy=DEFAULT_SPOT_POLICY, max_total_W=None,
                  laser_wallplug=DEFAULT_LASER_WALLPLUG, lpc_efficiency=DEFAULT_LPC_EFFICIENCY,
-                 collection_efficiency=DEFAULT_COLLECTION_EFFICIENCY, recover=True, cop=None):
+                 collection_efficiency=DEFAULT_COLLECTION_EFFICIENCY, recover=True, cop=None,
+                 extractor=None):
         if target_K <= 0:
             raise ValueError('target_K must be > 0')
         if h_max <= 0:
@@ -251,7 +330,14 @@ class MRParams(object):
                 raise ValueError('{} must be in [0, 1], got {!r}'.format(name, val))
         self.target_K = float(target_K)
         self.h_max = float(h_max)
-        self.dt_max_K = float(dt_max_K)
+        # §P0.19: with an extractor model the lift is DERIVED -- the per-block cap becomes the
+        # extractor's cooling flux at the temperature of the tile above the block, which falls
+        # as the tile cools and crosses zero at T_min -- so dt_max_K may be None (no scalar lift
+        # cap). Passing both keeps the scalar as an additional cap.
+        self.extractor = extractor
+        self.dt_max_K = float('inf') if dt_max_K is None else float(dt_max_K)
+        if dt_max_K is None and extractor is None:
+            raise ValueError('dt_max_K=None needs an extractor model to bound the lift instead')
         self.spot_min_um = float(spot_min_um)
         if spot_policy not in ('ideal', 'exclude', 'dilute'):
             raise ValueError("spot_policy must be 'ideal', 'exclude' or 'dilute', got {!r}"
@@ -339,15 +425,36 @@ class MRParams(object):
                .format(self.lpc_efficiency, self.eta_asf, self.laser_wallplug,
                        self.breakeven_ratio)
                if self.recover else 'no recovery (eta_ASF={:.2f})'.format(self.eta_asf))
-        return ('MRParams(target={:.1f} K, H<={:.1f} W/mm^2, dT<={:.1f} K, COP_elec={:.3f}, '
-                'spot>={:.0f} um, {}{})'.format(
-                    self.target_K, self.h_max, self.dt_max_K, self.cop, self.spot_min_um, rec,
+        return ('MRParams(target={:.1f} K, H<={:.1f} W/mm^2, dT<={} K, COP_elec={:.3f}, '
+                'spot>={:.0f} um, {}{}{})'.format(
+                    self.target_K, self.h_max,
+                    'inf' if self.dt_max_K == float('inf') else '{:.1f}'.format(self.dt_max_K),
+                    self.cop, self.spot_min_um, rec,
                     '' if self.max_total_W is None else
-                    ', budget<={:.2f} W'.format(self.max_total_W)))
+                    ', budget<={:.2f} W'.format(self.max_total_W),
+                    '' if self.extractor is None else
+                    ', extractor={}'.format(getattr(self.extractor, 'label', 'yes'))))
+
+
+#: Prefix marking a Tflp key that is BOOKKEEPING, not a floorplan block.
+#: ``thermal.leakage_feedback`` injects ``__agg__L3`` (see ``BRIDGEABLE_AGGREGATES``) so a bridged
+#: aggregate's leakage has a temperature to feed back against. Such a key has a real temperature
+#: and no real surface, so it must never reach a cooling plan.
+SYNTHETIC_TEMP_PREFIX = '__agg__'
+
+
+def is_synthetic_temp_key(name):
+    """True for a Tflp key that stands for an aggregate rather than a floorplan block.
+
+    Matched on the prefix rather than imported from ``leakage_feedback`` so the planner carries no
+    dependency on the feedback layer, and so a future bridged aggregate is excluded automatically
+    instead of having to be remembered here.
+    """
+    return str(name).startswith(SYNTHETIC_TEMP_PREFIX)
 
 
 def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floor_K=200.0,
-                  die_power_W=None):
+                  die_power_W=None, h_max_by_block=None):
     """Heat to remove per block [W] to clip everything above ``params.target_K``.
 
     block_temps_K       : {block: T_K}
@@ -361,6 +468,11 @@ def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floo
         q_H    = h_max * area                      (cooling-density ceiling)
         q_dT   = dt_max / sensitivity              (temperature-lift ceiling)
 
+    ``h_max_by_block`` (§P0.19) replaces ``params.h_max`` per block with the extractor's cooling
+    flux at the temperature of the tile above it (see :func:`extractor_caps`); a block whose
+    extractor can no longer cool (flux <= 0, the tile at or below ``T_min``) is skipped with
+    ``limit='extractor_exhausted'``. That is how the lift stops being a scalar.
+
     All three of those are **device** limits. ``die_power_W`` adds the one **physical** limit:
     in steady state the array cannot remove more heat than the die generates without driving it
     below the coolant, which is a refrigeration regime this model does not claim. Passing it is
@@ -372,6 +484,18 @@ def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floo
     """
     plan, detail = {}, {}
     for blk, T in block_temps_K.items():
+        if is_synthetic_temp_key(blk):
+            # `[!]` Bookkeeping keys are not coolable surfaces (§P0.17). `bridge_aggregates=True`
+            # injects `__agg__L3` so the L3's leakage can feed back against the mean of the real
+            # L3_* blocks -- it is a temperature with no floorplan block behind it. Planning a
+            # tile onto it produced
+            #     KeyError: "plan names block '__agg__L3', which is not in the floorplan"
+            # at placement time, killing ~10 points per arm of the §P0.16 catalogue re-run.
+            # `[!]` The trigger is the MR TARGET being low enough that the key is above it, and
+            # since the key's temperature moves with the leakage curve and the core_other policy,
+            # it is arm-dependent -- point 16 raised in arm B and completed in arm D. There is no
+            # target threshold that expresses it, which is why the filter is on the key itself.
+            continue
         T = float(np.ravel(T)[-1]) if np.ndim(T) else float(T)
         if T <= t_floor_K or T <= params.target_K:
             continue
@@ -386,10 +510,21 @@ def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floo
             continue
         excess = T - params.target_K
         q_need = excess / s
-        q_H = params.h_max * geom['area_mm2']
+        h_cap = params.h_max
+        capped_by_extractor = False
+        if h_max_by_block is not None and blk in h_max_by_block:
+            h_cap = float(h_max_by_block[blk])
+            capped_by_extractor = True
+            if h_cap <= 0.0:
+                detail[blk] = {'limit': 'extractor_exhausted', 'q_W': 0.0, 'excess_K': excess,
+                               'q_need_W': q_need, 'q_h_max_W': 0.0,
+                               'q_dt_max_W': params.dt_max_K / s}
+                continue
+        q_H = h_cap * geom['area_mm2']
         q_dT = params.dt_max_K / s
         q = min(q_need, q_H, q_dT)
-        limit = ('need' if q == q_need else ('h_max' if q == q_H else 'dt_max'))
+        limit = ('need' if q == q_need else
+                 (('extractor' if capped_by_extractor else 'h_max') if q == q_H else 'dt_max'))
         if q <= 0:
             continue
 
@@ -634,7 +769,7 @@ def estimate_sensitivity(temps_before_K, temps_after_K, plan, floor=1e-6):
 
 
 def envelope_plan(block_geom, params, sensitivity_K_per_W, blocks=None, t_floor_K=200.0,
-                  die_power_W=None):
+                  die_power_W=None, h_max_by_block=None):
     """The most cooling the device can apply to each block, ignoring how much is needed.
 
     Obtained by asking ``clipping_plan`` about an unboundedly hot die, so ``q_need`` never binds
@@ -649,7 +784,160 @@ def envelope_plan(block_geom, params, sensitivity_K_per_W, blocks=None, t_floor_
     names = list(blocks if blocks is not None else block_geom)
     hot = {b: params.target_K + 1.0e6 for b in names}
     return clipping_plan(hot, block_geom, params, sensitivity_K_per_W, t_floor_K=t_floor_K,
-                         die_power_W=die_power_W)
+                         die_power_W=die_power_W, h_max_by_block=h_max_by_block)
+
+
+def extractor_caps(params, tile_temps_K, tiles, tile_blocks, block_geom=None,
+                   base_tile_temps_K=None, last_plan_W=None):
+    """Per-block cooling-flux caps from the extractor model (§P0.19), SELF-CONSISTENT with the
+    tile's response to the cooling.
+
+    The extractor's flux depends on its own temperature, and its temperature depends on how
+    much it is asked to remove. Evaluating the curve at the last solve's tile temperature and
+    planning from that oscillates whenever the tile cools by more than a degree per watt (it
+    over-pulls, freezes the tile out, plans zero, warms up, over-pulls again). So each block's
+    cap is the root of
+
+        phi = h( T_tile_now + s_t (phi_last - phi) ),     s_t = (T_tile_base - T_tile_now) / phi_last
+
+    -- the flux at which the extractor's curve meets the tile temperature that flux itself
+    produces, using the tile's measured response ``s_t`` [K per W/mm^2] from the baseline
+    (zero-plan) solve to the current one. Before any plan has been applied there is no
+    measured response and the cap is the curve at the current (baseline) tile temperature.
+
+    Returns ``{block: h_W_per_mm2}`` or ``None`` when there is no extractor, no array, or no tile
+    temperatures yet. A block whose tile cannot cool even at its baseline temperature gets 0.
+    """
+    if params.extractor is None or not tile_temps_K or not tiles or not tile_blocks:
+        return None
+    from HotGauge.thermal.mr_array import block_tile_temps
+    bt_now = block_tile_temps(tile_temps_K, tile_blocks, tiles)
+    bt_base = (block_tile_temps(base_tile_temps_K, tile_blocks, tiles)
+               if base_tile_temps_K else {})
+    last_plan_W = last_plan_W or {}
+    h = params.extractor.cooling_density_W_per_mm2
+    out = {}
+    for blk, T_now in bt_now.items():
+        T_now = float(T_now)
+        area = float((block_geom or {}).get(blk, {}).get('area_mm2', 0.0) or 0.0)
+        q_last = float(last_plan_W.get(blk, 0.0))
+        T_base = float(bt_base.get(blk, T_now))
+        if q_last <= 0.0 or area <= 0.0 or T_base <= T_now + 1e-9:
+            out[blk] = max(float(h(T_now)), 0.0) if T_now >= T_base - 1e-9 else max(float(h(T_base)), 0.0)
+            continue
+        phi_last = q_last / area
+        s_t = (T_base - T_now) / phi_last                       # K per (W/mm^2), > 0
+        h_base = float(h(T_base))
+        if h_base <= 0.0:
+            out[blk] = 0.0
+            continue
+        # f(phi) = phi - h(T_now + s_t (phi_last - phi)) is increasing in phi (h falls as the
+        # tile cools); bracket [0, phi_hi] with f(0) < 0 and bisect.
+        def f(phi):
+            return phi - float(h(T_now + s_t * (phi_last - phi)))
+        lo, hi = 0.0, max(h_base, phi_last, 1e-9)
+        if f(lo) >= 0.0:
+            out[blk] = 0.0
+            continue
+        for _ in range(40):
+            if f(hi) > 0.0:
+                break
+            hi *= 2.0
+        for _ in range(60):
+            mid = 0.5 * (lo + hi)
+            if f(mid) > 0.0:
+                hi = mid
+            else:
+                lo = mid
+        out[blk] = 0.5 * (lo + hi)
+    return out
+
+
+def extractor_tile_caps(params, tile_temps_K, tiles, base_tile_temps_K=None,
+                        last_tile_plan_W=None):
+    """Per-TILE removal caps [W] from the extractor curve, self-consistent with each tile's own
+    measured response (§P0.19). The tile is where the extractor is, so this is the physical
+    site of the cap; the block-level plan keeps its recorded shape and is scaled back at
+    delivery where a tile cannot follow (:func:`~HotGauge.thermal.mr_array.deliver_capped`).
+
+    Same fixed point as :func:`extractor_caps`, per tile: ``phi = h(T_now + s_t (phi_last - phi))``
+    with ``s_t = (T_base - T_now) / phi_last``. A tile whose baseline temperature is already
+    outside the curve's cooling range gets 0.
+    """
+    if params.extractor is None or not tile_temps_K or not tiles:
+        return None
+    zoned = bool(getattr(params.extractor, 'zoned', False))
+    last_tile_plan_W = last_tile_plan_W or {}
+    base = base_tile_temps_K or {}
+    out = {}
+    for t in tiles:
+        name = t['name']
+        if name not in tile_temps_K:
+            continue
+        # §P0.21: a dual-zone array hands each tile its own zone's curve.
+        h = ((lambda T, _n=name: params.extractor.cooling_density_W_per_mm2(T, tile=_n))
+             if zoned else params.extractor.cooling_density_W_per_mm2)
+        T_now = float(tile_temps_K[name])
+        area = t['w'] * t['h'] / 1.0e6
+        if area <= 0.0 or not (T_now > 50.0):
+            out[name] = 0.0
+            continue
+        T_base = float(base.get(name, T_now))
+        q_last = float(last_tile_plan_W.get(name, 0.0))
+        if q_last <= 0.0 or T_base <= T_now + 1e-9:
+            T_eval = T_now if T_now >= T_base - 1e-9 else T_base
+            out[name] = max(float(h(T_eval)), 0.0) * area
+            continue
+        phi_last = q_last / area
+        s_t = (T_base - T_now) / phi_last
+        h_base = float(h(T_base))
+        if h_base <= 0.0:
+            out[name] = 0.0
+            continue
+
+        def f(phi):
+            return phi - float(h(T_now + s_t * (phi_last - phi)))
+        lo, hi = 0.0, max(h_base, phi_last, 1e-9)
+        if f(lo) >= 0.0:
+            out[name] = 0.0
+            continue
+        for _ in range(40):
+            if f(hi) > 0.0:
+                break
+            hi *= 2.0
+        for _ in range(60):
+            mid = 0.5 * (lo + hi)
+            if f(mid) > 0.0:
+                hi = mid
+            else:
+                lo = mid
+        out[name] = 0.5 * (lo + hi) * area
+    return out
+
+
+def _energy_capped(plan, cap_W):
+    """Scale a plan down so its total does not exceed ``cap_W`` (None = no cap)."""
+    if not plan or cap_W is None:
+        return plan
+    tot = float(sum(plan.values()))
+    if tot <= float(cap_W) or tot <= 0.0:
+        return plan
+    f = float(cap_W) / tot
+    return {b: q * f for b, q in plan.items() if q * f > 0.0}
+
+
+def _delivered(apply_plan, plan):
+    """The plan as applied after any tile cap; ``plan`` itself for appliers without caps."""
+    fn = getattr(apply_plan, 'delivered', None)
+    return fn(plan) if callable(fn) else plan
+
+
+def _cap_plan(plan, caps_plan):
+    """Clip a plan block-wise to another plan's values (the current envelope)."""
+    if not caps_plan:
+        return plan
+    return {b: q for b, q in ((b, min(q, caps_plan.get(b, 0.0))) for b, q in plan.items())
+            if q > 0.0}
 
 
 def _relax_plan_toward_target(plan, envelope, temps, params, sens, relax, t_floor_K):
@@ -714,6 +1002,14 @@ class CoolingApplication(object):
                                  'and then silently never applied')
             self.placement = 'array_above'
         self.last_tile_plan = None
+        # §P0.19: optional per-tile cap [W], evaluated at delivery. When set, a tile asked for
+        # more than its extractor can remove delivers the cap and the blocks' requests are
+        # scaled back in proportion (last_delivered_plan), so the planner reasons about what
+        # was applied.
+        self.tile_caps_fn = None
+        self.last_delivered_plan = None
+        self.last_shortfall_W = 0.0
+        self.last_n_capped = 0
 
     def __call__(self, plan):
         """Apply ``plan`` and return the trace to solve.
@@ -724,15 +1020,48 @@ class CoolingApplication(object):
         """
         if self.tiles is None:
             return apply_cooling_to_trace(self.trace, plan, self.name_map)
-        from HotGauge.thermal.mr_array import project_plan_to_tiles, tile_powers_for_stack
-        tile_plan = project_plan_to_tiles(plan, self.blocks, self.tiles)
-        requested, projected = sum(plan.values()), sum(tile_plan.values())
-        if abs(requested - projected) > 1e-6 * max(1.0, abs(requested)):
-            raise ValueError('projection lost power: {:.6f} W planned, {:.6f} W landed on tiles'
-                             .format(requested, projected))
+        from HotGauge.thermal.mr_array import (project_plan_to_tiles, tile_powers_for_stack,
+                                               deliver_capped)
+        caps = self.tile_caps_fn() if self.tile_caps_fn is not None else None
+        if caps:
+            tile_plan, delivered, short, n_capped = deliver_capped(plan, self.blocks, self.tiles,
+                                                                   caps)
+            self.last_delivered_plan = delivered
+            self.last_shortfall_W = short
+            self.last_n_capped = n_capped
+        else:
+            tile_plan = project_plan_to_tiles(plan, self.blocks, self.tiles)
+            self.last_delivered_plan = None
+            self.last_shortfall_W = 0.0
+            self.last_n_capped = 0
+            requested, projected = sum(plan.values()), sum(tile_plan.values())
+            if abs(requested - projected) > 1e-6 * max(1.0, abs(requested)):
+                raise ValueError('projection lost power: {:.6f} W planned, {:.6f} W landed on '
+                                 'tiles'.format(requested, projected))
         self.last_tile_plan = tile_plan
         self._set_mr_powers(tile_powers_for_stack(tile_plan, self.tiles))
         return self.trace
+
+    def preview_shortfall(self, plan):
+        """What the tile caps would take off ``plan`` -- WITHOUT applying it.
+
+        `[!]` Applying a plan advances the wiring's plan generation, and the wiring refuses the
+        next plan unless a solver read this one (`ArrayWiring._assert_last_plan_was_solved`).
+        The §P0.20 first-plan re-cap applied the plan to learn the shortfall and only solved
+        when it was non-zero, so every UNCAPPED run (the target device on this die) died on
+        the next application. Found by the §P0.21 regression point; ask here first.
+        """
+        if self.tiles is None or self.tile_caps_fn is None:
+            return 0.0
+        caps = self.tile_caps_fn()
+        if not caps:
+            return 0.0
+        from HotGauge.thermal.mr_array import deliver_capped
+        return float(deliver_capped(plan, self.blocks, self.tiles, caps)[2])
+
+    def delivered(self, plan):
+        """The plan as applied after the tile caps -- ``plan`` itself when no cap bound."""
+        return self.last_delivered_plan if self.last_delivered_plan is not None else plan
 
 
 def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
@@ -740,8 +1069,16 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
                     t_floor_K=200.0, status_fn=None, plan_mode='auto',
                     tiles=None, tile_blocks=None, set_mr_powers=None, die_power_W=None,
                     calibrate=True, calibration_fraction=0.02,
-                    recovery_at_junction=False, T_0_K=295.0):
+                    recovery_at_junction=False, T_0_K=295.0,
+                    tile_temps_fn=None, die_power_fn=None):
     """Plan MR cooling against the solver. See :func:`_run_mr_clipping_dispatch` for the loop.
+
+    §P0.19: ``tile_temps_fn`` returns the array die's solved tile temperatures (``{tile: K}``)
+    from the most recent solve; with ``params.extractor`` set it turns the per-block flux cap
+    into the extractor's own cooling curve at the tile above the block. ``die_power_fn``
+    returns the CONVERGED die power after the most recent solve, so the energy-conservation
+    cap tracks the die the cooling actually produced rather than the injected trace (the
+    12 W over-pull of §P0.18.2). Both optional; both default to the recorded behaviour.
 
     This wrapper exists to do one thing the loop must not be trusted to remember at each of its
     thirteen exits: **stamp where the cooling was applied**. Two generations of results now
@@ -754,14 +1091,84 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
     """
     apply_plan = CoolingApplication(trace, name_map, tiles=tiles, blocks=tile_blocks,
                                     set_mr_powers=set_mr_powers)
+    # §P0.19: snapshot the array die's tile temperatures per solve, keyed by the identity of the
+    # temperature field the solve returned, so the stamp below describes the REPORTED field and
+    # not the last probe executed (which the bisections deliberately leave on a failing trial).
+    snapshots = {}
+    base_tiles = {'temps': None}
+    latest = {'temps': None, 'tile_plan': None}
+    if tile_temps_fn is not None and params.extractor is not None and tiles:
+        _inner_solve = thermal_solve_fn
+
+        def thermal_solve_fn(tr):                     # noqa: F811 - deliberate wrap
+            t = _inner_solve(tr)
+            try:
+                snap = tile_temps_fn()
+            except Exception:                         # noqa: BLE001
+                snap = None
+            snapshots[id(t)] = dict(snap) if snap else None
+            try:
+                diverged = bool((status_fn() or {}).get('diverged')) if status_fn else False
+            except Exception:                         # noqa: BLE001
+                diverged = False
+            # The field this solve produced, and the tile plan it was solved under: the pair the
+            # next cap is made self-consistent against. `[!]` A DIVERGED field is a runaway, not
+            # a state the array is ever in: its tile temperatures (hundreds of kelvin high) sit
+            # past every curve's hot-side limit and would cap the hottest tiles to zero -- which
+            # is how the first GaAs pass read "envelope insufficient" at every rung. So caps are
+            # made from CONVERGED fields only -- and the last converged field PERSISTS across a
+            # diverged solve. Clearing it let a solve that diverged *because* the cap starved
+            # the tiles reset the cap, so the next application went out uncapped, held, and the
+            # bisection reported that uncapped hold (the v98 first pass: a 0.04 W-per-tile film
+            # "holding" 2.00 W/mm^2). Only the very first application, before any converged
+            # field exists, is uncapped.
+            if snap and not diverged:
+                latest['temps'] = dict(snap)
+                latest['tile_plan'] = dict(apply_plan.last_tile_plan or {})
+            if base_tiles['temps'] is None and snap and not diverged and \
+                    not any(q > 0 for q in (apply_plan.last_tile_plan or {}).values()):
+                base_tiles['temps'] = dict(snap)
+            return t
+
+        def _tile_caps():
+            if not latest['temps']:
+                return None
+            return extractor_tile_caps(params, latest['temps'], tiles, base_tiles['temps'],
+                                       latest['tile_plan'])
+        apply_plan.tile_caps_fn = _tile_caps
     result = _run_mr_clipping_dispatch(
         trace, thermal_solve_fn, block_geom, params, name_map,
         initial_sensitivity=initial_sensitivity, max_iter=max_iter, tol_K=tol_K, relax=relax,
         t_floor_K=t_floor_K, status_fn=status_fn, plan_mode=plan_mode, apply_plan=apply_plan,
         die_power_W=die_power_W, calibrate=calibrate,
-        calibration_fraction=calibration_fraction)
+        calibration_fraction=calibration_fraction,
+        tile_temps_fn=tile_temps_fn, die_power_fn=die_power_fn,
+        tile_geom=(tiles, tile_blocks))
     result['placement'] = apply_plan.placement
     result['tile_plan'] = apply_plan.last_tile_plan
+    if params.extractor is not None:
+        # What the extractor model did, stamped once at the single exit, from the REPORTED
+        # solve's tile snapshot: the coldest engaged tile, the curve's flux there, T_min, and how
+        # many tiles were capped at delivery (with the shortfall).
+        tt = snapshots.get(id(result.get('temp_trace'))) or {}
+        tp = result.get('tile_plan') or {}
+        engaged = {t for t, q in tp.items() if q > 0}
+        cold = (min((float(v) for t, v in tt.items() if t in engaged), default=None) if engaged
+                else (min((float(v) for v in tt.values()), default=None) if tt else None))
+        physical = cold is not None and cold > 50.0
+        result['extractor'] = {
+            'label': getattr(params.extractor, 'label', None),
+            'platform': getattr(params.extractor, 'platform', None),
+            'T_min_K': params.extractor.t_min_K(),
+            'h_300K_W_per_mm2': float(params.extractor.cooling_density_W_per_mm2(300.0)),
+            'min_engaged_tile_K': cold,
+            'h_at_min_tile_W_per_mm2': (float(params.extractor.cooling_density_W_per_mm2(cold))
+                                        if physical else None),
+            'eta_asf_at_min_tile': (float(params.extractor.eta_asf(cold)) if physical else None),
+            'n_tiles_capped': int(apply_plan.last_n_capped),
+            'shortfall_W': float(apply_plan.last_shortfall_W),
+            'reported_field_has_tiles': bool(tt),
+            'dt_max_scalar_K': (None if params.dt_max_K == float('inf') else params.dt_max_K)}
     if recovery_at_junction:
         # `[!]` The LPC recovery term is Carnot-limited by the temperature the heat is lifted
         # FROM, and that temperature is an OUTPUT of the solve rather than an input to the
@@ -799,7 +1206,8 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
                               die_power_W=None, calibrate=True, calibration_fraction=0.02,
                               initial_sensitivity=None, max_iter=6, tol_K=1.0, relax=0.7,
                               t_floor_K=200.0, status_fn=None, plan_mode='auto',
-                              apply_plan=None):
+                              apply_plan=None, tile_temps_fn=None, die_power_fn=None,
+                              tile_geom=(None, None)):
     """Iterate MR cooling against the thermal solver until hot blocks reach the target.
 
     Structurally the same fixed point as the leakage loop: the plan changes the temperatures,
@@ -848,6 +1256,24 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
                          .format(plan_mode))
     apply_plan = apply_plan or CoolingApplication(trace, name_map)
     sens = dict(initial_sensitivity or {})
+    tiles, tile_blocks = tile_geom
+
+    base_tiles = {'temps': None}
+
+    def _caps(last_plan=None):
+        # §P0.19: the extractor cap is applied per TILE at delivery (CoolingApplication /
+        # extractor_tile_caps), so the block-level plan keeps its recorded shape. The block-level
+        # cap (extractor_caps) exists for callers that want it and is not used in this loop.
+        return None
+
+    def _die_power():
+        if die_power_fn is None:
+            return die_power_W
+        try:
+            v = die_power_fn()
+            return float(v) if v else die_power_W
+        except Exception:                  # noqa: BLE001
+            return die_power_W
 
     def _status():
         try:
@@ -877,6 +1303,11 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
     apply_plan({})
     base_temps = thermal_solve_fn(trace)
     base_status = _status()
+    if tile_temps_fn is not None and params.extractor is not None:
+        try:
+            base_tiles['temps'] = dict(tile_temps_fn() or {})
+        except Exception:                  # noqa: BLE001
+            base_tiles['temps'] = None
     # Status of the solve that produced the field we would REPORT, as distinct from "any solve
     # in this loop". The searches deliberately visit unstable states to bracket an answer, so
     # conflating the two flags a good result because an exploratory probe behaved as intended.
@@ -891,10 +1322,17 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
             trace, thermal_solve_fn, block_geom, params, name_map, sens,
             max_iter=max_iter, tol_K=tol_K, relax=relax, t_floor_K=t_floor_K,
             status_fn=_status, base_temps=base_temps, base_status=base_status,
-            apply_plan=apply_plan, die_power_W=die_power_W)
+            apply_plan=apply_plan, die_power_W=die_power_W, caps_fn=_caps,
+            die_power_fn=(_die_power if die_power_fn is not None else None))
 
+    # `[!]` The synthetic-key filter is needed HERE as well as in `clipping_plan` (§P0.17).
+    # `base_hot` feeds the sensitivity-calibration PROBE below, which builds its own plan and hands
+    # it straight to `apply_plan` -> `project_plan_to_tiles` without passing through
+    # `clipping_plan` at all. Filtering only the planner left the probe raising the identical
+    # KeyError from a different stack, which is how a "fixed" re-run failed 10 of 11 points.
     base_hot = {b: float(np.ravel(t)[-1]) for b, t in base_temps.items()
-                if float(np.ravel(t)[-1]) > max(t_floor_K, params.target_K)}
+                if not is_synthetic_temp_key(b)
+                and float(np.ravel(t)[-1]) > max(t_floor_K, params.target_K)}
 
     # MEASURE the sensitivity before sizing anything from it.
     #
@@ -952,7 +1390,8 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
     plan, detail, temps = {}, {}, base_temps
     for it in range(max_iter):
         new_plan, detail = clipping_plan(base_hot, block_geom, params, sens,
-                                         t_floor_K=t_floor_K, die_power_W=die_power_W)
+                                         t_floor_K=t_floor_K, die_power_W=_die_power(),
+                                         h_max_by_block=_caps(plan))
         if not new_plan:
             return {'plan': plan, 'detail': detail, 'temp_trace': temps, 'sensitivity': sens,
                     'result_unconverged': bool(result_status.get('unconverged')),
@@ -963,6 +1402,7 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
         blended = ({b: relax * new_plan[b] + (1 - relax) * plan.get(b, 0.0) for b in new_plan}
                    if plan else dict(new_plan))
         cooled_trace = apply_plan(blended)
+        blended = _delivered(apply_plan, blended)         # what the tiles could actually remove
         temps = thermal_solve_fn(cooled_trace)
         result_status = _status()
 
@@ -1038,7 +1478,8 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
 def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_map, sens,
                               max_iter=6, tol_K=1.0, relax=0.7, t_floor_K=200.0,
                               status_fn=None, base_temps=None, base_status=None,
-                              bisect_iters=8, apply_plan=None, die_power_W=None):
+                              bisect_iters=8, apply_plan=None, die_power_W=None,
+                              caps_fn=None, die_power_fn=None):
     """MR sizing anchored on the device envelope rather than on an uncooled baseline.
 
     Used when the bare die has no steady state, where the baseline the original scheme plans
@@ -1052,14 +1493,22 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
     status_fn = status_fn or (lambda: {})
     apply_plan = apply_plan or CoolingApplication(trace, name_map)
     history = []
+    caps_fn = caps_fn or (lambda: None)
+    _die_power_for_envelope = die_power_fn or (lambda: die_power_W)
+
+    def _envelope(last_plan=None):
+        # Re-derived against the tiles' current temperatures when an extractor cap is live: the
+        # most the device can do, self-consistent with how far the cooling has pulled the tiles.
+        return envelope_plan(block_geom, params, sens, t_floor_K=t_floor_K,
+                             die_power_W=_die_power_for_envelope(),
+                             h_max_by_block=caps_fn(last_plan))
 
     # Seed sensitivities for every block we might cool. 1.0 K/W is a placeholder that the
     # secant update replaces after the first cooled solve; it only sets the first step.
     for b in block_geom:
         sens.setdefault(b, 1.0)
 
-    envelope, detail = envelope_plan(block_geom, params, sens, t_floor_K=t_floor_K,
-                                     die_power_W=die_power_W)
+    envelope, detail = _envelope()
     if not envelope:
         return {'plan': {}, 'detail': detail, 'temp_trace': base_temps, 'sensitivity': sens,
                 'result_unconverged': bool(result_status.get('unconverged')),
@@ -1072,7 +1521,9 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
     plan = dict(envelope)
     prev_peak = None
     result_status, prev_status = {}, {}
-    temps = thermal_solve_fn(apply_plan(plan))
+    _tr = apply_plan(plan)
+    plan = _delivered(apply_plan, plan)
+    temps = thermal_solve_fn(_tr)
     st = status_fn()
     # The status of the solve that produced the field we would REPORT. Exploratory probes below
     # deliberately visit unstable states, so "some solve was unverified" is not a statement about
@@ -1104,6 +1555,78 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
     if base_temps is not None:
         sens.update(estimate_sensitivity(base_temps, temps, plan))
 
+    # §P0.19: the first plan was sized against the INJECTED die power (the baseline diverged, so
+    # no converged power existed yet). Under a converged-power cap that plan may remove more
+    # than the cooled die dissipates; it must be re-capped and re-solved before it can stand as
+    # a holding state, or the over-pull leaks through the bisection as the reported answer.
+    if die_power_fn is not None and die_power_fn() is not None \
+            and float(sum(plan.values())) > float(die_power_fn()) + 1e-9:
+        cap_W = float(die_power_fn())
+        capped = _energy_capped(plan, cap_W)
+        _tr = apply_plan(capped)
+        capped = _delivered(apply_plan, capped)
+        temps_c = thermal_solve_fn(_tr)
+        st_c = status_fn()
+        peak_c = max((float(np.ravel(t)[-1]) for t in temps_c.values()
+                      if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+        history.append({'iter': 0, 'peak_K': peak_c, 'heat_removed_W': float(sum(capped.values())),
+                        'max_plan_change_W': float(sum(plan.values())) - float(sum(capped.values())),
+                        'stage': 'conservation cap at the converged die power'})
+        if st_c.get('diverged') or not (peak_c == peak_c) or peak_c > params.target_K + tol_K:
+            return {'plan': capped, 'detail': detail, 'temp_trace': temps_c, 'sensitivity': sens,
+                    'result_unconverged': bool(st_c.get('unconverged')),
+                    'converged': not st_c.get('diverged'), 'iterations': 2, 'history': history,
+                    'temp_trace_diverged': bool(st_c.get('diverged')),
+                    'plan_is_minimum': False, 'plan_holds_target': False,
+                    'conservation_bound': True,
+                    'accounting': mr_accounting(capped, params, detail=detail),
+                    'reason': ('conservation binds: holding the target needs more heat removed '
+                               '({:.1f} W) than the cooled die dissipates ({:.1f} W); the array '
+                               'would be refrigerating the heat sink. Reported at the cap: peak '
+                               '{}'.format(float(sum(plan.values())), cap_W,
+                                           'runaway' if st_c.get('diverged') else
+                                           '{:.1f} C'.format(peak_c - 273.15)))}
+        plan, temps, st, peak = capped, temps_c, st_c, peak_c
+        result_status = dict(st)
+        # (_remember is defined just below and records this state as the first holding plan.)
+
+    # §P0.20: the first plan went out UNCAPPED (no converged field existed to cap it against).
+    # Now one does. If the extractor cannot deliver that plan at the tile temperatures it
+    # produced, re-apply it under the cap and re-solve before it can stand as a holding state;
+    # otherwise the uncapped hold leaks through the bisection as the answer.
+    # `[!]` Preview the shortfall; do not apply the plan unless it will be solved (P0.21 fix).
+    _preview = getattr(apply_plan, 'preview_shortfall', None)
+    if callable(_preview) and getattr(apply_plan, 'tile_caps_fn', None) is not None:
+        short = float(_preview(plan))
+        if short > 1e-6 * max(1.0, float(sum(plan.values()))):
+            asked = float(sum(plan.values()))
+            _tr = apply_plan(plan)
+            short = float(getattr(apply_plan, 'last_shortfall_W', short) or short)
+            plan = _delivered(apply_plan, plan)
+            temps_x = thermal_solve_fn(_tr)
+            st_x = status_fn()
+            peak_x = max((float(np.ravel(t)[-1]) for t in temps_x.values()
+                          if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+            history.append({'iter': 0, 'peak_K': peak_x, 'heat_removed_W': float(sum(plan.values())),
+                            'max_plan_change_W': short, 'stage': 'extractor cap on the first plan'})
+            if st_x.get('diverged') or not (peak_x == peak_x) or peak_x > params.target_K + tol_K:
+                return {'plan': plan, 'detail': detail, 'temp_trace': temps_x, 'sensitivity': sens,
+                        'result_unconverged': bool(st_x.get('unconverged')),
+                        'converged': not st_x.get('diverged'), 'iterations': 2, 'history': history,
+                        'temp_trace_diverged': bool(st_x.get('diverged')),
+                        'plan_is_minimum': False, 'plan_holds_target': False,
+                        'extractor_bound': True, 'extractor_shortfall_W': short,
+                        'accounting': mr_accounting(plan, params, detail=detail),
+                        'reason': ('extractor binds: the film cannot deliver the plan at the tile '
+                                   'temperatures it produces -- {:.1f} W asked, {:.1f} W deliverable '
+                                   '({} tiles capped). Reported at the cap: peak {}'
+                                   .format(asked, float(sum(plan.values())),
+                                           int(getattr(apply_plan, 'last_n_capped', 0)),
+                                           'runaway' if st_x.get('diverged') else
+                                           '{:.1f} C'.format(peak_x - 273.15)))}
+            temps, st, peak = temps_x, st_x, peak_x
+            result_status = dict(st)
+
     # The last plan whose solve BOTH converged and held the target. "The previous iterate" is not
     # the same thing: the descent deliberately walks past the feasible boundary to bracket the
     # minimum, so the previous iterate can be a diverged field full of NaN. Restoring that as an
@@ -1124,6 +1647,10 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
         prev_temps, prev_plan, prev_peak = temps, plan, peak
         prev_status = dict(result_status)
         plan = _relax_plan_toward_target(plan, envelope, temps, params, sens, relax, t_floor_K)
+        # §P0.19: with a converged-power energy cap, the conservation limit follows the die the
+        # cooling actually produced, every iteration (the P0.18.2 over-pull at 2.60 W/mm^2).
+        if die_power_fn is not None and die_power_fn() is not None:
+            plan = _energy_capped(plan, die_power_fn())
         if not plan:
             # The relaxation has taken the plan to zero. That is only the answer if the die
             # actually holds with no cooling, so it has to be TESTED -- and on a die that has no
@@ -1181,7 +1708,9 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                     'reason': ('relaxation reached zero but the die has no steady state '
                                'uncooled ({}); reporting the last plan that held'.format(why))}
 
-        temps = thermal_solve_fn(apply_plan(plan))
+        _tr = apply_plan(plan)
+        plan = _delivered(apply_plan, plan)
+        temps = thermal_solve_fn(_tr)
         st = status_fn()
         result_status = dict(st)
         sens.update(estimate_sensitivity(prev_temps, temps,
@@ -1210,7 +1739,11 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                 trial = {b: 0.5 * (plan.get(b, 0.0) + bad.get(b, 0.0))
                          for b in set(plan) | set(bad)}
                 trial = {b: q for b, q in trial.items() if q > 0.0}
-                t_trial = thermal_solve_fn(apply_plan(trial))
+                if die_power_fn is not None and die_power_fn() is not None:
+                    trial = _energy_capped(trial, die_power_fn())
+                _tr = apply_plan(trial)
+                trial = _delivered(apply_plan, trial)
+                t_trial = thermal_solve_fn(_tr)
                 st_trial = status_fn()
                 pk = max((float(np.ravel(t)[-1]) for t in t_trial.values()
                           if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
@@ -1265,7 +1798,11 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                 trial = {b: 0.5 * (enough.get(b, 0.0) + too_little.get(b, 0.0))
                          for b in set(enough) | set(too_little)}
                 trial = {b: q for b, q in trial.items() if q > 0.0}
-                t_trial = thermal_solve_fn(apply_plan(trial))
+                if die_power_fn is not None and die_power_fn() is not None:
+                    trial = _energy_capped(trial, die_power_fn())
+                _tr = apply_plan(trial)
+                trial = _delivered(apply_plan, trial)
+                t_trial = thermal_solve_fn(_tr)
                 st_trial = status_fn()
                 pk = max((float(np.ravel(t)[-1]) for t in t_trial.values()
                           if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))

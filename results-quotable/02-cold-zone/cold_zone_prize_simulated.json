@@ -1,0 +1,293 @@
+{
+ "note": "How big is the cold-zone prize, now that the leakage curve is simulated rather than clamped?\n\n    python examples/cold_zone_prize.py\n\n`docs/evidence/cold_zone_prize_bounds.json` (29 Aug 2026) called this **\"the single number the\narchitecture argument is most uncertain about -- ~50x\"**, put the spread at **2.3x** between our\nown curve (13.5 % of die power) and the book's Section 10.8 (31.7 %), and said what would settle\nit: *\"PTM SPICE cards ... give leakage vs temperature over any range. McPAT cannot: it rejects\ninput outside 300-400 K.\"* \u00a7P0.13 built that simulator. This is the answer.\n\nWhy the old spread existed\n--------------------------\nThe prize is *bounded by the static fraction* -- you cannot save more leakage than there is -- so\nwhat matters is the **leakage reduction factor** between the hot baseline and the cold zone, and\nthen only through ``1 - 1/reduction``, which saturates hard. The pipeline curve **clamps below\n300 K**: it reports the same leakage at 200 K as at 300 K, so its reduction is stuck at 1.7x and\nthe prize looks small. That was never physics -- it is where CACTI's table stops.\n\n`[+]` The two ratios are RE-DERIVED, and the recorded pair was a scope error\n--------------------------------------------------------------------------\nThe conversion from \"leakage reduction\" to \"% of die power\" needs two ratios: the **static\nfraction** of die power and the **cache share** of leakage. \u00a7P0.14 inherited them from\n`cold_zone_prize_bounds.json` (34.64 % and 92.6 %) and could not reproduce them, leaving the\nabsolute prize quotable only as a 10-30 % range. They are now reproduced **exactly** -- all four\nrecorded quantities to the last digit -- and the rule that produces them is wrong.\n\nThe recorded pair is ``mcpat_runs/7nm/linpack_3.8GHz/block_powers_split_400000000000.json``,\nsummed over the **true leaves of Core0 alone** with ``Processor/Total L3s`` bridged in. Two\nindependent defects, and they compound:\n\n* **Scope.** One core's leaves are weighed against the **whole chip's** L3. The cache share is\n  divided by an eighth of the core power it should be divided by, so 66.8 % becomes 92.6 %.\n* **Slice.** ``400000000000`` is the first tick of the trace and the die is still warming up:\n  only Core0 has ramped, so its dynamic power is a third of steady state. That lifts the static\n  fraction from 15.5 % to 34.6 % -- and it hits the one-core scope hardest precisely because\n  Core0 is the core the rule keeps.\n\n`[!]` **The handoff's hypothesis is withdrawn.** \u00a7P0.14 guessed the pair had been measured\n*after* leakage feedback converged at the operating temperature, with L3 bridged. It was not, and\nthe recorded numbers rule it out on their own: dynamic power does not depend on temperature, and\nthe recorded 2.6062 W is the T_ref dynamic of that slice to four decimal places. No feedback and\nno temperature is involved -- it is scope and slice arithmetic.\n\nWhat replaces it: the ratios the **pipeline itself** implies, computed the way ``die_power_of_trace``\ncomputes die power -- everything that lands on a real floorplan block, over the steady-state\nslices. That denominator includes the ``core_other`` slab (42 % of on-die leakage), which the\nMcPAT-leaf view drops entirely, and it is the same die power every recorded thermal result is a\nfraction of. It gives **static 15.98 %, cache share 38.24 %** and a ceiling of **6.1 %** of die\npower against the recorded 32.1 %.\n\n`[!]` **So the absolute prize moves DOWN, and the 30 % end of the range is withdrawn.** The\ninherited pair was not one plausible reading among two -- it was arithmetic on the wrong scope\nand the wrong slice. The improvement over the pipeline curve is untouched: both conversions\nmultiply the same ``1 - 1/reduction`` by a constant, so **2.23x** survives unchanged. That is\nstill the number to quote; the absolute prize is now ~6 % of die power (4.5 % if the cold die\ncarries L3 only), with ~10 % as the upper bound if ``core_other``'s leakage is excluded.",
+ "hot_baseline_K": 350.0,
+ "ratios": {
+  "recorded_and_withdrawn": {
+   "static_fraction": 0.3464,
+   "cache_share_of_leakage": 0.9259999999999999,
+   "source": "docs/evidence/cold_zone_prize_bounds.json",
+   "provenance": "INHERITED -- now REPRODUCED, and found to be a scope error; see provenance_of_recorded_pair"
+  },
+  "rederived_pipeline_die": {
+   "die_W": 27.03944274156796,
+   "static_W": 4.321317151768005,
+   "static_fraction": 0.15981670107608964,
+   "l3_share_of_leakage": 0.2834882067146568,
+   "cache_share_of_leakage": 0.38235996293953706,
+   "cache_share_incl_L1": 0.4613480075593003,
+   "core_other_share_of_leakage": 0.42273111087266757,
+   "source": "mcpat_runs/7nm/linpack_3.8GHz (10 steady slices, tick >= 2e+12)",
+   "floorplan": "skylake7nm_34core_3_3D-ICE_template.flp",
+   "aggregation": "power on real floorplan blocks, via prepare_dice_trace"
+  },
+  "mcpat_leaf_upper_bound": {
+   "dynamic_W": 14.647521521799998,
+   "static_W": 2.474499120736,
+   "total_W": 17.122020642536,
+   "static_fraction": 0.14452279895254505,
+   "cache_share_of_leakage": 0.6677305528839914,
+   "cache_share_incl_L1": 0.8056705461293621,
+   "l3_share_of_leakage": 0.4950668358433809,
+   "source": "mcpat_runs/7nm/linpack_3.8GHz (10 steady slices)",
+   "aggregation": "true leaves of all cores + Processor/Total L3s bridged"
+  },
+  "recorded_formula_reproduces": true
+ },
+ "provenance_of_recorded_pair": {
+  "slice": "block_powers_split_400000000000.json",
+  "scope": "true leaves of Core0 alone + Processor/Total L3s bridged",
+  "dynamic_W": 2.6061786358,
+  "static_W": 1.3812245338420002,
+  "cache_leakage_W": 1.2784494770000001,
+  "static_fraction": 0.3463970095519611,
+  "cache_share_of_leakage": 0.9255913471532959,
+  "l3_share_of_leakage": 0.88692491335383,
+  "defects": [
+   "scope: one core of leaves against the whole chip's L3",
+   "slice: tick 4e11 is warm-up -- only Core0 has ramped"
+  ],
+  "withdrawn_hypothesis": "NOT measured post-feedback at the operating temperature: dynamic power is temperature-independent and the recorded 2.6062 W is this slice's T_ref dynamic exactly."
+ },
+ "rows": [
+  {
+   "T_cold_K": 300.0,
+   "pipeline": {
+    "leakage_reduction_x": 1.7307426835831705,
+    "die_power_saved_pct_recorded_ratios": 13.543185949169361,
+    "die_power_saved_pct_rederived": 2.580040622670554
+   },
+   "simulated": {
+    "leakage_reduction_x": 6.070290316263586,
+    "die_power_saved_pct_recorded_ratios": 26.792438037853323,
+    "die_power_saved_pct_rederived": 5.104085462422893
+   },
+   "simulated-gidl-off": {
+    "leakage_reduction_x": 9.034319388755668,
+    "die_power_saved_pct_recorded_ratios": 28.526108009740348,
+    "die_power_saved_pct_rederived": 5.434357746253345
+   },
+   "analytic-P0.12": {
+    "leakage_reduction_x": 13.466539798028137,
+    "die_power_saved_pct_recorded_ratios": 29.694688846913376
+   }
+  },
+  {
+   "T_cold_K": 290.0,
+   "pipeline": {
+    "leakage_reduction_x": 1.7307426835831705,
+    "die_power_saved_pct_recorded_ratios": 13.543185949169361,
+    "die_power_saved_pct_rederived": 2.580040622670554
+   },
+   "simulated": {
+    "leakage_reduction_x": 8.137276456111566,
+    "die_power_saved_pct_recorded_ratios": 28.134701911377164,
+    "die_power_saved_pct_rederived": 5.359793043566091
+   },
+   "simulated-gidl-off": {
+    "leakage_reduction_x": 15.085416187088844,
+    "die_power_saved_pct_recorded_ratios": 29.950305558696787,
+    "die_power_saved_pct_rederived": 5.705674077935315
+   }
+  },
+  {
+   "T_cold_K": 280.0,
+   "pipeline": {
+    "leakage_reduction_x": 1.7307426835831705,
+    "die_power_saved_pct_recorded_ratios": 13.543185949169361,
+    "die_power_saved_pct_rederived": 2.580040622670554
+   },
+   "simulated": {
+    "leakage_reduction_x": 10.318221819082076,
+    "die_power_saved_pct_recorded_ratios": 28.967902800662138,
+    "die_power_saved_pct_rederived": 5.518521731872428
+   },
+   "simulated-gidl-off": {
+    "leakage_reduction_x": 25.76863220739805,
+    "die_power_saved_pct_recorded_ratios": 30.83184595187854,
+    "die_power_saved_pct_rederived": 5.8736116690952
+   },
+   "analytic-P0.12": {
+    "leakage_reduction_x": 45.5640274830846,
+    "die_power_saved_pct_recorded_ratios": 31.372649554644653
+   }
+  },
+  {
+   "T_cold_K": 270.0,
+   "pipeline": {
+    "leakage_reduction_x": 1.7307426835831705,
+    "die_power_saved_pct_recorded_ratios": 13.543185949169361,
+    "die_power_saved_pct_rederived": 2.580040622670554
+   },
+   "simulated": {
+    "leakage_reduction_x": 12.30517881532444,
+    "die_power_saved_pct_recorded_ratios": 29.469880644333188,
+    "die_power_saved_pct_rederived": 5.614150872106696
+   },
+   "simulated-gidl-off": {
+    "leakage_reduction_x": 44.77903104729274,
+    "die_power_saved_pct_recorded_ratios": 31.360308287370426,
+    "die_power_saved_pct_rederived": 5.974286229589147
+   }
+  },
+  {
+   "T_cold_K": 260.0,
+   "pipeline": {
+    "leakage_reduction_x": 1.7307426835831705,
+    "die_power_saved_pct_recorded_ratios": 13.543185949169361,
+    "die_power_saved_pct_rederived": 2.580040622670554
+   },
+   "simulated": {
+    "leakage_reduction_x": 13.866415041588034,
+    "die_power_saved_pct_recorded_ratios": 29.76337879270193,
+    "die_power_saved_pct_rederived": 5.670063649817348
+   },
+   "simulated-gidl-off": {
+    "leakage_reduction_x": 78.23925070204642,
+    "die_power_saved_pct_recorded_ratios": 31.666658568529552,
+    "die_power_saved_pct_rederived": 6.0326473990454055
+   }
+  },
+  {
+   "T_cold_K": 250.0,
+   "pipeline": {
+    "leakage_reduction_x": 1.7307426835831705,
+    "die_power_saved_pct_recorded_ratios": 13.543185949169361,
+    "die_power_saved_pct_rederived": 2.580040622670554
+   },
+   "simulated": {
+    "leakage_reduction_x": 14.946463389275804,
+    "die_power_saved_pct_recorded_ratios": 29.930537663642944,
+    "die_power_saved_pct_rederived": 5.701908200950755
+   },
+   "simulated-gidl-off": {
+    "leakage_reduction_x": 134.5818262281852,
+    "die_power_saved_pct_recorded_ratios": 31.838296971829063,
+    "die_power_saved_pct_rederived": 6.065345322162249
+   },
+   "analytic-P0.12": {
+    "leakage_reduction_x": 236.45505537547476,
+    "die_power_saved_pct_recorded_ratios": 31.94098360665681
+   }
+  },
+  {
+   "T_cold_K": 240.0,
+   "pipeline": {
+    "leakage_reduction_x": 1.7307426835831705,
+    "die_power_saved_pct_recorded_ratios": 13.543185949169361,
+    "die_power_saved_pct_rederived": 2.580040622670554
+   },
+   "simulated": {
+    "leakage_reduction_x": 15.627751187126414,
+    "die_power_saved_pct_recorded_ratios": 30.024096443610155,
+    "die_power_saved_pct_rederived": 5.719731588581175
+   },
+   "simulated-gidl-off": {
+    "leakage_reduction_x": 221.09597373160426,
+    "die_power_saved_pct_recorded_ratios": 31.931559836582192,
+    "die_power_saved_pct_rederived": 6.0831123365525706
+   }
+  },
+  {
+   "T_cold_K": 230.0,
+   "pipeline": {
+    "leakage_reduction_x": 1.7307426835831705,
+    "die_power_saved_pct_recorded_ratios": 13.543185949169361,
+    "die_power_saved_pct_rederived": 2.580040622670554
+   },
+   "simulated": {
+    "leakage_reduction_x": 16.038747794929673,
+    "die_power_saved_pct_recorded_ratios": 30.076693345178203,
+    "die_power_saved_pct_rederived": 5.729751545715448
+   },
+   "simulated-gidl-off": {
+    "leakage_reduction_x": 335.94174750271657,
+    "die_power_saved_pct_recorded_ratios": 31.981157255630038,
+    "die_power_saved_pct_rederived": 6.092560878158905
+   }
+  },
+  {
+   "T_cold_K": 220.0,
+   "pipeline": {
+    "leakage_reduction_x": 1.7307426835831705,
+    "die_power_saved_pct_recorded_ratios": 13.543185949169361,
+    "die_power_saved_pct_rederived": 2.580040622670554
+   },
+   "simulated": {
+    "leakage_reduction_x": 16.290241791520298,
+    "die_power_saved_pct_recorded_ratios": 30.107569165416248,
+    "die_power_saved_pct_rederived": 5.735633534692887
+   },
+   "simulated-gidl-off": {
+    "leakage_reduction_x": 464.621237842264,
+    "die_power_saved_pct_recorded_ratios": 32.00760174391647,
+    "die_power_saved_pct_rederived": 6.097598677557127
+   },
+   "analytic-P0.12": {
+    "leakage_reduction_x": 418.6847281317941,
+    "die_power_saved_pct_recorded_ratios": 32.000027126769275
+   }
+  },
+  {
+   "T_cold_K": 210.0,
+   "pipeline": {
+    "leakage_reduction_x": 1.7307426835831705,
+    "die_power_saved_pct_recorded_ratios": 13.543185949169361,
+    "die_power_saved_pct_rederived": 2.580040622670554
+   },
+   "simulated": {
+    "leakage_reduction_x": 16.45677900161095,
+    "die_power_saved_pct_recorded_ratios": 30.1274955169356,
+    "die_power_saved_pct_rederived": 5.739429598379417
+   },
+   "simulated-gidl-off": {
+    "leakage_reduction_x": 591.0957250841643,
+    "die_power_saved_pct_recorded_ratios": 32.02237359501892,
+    "die_power_saved_pct_rederived": 6.100412784670432
+   }
+  },
+  {
+   "T_cold_K": 200.0,
+   "pipeline": {
+    "leakage_reduction_x": 1.7307426835831705,
+    "die_power_saved_pct_recorded_ratios": 13.543185949169361,
+    "die_power_saved_pct_rederived": 2.580040622670554
+   },
+   "simulated": {
+    "leakage_reduction_x": 16.580759690026145,
+    "die_power_saved_pct_recorded_ratios": 30.142070016497065,
+    "die_power_saved_pct_rederived": 5.742206109095934
+   },
+   "simulated-gidl-off": {
+    "leakage_reduction_x": 711.5258747247369,
+    "die_power_saved_pct_recorded_ratios": 32.031558519284474,
+    "die_power_saved_pct_rederived": 6.102162555943618
+   },
+   "analytic-P0.12": {
+    "leakage_reduction_x": 436.3221294755184,
+    "die_power_saved_pct_recorded_ratios": 32.0031240404988
+   }
+  }
+ ],
+ "improvement_over_pipeline_x": {
+  "recorded_ratios": 2.2256262396179944,
+  "rederived": 2.2256262396179944
+ },
+ "saturation_knee_K": 280.0,
+ "saturation_knee_K_gidl_off": 280.0,
+ "book_section_10_8": {
+  "reduction_x": [
+   100.0,
+   200.0
+  ],
+  "die_power_saved_pct_recorded_ratios": [
+   31.755873599999997,
+   31.916256799999996
+  ]
+ },
+ "FINDING_1_THE_2_3X_SPREAD_IS_CLOSED_AND_THE_BOOK_WAS_RIGHT": "The recorded uncertainty was 13.5 % of die power (our curve) against 31.7 % (the book) -- a 2.3x spread called the largest in the architecture argument. Simulated, cooling the cache from 350 K to 200 K reduces its leakage **16.6x** where the pipeline curve says 1.73x, and the prize grows by **2.2x** -- the book's end of the recorded 2.3x spread. `[!]` That is a statement about the SPREAD, not about the book's absolute number: re-derived ratios (FINDING_5) put the prize at ~6 % of die power, well below the book's 31.7 %, and both of the recorded bounds with it. The pipeline curve was wrong for a specific and boring reason: it CLAMPS below 300 K, reporting the same leakage at 200 K as at 300 K. That clamp was never a floor -- it is where CACTI's table stops. `[!]` Quote the 2.2x improvement, not the absolute percentage. The reduction factor is measured here; the conversion to die power is now re-derived rather than inherited (FINDING_5) and puts the absolute prize at ~6 % of die power, not the ~30 % the inherited ratios gave. The improvement is unchanged by that, which is why it is the safe number.",
+ "FINDING_2_BUT_THE_BOOK_WAS_RIGHT_FOR_THE_WRONG_REASON": "Section 10.8 claims a \"realistic 100-200x\" leakage reduction. The simulator says 16.6x -- roughly 6x less. It does not matter, and that is the point: the prize is bounded by the static fraction and approaches it as 1 - 1/reduction, so 16.6x already collects 5.7 % of the available 6.1 %. Do not quote the book's reduction factor; quote the die power, which is what survives.",
+ "FINDING_3_THE_GIDL_BRACKET_BARELY_MATTERS_HERE": "P0.13's largest open uncertainty is GIDL: ASAP7 is a predictive PDK and its GIDL coefficients move device leakage at 200 K by ~40x. Through the saturation that is worth **1.9 percentage points of die power** (30.1 % with GIDL, 32.0 % without). A 40x device-level uncertainty is a 1.9-point architecture-level one. The cold-zone case does not depend on settling it.",
+ "FINDING_4_HOW_COLD_IS_WORTH_GETTING_AND_IT_IS_NOT_VERY": "The prize is within 5 % of its maximum by **280 K**, so the 80 K of cooling below that buys under 5 % more. This is the useful form of the result and it is a design constraint rather than a curiosity: the target is not \"as cold as possible\" but roughly **280 K** -- barely sub-ambient, and a far easier machine to build than the deep-cryogenic one the reduction factors suggest. `[+]` And this is the one number the GIDL bracket does NOT move: both brackets put the knee at 280 K. GIDL changes how flat the curve is below the knee, not where the knee is, so the design target does not wait on settling it.",
+ "FINDING_5_THE_INHERITED_RATIOS_ARE_A_SCOPE_ERROR_AND_THE_PRIZE_MOVES_DOWN": "\u00a7P0.14 could not reproduce the recorded pair (static 34.64 %, cache share 92.6 %) and quoted the absolute prize as a 10-30 % range because of it. It reproduces EXACTLY -- 2.6062 W dynamic, 1.3812 W static, 1.2784 W cache leakage, all four to the last recorded digit -- from block_powers_split_400000000000.json summed over true leaves of Core0 alone + Processor/Total L3s bridged. That settles the provenance and settles it as a defect, with two independent parts: **scope**, one core's leaves weighed against the WHOLE chip's L3, which inflates the cache share from 66.8 % to 92.6 %; and **slice**, tick 4e11 is the trace warm-up where only Core0 has ramped, which inflates the static fraction from 15.5 % to 34.6 %. `[!]` \u00a7P0.14's guess that the pair was measured post-feedback at the operating temperature is WITHDRAWN: dynamic power does not depend on temperature, and 2.6062 W is that slice's T_ref dynamic exactly. Re-derived on the pipeline's own denominator -- power that lands on a real floorplan block, over the steady slices -- the ratios are **static 15.98 %, cache share 38.24 %**, a ceiling of 6.1 % of die power against the recorded 32.1 %. So the absolute prize is ~6 % of die power and the 30 % end of the range is withdrawn. The 2.23x improvement is untouched.",
+ "HONEST_LIMITS": "The leakage REDUCTION factors are reproducible and so, now, are the two conversion ratios (FINDING_5). What remains is a real spread in what counts as cache leakage, and it is a modelling choice rather than an unknown: on the pipeline denominator the prize at 200 K is 5.7 % of die power with L3+L2 as the cold die, 4.3 % with L3 alone, and 9.1 % if McPAT's un-itemised `core_other` leakage (42 % of on-die leakage) is excluded from the denominator as the McPAT-leaf view does. Roughly **4-10 % of die power**, against the 10-30 % \u00a7P0.14 had to quote and the 31.7 % the book implies. The inherited 34.64 %/92.6 % pair is not one plausible reading among two -- it is arithmetic on the wrong scope and the wrong slice -- and should not be used again. `[+]` The IMPROVEMENT is unaffected by any of this, which is what the headline claim rests on: every conversion multiplies the same (1 - 1/reduction) by a constant, so the simulated curve beats the pipeline curve by 2.23x under all of them. The claim \"our own curve understated the cold-zone prize by ~2.2x, because it clamps\" is unchanged. The claim \"the prize is ~30 % of die power\" is withdrawn. `[!]` What the smaller absolute prize does NOT change: the cold zone still has to be a separate die (TEST 1, thermal_zone_tests.json), and the knee is still ~280 K. What it does change is the size of the win being bought, and that is now a first-order input to whether a separate cold cache die pays for itself. Separately, this is one device flavour's physics applied to a chip-level power split, and it assumes the cache can actually be HELD at the cold temperature."
+}

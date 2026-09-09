@@ -1,0 +1,139 @@
+{
+ "kind": "historical",
+ "built_from": "docs/RESULTS_REGISTER.md",
+ "note": "sha256 is of the SOURCE file in docs/evidence at build time; --verify re-checks the copy against it",
+ "items": [
+  {
+   "slug": "01-cold-zone-prize-30-percent",
+   "files": [
+    {
+     "file": "cold_zone_prize_bounds.json",
+     "from": "docs/evidence/cold_zone_prize_bounds.json",
+     "sha256": "ceb20d7bf7295af9f0fced053f584373c5d3c5b1862d78bb430f99b18bd6017b"
+    }
+   ],
+   "missing": [],
+   "raw": []
+  },
+  {
+   "slug": "02-clock-runaway-mechanism",
+   "files": [
+    {
+     "file": "clock_headroom_34core_7nm.json",
+     "from": "docs/evidence/clock_headroom_34core_7nm.json",
+     "sha256": "fce30fc61a730850a268bca1533c9d5f67e7d14812143e3e7692385f8c9bbc96"
+    },
+    {
+     "file": "clock_headroom_curve_compare.json",
+     "from": "docs/evidence/clock_headroom_curve_compare.json",
+     "sha256": "5c430c0f5b842853c5fd10b5341d6fedf346d4faacb8f9b64ed2a98b095a1a0f"
+    }
+   ],
+   "missing": [],
+   "raw": []
+  },
+  {
+   "slug": "03-fan-affinity-law",
+   "files": [
+    {
+     "file": "fan_displacement_solved.json",
+     "from": "docs/evidence/fan_displacement_solved.json",
+     "sha256": "b8bdd3342c69fafeb7ba3591373b36860718dfc994a9b97b737fef415f990f38"
+    },
+    {
+     "file": "hybrid_displacement.json",
+     "from": "docs/evidence/hybrid_displacement.json",
+     "sha256": "ef8c0336f2a0a27047c21b6e67ca417c8e152e90d51643654b879c3a421b63ed"
+    }
+   ],
+   "missing": [],
+   "raw": []
+  },
+  {
+   "slug": "04-density-ceiling-pre-correction",
+   "files": [
+    {
+     "file": "uniform_density_probe.json",
+     "from": "docs/evidence/uniform_density_probe.json",
+     "sha256": "75008b6f10e4893d2fa3481f123335e0117bf410b408431ed68f1a1ec1c30e61"
+    },
+    {
+     "file": "uniform_density_curve_compare.json",
+     "from": "docs/evidence/uniform_density_curve_compare.json",
+     "sha256": "afade65b4ad8e459d2442349fa1389302d0afda2282aca61f68c8116fae6fd35"
+    },
+    {
+     "file": "uniform_density_curve_compare_fine.json",
+     "from": "docs/evidence/uniform_density_curve_compare_fine.json",
+     "sha256": "d90d835cb9f32478ea05494718f1f695060cbc394f9d01b06f9864098d9c2aa8"
+    },
+    {
+     "file": "uniform_density_curve_compare_gidl_off.json",
+     "from": "docs/evidence/uniform_density_curve_compare_gidl_off.json",
+     "sha256": "eaace504830f69b8f8e5b58796cc770d531cafdac57f59f39c29b3724e875b7a"
+    },
+    {
+     "file": "uniform_density_curve_compare_gidl_off_fine.json",
+     "from": "docs/evidence/uniform_density_curve_compare_gidl_off_fine.json",
+     "sha256": "2d15cca1cf125decca072b2be92b4749dc9b397b3eda5aad223a9440000c4070"
+    }
+   ],
+   "missing": [],
+   "raw": []
+  },
+  {
+   "slug": "05-first-law-recovery",
+   "files": [
+    {
+     "file": "FINDINGS.json",
+     "from": "docs/evidence/FINDINGS.json",
+     "sha256": "83beda01f71fc32ef198e370ee9f8f5d2bf3f26f9cba835ccd2ccf678e78b904"
+    },
+    {
+     "file": "first_law_recovery_audit.json",
+     "from": "docs/evidence/first_law_recovery_audit.json",
+     "sha256": "3d2ea7c9b58a3086f04379f3c141ec57ea92dc236e8c55d571aab6a34c95e7b0"
+    },
+    {
+     "file": "loop_model_reconciliation.json",
+     "from": "docs/evidence/loop_model_reconciliation.json",
+     "sha256": "8f1bacfcf0fb52daf722ce5522f0605409df1b2064b4cf90de25ac202d670cc3"
+    },
+    {
+     "file": "findings_harvest_correction.json",
+     "from": "docs/evidence/findings_harvest_correction.json",
+     "sha256": "c438aea26d8931584e9eae518186a9a04627f487a27bf1e36de44d5ea2871c4f"
+    }
+   ],
+   "missing": [],
+   "raw": []
+  },
+  {
+   "slug": "06-legacy-envelope-and-materials",
+   "files": [
+    {
+     "file": "legacy_reproduction.json",
+     "from": "docs/evidence/legacy_reproduction.json",
+     "sha256": "59f133403d86c6781d5ce727aadecb6fd22a2f75d29893383ae0197900808747"
+    },
+    {
+     "file": "rescue_measured_anchor.json",
+     "from": "docs/evidence/rescue_measured_anchor.json",
+     "sha256": "0760db24e46e684db8644e7a13a1b291df26497897396f40e4e026b79cc80c9c"
+    },
+    {
+     "file": "envelope_refresh_robustness.json",
+     "from": "docs/evidence/envelope_refresh_robustness.json",
+     "sha256": "ebfbf315735fcfc0447b5dcfed21984be7203a4cace58352a6501f07d72392c6"
+    },
+    {
+     "file": "rescue_envelope_refresh.json",
+     "from": "docs/evidence/rescue_envelope_refresh.json",
+     "sha256": "9913dcc8eab6b4e675c6d12d49ab66df78f5f28868697d95da777521420e5a5d"
+    }
+   ],
+   "missing": [],
+   "raw": []
+  }
+ ]
+}

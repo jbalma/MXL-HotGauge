@@ -1,0 +1,326 @@
+{
+ "note": "Does the flat-die ceiling move when the leakage curve is replaced by a simulated one?\n\n    python examples/density_ceiling_curve_compare.py\n\n**It does -- and it moves the wrong way.** \u00a7P0.12 predicted the opposite: the pipeline's Arrhenius\ntail is ~6x too steep at 450 K, a gentler tail runs away later, therefore \u00a7P0.11's flat-die\nceiling of 1.0-1.2 W/mm^2 must be *conservative*. \u00a7P0.13 then measured the tail and made the gap\nbigger -- 47x at 500 K -- which made the prediction look safe.\n\nMeasured, the uniform arm's ceiling moves **down** a rung. That claim is withdrawn.\n\nWhy -- and this is the useful part\n----------------------------------\nThermal runaway is a **local instability**. Whether a steady state exists is decided by the\nfeedback gain ``d(ln P_leak)/dT`` *at the temperature the die is actually sitting at*, not by the\nleakage at 500 K. By the time a block reaches 500 K it has already run away under either curve;\nthe 47x disagreement lives entirely in a region the answer does not depend on.\n\nIn the band the surviving points occupy -- roughly **317-347 K** -- the ordering is *reversed*:\n\n* the pipeline curve is nearly **flat** there (slope 0.0013/K at 310 K, 0.0091/K at 330 K),\n  because that is where CACTI's table is clamped or barely moving;\n* the simulated curve has a real, roughly constant slope (~0.036/K, a 19 K doubling) throughout.\n\nThe two curves cross in gain at about **345 K**: below it the simulated curve carries more gain\n(9.2x at 320 K, 4.1x at 330 K, and 28x at 310 K just outside the band), above it less. More gain\nruns away earlier, and the surviving points sit below the crossover -- which is why the ceiling\nmoves down rather than up.\n\n`[!]` What this relocates\n--------------------------\nThe pipeline curve's most consequential error for the ceiling is **not** its hot tail. It is that\nthe curve is nearly flat at 310-330 K, understating feedback gain by roughly an order of magnitude\nexactly where dies operate -- which makes every recorded ceiling **optimistic**. The same flatness\nis what made the cold-zone prize look small in \u00a7P0.14. One clamp, two wrong answers, in opposite\ndirections.",
+ "curve": "simulated",
+ "ladders": {
+  "pipeline": "results/uniform_density",
+  "simulated": "results/uniform_density_simulated"
+ },
+ "cliffs": {
+  "shaped": {
+   "pipeline": {
+    "highest_holding": 0.6,
+    "lowest_failing": 0.8,
+    "unconverged_densities": []
+   },
+   "simulated": {
+    "highest_holding": null,
+    "lowest_failing": 0.8,
+    "unconverged_densities": [
+     0.6
+    ]
+   },
+   "first_failing_moved": false,
+   "highest_holding_moved": true,
+   "ceiling_moved": true
+  },
+  "uniform": {
+   "pipeline": {
+    "highest_holding": 1.0,
+    "lowest_failing": 1.2,
+    "unconverged_densities": []
+   },
+   "simulated": {
+    "highest_holding": 0.8,
+    "lowest_failing": 1.0,
+    "unconverged_densities": []
+   },
+   "first_failing_moved": true,
+   "highest_holding_moved": true,
+   "ceiling_moved": true
+  }
+ },
+ "n_common_points": 16,
+ "n_verdict_flips": 2,
+ "max_abs_peak_delta_K": 3.156000000000006,
+ "comparison": [
+  {
+   "arm": "shaped",
+   "density_W_per_mm2": 0.6,
+   "pipeline_diverged": false,
+   "simulated_diverged": false,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": true,
+   "pipeline_peak_C": 73.481,
+   "simulated_peak_C": 85.543,
+   "verdict_agrees": false
+  },
+  {
+   "arm": "shaped",
+   "density_W_per_mm2": 0.8,
+   "pipeline_diverged": true,
+   "simulated_diverged": true,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": null,
+   "simulated_peak_C": null,
+   "verdict_agrees": true
+  },
+  {
+   "arm": "shaped",
+   "density_W_per_mm2": 1.0,
+   "pipeline_diverged": true,
+   "simulated_diverged": true,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": null,
+   "simulated_peak_C": null,
+   "verdict_agrees": true
+  },
+  {
+   "arm": "shaped",
+   "density_W_per_mm2": 1.2,
+   "pipeline_diverged": true,
+   "simulated_diverged": true,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": null,
+   "simulated_peak_C": null,
+   "verdict_agrees": true
+  },
+  {
+   "arm": "shaped",
+   "density_W_per_mm2": 1.6,
+   "pipeline_diverged": true,
+   "simulated_diverged": true,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": null,
+   "simulated_peak_C": null,
+   "verdict_agrees": true
+  },
+  {
+   "arm": "shaped",
+   "density_W_per_mm2": 2.0,
+   "pipeline_diverged": true,
+   "simulated_diverged": true,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": null,
+   "simulated_peak_C": null,
+   "verdict_agrees": true
+  },
+  {
+   "arm": "shaped",
+   "density_W_per_mm2": 2.4,
+   "pipeline_diverged": true,
+   "simulated_diverged": true,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": null,
+   "simulated_peak_C": null,
+   "verdict_agrees": true
+  },
+  {
+   "arm": "shaped",
+   "density_W_per_mm2": 2.8,
+   "pipeline_diverged": true,
+   "simulated_diverged": true,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": null,
+   "simulated_peak_C": null,
+   "verdict_agrees": true
+  },
+  {
+   "arm": "uniform",
+   "density_W_per_mm2": 0.6,
+   "pipeline_diverged": false,
+   "simulated_diverged": false,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": 46.73000000000002,
+   "simulated_peak_C": 43.57400000000001,
+   "verdict_agrees": true,
+   "delta_peak_K": -3.156000000000006
+  },
+  {
+   "arm": "uniform",
+   "density_W_per_mm2": 0.8,
+   "pipeline_diverged": false,
+   "simulated_diverged": false,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": 55.58100000000002,
+   "simulated_peak_C": 54.88900000000001,
+   "verdict_agrees": true,
+   "delta_peak_K": -0.6920000000000073
+  },
+  {
+   "arm": "uniform",
+   "density_W_per_mm2": 1.0,
+   "pipeline_diverged": false,
+   "simulated_diverged": true,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": 65.98500000000001,
+   "simulated_peak_C": null,
+   "verdict_agrees": false
+  },
+  {
+   "arm": "uniform",
+   "density_W_per_mm2": 1.2,
+   "pipeline_diverged": true,
+   "simulated_diverged": true,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": null,
+   "simulated_peak_C": null,
+   "verdict_agrees": true
+  },
+  {
+   "arm": "uniform",
+   "density_W_per_mm2": 1.6,
+   "pipeline_diverged": true,
+   "simulated_diverged": true,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": null,
+   "simulated_peak_C": null,
+   "verdict_agrees": true
+  },
+  {
+   "arm": "uniform",
+   "density_W_per_mm2": 2.0,
+   "pipeline_diverged": true,
+   "simulated_diverged": true,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": null,
+   "simulated_peak_C": null,
+   "verdict_agrees": true
+  },
+  {
+   "arm": "uniform",
+   "density_W_per_mm2": 2.4,
+   "pipeline_diverged": true,
+   "simulated_diverged": true,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": null,
+   "simulated_peak_C": null,
+   "verdict_agrees": true
+  },
+  {
+   "arm": "uniform",
+   "density_W_per_mm2": 2.8,
+   "pipeline_diverged": true,
+   "simulated_diverged": true,
+   "pipeline_unconverged": false,
+   "simulated_unconverged": false,
+   "pipeline_peak_C": null,
+   "simulated_peak_C": null,
+   "verdict_agrees": true
+  }
+ ],
+ "operating_band_K": [
+  316.724,
+  328.731
+ ],
+ "feedback_gain": [
+  {
+   "T_K": 310.0,
+   "pipeline_rel": 0.9230775770811442,
+   "simulated_rel": 0.4812784753041931,
+   "simulated_over_pipeline": 0.5213846455094703,
+   "pipeline_dln_dT": 0.0012804257289593182,
+   "simulated_dln_dT": 0.03565087826964808,
+   "gain_ratio_sim_over_pipe": 27.8429880494699
+  },
+  {
+   "T_K": 320.0,
+   "pipeline_rel": 0.9467465160549906,
+   "simulated_rel": 0.6899252740583394,
+   "simulated_over_pipeline": 0.7287328364652423,
+   "pipeline_dln_dT": 0.004056146192636664,
+   "simulated_dln_dT": 0.03733561238436814,
+   "gain_ratio_sim_over_pipe": 9.204700869052857
+  },
+  {
+   "T_K": 330.0,
+   "pipeline_rel": 1.0,
+   "simulated_rel": 1.0,
+   "simulated_over_pipeline": 1.0,
+   "pipeline_dln_dT": 0.009136423549957013,
+   "simulated_dln_dT": 0.03777070947464189,
+   "gain_ratio_sim_over_pipe": 4.134080394600313
+  },
+  {
+   "T_K": 340.0,
+   "pipeline_rel": 1.130172649371576,
+   "simulated_rel": 1.450273320773643,
+   "simulated_over_pipeline": 1.2832316563138,
+   "pipeline_dln_dT": 0.026056072610254305,
+   "simulated_dln_dT": 0.03736361462406618,
+   "gain_ratio_sim_over_pipe": 1.4339695464834488
+  },
+  {
+   "T_K": 350.0,
+   "pipeline_rel": 1.5976097629128705,
+   "simulated_rel": 2.09033283178866,
+   "simulated_over_pipeline": 1.3084126551514201,
+   "pipeline_dln_dT": 0.06132191734970052,
+   "simulated_dln_dT": 0.03644492496827634,
+   "gain_ratio_sim_over_pipe": 0.5943213543118988
+  },
+  {
+   "T_K": 360.0,
+   "pipeline_rel": 3.153769206866755,
+   "simulated_rel": 2.9824206484677593,
+   "simulated_over_pipeline": 0.9456686437213239,
+   "pipeline_dln_dT": 0.06910302946803315,
+   "simulated_dln_dT": 0.03524582855642211,
+   "gain_ratio_sim_over_pipe": 0.5100475164077535
+  },
+  {
+   "T_K": 380.0,
+   "pipeline_rel": 9.591414403477751,
+   "simulated_rel": 5.846662199125878,
+   "simulated_over_pipeline": 0.6095724731699567,
+   "pipeline_dln_dT": 0.051974954154969444,
+   "simulated_dln_dT": 0.03253705141729624,
+   "gain_ratio_sim_over_pipe": 0.6260140474637685
+  },
+  {
+   "T_K": 400.0,
+   "pipeline_rel": 36.09929048234699,
+   "simulated_rel": 10.868114824227558,
+   "simulated_over_pipeline": 0.30106172944153026,
+   "pipeline_dln_dT": 0.05981308288855525,
+   "simulated_dln_dT": 0.02984286868687036,
+   "gain_ratio_sim_over_pipe": 0.49893547106532027
+  },
+  {
+   "T_K": 450.0,
+   "pipeline_rel": 600.441418883366,
+   "simulated_rel": 41.37553894979074,
+   "simulated_over_pipeline": 0.06890853570151165,
+   "pipeline_dln_dT": 0.050237136575041585,
+   "simulated_dln_dT": 0.02410125304150723,
+   "gain_ratio_sim_over_pipe": 0.47974973664165854
+  },
+  {
+   "T_K": 500.0,
+   "pipeline_rel": 5819.948865458266,
+   "simulated_rel": 123.02364003422302,
+   "simulated_over_pipeline": 0.0211382682010104,
+   "pipeline_dln_dT": 0.04109204523060761,
+   "simulated_dln_dT": 0.019104963935108188,
+   "gain_ratio_sim_over_pipe": 0.4649309575099407
+  }
+ ],
+ "FINDING_1_THE_CEILING_MOVES_AND_IT_MOVES_DOWN": "Both arms degrade, in two different ways. shaped: first-failing 0.8 -> 0.8 (unchanged); highest demonstrated hold 0.6 -> None (the previously-holding rung 0.6 now flagged unconverged, so it is not a demonstrated hold). uniform: first-failing 1.2 -> 1.0 (MOVED DOWN); highest demonstrated hold 1.0 -> 0.8. 2 of 16 common points flip verdict. Peaks of the points that survive on both curves move by up to 3.2 K, all in the same direction (cooler).",
+ "FINDING_2_THE_PREDICTED_DIRECTION_WAS_WRONG": "P0.12 predicted the ceiling would move UP. Its argument: the pipeline tail is ~6x too steep at 450 K, a gentler tail runs away later, so P0.11's 1.0-1.2 W/mm^2 flat-die ceiling is CONSERVATIVE. P0.13 then measured a 47x gap at 500 K, which made the prediction look safe. **It is wrong, and the ceiling moves the other way.** `[!]` The claim \"P0.11's ceiling is conservative\" is WITHDRAWN.",
+ "FINDING_3_WHY_RUNAWAY_IS_DECIDED_WHERE_THE_DIE_SITS_NOT_AT_500K": "Thermal runaway is a LOCAL instability: what matters is d(ln P_leak)/dT at the temperature the die is actually at, not leakage at 500 K -- by 500 K it has already run away under either curve, so the 47x disagreement lives where the answer does not live. The surviving points occupy roughly 317-329 K, and in that band the ordering REVERSES: the pipeline curve is nearly flat there (0.0013/K at 310 K, 0.0091/K at 330 K, because that is where CACTI's table is clamped or barely moving) while the simulated curve has a real ~0.036/K slope throughout. The simulated curve therefore carries up to 9.2x MORE feedback gain inside the band where stability is decided, and the two cross over at about 345 K. More gain runs away EARLIER, which is what the ladder shows.",
+ "FINDING_4_THE_ERROR_THAT_MATTERS_IS_THE_COLD_END_NOT_THE_TAIL": "This relocates the defect worth caring about. The pipeline curve's most consequential error for the density ceiling is NOT its 47x-too-steep hot tail -- that region is never reached by a surviving die. It is that the curve is nearly FLAT at 310-330 K, understating the feedback gain by up to 9x exactly where dies operate, which makes every recorded ceiling optimistic. The same flatness is what made the cold-zone prize look small (P0.14): one clamp, two wrong answers, in opposite directions.",
+ "HONEST_LIMITS": "The ladder is 0.20-0.40 W/mm^2 coarse near the cliff, so a move is resolved only to the nearest rung; the sub-rung evidence is the peak temperatures, and scripts/uniform_density_ladder_fine.sh refines it to 0.05 W/mm^2. Only the full-GIDL simulated bracket was run here: GIDL is a cold-end mechanism and the two brackets differ 14-15 % at 450-500 K, well inside a rung. `[+]` The GIDL-off ladder has SINCE been run (P0.15, uniform_density_curve_compare_gidl_off.json) and the bracket does not move the uniform arm at all -- the worry recorded here that it \"differs much more at 310 K, so the bracket is a real open question\" was about the leakage LEVEL, and runaway is set by the SLOPE, which differs only 1.16-1.27x across the band that decides it. The question is closed, negatively. `[!]` The peak deltas above EXCLUDE the rows flagged `unconverged`, which is correct (such a peak must not be quoted) but hides the largest movement in the campaign: shaped 0.60 sits at 85.54 C on the simulated curve against 73.48 C on the pipeline one, +12.1 K at the same density, and its peak is stable to 0.01 K across all three damping levels even though the residual never meets tolerance. Directional evidence, not a citable number -- and it is why the surviving deltas being NEGATIVE is not a contradiction: the simulated curve sits below the pipeline curve at 317-329 K and above it by ~346 K, so cool points cool and hot points heat. Rows flagged `unconverged` are counted as NEITHER holding nor failing here (the stock uniform_density_report counts any non-diverged row as holding, which was right for the recorded ladder where nothing was flagged). Everything else is identical between the two campaigns -- same die, package, RBB policy, arms, convergence settings, verified field by field -- and the pipeline ladder is the recorded P0.11 one rather than a re-run, so the two were produced by the same code at different times."
+}

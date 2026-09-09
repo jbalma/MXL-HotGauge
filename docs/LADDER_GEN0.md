@@ -88,6 +88,14 @@ The trade, and every term of it is already in the repository:
   curve of exactly that (`leakage_calibration/`), so the kelvin needed to undo the leakage cost is
   a measured quantity.
 
+`[!]` **SUPERSEDED 3 September 2026 (§P0.18.3).** The table below used the *pipeline* leakage
+curve's doubling temperature (10.9 K at 370 K) and the roadmap's 82 mV/dec. Both are now
+simulated from the ASAP7 card (`docs/evidence/device_vt_vf_asap7.json`) and both moved against
+the lever: the measured curve doubles every **19–23 K** above 345 K and the card's swing is
+**61–81 mV/dec** over 300–400 K. Re-priced: 25 mV costs **22–30 K**, 50 mV **45–60 K**, 75 mV
+**67–90 K**. Only the 25 mV step sits inside the demonstrated 45 K. The clock side is slightly
+*better* on the device (+15 % per 50 mV against +13 %). Quote the §P0.18.3 table, not this one.
+
 Computed from those three, at α = 1.3 and the calibrated local doubling at 370 K (10.9 K):
 
 | node | ΔV_t | clock gained | leakage cost | cooling that pays for it |

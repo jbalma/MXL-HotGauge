@@ -187,3 +187,6 @@ runit.sh
 
 # Stacks rendered on demand from spec strings; regenerate rather than commit.
 HotGauge/HotGauge/thermal/stack_templates/_generated/
+
+# BSIM-CMG simulator build tree (see docs/BSIMCMG_TOOLCHAIN.md) -- tens of GB, reproducible
+spice_toolchain/

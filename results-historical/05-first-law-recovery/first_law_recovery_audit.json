@@ -1,0 +1,98 @@
+{
+ "note": "Audit: which recorded results actually carry the first-law recovery term, and how badly.\n\n    python examples/audit_first_law_recovery.py\n\nThe 30 August loop-model reconciliation found that ``MRParams.breakeven_ratio`` omits the Carnot\nfactor on the anti-Stokes term, making it the ``phi -> 1`` limit. Every ``mr_accounting`` figure\nrecorded before that date carries it. This file sizes the exposure rather than assuming it: a\nfirst pass flagged files by the mere PRESENCE of the ``p_mr_net_W`` key, which overstated the\nproblem -- two of the flagged files record it as identically zero, meaning the MR arm was inactive\nand nothing needs re-running there.\n\nThe signature that matters is a NEGATIVE ``p_mr_net_W``. That is the ledger reporting the loop as\nnet-generating -- recovering more electrical power than it draws -- which the second law forbids at\nany finite chip temperature for the shipped efficiencies. A positive value is merely optimistic;\na negative one is the bug in its pure form.",
+ "rows": [
+  {
+   "file": "FINDINGS.json",
+   "n_nonzero": 36,
+   "n_negative": 36,
+   "min": -0.888380249240381,
+   "max": -0.004975774469099498,
+   "affected": true,
+   "reports_net_generation": true
+  },
+  {
+   "file": "cliff_verified_34core_88cfm.json",
+   "n_nonzero": 0,
+   "n_negative": 0,
+   "min": null,
+   "max": null,
+   "affected": false,
+   "reports_net_generation": false
+  },
+  {
+   "file": "clock_headroom_34core_7nm.json",
+   "n_nonzero": 7,
+   "n_negative": 0,
+   "min": 0.1787718959873098,
+   "max": 43.13955773510065,
+   "affected": true,
+   "reports_net_generation": false
+  },
+  {
+   "file": "legacy_reproduction.json",
+   "n_nonzero": 0,
+   "n_negative": 0,
+   "min": null,
+   "max": null,
+   "affected": false,
+   "reports_net_generation": false
+  },
+  {
+   "file": "mr_rescue_cost_34core.json",
+   "n_nonzero": 6,
+   "n_negative": 0,
+   "min": 0.587677300340083,
+   "max": 77.84005423967756,
+   "affected": true,
+   "reports_net_generation": false
+  },
+  {
+   "file": "turbo_balanced.json",
+   "n_nonzero": 1,
+   "n_negative": 0,
+   "min": 0.31015051163679586,
+   "max": 0.31015051163679586,
+   "affected": true,
+   "reports_net_generation": false
+  },
+  {
+   "file": "turbo_concentrated.json",
+   "n_nonzero": 1,
+   "n_negative": 0,
+   "min": 57.8789840549247,
+   "max": 57.8789840549247,
+   "affected": true,
+   "reports_net_generation": false
+  },
+  {
+   "file": "turbo_m2_balanced.json",
+   "n_nonzero": 1,
+   "n_negative": 0,
+   "min": 0.013966999753784314,
+   "max": 0.013966999753784314,
+   "affected": true,
+   "reports_net_generation": false
+  },
+  {
+   "file": "turbo_m2_concentrated.json",
+   "n_nonzero": 1,
+   "n_negative": 0,
+   "min": 9.00926043900635,
+   "max": 9.00926043900635,
+   "affected": true,
+   "reports_net_generation": false
+  }
+ ],
+ "n_files_mentioning_key": 9,
+ "n_files_affected": 7,
+ "n_files_reporting_net_generation": 1,
+ "files_not_affected": [
+  "cliff_verified_34core_88cfm.json",
+  "legacy_reproduction.json"
+ ],
+ "files_reporting_net_generation": [
+  "FINDINGS.json"
+ ],
+ "PRESENCE_OF_THE_KEY_IS_NOT_EXPOSURE": "A first pass flagged files by the presence of p_mr_net_W and reported a larger exposure than exists. 2 of the 9 files that mention the key record it as identically zero -- the MR arm was inactive, so there is no recovery term to correct and nothing to re-run. Sizing the exposure needs the values, not the schema.",
+ "NEGATIVE_IS_THE_BUG_IN_PURE_FORM": "A negative p_mr_net_W is the ledger reporting the loop as net-generating: recovering more electrical power than it draws. The second law forbids that at any finite chip temperature for the shipped efficiencies (loop gain 0.821 at 350 K, 0.958 at 1000 K). Files with negative entries should be re-run first; files with positive entries are optimistic but not self-contradictory."
+}

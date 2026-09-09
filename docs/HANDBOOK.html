@@ -1,3 +1,4 @@
+
 <title>Photonic Microrefrigeration Handbook</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
@@ -136,6 +137,22 @@
   :where(a,[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
+<div style="max-width:900px;margin:18px auto 0;padding:14px 18px;border:2px solid #8a2f1a;
+     border-radius:4px;background:#fdf1ed;font:15px/1.55 Georgia,serif;color:#2a1a14">
+  <strong style="color:#8a2f1a">Superseded in part &mdash; 3 September 2026.</strong>
+  This handbook is still the best narrative account of the pipeline, but four newer documents are
+  authoritative where they disagree:
+  <strong>docs/RESULTS_REGISTER.md</strong> (every number as quotable / withdrawn / open),
+  <strong>docs/METHODS.md</strong> (how to drive the codebase),
+  <strong>docs/REFERENCES.md</strong> (device physics and the exergy bound), and
+  <strong>docs/ARCHITECTURE_EVOLUTION.md</strong>. Start at <strong>docs/START_HERE.md</strong>.
+  <br><br>
+  Two corrections that matter most here: the extractor platform is a thin film of
+  <strong>GaAs</strong> or <strong>SiN-encapsulated molecular dye</strong> &mdash;
+  <strong>Yb:YLF is not the cold-zone material</strong> &mdash; and three solver defaults moved on
+  2&ndash;3 September, so an un-flagged run is no longer the recorded catalogue.
+</div>
+
 
 <div class="wrap">
 
@@ -180,8 +197,92 @@
 
 <section id="status">
   <div class="col">
-    <p class="kicker">Status &mdash; 30 August</p>
-    <h2>The cooling comparison was scored in the wrong regime, and has been rebuilt</h2>
+    <p class="kicker">Status &mdash; 31 August</p>
+    <h2>The leakage curve was never a measurement, and replacing it moved the headline numbers both ways</h2>
+
+    <div class="note warn">
+      <span class="lbl">31 August &mdash; the curve every thermal result rests on was eleven hard-coded numbers</span>
+      <p><strong>Every temperature in this handbook was solved on a leakage-vs-temperature curve
+      that is a pass-through of a lookup table.</strong> The eleven McPAT runs it was fitted from
+      differ in exactly one line of XML, and normalised, the result is
+      <em>bit-for-bit</em> CACTI&rsquo;s hard-coded <span class="mono">I_off_n[0][*]</span> array
+      for &ldquo;16nm DG HP&rdquo; &mdash; ratio 1.000 at all ten common points, maximum deviation
+      <strong>3.8e-6</strong>. That array is written in
+      <span class="mono">cacti/technology.cc</span> as literals like
+      <span class="mono">1.52e-7/1.5*1.2*1.07</span>: 32&nbsp;nm numbers times three fudge factors,
+      reused unchanged for 32, 22 and 16&nbsp;nm.</p>
+      <p><strong>And its shape is not a device.</strong> Back out the local activation energy and it
+      runs <strong>0.016&nbsp;eV to 1.081&nbsp;eV &mdash; a 69&times; spread, and not
+      monotone</strong>. 0.016&nbsp;eV is below <em>kT</em> at room temperature; 1.081&nbsp;eV is
+      essentially the silicon bandgap. Those are different mechanisms, so no single device produces
+      this curve. It is an interpolation, and this project had been treating it as a measurement.</p>
+      <p><strong>There is now a simulator, and it took a day rather than the feared week.</strong>
+      ngspice&nbsp;47 built from source with OSDI, loading BSIM-CMG compiled from Verilog-A by
+      OpenVAF, evaluates the ASAP7 7&nbsp;nm FinFET card directly &mdash; all ~130 parameters, an
+      absolute current in amps, <em>fitted to nothing</em>. It is a device and that is checked
+      rather than claimed: <strong>I<sub>off</sub>&nbsp;=&nbsp;0.232&nbsp;nA/&micro;m at
+      300&nbsp;K</strong> and a <strong>subthreshold swing of 61.7&nbsp;mV/dec</strong> against a
+      59.5 ideal, with BSIM-CMG 110, 111.2.1 and the Xyce-flavoured tree agreeing to
+      <strong>0.37&nbsp;%</strong>. The one real obstacle was not the card: OpenVAF segfaults on
+      <em>every</em> input, including a five-line diode, because it hands LLVM a dangling
+      non-NUL-terminated pointer. One character.</p>
+      <p><strong>`[!]` The trap was arithmetic, not physics.</strong> One 7&nbsp;nm fin leaks a few
+      picoamps &mdash; below what ngspice&rsquo;s linear solve can resolve &mdash; and every current
+      came back an exact multiple of 2<sup>&minus;43</sup>&nbsp;A. Simulating a thousand fins and
+      dividing fixes it. At one fin a cold-end point was <strong>70&nbsp;% wrong</strong> and a
+      model-version cross-check appeared to disagree by <strong>10&nbsp;%</strong> where it actually
+      agrees to 0.37&nbsp;%. That 10&nbsp;% would have been written up as a model difference.</p>
+    </div>
+
+    <div class="note warn">
+      <span class="lbl">31 August &mdash; and spending it moved two headline numbers in opposite directions</span>
+      <p><strong>The cold-zone prize is 2.2&times; bigger than this project&rsquo;s own curve
+      said.</strong> Cooling cache from 350&nbsp;K to 200&nbsp;K reduces its leakage
+      <strong>16.6&times;</strong> on the simulated curve and <strong>1.73&times;</strong> on the
+      pipeline one &mdash; and the pipeline number is 1.73&times; at <em>every</em> cold temperature,
+      because that curve <strong>clamps below 300&nbsp;K</strong>. The clamp was read as a floor for
+      the whole cold-zone argument; it is simply where CACTI&rsquo;s table stops. The prize was
+      recorded as the largest uncertainty in the architecture case, 13.5&nbsp;% of die power against
+      the book&rsquo;s 31.7&nbsp;%; the answer is the book&rsquo;s end of that range.</p>
+      <p><strong>Quote the 2.2&times;, not a percentage.</strong> Converting to &ldquo;% of die
+      power&rdquo; needs a static fraction and a cache share, and the recorded pair
+      <strong>could not be reproduced from any trace in this repository</strong> &mdash; the two
+      candidate pairs give <strong>10&nbsp;%</strong> and <strong>30&nbsp;%</strong>. The
+      2.2&times; improvement is identical under both, because both multiply the same
+      <span class="mono">1&nbsp;&minus;&nbsp;1/reduction</span> by a constant. Re-deriving those two
+      ratios is an open item.</p>
+      <p><strong>`[+]` And the prize saturates at roughly 280&nbsp;K.</strong> Below that, another
+      80&nbsp;K of cooling buys under 5&nbsp;% more. The design target is <em>barely
+      sub-ambient</em>, not cryogenic &mdash; a far easier machine than the reduction factors
+      suggest. The book&rsquo;s &ldquo;realistic 100&ndash;200&times;&rdquo; is about 6&times; too
+      big and it does not matter: 16.6&times; already collects 94&nbsp;% of what 200&times; would.
+      <em>Quote the die power, never the reduction factor.</em></p>
+      <p><strong>`[!]` The density ceiling moved the other way, and the prediction was
+      backwards.</strong> The reasoning had been: the pipeline&rsquo;s Arrhenius tail is far too
+      steep, a gentler tail runs away later, therefore the flat-die ceiling of
+      1.0&ndash;1.2&nbsp;W/mm&sup2; is <em>conservative</em>. Measured on the simulated curve, the
+      uniform arm now fails at <strong>1.00&nbsp;W/mm&sup2; where it previously held</strong> at
+      65.99&nbsp;&deg;C &mdash; one rung <strong>lower</strong>, resolved by the solver&rsquo;s own
+      guard as a genuine runaway rather than a damping artefact. <strong>The
+      &ldquo;conservative&rdquo; claim is withdrawn; the recorded ceilings are optimistic
+      instead.</strong></p>
+      <p><strong>Why, and it is the part worth carrying.</strong> Thermal runaway is a
+      <em>local</em> instability: it is decided by
+      <span class="mono">d(ln&nbsp;P<sub>leak</sub>)/dT</span> at the temperature the die is actually
+      sitting at, not by leakage at 500&nbsp;K &mdash; by 500&nbsp;K it has already run away under
+      either curve, so the 47&times; disagreement there lives where the answer does not. The
+      surviving points occupy <strong>317&ndash;347&nbsp;K</strong>, and in that band the ordering
+      <em>reverses</em>: the pipeline curve is nearly flat (0.0013/K at 310&nbsp;K &mdash; the clamp
+      again) while the simulated one runs ~0.036/K throughout, giving it <strong>9.2&times; more
+      feedback gain at 320&nbsp;K</strong>. The two cross over near 345&nbsp;K. More gain runs away
+      earlier.</p>
+      <p><strong>So the defect that mattered was never the hot tail.</strong> A surviving die never
+      reaches 500&nbsp;K. It is that the curve is nearly <em>flat at 310&ndash;330&nbsp;K</em>,
+      understating feedback gain by roughly an order of magnitude exactly where dies operate &mdash;
+      and the same flatness is what made the cold-zone prize look small. <strong>One clamp, two
+      wrong answers, in opposite directions</strong>, and neither was the error we went looking
+      for.</p>
+    </div>
 
     <div class="note warn">
       <span class="lbl">30 August &mdash; the liquid-vs-photonic comparison is withdrawn and replaced</span>
@@ -288,7 +389,8 @@
       <p><strong>`[!]` Yb:YLF is superseded for compute tiles, and &ldquo;0.02 demonstrated&rdquo;
       should not be quoted.</strong> Chapter&nbsp;8 gives two platforms at
       <strong>10&sup3;&ndash;10&#8308;&nbsp;W/mm&sup2;</strong> against Yb:YLF's 1&ndash;10 &mdash;
-      direct-bandgap GaAs/GaInP epitaxy, and <strong>SMILES-R640-in-polymer</strong> thin films
+      thin-film <strong>semiconductor (GaAs) extractor tiles</strong>, and
+      <strong>SiN-encapsulated molecular dye</strong> thin films
       which reach the same density at room temperature, solution-processed on any planar substrate,
       with &eta;<sub>EQE</sub> 99&nbsp;% at N<sub>t</sub>&nbsp;&ge;&nbsp;10&#8315;&sup2;&nbsp;M.
       Table&nbsp;8.1 gives &eta;<sub>ASF</sub> <strong>0.124 at a 680&nbsp;nm pump rising to 0.221 at
@@ -310,11 +412,21 @@
       <p><strong>`[+]` And a recorded gap is closed structurally.</strong> This handbook listed
       &ldquo;&eta;<sub>AS</sub>(T<sub>h</sub>) is not modelled at all&rdquo; as an open item.
       &sect;8.4 answers it: a heterogeneous die does <em>not</em> use one extractor across its area
-      &mdash; Yb:YLF/Yb:silica cold (150&ndash;300&nbsp;K), Yb:ZBLAN warm (300&ndash;400&nbsp;K),
-      Ho&sup3;&#8314;/Tm&sup3;&#8314; fluorides hot (400&ndash;600&nbsp;K), SiC:Er or GaN:Yb above
-      600&nbsp;K. <strong>Per-tile temperature targeting requires per-tile extractor
-      selection.</strong> The numerical &eta;<sub>ASF</sub>(T) curve inside each window remains
-      open.</p>
+      &mdash; but <strong>not by swapping to a rare-earth crystal.</strong>
+      <strong class="bad">Corrected 3&nbsp;September 2026:</strong> an earlier revision of this
+      section listed Yb:YLF/Yb:silica for the cold zone, Yb:ZBLAN warm and Ho&sup3;&#8314;/Tm&sup3;&#8314;
+      fluorides hot. <strong>That material list is withdrawn.</strong> The shipping device is a thin
+      film of <strong>GaAs</strong> or <strong>SiN-encapsulated molecular dye</strong>, and
+      <em>both</em> cover the cold cache band (GaAs is tabulated to 77&nbsp;K, the dye to
+      250&nbsp;K) and the hot compute band up to 400&nbsp;K. Above 400&nbsp;K neither platform is
+      tabulated &mdash; that is an <strong>open gap</strong>, not a licence to reintroduce the
+      rare-earths, and it does not bind today because a die that survives never gets there.
+      What survives from &sect;8.4 is the <em>principle</em>: <strong>per-tile temperature
+      targeting requires per-tile extractor selection</strong>, because &eta;<sub>ASF</sub> and the
+      achievable lift both depend on local T<sub>j</sub>. The numerical &eta;<sub>ASF</sub>(T) curve
+      inside each window remains open. See
+      <code>HotGauge.thermal.microrefrigeration.ZONE_EXTRACTORS</code>, whose tests refuse any
+      rare-earth name.</p>
     </div>
 
     <p class="kicker">Status &mdash; 28 August</p>
@@ -1122,9 +1234,23 @@
       <tbody>
         <tr><td>Thermal conduction &amp; spreading</td><td><span class="chip m">simulated</span></td>
             <td>3D-ICE finite-volume solve over the full stack, per block, per grid cell.</td></tr>
-        <tr><td>Leakage vs temperature</td><td><span class="chip m">measured</span></td>
-            <td>Extracted from McPAT across temperature, with an Arrhenius tail above 400 K. The
-            tail is used to decide <em>whether</em> a point diverges, not by how much.</td></tr>
+        <tr><td>Leakage vs temperature <em>(as used here)</em></td><td><span class="chip a">assumed</span></td>
+            <td><strong>`[!]` Reclassified 31 August &mdash; this row used to say
+            &ldquo;measured&rdquo;.</strong> Extracted from McPAT across temperature with an
+            Arrhenius tail above 400&nbsp;K &mdash; but normalised it is <em>bit-for-bit</em>
+            CACTI&rsquo;s hard-coded <span class="mono">I_off_n</span> table (32&nbsp;nm numbers
+            times three fudge factors), it <strong>clamps below 300&nbsp;K</strong>, and its implied
+            activation energy spans 69&times; non-monotonically. It is an interpolation, not a
+            characterisation. The tail decides <em>whether</em> a point diverges, not by how
+            much.</td></tr>
+        <tr><td>Leakage vs temperature <em>(simulated replacement)</em></td><td><span class="chip m">simulated</span></td>
+            <td><strong>New 31 August, and not the default.</strong> BSIM-CMG evaluated in
+            ngspice&nbsp;47 + OSDI on the ASAP7 7&nbsp;nm card via OpenVAF &mdash; all ~130
+            parameters, absolute amps, fitted to nothing, and reaching 200&nbsp;K where the table
+            clamps. Sanity-checked at 0.232&nbsp;nA/&micro;m and 61.7&nbsp;mV/dec, three model
+            versions agreeing to 0.37&nbsp;%. Selected with
+            <span class="mono">--leakage-curve simulated</span>; <strong>every figure in this
+            document predates it</strong>.</td></tr>
         <tr><td>Per-block power (CPU)</td><td><span class="chip m">simulated</span></td>
             <td>Sniper architectural simulation &rarr; McPAT power model, per functional unit.</td></tr>
         <tr><td>Heatsink R<sub>th</sub> and fan power</td><td><span class="chip m">measured</span></td>
@@ -2241,6 +2367,63 @@
     <p>Ordered by how much each one could move the project&rsquo;s conclusions.</p>
 
     <ol class="steps">
+      <li><strong>Which leakage bracket the density ceiling sits on</strong> &mdash;
+      <span class="chip g">CLOSED 31 August &mdash; it sits on both, and the prediction here was
+      wrong</span>
+      This was listed as the highest-value item outstanding, on the reasoning that the ceiling is
+      decided at <strong>310&ndash;330&nbsp;K</strong> and that is where the two ASAP7 brackets
+      &mdash; the card as written, and the same card with GIDL disabled &mdash; disagree most. The
+      GIDL-off ladder was run: twenty solves. <strong>On the uniform arm &mdash; the flat-die
+      ceiling, which is the claim that matters &mdash; the two brackets are identical</strong>: both
+      hold 0.80 and fail 1.00&nbsp;W/mm&sup2;. Only the shaped arm's lowest rung changes, and it
+      changes from <em>unconverged</em> to <em>diverged</em>, which is a point becoming decidable
+      rather than a ceiling moving.
+      <strong>`[!]` The prediction failed for a reason worth more than the run.</strong> It compared
+      leakage <em>levels</em> between the brackets, where the governing mechanism &mdash; established
+      in the same section &mdash; says compare <em>slopes</em>. In the 316&ndash;328&nbsp;K band the
+      surviving points actually occupy, swapping the old curve for the simulated one changes the
+      feedback gain by <strong>6&ndash;14&times;</strong>; swapping GIDL brackets changes it by
+      <strong>1.16&ndash;1.27&times;</strong>. One rung moved for the first and none for the second,
+      which is proportionate. <strong>So the predictive-PDK GIDL uncertainty does not propagate into
+      the density ceiling, and does not need carrying as a caveat on it.</strong></li>
+
+      <li><strong>The cold-zone prize: re-derived, and it came out smaller</strong> &mdash;
+      <span class="chip g">CLOSED 31 August &mdash; and the recorded ratios were wrong, not merely
+      unreproduced</span>
+      The pair this project had been quoting (34.64&nbsp;% static, 92.6&nbsp;% cache share) is now
+      reproduced <strong>exactly</strong> &mdash; all four recorded quantities to the last digit &mdash;
+      and reproducing it settled it as a <strong>scope error</strong>: it sums <em>one core&rsquo;s</em>
+      blocks against the <em>whole chip&rsquo;s</em> L3, on the trace&rsquo;s warm-up slice. The
+      standing guess that it had been measured after leakage feedback converged at the operating
+      temperature is <strong>withdrawn</strong>: dynamic power does not depend on temperature, and
+      the recorded 2.6062&nbsp;W is that slice&rsquo;s T<sub>ref</sub> dynamic to four decimals.
+      Re-derived on the die power the pipeline actually solves &mdash; everything landing on a real
+      floorplan block, over the steady slices &mdash; the ratios are <strong>16.0&nbsp;% static,
+      38.2&nbsp;% cache share</strong>, and the prize is <strong>~6&nbsp;% of die power</strong>
+      (4.5&nbsp;% for an L3-only cold die; ~9&nbsp;% on a McPAT-leaf upper bound that omits
+      <code>core_other</code>, 42&nbsp;% of on-die leakage). <strong>The 10&ndash;30&nbsp;% range is
+      withdrawn at both ends.</strong> The <strong>2.2&times; improvement</strong> is untouched,
+      because every conversion multiplies the same saturating factor by a constant &mdash; which is
+      exactly why it was the number to lead with.</li>
+
+      <li><strong>What the moved ceiling does to the recorded catalogue</strong> &mdash;
+      <span class="chip a">still open &mdash; but the cheap test named here was run, and it went the
+      other way</span>
+      One rung on one arm is a real move but a small one, and re-running 80,330 solves to chase it
+      is not obviously worth the machine time. The cheap test named here was the
+      <em>clock-headroom</em> search, on the reasoning that a temperature-<em>limited</em> criterion
+      should move more than a divergence test. <strong>It moved less.</strong> Six cooling points
+      &times; three curves: the sustainable clock is unchanged at <strong>five of six</strong>, to
+      the search&rsquo;s own 0.05&nbsp;GHz resolution. <strong>That prediction is withdrawn.</strong>
+      What the run found instead is worth more: the <em>limiter</em> changes at three of six while
+      the clock does not &mdash; the old curve ends the search in a <em>thermal runaway</em>, the
+      measured ones at the <em>100&nbsp;&deg;C spec limit</em> &mdash; which withdraws the
+      handbook&rsquo;s own claim that a poorly-cooled die &ldquo;runs away before it reaches
+      spec&rdquo;. <strong>Which part of a leakage curve is load-bearing is a property of the
+      experiment, not of the curve:</strong> a fixed-density divergence test never visits the hot
+      tail, because its reported point is one the die survives; a limit search does, because it
+      reads its answer off where survival stops.</li>
+
       <li><strong>MR has never been priced against liquid cooling</strong> &mdash;
       <span class="chip a">narrowed 27 August: the arm now exists, the race has not been run</span>
       The headline 34&times; is against <em>fans</em>, and a 700&nbsp;W accelerator ships on a cold
@@ -2468,8 +2651,13 @@
 
   <footer>
     <p>All results are damping-verified coupled 3D-ICE solves with temperature-dependent leakage,
-    harvested from run output rather than transcribed. <strong>626 tests passing, 1 skipped</strong>
-    (27&nbsp;August). Device and DRAM parameters and the accelerator power
+    harvested from run output rather than transcribed. <strong>863 tests passing, 1 skipped</strong>
+    (31&nbsp;August). <strong>`[!]` Every temperature in this document was solved on the
+    <em>pipeline</em> leakage curve</strong> &mdash; CACTI&rsquo;s eleven hard-coded numbers, which
+    clamp below 300&nbsp;K and are ~47&times; too steep at 500&nbsp;K. A simulated replacement now
+    exists (see Status, 31&nbsp;August); it is <em>not</em> the default, deliberately, so that these
+    figures remain the ones the recorded catalogue was produced with. Where it has been spent it
+    moved the cold-zone prize up 2.2&times; and the flat-die ceiling down one rung. Device and DRAM parameters and the accelerator power
     split are documented assumptions, not datasheet extractions; accelerator block areas are
     measured from published die analysis. <strong>The V/F curve is worse than an assumption</strong>
     &mdash; its fitted &alpha;&nbsp;=&nbsp;0.949 falls below the physical floor of 1, so the curve is

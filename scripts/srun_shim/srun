@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# A stand-in for `srun` that runs the payload LOCALLY, in the current step.
+#
+# WHY THIS EXISTS
+# ---------------
+# `run_rerun.sh` issues one `srun` per stream and throttles to MAX_CONC of them. That is right for
+# a single arm, but this allocation admits only about EIGHT concurrent slurm steps
+# (`NumTasks=1`, `OverSubscribe=NO`), so four arms x six streams would queue 16 steps behind the
+# limit while ~70 of 96 cores idled -- the exact failure `scripts/campaign_inner.sh` was written
+# to avoid (measured once at 76 queued clients).
+#
+# With this shim first on PATH, the generated launcher's `srun` calls become plain local forks, so
+# a whole arm runs inside ONE real slurm step and four arms cost four steps instead of twenty-four.
+# Identical work, identical output; only the process placement changes.
+#
+# It parses exactly the form the generated launcher emits:
+#     srun --jobid=N --overlap -n1 --cpu-bind=none bash -lc "<payload>"
+# and execs everything from the first non-slurm token onward.
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --jobid=*|--overlap|--exact|--cpu-bind=*|--mem-bind=*|-n1|--kill-on-bad-exit*) shift ;;
+    -n) shift 2 ;;
+    --jobid) shift 2 ;;
+    *) break ;;
+  esac
+done
+exec "$@"

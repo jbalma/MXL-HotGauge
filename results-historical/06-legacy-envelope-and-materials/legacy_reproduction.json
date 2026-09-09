@@ -1,0 +1,109 @@
+{
+ "note": "P0.2 acceptance: the legacy in-source-layer placement reproduces a pre-array catalogue point BIT-IDENTICALLY. The array port rewrote how a plan reaches the solver for every driver, so the question is not whether the new path is better but whether the old one still exists -- 80,330 solves of back catalogue are only interpretable if it does.",
+ "old_point": {
+  "source": "results/nextsteps/margin2_T98_d1.15/mr_comparison.json",
+  "produced_by": "scripts/nextsteps_batch.sh, pre-array code",
+  "command": "examples/mr_comparison.py --cores 34 --density 1.15 --cfm 88 --mr-target-C 98 --spot-min-um 10 --spot-policy dilute --mr-iter 25 --max-iter 120"
+ },
+ "reproduction": {
+  "source": "results/_accept_legacy/margin2_T98_d1.15/mr_comparison.json",
+  "command": "examples/mr_comparison.py --stack skylake --no-array --cores 34 --density 1.15 --cfm 88 --mr-target-C 98 --spot-min-um 10 --spot-policy dilute --mr-iter 25 --max-iter 120",
+  "note": "--stack skylake pins the historical lidded template (the default is now auto) and --no-array selects the in-source-layer placement. Everything else is the original command."
+ },
+ "rows": [
+  {
+   "mr": false,
+   "old_tag": "34c_nomr",
+   "new_tag": "34c_control",
+   "new_arm": "control",
+   "new_placement": "none",
+   "old_placement": null,
+   "fields": {
+    "diverged": {
+     "old": true,
+     "new": true,
+     "identical": true
+    },
+    "unconverged": {
+     "old": false,
+     "new": false,
+     "identical": true
+    }
+   }
+  },
+  {
+   "mr": true,
+   "old_tag": "34c_mr",
+   "new_tag": "34c_array_on",
+   "new_arm": "array_on",
+   "new_placement": "in_source_layer",
+   "old_placement": null,
+   "fields": {
+    "peak_C": {
+     "old": 99.86638793945315,
+     "new": 99.86638793945315,
+     "identical": true
+    },
+    "peak_block": {
+     "old": "RBB_16",
+     "new": "RBB_16",
+     "identical": true
+    },
+    "gflops": {
+     "old": 4352.5814796875,
+     "new": 4352.5814796875,
+     "identical": true
+    },
+    "gflops_per_total_W": {
+     "old": 28.16195816143715,
+     "new": 28.16195816143715,
+     "identical": true
+    },
+    "heat_removed_W": {
+     "old": 0.8141911002971134,
+     "new": 0.8141911002971134,
+     "identical": true
+    },
+    "p_mr_net_W": {
+     "old": 1.4190187748035408,
+     "new": 1.4190187748035408,
+     "identical": true
+    },
+    "p_chip_W": {
+     "old": 118.15233759411525,
+     "new": 118.15233759411525,
+     "identical": true
+    },
+    "p_cool_W": {
+     "old": 36.40301877480354,
+     "new": 36.40301877480354,
+     "identical": true
+    },
+    "diverged": {
+     "old": false,
+     "new": false,
+     "identical": true
+    },
+    "n_targets": {
+     "old": 13,
+     "new": 13,
+     "identical": true
+    },
+    "throttling": {
+     "old": false,
+     "new": false,
+     "identical": true
+    },
+    "unconverged": {
+     "old": false,
+     "new": false,
+     "identical": true
+    }
+   }
+  }
+ ],
+ "all_fields_identical": true,
+ "also_identical": "the leakage-feedback residual trajectory printed to stderr matches digit for digit: iter 49 21.9424 -> 24.6929 K, iter 52 23.7690 -> 26.7467 K, iter 105 18.5093 -> 20.8400 K, iter 124 18.0042 -> 20.2718 K. The runaway is reached along the same path, not merely to the same verdict.",
+ "what_changed": "the reproduced rows additionally carry placement=\"in_source_layer\" where the originals carry no stamp at all. That is the intended difference and the whole point of the stamp: a row from before the port is identifiable by the ABSENCE of a placement, rather than by its date.",
+ "measured": "26 August 2026, node-06-8xv100 under allocation 1389, OMP_NUM_THREADS=1"
+}

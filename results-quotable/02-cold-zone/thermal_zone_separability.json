@@ -1,0 +1,112 @@
+{
+ "note": "Zone separability -- can a floorplan hold two temperatures at once? Built 29 Aug 2026 against Sections 1.14 and 10.8 of Photonic_Cooling_Devices___v9.pdf, which propose a die with hot dynamic-dominated compute islands beside cold static-dominated SRAM. Whether that is possible is a FLOORPLAN question and this is the measurement of it.",
+ "why_a_new_metric": "Every prior floorplan metric here answered 'how hard is this die to cool', with cooling meaning pull the peak down. relative_plateau was the last standing and it failed its transfer test on 28 Aug. The architecture reframing needs a different question entirely, so the vacancy and the new requirement arrived together.",
+ "MEASURED_the_premise_checks_out_and_more_sharply_than_the_book_states": {
+  "source": "McPAT block_powers_split on the project trace (linpack, 7nm, T_ref 330 K)",
+  "per_core_logic": {
+   "dynamic_W": 2.5777,
+   "static_W": 0.1562,
+   "static_fraction": 0.0571
+  },
+  "L3_aggregate": {
+   "dynamic_W": 0.0285,
+   "static_W": 1.225,
+   "static_fraction": 0.9773
+  },
+  "die_static_fraction": 0.3464,
+  "book_assumes": "~30% static at nominal T (Sections 10.2, 10.8)",
+  "verdict": "34.6% measured, so the premise holds. The sharper point the book does not make: 89% of ALL leakage on this die is in L3 alone, and L2-within-core is 80.3% static against 0.3% for the FPU. The cold zone is not a partition anyone has to impose -- it is already where the leakage lives, in one contiguous structure."
+ },
+ "THE_PHYSICS_die_thickness_cancels": {
+  "result": "G_monolithic = k_Si * boundary_length, INDEPENDENT of die thickness",
+  "why": "across a boundary of length P in a slab of thickness t, Q = k*(P*t)*dT/L, and in a monolithic die the healing length L is not free -- a step in boundary condition heals over a distance of order t. So t cancels. Thinning shrinks the conducting cross-section and the healing length in equal measure and does not help.",
+  "and_silicon_gets_worse_as_it_cools": {
+   "k_200K": 266.0,
+   "k_300K": 148.0,
+   "k_400K": 105.0,
+   "note": "umklapp scattering freezes out, so the colder the zone the better its surroundings conduct into it"
+  }
+ },
+ "MEASURED_neither_floorplan_can_hold_the_gradient": {
+  "L2_inside_a_Golden_Cove_core_per_core": {
+   "zone_area_mm2": {
+    "hot": 5.380999999999999,
+    "cold": 1.646
+   },
+   "cold_zone_share": 0.2310824090972905,
+   "die_area_mm2": 7.122999999999998,
+   "boundary_mm": 2.5670635756325253,
+   "boundary_per_mm2": 0.36039078697634785,
+   "t_cold_K": 200.0,
+   "t_hot_K": 350.0,
+   "mean_k_W_mK": 177.99169921875,
+   "thickness_um": 200.0,
+   "trench_width_um": null,
+   "bridge_thickness_um": null,
+   "boundary_conductance_W_per_K": 0.45691600782939334,
+   "max_conductance_W_per_K": 0.00015032773541811292,
+   "conductance_excess": 3039.4657816041295,
+   "parasitic_W": 68.537401174409,
+   "leakage_saving": {
+    "saving_W": 0.022549160312716938,
+    "ratio": 1.7307426835831703,
+    "evaluated_to_K": 310.0,
+    "requested_to_K": 200.0,
+    "unseen_K": 110.0,
+    "defensible": false,
+    "note": "the calibrated curve stops at 310 K and clamps below it, so 110 K of the requested cooling is unevidenced -- see Section 10.8 vs leakage_calibration/"
+   },
+   "isolation_ratio": 0.0003290051844150827,
+   "buildable": false
+  },
+  "L3_across_the_34_core_die_whole_die": {
+   "zone_area_mm2": {
+    "hot": 71.85626958039339,
+    "cold": 11.945286145926
+   },
+   "cold_zone_share": 0.11815658706671861,
+   "die_area_mm2": 101.09708178335367,
+   "boundary_mm": 122.47039899999973,
+   "boundary_per_mm2": 1.2114137899889936,
+   "t_cold_K": 200.0,
+   "t_hot_K": 350.0,
+   "mean_k_W_mK": 177.99169921875,
+   "thickness_um": 200.0,
+   "trench_width_um": null,
+   "bridge_thickness_um": null,
+   "boundary_conductance_W_per_K": 21.798714422008253,
+   "max_conductance_W_per_K": 0.0034481952590163247,
+   "conductance_excess": 6321.7749531466,
+   "parasitic_W": 3269.807163301238,
+   "leakage_saving": {
+    "saving_W": 0.5172292888524487,
+    "ratio": 1.7307426835831703,
+    "evaluated_to_K": 310.0,
+    "requested_to_K": 200.0,
+    "unseen_K": 110.0,
+    "defensible": false,
+    "note": "the calibrated curve stops at 310 K and clamps below it, so 110 K of the requested cooling is unevidenced -- see Section 10.8 vs leakage_calibration/"
+   },
+   "isolation_ratio": 0.0001581834227588662,
+   "buildable": false
+  },
+  "verdict": "3039x and 6322x more boundary conductance than the power balance allows. And the 34-core die is WORSE than the single core, because the tiler interleaves L3 with the cores and boundary length is the whole story -- 122 mm of it. Cache laid out for latency is cache laid out for maximum zone boundary."
+ },
+ "THE_SPEC_the_useful_output": {
+  "form": "max boundary conductance [W/K] = leakage saving [W] / gradient [K]",
+  "why": "independent of how the isolation is built -- it is what a packaging engineer needs. The floorplan sets the numerator's boundary length; the power balance sets the limit.",
+  "monolithic_vs_package": {
+   "monolithic_silicon_10mm_edge_W_per_K": 1.7799,
+   "2p5D_package_10mm_edge_1mm_gap_W_per_K": 0.04,
+   "improvement": "~44x",
+   "still_short_by": "~70-140x of the 3039-6322x required",
+   "conclusion": "disaggregation is NECESSARY and NOT SUFFICIENT. The cold zone has to be a physically separate die AND the package needs a deliberate thermal break. That is a packaging programme, not a floorplan optimisation."
+  }
+ },
+ "THE_LIMIT_that_bounds_all_of_this": {
+  "what": "McPAT rejects temperatures outside 300-400 K outright",
+  "consequence": "our calibrated leakage curve stops at 310 K and CLAMPS below it, so every saving quoted here for a 200 K cold zone is evaluated at 310 K. 110 K of the requested cooling is unevidenced, and leakage_saving_W flags it rather than returning a bare number.",
+  "why_it_matters": "Section 10.8 claims 100-200x leakage reduction for 350->200 K. Our curve's local doubling constant is already 274 K at 310 K -- essentially flat -- which would give ~2x. Whether the flattening is a real gate/BTBT floor arriving early or a McPAT artefact decides the cold-zone prize by ~50x, and it is the highest-value open question in the architecture argument.",
+  "how_to_close_it": "PTM SPICE cards (ptm.asu.edu, free, 7nm) give leakage vs T over any range"
+ }
+}

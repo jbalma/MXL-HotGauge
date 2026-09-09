@@ -1,0 +1,172 @@
+{
+ "note": "The measured 34-core rescue, priced against a chiller, with a SECOND-LAW recovery term.\n\n    python examples/rescue_measured_anchor.py\n\nSupersedes the inline computation that produced the first version of\n``docs/evidence/rescue_measured_anchor.json`` on 30 August 2026. That version took the array's\nnet electrical cost straight from ``mr_rescue_cost_34core.json`` as **1.735 W per watt lifted**,\nwhich is what the study recorded -- and that recorded figure carries the first-law recovery term\n(``MRParams.breakeven_ratio``, the phi -> 1 limit). See\n``docs/evidence/loop_model_reconciliation.json``.\n\nRecomputed at the junction temperature the rescue actually holds, the same loop costs\n**2.473 W/W** -- a factor of **1.419** more. The recorded study used the LEGACY_ENVELOPE preset\n(eta_ASF 0.20, eta_laser 0.70, eta_LPC 0.90), which this file confirms by reproducing its\n``net/q = 1.743`` to four figures before correcting it.\n\nDirection of the correction: every array cost in the rescue comparison goes UP, so the chiller's\nmargin widens. The qualitative conclusion of Test 6c is unchanged; its numbers are not.",
+ "supersedes": "the 30 Aug inline version, which used the first-law cost 1.735 W/W",
+ "preset_used_by_the_recorded_study": {
+  "eta_asf": 0.2,
+  "laser_wallplug": 0.7,
+  "lpc_efficiency": 0.9
+ },
+ "eta_chiller_2nd": 0.4,
+ "target_C": 92.0,
+ "T0_K": 295.0,
+ "ambient_K": 300.0,
+ "anchors": {
+  "d1.10": {
+   "unaided_peak_C": 95.42092285156252,
+   "unaided_chip_W": 113.1338356115845,
+   "mr_peak_C": 90.96083984375002,
+   "mr_chip_W": 95.2312238411428,
+   "mr_heat_removed_W": 26.836097826047606,
+   "T_h_K": 364.11083984375,
+   "phi": 0.18980714738788707,
+   "recorded_net_W_first_law": 46.55266344272411,
+   "cost_per_W_first_law": 1.742857142857143,
+   "cost_per_W_second_law": 2.4720307102080445,
+   "correction_factor": 1.418378276348878,
+   "mr_array_net_W": 66.33965796813702,
+   "leakage_saved_W": 17.902611770441695,
+   "effective_cost_per_W_net_leakage": 1.8049213604625276,
+   "chiller_dT_K": 3.4209228515625227,
+   "chiller_T_in_K": 296.5790771484375,
+   "chiller_COP": 34.67825379493414,
+   "chiller_W": 2.746136653946928,
+   "sys_chiller_W": 132.97736049508975,
+   "sys_laser_W": 196.57088180927985,
+   "winner": "chiller",
+   "dew_point_problem": false
+  },
+  "d1.15": {
+   "unaided_peak_C": 133.78228149414065,
+   "unaided_chip_W": 124.87106415590353,
+   "mr_peak_C": 90.60198364257815,
+   "mr_chip_W": 91.67342412964159,
+   "mr_heat_removed_W": 42.05155402789617,
+   "T_h_K": 363.7519836425781,
+   "phi": 0.18900785902004502,
+   "recorded_net_W_first_law": 72.94670701930227,
+   "cost_per_W_first_law": 1.742857142857143,
+   "cost_per_W_second_law": 2.4727500697391025,
+   "correction_factor": 1.4187910236207963,
+   "mr_array_net_W": 103.98298315511788,
+   "leakage_saved_W": 33.197640026261936,
+   "effective_cost_per_W_net_leakage": 1.6832991019047323,
+   "chiller_dT_K": 41.78228149414065,
+   "chiller_T_in_K": 258.21771850585935,
+   "chiller_COP": 2.472030815665924,
+   "chiller_W": 37.084256210999655,
+   "sys_chiller_W": 163.75768034064123,
+   "sys_laser_W": 230.65640728475947,
+   "winner": "chiller",
+   "dew_point_problem": true
+  },
+  "d1.18": {
+   "unaided_peak_C": 132.50429687500002,
+   "unaided_chip_W": 128.89423484995365,
+   "mr_peak_C": 92.64995727539065,
+   "mr_chip_W": 94.47930624285634,
+   "mr_heat_removed_W": 44.86315336408711,
+   "T_h_K": 365.7999572753906,
+   "phi": 0.19354829290504605,
+   "recorded_net_W_first_law": 77.84005423967756,
+   "cost_per_W_first_law": 1.742857142857143,
+   "cost_per_W_second_law": 2.4686636792426015,
+   "correction_factor": 1.4164463733359187,
+   "mr_array_net_W": 110.75203724621238,
+   "leakage_saved_W": 34.41492860709731,
+   "effective_cost_per_W_net_leakage": 1.701554681624828,
+   "chiller_dT_K": 40.50429687500002,
+   "chiller_T_in_K": 259.495703125,
+   "chiller_COP": 2.562648638743959,
+   "chiller_W": 36.86783463579457,
+   "sys_chiller_W": 166.34714087865092,
+   "sys_laser_W": 240.23134348906873,
+   "winner": "chiller",
+   "dew_point_problem": true
+  }
+ },
+ "deep_chill": [
+  {
+   "dT_K": 20,
+   "T_in_K": 280.0,
+   "COP": 5.6,
+   "chiller_W": 16.37025430886457,
+   "laser_W": 103.98298315511788,
+   "laser_wins": false
+  },
+  {
+   "dT_K": 40,
+   "T_in_K": 260.0,
+   "COP": 2.6,
+   "chiller_W": 35.25900928063138,
+   "laser_W": 103.98298315511788,
+   "laser_wins": false
+  },
+  {
+   "dT_K": 60,
+   "T_in_K": 240.0,
+   "COP": 1.6,
+   "chiller_W": 57.29589008102599,
+   "laser_W": 103.98298315511788,
+   "laser_wins": false
+  },
+  {
+   "dT_K": 80,
+   "T_in_K": 220.0,
+   "COP": 1.1,
+   "chiller_W": 83.33947648149234,
+   "laser_W": 103.98298315511788,
+   "laser_wins": false
+  },
+  {
+   "dT_K": 100,
+   "T_in_K": 200.0,
+   "COP": 0.8,
+   "chiller_W": 114.59178016205198,
+   "laser_W": 103.98298315511788,
+   "laser_wins": true
+  },
+  {
+   "dT_K": 120,
+   "T_in_K": 180.0,
+   "COP": 0.6,
+   "chiller_W": 152.7890402160693,
+   "laser_W": 103.98298315511788,
+   "laser_wins": true
+  },
+  {
+   "dT_K": 140,
+   "T_in_K": 160.0,
+   "COP": 0.45714285714285713,
+   "chiller_W": 200.53561528359097,
+   "laser_W": 103.98298315511788,
+   "laser_wins": true
+  },
+  {
+   "dT_K": 160,
+   "T_in_K": 140.0,
+   "COP": 0.35,
+   "chiller_W": 261.9240689418331,
+   "laser_W": 103.98298315511788,
+   "laser_wins": true
+  },
+  {
+   "dT_K": 180,
+   "T_in_K": 120.0,
+   "COP": 0.26666666666666666,
+   "chiller_W": 343.775340486156,
+   "laser_W": 103.98298315511788,
+   "laser_wins": true
+  },
+  {
+   "dT_K": 200,
+   "T_in_K": 100.0,
+   "COP": 0.2,
+   "chiller_W": 458.3671206482079,
+   "laser_W": 103.98298315511788,
+   "laser_wins": true
+  }
+ ],
+ "laser_wins_above_dT_K": 100,
+ "THE_CORRECTION": "The recorded study reports 1.735 W per watt lifted. That figure carries the first-law recovery term. At the junction the rescue actually holds (363.8 K, phi 0.1890) the same loop costs 2.473 W/W -- a factor of 1.419 more. Every array cost in the rescue comparison rises by that factor, so the chiller's margin widens and the depth at which the laser overtakes moves out from about 80 K to 100 K.",
+ "THE_LEAKAGE_CREDIT_STILL_STANDS": "The 26.6 % chip-power reduction is a thermal result and is untouched by the recovery correction. It now takes the array from 2.473 W/W gross to 1.683 W/W net rather than 1.735 to 0.945 -- still nearly a factor of 1.47, and still the largest single term nobody was counting."
+}

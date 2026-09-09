@@ -1,0 +1,93 @@
+{
+ "note": "Compare the four catalogue re-run arms, one flag at a time (\u00a7P0.16).\n\n    python examples/catalogue_arm_compare.py\n\nThe arms form a CHAIN, each differing from the previous by exactly one flag, so every difference\nhas a single cause:\n\n    A  pipeline  + stock     + stock                   <- same-code control\n    B  simulated + stock     + stock                   <- A->B = the leakage curve\n    C  simulated + amortized + stock                   <- B->C = the RBB policy\n    D  simulated + amortized + hierarchy-consistent    <- C->D = the core_other accounting\n\n`[!]` **Arm A is the control, NOT the recorded catalogue.** \u00a7P0.15 established that the recorded\nrows predate the RBB work, the residual/backtracking convergence fix and `verify=True`, so\n\"treating it as a reproduction target would have read a real improvement as a regression\". A vs the\nrecorded tree is reported separately and labelled as *code drift*, never as a defect.\n\n`[!]` **An `unconverged` row is neither holding nor failing** and is counted as neither, the same\nrule the density ladder uses. A flip is only counted between two decided verdicts.\n\n`[!]` **Do not read a partial campaign.** The driver reports each arm's completeness and refuses to\nsummarise a pair unless both arms have the point.\n",
+ "arm_flags": {
+  "A": [
+   "pipeline",
+   "stock",
+   "stock"
+  ],
+  "B": [
+   "simulated",
+   "stock",
+   "stock"
+  ],
+  "C": [
+   "simulated",
+   "amortized",
+   "stock"
+  ],
+  "D": [
+   "simulated",
+   "amortized",
+   "hierarchy-consistent"
+  ]
+ },
+ "mr_arm": "control",
+ "completeness": {
+  "A": {
+   "done": 158,
+   "reachable": 158,
+   "missing": [],
+   "known_unreachable": 22
+  },
+  "B": {
+   "done": 158,
+   "reachable": 158,
+   "missing": [],
+   "known_unreachable": 22
+  },
+  "C": {
+   "done": 158,
+   "reachable": 158,
+   "missing": [],
+   "known_unreachable": 22
+  },
+  "D": {
+   "done": 159,
+   "reachable": 159,
+   "missing": [],
+   "known_unreachable": 21
+  }
+ },
+ "complete": true,
+ "steps": {
+  "A->B": {
+   "n_common": 145,
+   "flips": {
+    "holds->holds": 50,
+    "diverged->holds": 57,
+    "diverged->diverged": 27
+   },
+   "n_undecided": 11,
+   "n_peak_pairs": 50,
+   "mean_dpeak_K": 0.281031494140625,
+   "max_dpeak_K": -1.1395263671875,
+   "isolates": "the leakage curve"
+  },
+  "B->C": {
+   "n_common": 145,
+   "flips": {
+    "holds->holds": 107,
+    "diverged->diverged": 27
+   },
+   "n_undecided": 11,
+   "n_peak_pairs": 107,
+   "mean_dpeak_K": -0.5513764853789428,
+   "max_dpeak_K": -5.346343994140625,
+   "isolates": "the RBB policy"
+  },
+  "C->D": {
+   "n_common": 145,
+   "flips": {
+    "holds->holds": 107,
+    "diverged->holds": 22,
+    "diverged->diverged": 8
+   },
+   "n_undecided": 8,
+   "n_peak_pairs": 107,
+   "mean_dpeak_K": -5.378002986729702,
+   "max_dpeak_K": -12.734100341796875,
+   "isolates": "the core_other accounting"
+  }
+ }
+}

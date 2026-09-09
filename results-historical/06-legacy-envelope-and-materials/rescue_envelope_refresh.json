@@ -1,0 +1,53 @@
+{
+ "rows": [
+  {
+   "density": "1.10",
+   "recorded_peak_C": 90.96083984375002,
+   "recorded_Q_W": 26.836097826047606,
+   "recorded_elec_W": 46.55266344272411,
+   "rerun_peak_C": 93.9465270996094,
+   "rerun_Q_W": 10.392980687229104,
+   "rerun_elec_W": 6.32965102167643,
+   "rerun_net_generating": false,
+   "rerun_plan_is_minimum": true,
+   "rerun_holds_target": true,
+   "n_targets": 1126,
+   "heat_reduction_x": 2.5821367934440413,
+   "matched_eff_cost_W_per_W": 2.4661001604298978,
+   "matched_eff_elec_W": 25.63013134012052
+  },
+  {
+   "density": "1.15",
+   "recorded_peak_C": 90.60198364257815,
+   "recorded_Q_W": 42.05155402789617,
+   "recorded_elec_W": 72.94670701930227,
+   "rerun_peak_C": 93.93596801757815,
+   "rerun_Q_W": 18.280545494949973,
+   "rerun_elec_W": 11.128304633221852,
+   "rerun_net_generating": false,
+   "rerun_plan_is_minimum": true,
+   "rerun_holds_target": true,
+   "n_targets": 1126,
+   "heat_reduction_x": 2.3003445952700354,
+   "matched_eff_cost_W_per_W": 2.4661209642279625,
+   "matched_eff_elec_W": 45.08203648261916
+  },
+  {
+   "density": "1.18",
+   "recorded_peak_C": 92.64995727539065,
+   "recorded_Q_W": 44.86315336408711,
+   "recorded_elec_W": 77.84005423967756,
+   "rerun_peak_C": 93.9517761230469,
+   "rerun_Q_W": 22.921673697535283,
+   "rerun_elec_W": 13.952012104476069,
+   "rerun_net_generating": false,
+   "rerun_plan_is_minimum": true,
+   "rerun_holds_target": true,
+   "n_targets": 1126,
+   "heat_reduction_x": 1.9572372400062195,
+   "matched_eff_cost_W_per_W": 2.4660898191027867,
+   "matched_eff_elec_W": 56.52690614228789
+  }
+ ],
+ "note": "Recorded vs re-run at the refreshed envelope with second-law recovery. The two runs also differ in efficiency preset (recorded used LEGACY_ENVELOPE cop 0.14; the re-run uses the shipped defaults cop 0.272), so the raw electrical columns are NOT like-for-like. The matched-efficiency columns re-price the re-run at the recorded preset so the envelope effect can be read on its own."
+}

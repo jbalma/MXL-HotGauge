@@ -1,0 +1,172 @@
+{
+  "note": "What the FINDINGS.json in the working tree actually contained before this harvest, and what changed. Written 27 Aug 2026. docs/NEXT_SESSION.md states the catalogue was harvested across both re-run roots into docs/evidence/FINDINGS.json; the file on disk was NOT that harvest. Every one of its 157 entries pointed at the pre-re-run results/ generation, i.e. at the OLD sink boundary from before --spreading. This file records the proof and the coverage gap the correct harvest exposes. It is not a physics result.",
+  "stale_file": {
+    "path": "docs/evidence/FINDINGS.json (working tree, before 27 Aug 09:50 re-harvest)",
+    "n_entries": 157,
+    "n_failed_verification": 20,
+    "source_roots": [
+      "results/accel",
+      "results/accel_mr",
+      "results/accel_smoke",
+      "results/cliff_verified",
+      "results/clock_target_T65",
+      "results/clock_target_T78",
+      "results/cooling_for_clock",
+      "results/d_smoke",
+      "results/design_batch",
+      "results/gapfill",
+      "results/leakv_e0",
+      "results/leakv_e2",
+      "results/nextsteps",
+      "results/overnight3",
+      "results/tiers_34c",
+      "results/tiers_fpu2",
+      "results/tiers_fpu3",
+      "results/tiers_fpu4",
+      "results/tiers_g4_mixed25",
+      "results/tiers_g4_turbo",
+      "results/tiers_g4_turbo_idle",
+      "results/tiers_mixed25",
+      "results/tiers_mixed50",
+      "results/tiers_turbo",
+      "results/tiers_turbo_idle",
+      "results/tiers_uniform",
+      "results/turbo_balanced",
+      "results/turbo_concentrated",
+      "results/turbo_m2_balanced",
+      "results/turbo_m2_concentrated"
+    ],
+    "verdict": "stale \u2014 pre-re-run generation, pre-spreading boundary"
+  },
+  "rerun_harvest": {
+    "command": "python scripts/collect_findings.py --results $PWD/results/rerun_cpu $PWD/results/rerun_accel --out docs/evidence/FINDINGS.json",
+    "n_entries": 161,
+    "n_failed_verification": 39,
+    "source_roots": [
+      "results/rerun_accel",
+      "results/rerun_cpu"
+    ],
+    "verdict": "current \u2014 both re-run roots, corrected spreading boundary, both arms complete"
+  },
+  "proof_the_old_file_was_the_old_boundary": {
+    "point": "cooling sweep, r_th 0.02 K/W, mr=False, f_sustainable_GHz",
+    "stale_file": {
+      "f_GHz": 4.34375,
+      "limited_by": "over_thermal_limit",
+      "source": "results/cooling_for_clock/rth0.02/clock_headroom.json"
+    },
+    "rerun": {
+      "f_GHz": [
+        4.25,
+        4.484375
+      ],
+      "limited_by": "thermal_runaway",
+      "source": "results/rerun_cpu/cooling_for_clock/rth0.02/clock_headroom.json",
+      "note": "two rows because the re-run emits three arms per point"
+    },
+    "also": "the stale file has NO cliff entry at d=0.85, the density the three-arm cliff result turns on"
+  },
+  "counts_by_family": {
+    "cliff": {
+      "stale_file": 12,
+      "rerun_harvest": 11
+    },
+    "overnight3": {
+      "stale_file": 36,
+      "rerun_harvest": 39
+    },
+    "rescue_target98": {
+      "stale_file": 2,
+      "rerun_harvest": 2
+    },
+    "margin_curve": {
+      "stale_file": 17,
+      "rerun_harvest": 17
+    },
+    "pitch": {
+      "stale_file": 12,
+      "rerun_harvest": 12
+    },
+    "core_scaling": {
+      "stale_file": 4,
+      "rerun_harvest": 3
+    },
+    "ceiling": {
+      "stale_file": 1,
+      "rerun_harvest": 1
+    },
+    "tiers": {
+      "stale_file": 18,
+      "rerun_harvest": 6
+    },
+    "clock": {
+      "stale_file": 28,
+      "rerun_harvest": 21
+    },
+    "stacked": {
+      "stale_file": 9,
+      "rerun_harvest": 8
+    },
+    "accelerator": {
+      "stale_file": 18,
+      "rerun_harvest": 41
+    }
+  },
+  "coverage_gap_the_correct_harvest_exposes": {
+    "note": "Three families shrank because points that exist in the OLD results/ tree are not in the re-run plan at all. No batch script in scripts/ reproduces them, so they were ad-hoc runs from earlier sessions. Their numbers exist ONLY at the superseded boundary and cannot be restated without new solves.",
+    "tiers": {
+      "stale": 18,
+      "rerun": 6,
+      "unreproduced": [
+        "results/tiers_34c",
+        "results/tiers_uniform",
+        "results/tiers_turbo",
+        "results/tiers_turbo_idle",
+        "results/tiers_mixed25",
+        "results/tiers_mixed50",
+        "results/tiers_fpu2",
+        "results/tiers_fpu3",
+        "results/tiers_fpu4",
+        "results/tiers_g4_mixed25",
+        "results/tiers_g4_turbo",
+        "results/tiers_g4_turbo_idle"
+      ],
+      "why_it_matters": "docs/LADDER_GEN0.md section 3 lists peak-to-runner-up gap and plateau width at dt_max as 'produced by the tier screens'. Those screens are these twelve points. Two of gen 0's five phase-1 floorplan metrics therefore have no re-run backing.",
+      "in_the_rerun": "only the six design_batch F_{balanced,concentrated}_dt{10,20,30} dt_max-roadmap points"
+    },
+    "clock": {
+      "stale": 28,
+      "rerun": 21,
+      "unreproduced": [
+        "results/turbo_balanced",
+        "results/turbo_concentrated",
+        "results/turbo_m2_balanced",
+        "results/turbo_m2_concentrated",
+        "results/clock_target_T65",
+        "results/clock_target_T78",
+        "results/leakv_e0",
+        "results/leakv_e2"
+      ],
+      "why_it_matters": "leakv_e0 / leakv_e2 are the leak_v_exponent sensitivity arms \u2014 the documented assumption behind leakage scaling as V**leak_v_exponent. That sensitivity is unmeasured on the corrected boundary.",
+      "note": "the rerun's 21 are 3 arms x 6 cooling_for_clock r_th points + 3 arms x E_distributed"
+    },
+    "batch_scripts_not_in_the_rerun_plan": [
+      "dtmax_batch.sh (4 refs in plan, no standalone points)",
+      "kernel_batch.sh (0 refs)",
+      "14_perf_sims_to_7_10_14_power_sims.sh (0 refs)"
+    ]
+  },
+  "families_that_grew": {
+    "accelerator": {
+      "stale": 18,
+      "rerun": 41,
+      "why": "the stale harvest never saw results/rerun_accel at all; the accelerator arm is the microchannel cold-plate generation"
+    },
+    "overnight3": {
+      "stale": 36,
+      "rerun": 39,
+      "why": "three arms per point rather than two"
+    }
+  },
+  "what_this_does_not_change": "The re-run itself is sound and complete: 176/180 CPU (driver.log COMPLETE 27 Aug 09:43) and 70/72 accelerator (04:57). Only the harvested summary file was stale. Nothing needs re-solving to fix this \u2014 one harvest command did it."
+}

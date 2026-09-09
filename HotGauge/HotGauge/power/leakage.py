@@ -187,7 +187,7 @@ class LeakageModel(object):
 
     @classmethod
     def from_table_extrapolated(cls, temps_K, rel_leakage, activation_eV=None,
-                                fit_from_K=380.0):
+                                fit_from_K=380.0, source_note=None):
         """Measured table below the top point, physically-shaped Arrhenius tail above it.
 
         Why this exists: ``from_table`` CLAMPS above its range, holding leakage constant. That
@@ -206,6 +206,11 @@ class LeakageModel(object):
         local-exponential continuation of the same data disagree by ~2.5x at 450 K. Treat
         values above the measured range as indicating *whether* a configuration runs away, not
         by how much. ``scale()`` warns once when it is used there.
+
+        ``source_note`` replaces the sentence in that warning that explains *why* the table
+        stops. It defaults to McPAT's reason, which is what every caller had when this was
+        written; the simulated BSIM-CMG table (§P0.13) stops for an entirely different reason and
+        would otherwise blame a tool it never used.
         """
         temps_K = np.asarray(temps_K, dtype=float)
         rel_leakage = np.asarray(rel_leakage, dtype=float)
@@ -228,6 +233,9 @@ class LeakageModel(object):
         if activation_eV <= 0:
             raise ValueError('activation_eV must be positive, got {!r}'.format(activation_eV))
 
+        note = source_note or ('McPAT cannot be run hotter, so values there are physically '
+                               'shaped but uncertain (Arrhenius vs local-exponential differ '
+                               '~2.5x at 450 K).')
         state = {'warned': False, 'max_T': -np.inf}
 
         def factor_fn(T_K, Tref_K):
@@ -241,11 +249,9 @@ class LeakageModel(object):
                     state['warned'] = True
                     LOGGER.warning(
                         'Leakage EXTRAPOLATED above the measured range (top measured %.1f K); '
-                        'seen up to %.1f K (%.1f C). McPAT cannot be run hotter, so values '
-                        'there are physically shaped but uncertain (Arrhenius vs local-'
-                        'exponential differ ~2.5x at 450 K). Use them to decide WHETHER a '
+                        'seen up to %.1f K (%.1f C). %s Use them to decide WHETHER a '
                         'configuration diverges, not by how much.',
-                        t_top, state['max_T'], state['max_T'] - 273.15)
+                        t_top, state['max_T'], state['max_T'] - 273.15, note)
                 tail = rel_top * (T_K / t_top) ** 2 * np.exp(
                     -(activation_eV / BOLTZMANN_EV_PER_K) * (1.0 / np.maximum(T_K, 1e-9) - 1.0 / t_top))
                 below = np.where(hot, tail, below)

@@ -1,0 +1,488 @@
+{
+ "note": "The leakage-vs-temperature curve, **simulated** from the ASAP7 card instead of interpolated.\n\n    python examples/device_leakage_spice.py     # needs spice_toolchain/, see docs/BSIMCMG_TOOLCHAIN.md\n\nWhat this settles\n-----------------\n``examples/device_leakage_calibration.py`` established two things and could not settle a third:\n\n1. the pipeline's leakage curve is a **bit-for-bit pass-through** of CACTI's hard-coded\n   ``I_off_n[0][*]`` array for \"16nm DG HP\" -- 32 nm numbers times three fudge factors;\n2. its implied activation energy runs 0.016-1.081 eV, **69x and non-monotone**, so no single\n   device produces it;\n3. ...and the replacement it offered was the ASAP7 card in an **analytic off-state limit**, with\n   two parameters fitted to the very table it criticises. Only its *shape* was independent; its\n   *level* was still CACTI's, and it modelled subthreshold conduction and nothing else.\n\nThis removes point 3. ngspice 47, built from source with OSDI, loads BSIM-CMG compiled from\nVerilog-A by OpenVAF, and evaluates the vendor's model on the vendor's parameters: all ~130 of\nthem, every conduction mechanism the card enables, an absolute current in amps, and no fit to\nanything. The analytic curve becomes something to *check*, not something to rely on.\n\nThree checks run alongside the sweep, because a wrong answer here would look entirely plausible\n----------------------------------------------------------------------------------------------\n* **Is it a transistor?** The subthreshold swing at 300 K is measured. A FinFET's ideal limit is\n  59.6 mV/dec; anything far above it means the card is not binding and the numbers are a default\n  device wearing ASAP7's name.\n* **Does the answer depend on the model version?** The card declares BSIM-CMG **107**; VA-Models\n  ships **110.0.0**, **111.2.1** and a Xyce-flavoured tree. All available ones are run and\n  compared. A version-dependent answer is a result about VA-Models, not about silicon.\n* **Which mechanism is it?** The run is repeated with ``gidlmod = 0`` and with ``igcmod = 0``, so\n  the curve is decomposed rather than asserted. This is the check that changes the conclusion --\n  see below.\n\n`[!]` What is still assumed\n---------------------------\n* **The bias point is a choice**: ``V_gs = 0, V_ds = V_dd, V_bs = 0`` at the card's drawn length,\n  one fin. A die leaks at a distribution of biases, stack heights and flavours; this is one corner\n  of it, chosen to be the same corner the analytic model used so the two are comparable.\n* **One device is not a die.** What transfers to the pipeline is the *shape*, not the amps.\n* **Self-heating is off** (``shmod = 0`` in the card), so the swept temperature is the device's.\n* **ASAP7 is a predictive PDK.** Its GIDL coefficients are a model choice, not a measurement of a\n  fabricated part -- which is exactly why the GIDL-off curve is reported next to the full one\n  rather than buried.",
+ "toolchain": {
+  "ngspice": "spice_toolchain/install/bin/ngspice",
+  "osdi": "spice_toolchain/osdi/bsimcmg_vacode110.osdi",
+  "verilog_a": "spice_toolchain/src/VA-Models/code/bsimcmg/vacode110/bsimcmg.va",
+  "module": "bsimcmg",
+  "model_version": "110.0.0",
+  "built_by": "docs/BSIMCMG_TOOLCHAIN.md"
+ },
+ "card": {
+  "path": "spice_leakage/models/asap7_7nm_TT.pm",
+  "device": "nmos_rvt",
+  "declared_version": 107.0,
+  "unknown_parameters": {
+   "110.0.0": [
+    "unrecognized parameter (capmod) - ignored",
+    "unrecognized parameter (coremod) - ignored",
+    "unrecognized parameter (version) - ignored"
+   ],
+   "111.2.1": [
+    "unrecognized parameter (capmod) - ignored",
+    "unrecognized parameter (coremod) - ignored",
+    "unrecognized parameter (nseg) - ignored",
+    "unrecognized parameter (version) - ignored"
+   ],
+   "111.2.1-xyce": [
+    "unrecognized parameter (capmod) - ignored",
+    "unrecognized parameter (coremod) - ignored",
+    "unrecognized parameter (etaqm) - ignored",
+    "unrecognized parameter (nseg) - ignored",
+    "unrecognized parameter (version) - ignored"
+   ]
+  }
+ },
+ "bias": {
+  "vgs_V": 0.0,
+  "vds_V": 0.7,
+  "vbs_V": 0.0,
+  "nfin": 1000,
+  "self_heating": false
+ },
+ "anchor_K": 330.0,
+ "sanity": {
+  "I_off_300K_A_per_um": 2.3178439716312053e-10,
+  "nA_per_um_300K": 0.23178439716312052,
+  "in_nA_per_um_decade": true,
+  "subthreshold_swing_300K_mV_per_dec": 61.66934018987111,
+  "ideal_swing_300K_mV_per_dec": 59.52642933148279,
+  "swing_is_physical": true,
+  "subthreshold_monotone_increasing": true,
+  "total_monotone_increasing": true,
+  "effective_width_um": 0.07050000000000001,
+  "PASSES": true
+ },
+ "numerical_convergence": {
+  "full": {
+   "nfin": 1000,
+   "nfin_x10": 10000,
+   "max_abs_pct": 0.0021730263905728187
+  },
+  "gidl_off": {
+   "nfin": 1000,
+   "nfin_x10": 10000,
+   "max_abs_pct": 0.03557136505112357
+  },
+  "CONVERGED": true
+ },
+ "version_spread": {
+  "110.0.0": {
+   "max_abs_pct_vs_primary": 0.0
+  },
+  "111.2.1": {
+   "max_abs_pct_vs_primary": 0.3603832244147176
+  },
+  "111.2.1-xyce": {
+   "max_abs_pct_vs_primary": 0.36922055165387047
+  }
+ },
+ "curve": [
+  {
+   "T_K": 200.0,
+   "I_A": 5.98244e-12,
+   "I_A_per_um": 8.485730496453899e-11,
+   "rel_to_anchor": 0.1260697863588278,
+   "rel_to_anchor_gidl_off": 0.003162471285213396
+  },
+  {
+   "T_K": 210.0,
+   "I_A": 6.02751e-12,
+   "I_A_per_um": 8.549659574468083e-11,
+   "rel_to_anchor": 0.1270195602422587,
+   "rel_to_anchor_gidl_off": 0.003806794825293193
+  },
+  {
+   "T_K": 220.0,
+   "I_A": 6.08913e-12,
+   "I_A_per_um": 8.637063829787234e-11,
+   "rel_to_anchor": 0.1283180973333839,
+   "rel_to_anchor_gidl_off": 0.004843041953814532
+  },
+  {
+   "T_K": 230.0,
+   "I_A": 6.18461e-12,
+   "I_A_per_um": 8.772496453900709e-11,
+   "rel_to_anchor": 0.13033017655215431,
+   "rel_to_anchor_gidl_off": 0.006698125982347963
+  },
+  {
+   "T_K": 240.0,
+   "I_A": 6.34726e-12,
+   "I_A_per_um": 9.003205673758865e-11,
+   "rel_to_anchor": 0.1337577497081347,
+   "rel_to_anchor_gidl_off": 0.010177390883810904
+  },
+  {
+   "T_K": 250.0,
+   "I_A": 6.63658e-12,
+   "I_A_per_um": 9.413588652482268e-11,
+   "rel_to_anchor": 0.13985467848457642,
+   "rel_to_anchor_gidl_off": 0.016719792044492806
+  },
+  {
+   "T_K": 260.0,
+   "I_A": 7.1535e-12,
+   "I_A_per_um": 1.0146808510638297e-10,
+   "rel_to_anchor": 0.15074789161577462,
+   "rel_to_anchor_gidl_off": 0.028760246644903883
+  },
+  {
+   "T_K": 270.0,
+   "I_A": 8.06111e-12,
+   "I_A_per_um": 1.1434198581560283e-10,
+   "rel_to_anchor": 0.16987423451217404,
+   "rel_to_anchor_gidl_off": 0.050250755652279044
+  },
+  {
+   "T_K": 280.0,
+   "I_A": 9.61342e-12,
+   "I_A_per_um": 1.3636056737588651e-10,
+   "rel_to_anchor": 0.2025865375294499,
+   "rel_to_anchor_gidl_off": 0.08732245194051505
+  },
+  {
+   "T_K": 290.0,
+   "I_A": 1.219e-11,
+   "I_A_per_um": 1.729078014184397e-10,
+   "rel_to_anchor": 0.2568835952745219,
+   "rel_to_anchor_gidl_off": 0.14916261637045097
+  },
+  {
+   "T_K": 300.0,
+   "I_A": 1.63408e-11,
+   "I_A_per_um": 2.3178439716312053e-10,
+   "rel_to_anchor": 0.3443546721625847,
+   "rel_to_anchor_gidl_off": 0.2490702454358602
+  },
+  {
+   "T_K": 310.0,
+   "I_A": 2.28383e-11,
+   "I_A_per_um": 3.239475177304964e-10,
+   "rel_to_anchor": 0.4812784753041931,
+   "rel_to_anchor_gidl_off": 0.4057236126224157
+  },
+  {
+   "T_K": 320.0,
+   "I_A": 3.2739300000000004e-11,
+   "I_A_per_um": 4.643872340425532e-10,
+   "rel_to_anchor": 0.6899252740583394,
+   "rel_to_anchor_gidl_off": 0.644666908475396
+  },
+  {
+   "T_K": 330.0,
+   "I_A": 4.7453400000000006e-11,
+   "I_A_per_um": 6.730978723404256e-10,
+   "rel_to_anchor": 1.0,
+   "rel_to_anchor_gidl_off": 1.0
+  },
+  {
+   "T_K": 340.0,
+   "I_A": 6.88204e-11,
+   "I_A_per_um": 9.761758865248227e-10,
+   "rel_to_anchor": 1.450273320773643,
+   "rel_to_anchor_gidl_off": 1.516203602950066
+  },
+  {
+   "T_K": 350.0,
+   "I_A": 9.919340000000001e-11,
+   "I_A_per_um": 1.4069985815602836e-09,
+   "rel_to_anchor": 2.09033283178866,
+   "rel_to_anchor_gidl_off": 2.2501801475033245
+  },
+  {
+   "T_K": 360.0,
+   "I_A": 1.41526e-10,
+   "I_A_per_um": 2.007460992907801e-09,
+   "rel_to_anchor": 2.9824206484677593,
+   "rel_to_anchor_gidl_off": 3.2733647684681415
+  },
+  {
+   "T_K": 370.0,
+   "I_A": 1.99466e-10,
+   "I_A_per_um": 2.8293049645390067e-09,
+   "rel_to_anchor": 4.203407974981771,
+   "rel_to_anchor_gidl_off": 4.673896747672591
+  },
+  {
+   "T_K": 380.0,
+   "I_A": 2.7744399999999996e-10,
+   "I_A_per_um": 3.935375886524822e-09,
+   "rel_to_anchor": 5.846662199125878,
+   "rel_to_anchor_gidl_off": 6.558989239511547
+  },
+  {
+   "T_K": 390.0,
+   "I_A": 3.8077100000000003e-10,
+   "I_A_per_um": 5.401007092198581e-09,
+   "rel_to_anchor": 8.024103646946267,
+   "rel_to_anchor_gidl_off": 9.05706686011365
+  },
+  {
+   "T_K": 400.0,
+   "I_A": 5.15729e-10,
+   "I_A_per_um": 7.315304964539007e-09,
+   "rel_to_anchor": 10.868114824227558,
+   "rel_to_anchor_gidl_off": 12.32000967234917
+  },
+  {
+   "T_K": 410.0,
+   "I_A": 6.89659e-10,
+   "I_A_per_um": 9.782397163120566e-09,
+   "rel_to_anchor": 14.533394867385685,
+   "rel_to_anchor_gidl_off": 16.525305283520733
+  },
+  {
+   "T_K": 420.0,
+   "I_A": 9.110429999999999e-10,
+   "I_A_per_um": 1.2922595744680848e-08,
+   "rel_to_anchor": 19.198687554527172,
+   "rel_to_anchor_gidl_off": 21.878080038689394
+  },
+  {
+   "T_K": 430.0,
+   "I_A": 1.1895800000000001e-09,
+   "I_A_per_um": 1.6873475177304964e-08,
+   "rel_to_anchor": 25.0683828766748,
+   "rel_to_anchor_gidl_off": 28.612985128763146
+  },
+  {
+   "T_K": 440.0,
+   "I_A": 1.5362700000000001e-09,
+   "I_A_per_um": 2.1791063829787234e-08,
+   "rel_to_anchor": 32.37428719543805,
+   "rel_to_anchor_gidl_off": 36.99552653850804
+  },
+  {
+   "T_K": 450.0,
+   "I_A": 1.96341e-09,
+   "I_A_per_um": 2.7849787234042548e-08,
+   "rel_to_anchor": 41.37553894979074,
+   "rel_to_anchor_gidl_off": 47.324386410349405
+  },
+  {
+   "T_K": 460.0,
+   "I_A": 2.48477e-09,
+   "I_A_per_um": 3.5244964539007084e-08,
+   "rel_to_anchor": 52.36231755785675,
+   "rel_to_anchor_gidl_off": 59.931326320880174
+  },
+  {
+   "T_K": 470.0,
+   "I_A": 3.11553e-09,
+   "I_A_per_um": 4.4191914893617015e-08,
+   "rel_to_anchor": 65.6545157986572,
+   "rel_to_anchor_gidl_off": 75.18341192117036
+  },
+  {
+   "T_K": 480.0,
+   "I_A": 3.8723e-09,
+   "I_A_per_um": 5.492624113475177e-08,
+   "rel_to_anchor": 81.60216127822243,
+   "rel_to_anchor_gidl_off": 93.48301293676701
+  },
+  {
+   "T_K": 490.0,
+   "I_A": 4.77322e-09,
+   "I_A_per_um": 6.770524822695035e-08,
+   "rel_to_anchor": 100.58752376015205,
+   "rel_to_anchor_gidl_off": 115.26804497642364
+  },
+  {
+   "T_K": 500.0,
+   "I_A": 5.8378899999999996e-09,
+   "I_A_per_um": 8.280695035460992e-08,
+   "rel_to_anchor": 123.02364003422302,
+   "rel_to_anchor_gidl_off": 141.0124531495587
+  }
+ ],
+ "mechanism": {
+  "gidl_off": [
+   1.3078399999999999e-13,
+   1.5743e-13,
+   2.00284e-13,
+   2.77001e-13,
+   4.20886e-13,
+   6.91447e-13,
+   1.1893800000000001e-12,
+   2.07812e-12,
+   3.61122e-12,
+   6.1686200000000004e-12,
+   1.03003e-11,
+   1.67787e-11,
+   2.66602e-11,
+   4.1355e-11,
+   6.270259999999999e-11,
+   9.305619999999999e-11,
+   1.3537e-10,
+   1.93289e-10,
+   2.7124700000000005e-10,
+   3.74555e-10,
+   5.09494e-10,
+   6.83404e-10,
+   9.04768e-10,
+   1.18329e-09,
+   1.52995e-09,
+   1.9570999999999998e-09,
+   2.4784599999999997e-09,
+   3.1092100000000003e-09,
+   3.86599e-09,
+   4.76691e-09,
+   5.83157e-09
+  ],
+  "gate_off": [
+   5.8572e-12,
+   5.88618e-12,
+   5.93026e-12,
+   6.0071899999999996e-12,
+   6.14997e-12,
+   6.41798e-12,
+   6.91236e-12,
+   7.796099999999999e-12,
+   9.32321e-12,
+   1.18732e-11,
+   1.5996e-11,
+   2.2463999999999998e-11,
+   3.2333999999999995e-11,
+   4.70157e-11,
+   6.834889999999999e-11,
+   9.86864e-11,
+   1.40982e-10,
+   1.98883e-10,
+   2.76821e-10,
+   3.8010599999999996e-10,
+   5.15021e-10,
+   6.88906e-10,
+   9.10243e-10,
+   1.1887299999999999e-09,
+   1.53537e-09,
+   1.96246e-09,
+   2.48377e-09,
+   3.11447e-09,
+   3.87119e-09,
+   4.772050000000001e-09,
+   5.8366500000000005e-09
+  ],
+  "gidl_and_gate_off": [
+   5.66214e-15,
+   1.59872e-14,
+   4.15223e-14,
+   9.9587e-14,
+   2.23599e-13,
+   4.72844e-13,
+   9.4813e-13,
+   1.81299e-12,
+   3.32101e-12,
+   5.851759999999999e-12,
+   9.95548e-12,
+   1.64043e-11,
+   2.62551e-11,
+   4.09173e-11,
+   6.2231e-11,
+   9.25492e-11,
+   1.3482599999999998e-10,
+   1.92707e-10,
+   2.70625e-10,
+   3.73891e-10,
+   5.08786e-10,
+   6.826509999999999e-10,
+   9.03968e-10,
+   1.18244e-09,
+   1.52905e-09,
+   1.9561499999999997e-09,
+   2.47745e-09,
+   3.10815e-09,
+   3.864869999999999e-09,
+   4.76573e-09,
+   5.83034e-09
+  ]
+ },
+ "comparison": [
+  {
+   "T_K": 200.0,
+   "simulated_rel": 0.1260697863588278,
+   "analytic_card_rel": 0.005975259888029691,
+   "pipeline_rel": 0.9230775770811442,
+   "analytic_over_simulated": 0.04739644652861177,
+   "pipeline_over_simulated": 7.32195717738287
+  },
+  {
+   "T_K": 220.0,
+   "simulated_rel": 0.1283180973333839,
+   "analytic_card_rel": 0.00622697209460691,
+   "pipeline_rel": 0.9230775770811442,
+   "analytic_over_simulated": 0.048527621777531366,
+   "pipeline_over_simulated": 7.19366633595643
+  },
+  {
+   "T_K": 250.0,
+   "simulated_rel": 0.13985467848457642,
+   "analytic_card_rel": 0.011025935200982707,
+   "pipeline_rel": 0.9230775770811442,
+   "analytic_over_simulated": 0.07883851523922154,
+   "pipeline_over_simulated": 6.600262408689774
+  },
+  {
+   "T_K": 280.0,
+   "simulated_rel": 0.2025865375294499,
+   "analytic_card_rel": 0.05721922012891965,
+   "pipeline_rel": 0.9230775770811442,
+   "analytic_over_simulated": 0.2824433490335048,
+   "pipeline_over_simulated": 4.556460603641823
+  },
+  {
+   "T_K": 300.0,
+   "simulated_rel": 0.3443546721625847,
+   "analytic_card_rel": 0.19360118914114208,
+   "pipeline_rel": 0.9230775770811442,
+   "analytic_over_simulated": 0.5622144979921591,
+   "pipeline_over_simulated": 2.680601286122
+  },
+  {
+   "T_K": 310.0,
+   "simulated_rel": 0.4812784753041931,
+   "analytic_card_rel": 0.34427146819129956,
+   "pipeline_rel": 0.9230775770811442,
+   "analytic_over_simulated": 0.715326959041129,
+   "pipeline_over_simulated": 1.9179697918086012
+  },
+  {
+   "T_K": 350.0,
+   "simulated_rel": 2.09033283178866,
+   "analytic_card_rel": 2.6071381185147624,
+   "pipeline_rel": 1.5976097629128703,
+   "analytic_over_simulated": 1.2472358845762765,
+   "pipeline_over_simulated": 0.7642848730198744
+  },
+  {
+   "T_K": 400.0,
+   "simulated_rel": 10.868114824227558,
+   "analytic_card_rel": 19.41288051892339,
+   "pipeline_rel": 36.09929048234699,
+   "analytic_over_simulated": 1.7862233545460489,
+   "pipeline_over_simulated": 3.321577943018532
+  },
+  {
+   "T_K": 450.0,
+   "simulated_rel": 41.37553894979074,
+   "analytic_card_rel": 95.39106041764639,
+   "pipeline_rel": 600.441418883366,
+   "analytic_over_simulated": 2.3054940875429693,
+   "pipeline_over_simulated": 14.511990275510426
+  },
+  {
+   "T_K": 500.0,
+   "simulated_rel": 123.02364003422302,
+   "analytic_card_rel": 348.95164203539923,
+   "pipeline_rel": 5819.948865458266,
+   "analytic_over_simulated": 2.8364600652226435,
+   "pipeline_over_simulated": 47.307565146334944
+  }
+ ],
+ "gidl_share_of_leakage_at_200K": 0.9781386858873636,
+ "FINDING_1_IT_IS_A_SIMULATION_NOW": "ngspice 47 built from source with OSDI, loading BSIM-CMG 110.0.0 compiled by OpenVAF, evaluates the ASAP7 nmos_rvt card directly. Subthreshold swing at 300 K is 61.7 mV/dec against an ideal 59.5, and I_off is 0.232 nA/um -- both squarely in range, so the card is binding and the device is a device. The curve below is no longer fitted to anything: its level as well as its shape is the model's.",
+ "FINDING_2_THE_COLD_END_IS_GIDL_NOT_A_GATE_FLOOR": "The analytic model predicted leakage falling to a temperature-independent GATE floor at about 244 K. The simulator says the floor is real but it is 98% GIDL at 200 K, not gate tunnelling -- turning off igcmod barely moves the curve, turning off gidlmod drops 200 K by 46x. GIDL is exactly what the analytic model said it omitted and said would raise both ends, and at V_gs = 0 with V_ds = V_dd the gate-to-drain bias is -V_dd, so GIDL is on in the ordinary off state rather than an exotic corner. Simulated leakage at 200 K is 0.126 of the 330 K value against the analytic 0.00598 -- the cold-zone prize is 21x SMALLER than the analytic curve promised.",
+ "FINDING_3_THE_HOT_TAIL_IS_GENTLER_STILL": "At 500 K the pipeline says 5820x the 330 K leakage, the analytic card model says 349x, and the simulator says 123x. Both replacements agree that the pipeline's Arrhenius tail is far too steep, and the simulator is gentler than the analytic model by another 2.8x. Since the flat-die ceiling of 1.0-1.2 W/mm^2 (P0.11) was solved on the pipeline curve, and a gentler tail runs away LATER, that ceiling is conservative by more than P0.12 estimated.",
+ "FINDING_4_THE_ANSWER_DOES_NOT_DEPEND_ON_THE_MODEL_VERSION": "The card declares version 107 and no 107 source exists in VA-Models, so all shipped versions were run: 110.0.0, 111.2.1, 111.2.1-xyce. Normalised to the anchor they agree to 0.4% at worst. The three parameters the newer models reject (capmod, coremod, version) are switches BSIM-CMG removed after 107, not values being silently dropped -- and the version-to-version agreement is the evidence that nothing important went with them.",
+ "HONEST_LIMITS": "One device (nmos_rvt), one bias corner (Vgs = 0, Vds = 0.70 V, Vbs = 0), one fin, no self-heating (the card sets shmod = 0). A die leaks at a distribution of biases, stack heights and device flavours, so what transfers downstream is the SHAPE of I_off(T), not the amps. ASAP7 is a PREDICTIVE PDK: its GIDL coefficients (agidl = 1e-12, bgidl = 1e+07, egidl = 0.35) are a model choice, not a measurement of a fabricated 7 nm part, and Finding 2 rests on them -- which is why the GIDL-off curve is carried alongside the full one in every row rather than mentioned in a footnote. Treat the two as a bracket on the cold end."
+}

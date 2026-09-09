@@ -199,6 +199,54 @@ def enumerate_points(repo, scripts, out_root):
     return points, failed
 
 
+def _driver_accepts(repo, driver, flag, _cache={}):
+    """True if ``driver`` declares ``flag``. Cached; one ``--help`` per driver."""
+    key = (driver, flag)
+    if key in _cache:
+        return _cache[key]
+    # `driver` already carries its path relative to the repo (e.g. 'examples/mr_comparison.py').
+    # Joining another 'examples' onto it yields a path that does not exist, --help fails, and
+    # EVERY flag is silently reported as unaccepted -- which is what the skip report caught.
+    path = driver if os.path.isabs(driver) else os.path.join(repo, driver)
+    try:
+        out = subprocess.run([sys.executable, path, '--help'], capture_output=True, text=True,
+                             timeout=120).stdout
+    except Exception:
+        out = ''
+    _cache[key] = flag in out
+    return _cache[key]
+
+
+def apply_extra_args(repo, points, extra):
+    """Append ``extra`` to every point whose driver accepts each flag.
+
+    `[!]` Filtered per driver rather than appended blindly. The catalogue spans seven drivers and
+    only four of them take ``--leakage-curve`` / ``--core-other-policy``; appending to the rest
+    would make every one of their points die on an unrecognised argument, which in a 578-arm run
+    is a silent loss of a third of the catalogue behind a wall of identical tracebacks.
+    """
+    toks = shlex.split(extra)
+    if not toks:
+        return points, {}
+    pairs = []
+    i = 0
+    while i < len(toks):
+        if toks[i].startswith('--') and i + 1 < len(toks) and not toks[i + 1].startswith('--'):
+            pairs.append((toks[i], toks[i + 1])); i += 2
+        else:
+            pairs.append((toks[i], None)); i += 1
+    applied = collections.Counter()
+    skipped = collections.Counter()
+    for pt in points:
+        for flag, val in pairs:
+            if _driver_accepts(repo, pt['driver'], flag):
+                pt['argv'] = list(pt['argv']) + ([flag] if val is None else [flag, val])
+                applied[(pt['driver'], flag)] += 1
+            else:
+                skipped[(pt['driver'], flag)] += 1
+    return points, {'applied': dict(applied), 'skipped': dict(skipped)}
+
+
 def _reroot_paths(argv, tmp, out_root, repo):
     """Repoint every scratch-tree path at something real.
 
@@ -390,6 +438,15 @@ def main():
                     help='memory budget. Peak RSS is ~1.3x steady RSS; size on PEAK or the node '
                          'over-subscribes during the factorisation transient')
     ap.add_argument('--launch', action='store_true', help='also write run_rerun.sh')
+    ap.add_argument('--extra-args', default='',
+                    help='extra flags appended to EVERY enumerated point, e.g. '
+                         '"--leakage-curve simulated --rbb-policy amortized". '
+                         '`[!]` Only right-hand-side flags belong here: the matrix key is set by '
+                         'stack and floorplan GEOMETRY, so a flag that changed those would '
+                         'invalidate the grouping. --leakage-curve, --rbb-policy and '
+                         '--core-other-policy are all right-hand side and safe. A flag a given '
+                         'driver does not accept is skipped for that driver, with a count '
+                         'reported, rather than failing the whole plan.')
     ap.add_argument('--solves-per-arm', type=float, default=SOLVES_PER_ARM,
                     help='average solves one arm costs (default %(default).0f, counted from the '
                          'old catalogue). Used for BALANCING and for a labelled estimate, '
@@ -402,6 +459,15 @@ def main():
 
     os.makedirs(args.out, exist_ok=True)
     points, failed = enumerate_points(_REPO, args.scripts, os.path.abspath(args.out))
+    points, extra_info = apply_extra_args(_REPO, points, args.extra_args)
+    if args.extra_args:
+        print('extra args applied: {!r}'.format(args.extra_args))
+        for (drv, flag), n in sorted(extra_info.get('applied', {}).items()):
+            print('  {:<28} {:<24} {} point(s)'.format(drv, flag, n))
+        for (drv, flag), n in sorted(extra_info.get('skipped', {}).items()):
+            print('  {:<28} {:<24} SKIPPED, driver does not accept it ({} point(s))'
+                  .format(drv, flag, n))
+        print()
     for name, why in failed:
         print('  WARNING: {} {}'.format(name, why))
     if not points:
@@ -607,9 +673,25 @@ def write_launcher(out, plan, points, mem_GB):
     A('')
     A('# P0.5 acceptance: every row must carry a placement stamp, so this generation of results')
     A('# is distinguishable from the last one by inspection rather than by date.')
+    A('#')
+    A('# `[!]` collect_findings.py ALSO writes docs/evidence/FINDINGS.json, at a hard-coded path.')
+    A('# Redirecting its stdout into $OUT does NOT contain that side effect, and the re-rooting')
+    A('# that protects every driver --out-dir does not cover it either -- this is not a driver')
+    A('# point. Measured: four arms each ran it on finishing, and the last one overwrote a TRACKED')
+    A('# recorded artefact (36 negative p_mr_net_W rows -> 0, sourced from a different results')
+    A('# tree). It is run here in a scratch copy of the repo evidence dir so the harvest still')
+    A('# happens and lands beside the arm, and the recorded file is left alone.')
+    A('mkdir -p "$OUT/evidence"')
+    A('cp -f "$REPO/docs/evidence/FINDINGS.json" "$OUT/evidence/FINDINGS.json.before" 2>/dev/null || true')
     A('srun --jobid="$JOBID" --overlap bash -lc \\')
     A('  ". $REPO/setup_environment.sh >/dev/null 2>&1 && cd $REPO && '
       'python scripts/collect_findings.py > $OUT/FINDINGS.txt 2>&1" || true')
+    A('# restore the recorded artefact and keep this run\'s harvest beside the arm')
+    A('if [ -f "$OUT/evidence/FINDINGS.json.before" ]; then')
+    A('  cp -f "$REPO/docs/evidence/FINDINGS.json" "$OUT/evidence/FINDINGS.harvested.json" 2>/dev/null || true')
+    A('  cp -f "$OUT/evidence/FINDINGS.json.before" "$REPO/docs/evidence/FINDINGS.json"')
+    A('  log "restored docs/evidence/FINDINGS.json; this run\'s harvest is in $OUT/evidence/"')
+    A('fi')
     A('log "findings at $OUT/FINDINGS.txt"')
 
     path = os.path.join(_HERE, 'run_rerun.sh')

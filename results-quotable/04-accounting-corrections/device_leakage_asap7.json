@@ -1,0 +1,254 @@
+{
+ "note": "Where the leakage-vs-temperature curve comes from, and what a device card says instead.\n\n    python examples/device_leakage_calibration.py\n\nTwo halves, and the first one changes how to read the second.\n\n**1. The curve the whole project runs on is eleven hard-coded numbers.**\n``leakage_calibration.json`` was built by running McPAT eleven times, changing nothing but the\ntemperature (verified: the 310 K and 400 K XML differ in exactly one line). The resulting chip\nsubthreshold power, normalised, is **bit-for-bit the CACTI array** ``I_off_n[0][*]`` for\n\"16nm DG HP\" -- ratio 1.000 at all ten points. There is no device mix, no aggregation, no\nstructure-dependent behaviour: it is a pass-through of one table.\n\nThat table is written in ``McPAT/cacti/technology.cc`` as ``1.52e-7/1.5*1.2*1.07`` and friends --\n32 nm-era numbers with three multiplicative fudges, reused unchanged for 32, 22 and 16 nm.\n\n**2. And its shape is not a device.** Back out the local activation energy,\n``Ea = -k d(ln I)/d(1/T)``. A single barrier gives one Ea, drifting smoothly by tens of percent.\nThis table gives **0.016 eV to 1.081 eV, a 69x spread, and not monotone**: 0.016 eV is below kT\nitself, and 1.081 eV is nearly the full silicon bandgap. Those are different mechanisms, so the\ntable is an eyeballed interpolation rather than a characterisation.\n\n**3. What a real card says.** ASAP7's BSIM-CMG 7 nm FinFET card (BSD-3, vendored under\n``spice_leakage/``) supplies the temperature physics; :mod:`HotGauge.power.device_leakage` puts it\nin the off-state limit. Two barrier forms are fitted -- one whose temperature *shape* is the\ncard's own bandgap, one with a free slope -- and they agree with each other to a few percent\neverywhere, so the answer does not depend on that choice.\n\n`[!]` What this is not: a SPICE run. No simulator here can evaluate BSIM-CMG (conda-forge\nngspice-41 is built without it and without OSDI; there is no Xyce package; OpenVAF ships no\nbinary). This is the card's parameters in the analytic off-state limit, and it is reported as\nthat. Settling it properly still wants a simulator.",
+ "card": {
+  "path": "spice_leakage/models/asap7_7nm_TT.pm",
+  "device": "nmos_rvt",
+  "devices_in_card": [
+   "nmos_lvt",
+   "nmos_rvt",
+   "nmos_slvt",
+   "nmos_sram",
+   "pmos_lvt",
+   "pmos_rvt",
+   "pmos_slvt",
+   "pmos_sram"
+  ],
+  "bsim_cmg_version": 107.0,
+  "source": "ASAP7 PDK r1p7, The-OpenROAD-Project/asap7_pdk_r1p7, BSD-3-Clause",
+  "Eg_300K_eV": 1.1245192307692307,
+  "ute": -0.7,
+  "kt1": 0.0
+ },
+ "anchor_K": 330.0,
+ "gate_fraction_at_anchor": 0.005950167990506104,
+ "passthrough": {
+  "cacti_source": "McPAT/cacti/technology.cc:1621",
+  "cacti_expressions": [
+   "1.52e-7/1.5*1.2*1.07",
+   "1.55e-7/1.5*1.2*1.07",
+   "1.59e-7/1.5*1.2*1.07",
+   "1.68e-7/1.5*1.2*1.07",
+   "1.90e-7/1.5*1.2*1.07",
+   "2.69e-7/1.5*1.2*1.07",
+   "5.32e-7/1.5*1.2*1.07",
+   "1.02e-6/1.5*1.2*1.07",
+   "1.62e-6/1.5*1.2*1.07",
+   "2.73e-6/1.5*1.2*1.07",
+   "6.1e-6/1.5*1.2*1.07"
+  ],
+  "n_common_points": 10,
+  "mcpat_over_cacti_ratio": [
+   0.9999979280960535,
+   0.9999991343797526,
+   1.0,
+   0.9999995170750198,
+   0.9999977828537161,
+   0.9999982752679283,
+   0.999997301301582,
+   0.9999983008195147,
+   0.9999984875426448,
+   0.9999962395185982
+  ],
+  "max_abs_deviation_from_1": 3.7604814018266097e-06,
+  "IS_A_PASSTHROUGH": true
+ },
+ "table_physicality": {
+  "local_activation_eV": [
+   0.01566327369837241,
+   0.021780527509551548,
+   0.05010386824793944,
+   0.11898247098677518,
+   0.3565403505035614,
+   0.7404309677125192,
+   0.7471383079103919,
+   0.5605132975234681,
+   0.6664812993832243,
+   1.0808031488548153
+  ],
+  "between_K": [
+   "300-310",
+   "310-320",
+   "320-330",
+   "330-340",
+   "340-350",
+   "350-360",
+   "360-370",
+   "370-380",
+   "380-390",
+   "390-400"
+  ],
+  "min_eV": 0.01566327369837241,
+  "max_eV": 1.0808031488548153,
+  "spread": 69.00237904717983,
+  "monotone": false,
+  "kT_at_300K_eV": 0.025851999786,
+  "silicon_bandgap_eV": 1.1245192307692307
+ },
+ "fits": {
+  "varshni": {
+   "params": {
+    "phi0_V": 0.3957408842858816,
+    "n": 1.0
+   },
+   "rms_log10": 0.19787368530053703,
+   "typical_factor_error": 1.5771524876405374,
+   "extrapolation_test": {
+    "params": [
+     0.2515508422142498,
+     1.0
+    ],
+    "n_fit": 7,
+    "n_held_out": 3,
+    "fit_T_K": [
+     310.0,
+     320.0,
+     330.0,
+     340.0,
+     350.0,
+     360.0,
+     370.0
+    ],
+    "held_out_T_K": [
+     380.0,
+     390.0,
+     400.0
+    ],
+    "rms_log10_in_sample": 0.1591145386686243,
+    "held_out_log10_error": [
+     -0.3068735672985527,
+     -0.41697338429672137,
+     -0.6548339261225443
+    ],
+    "max_abs_log10_error": 0.6548339261225443,
+    "worst_factor": 4.516831880407098
+   },
+   "n_hit_physical_floor": true
+  },
+  "linear": {
+   "params": {
+    "a_V": 0.31182218377504,
+    "b_V_per_K": -0.00039339119196454836
+   },
+   "rms_log10": 0.1989297437685272,
+   "typical_factor_error": 1.580992259960251,
+   "extrapolation_test": {
+    "params": [
+     0.22236361295352544,
+     -0.00022482210422918101
+    ],
+    "n_fit": 7,
+    "n_held_out": 3,
+    "fit_T_K": [
+     310.0,
+     320.0,
+     330.0,
+     340.0,
+     350.0,
+     360.0,
+     370.0
+    ],
+    "held_out_T_K": [
+     380.0,
+     390.0,
+     400.0
+    ],
+    "rms_log10_in_sample": 0.15979944987914263,
+    "held_out_log10_error": [
+     -0.3086330085599406,
+     -0.4197671661867356,
+     -0.6588335479477267
+    ],
+    "max_abs_log10_error": 0.6588335479477267,
+    "worst_factor": 4.558621641667139
+   }
+  }
+ },
+ "comparison": [
+  {
+   "T_K": 200.0,
+   "pipeline_rel": 0.9230775770811442,
+   "card_rel": 0.005975259888029691,
+   "card_alt_form_rel": 0.005971576112925051,
+   "model_spread_pct": 0.06165045828415031,
+   "pipeline_over_card": 154.48325167083638
+  },
+  {
+   "T_K": 220.0,
+   "pipeline_rel": 0.9230775770811442,
+   "card_rel": 0.00622697209460691,
+   "card_alt_form_rel": 0.006199113650010423,
+   "model_spread_pct": 0.4473834822644308,
+   "pipeline_over_card": 148.23859221733278
+  },
+  {
+   "T_K": 250.0,
+   "pipeline_rel": 0.9230775770811442,
+   "card_rel": 0.011025935200982707,
+   "card_alt_form_rel": 0.01076227936845052,
+   "model_spread_pct": 2.3912332852154643,
+   "pipeline_over_card": 83.71875584747436
+  },
+  {
+   "T_K": 280.0,
+   "pipeline_rel": 0.9230775770811442,
+   "card_rel": 0.05721922012891965,
+   "card_alt_form_rel": 0.056094549015955994,
+   "model_spread_pct": 1.9655477834714905,
+   "pipeline_over_card": 16.132299164535517
+  },
+  {
+   "T_K": 300.0,
+   "pipeline_rel": 0.9230775770811442,
+   "card_rel": 0.19360118914114208,
+   "card_alt_form_rel": 0.19178224175164513,
+   "model_spread_pct": 0.9395331700007655,
+   "pipeline_over_card": 4.767933405657897
+  },
+  {
+   "T_K": 310.0,
+   "pipeline_rel": 0.9230775770811442,
+   "card_rel": 0.34427146819129956,
+   "card_alt_form_rel": 0.3424336812049117,
+   "model_spread_pct": 0.5338191387288227,
+   "pipeline_over_card": 2.681249137289014
+  },
+  {
+   "T_K": 350.0,
+   "pipeline_rel": 1.5976097629128703,
+   "card_rel": 2.6071381185147624,
+   "card_alt_form_rel": 2.61236726746639,
+   "model_spread_pct": 0.20057046132279147,
+   "pipeline_over_card": 0.6127829406379891
+  },
+  {
+   "T_K": 400.0,
+   "pipeline_rel": 36.09929048234699,
+   "card_rel": 19.41288051892339,
+   "card_alt_form_rel": 19.34133229380649,
+   "model_spread_pct": 0.3685605804205879,
+   "pipeline_over_card": 1.8595535292744387
+  },
+  {
+   "T_K": 450.0,
+   "pipeline_rel": 600.441418883366,
+   "card_rel": 95.39106041764639,
+   "card_alt_form_rel": 93.57271527413582,
+   "model_spread_pct": 1.9062007860583485,
+   "pipeline_over_card": 6.29452504516126
+  },
+  {
+   "T_K": 500.0,
+   "pipeline_rel": 5819.948865458266,
+   "card_rel": 348.95164203539923,
+   "card_alt_form_rel": 335.1432864419087,
+   "model_spread_pct": 3.95709718198998,
+   "pipeline_over_card": 16.678382229443308
+  }
+ ],
+ "gate_floor_knee_K": 243.8869434717359,
+ "FINDING_1_THE_CURVE_IS_A_PASSTHROUGH": "The project's leakage-vs-temperature curve is not a chip-level result. Normalised, it equals CACTI's hard-coded I_off_n[0][*] array for \"16nm DG HP\" to within 3.8e-06 at all 10 points -- the eleven McPAT runs differ in one XML line and reproduce the table exactly. That table is written as 32 nm numbers times three fudge factors (1.52e-7/1.5*1.2*1.07 and so on) and is reused unchanged for 32, 22 and 16 nm.",
+ "FINDING_2_AND_IT_IS_NOT_A_DEVICE": "Its implied local activation energy runs 0.016 to 1.081 eV -- a 69x spread, and not monotone. 0.016 eV is below kT at room temperature (0.026 eV) and 1.081 eV is nearly the silicon bandgap (1.125 eV): those are different mechanisms, so no single device produces this curve. It is an interpolation, and the project has been treating it as a measurement.",
+ "FINDING_3_THE_TWO_ENDS_MOVE_A_LOT": "Against the card-parameterised off-state model: below the table the pipeline CLAMPS (leakage never falls), while the physics keeps falling to a gate-leakage floor at about 244 K -- at 250 K the pipeline says 0.923 and the card says 0.0110, a factor of 84. Above the table the pipeline's Arrhenius tail is STEEPER than the physics: 600x vs 95x at 450 K and 5820x vs 349x at 500 K. The two barrier forms agree with each other within a few percent throughout, so this is not an artefact of which one was chosen.",
+ "WHAT_IT_MEANS_FOR_P0_11": "The flat-die ceiling of 1.0-1.2 W/mm^2 was solved with the pipeline curve, whose tail is ~6x steeper at 450 K than the card-based physics. A gentler tail runs away later, so that ceiling is CONSERVATIVE -- the direction matters and it should be requoted with an explicit \"on the current leakage curve\" qualifier until this is settled.",
+ "HONEST_LIMITS": "This is not a SPICE simulation: no simulator available here evaluates BSIM-CMG (conda-forge ngspice-41 is built without it and without OSDI, there is no Xyce package, OpenVAF ships no binary). It is the card's own temperature parameters in the analytic off-state limit, with two free parameters fitted to the very table it is criticising -- so it inherits that table's level, and only its SHAPE is independent. It also omits GIDL, which the card enables and which would raise leakage at both ends. The two fitted parameters are also DEGENERATE over a 90 K window -- the curve is identifiable, the barrier height and its slope are not, so neither may be quoted as a device property. Neither curve is a measurement of a real 7 nm part."
+}

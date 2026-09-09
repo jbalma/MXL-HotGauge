@@ -1012,8 +1012,8 @@ class TestEnvelopeProvenance:
 
         `[!]` ``breakeven_ratio`` is the FIRST-LAW ledger and is the phi -> 1 limit; a loop it
         calls net-generating is not necessarily permitted by the second law. See
-        ``test_shipped_defaults_do_not_self_power_at_any_survivable_temperature``. This test
-        guards the first-law property deliberately, because the recorded catalogue used it.
+        ``test_defaults_do_not_self_power_at_any_survivable_temperature``. This test guards the
+        first-law property deliberately, because the recorded catalogue used it.
         """
         from HotGauge.thermal.microrefrigeration import MRParams, LEGACY_ENVELOPE
         target = MRParams(target_K=358.15)
@@ -1276,12 +1276,17 @@ def test_first_law_ratio_is_the_infinite_temperature_limit():
         assert p.breakeven_ratio_at(T_h, 295.0) < p.breakeven_ratio
 
 
-def test_shipped_defaults_do_not_self_power_at_any_survivable_temperature():
-    """The headline this reconciliation overturned: 1.032 first-law vs < 1 everywhere real."""
+def test_defaults_do_not_self_power_at_any_survivable_temperature():
+    """The headline the loop-model reconciliation overturned: 1.032 first-law vs < 1 everywhere real.
+
+    The shipped envelope IS first-law net-generating -- that is the `phi -> 1` limit, not a claim
+    about physics -- and the second-law form is below 1 at every survivable junction temperature.
+    Both are pinned so the two ledgers cannot be conflated again.
+    """
     from HotGauge.thermal.microrefrigeration import MRParams
     p = MRParams(313.15)
-    assert p.breakeven_ratio > 1.0            # what the old ledger reported
-    for T_h in (350.0, 500.0, 1000.0):        # what the second law permits
+    assert p.breakeven_ratio > 1.0             # what the first-law ledger reports
+    for T_h in (350.0, 500.0, 1000.0):         # what the second law permits
         assert p.breakeven_ratio_at(T_h, 295.0) < 1.0
 
 

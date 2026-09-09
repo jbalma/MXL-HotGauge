@@ -1,0 +1,89 @@
+{
+ "note": "Airflow ladder measured through the coupled solver. The control arm has no steady state at ANY of these airflows; the array holds target at all of them, including a fifth of the baseline airflow. Fan power falls and array cost rises, so the net is a trade with an optimum, measured rather than assumed.",
+ "rows": [
+  {
+   "cfm": 120.0,
+   "fan_W": 96.32,
+   "Q_rem_W": 9.588750083580516,
+   "array_W": 5.840971237194115,
+   "chip_W": 116.56485349717865,
+   "total_W": 218.72582473437274,
+   "peak_C": 93.92073974609377,
+   "gflops": 4378.456940624999,
+   "gpw": 20.018015458130424,
+   "control_diverged": true
+  },
+  {
+   "cfm": 88.0,
+   "fan_W": 34.984,
+   "Q_rem_W": 18.280545494949955,
+   "array_W": 11.128304633221838,
+   "chip_W": 116.72451489183766,
+   "total_W": 162.8368195250595,
+   "peak_C": 93.93596801757815,
+   "gflops": 4378.3906671875,
+   "gpw": 26.88821041799883,
+   "control_diverged": true
+  },
+  {
+   "cfm": 60.0,
+   "fan_W": 29.58,
+   "Q_rem_W": 29.845703737816883,
+   "array_W": 18.215663020508273,
+   "chip_W": 116.87751433422886,
+   "total_W": 164.67317735473713,
+   "peak_C": 93.28304443359377,
+   "gflops": 4381.232190625,
+   "gpw": 26.605621273627325,
+   "control_diverged": true
+  },
+  {
+   "cfm": 45.0,
+   "fan_W": 26.685000000000002,
+   "Q_rem_W": 40.85758708194758,
+   "array_W": 25.029137184401435,
+   "chip_W": 116.76099117424299,
+   "total_W": 168.47512835864444,
+   "peak_C": 92.1130310058594,
+   "gflops": 4386.324089062499,
+   "gpw": 26.03543995957097,
+   "control_diverged": true
+  },
+  {
+   "cfm": 30.0,
+   "fan_W": 23.79,
+   "Q_rem_W": 62.887306950061905,
+   "array_W": 38.469106919506174,
+   "chip_W": 115.73255890839857,
+   "total_W": 177.99166582790474,
+   "peak_C": 92.3008972167969,
+   "gflops": 4385.5064953125,
+   "gpw": 24.638830559362965,
+   "control_diverged": true
+  },
+  {
+   "cfm": 20.0,
+   "fan_W": 21.86,
+   "Q_rem_W": 67.54296693690515,
+   "array_W": 41.32540008918352,
+   "chip_W": 119.28276444553578,
+   "total_W": 182.46816453471928,
+   "peak_C": 92.2490173339844,
+   "gflops": 4385.7322765624995,
+   "gpw": 24.035602526861613,
+   "control_diverged": true
+  }
+ ],
+ "best_efficiency_point": {
+  "cfm": 88.0,
+  "fan_W": 34.984,
+  "Q_rem_W": 18.280545494949955,
+  "array_W": 11.128304633221838,
+  "chip_W": 116.72451489183766,
+  "total_W": 162.8368195250595,
+  "peak_C": 93.93596801757815,
+  "gflops": 4378.3906671875,
+  "gpw": 26.88821041799883,
+  "control_diverged": true
+ }
+}

@@ -51,8 +51,11 @@ from HotGauge.thermal.ICE import Floorplan
 from HotGauge.thermal.leakage_feedback import (scale_trace_to_die_power, die_power_of_trace,
                                                mcpat_flp_name_map, replicate_trace_cores,
                                                load_calibrated_leakage_model,
+                                               load_leakage_model, LEAKAGE_CURVES,
                                                rebalance_trace_by_block_area,
                                                mcpat_tref_from_trace_dir)
+from HotGauge.power.core_other import (CORE_OTHER_POLICIES, resolve_trace_dir,
+                                      DEFAULT_CORE_OTHER_POLICY)
 from HotGauge.thermal.die_stack import DEFAULT_DIRECT_SOURCE_DEPTH_UM
 from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           render_stack_with_sink, spreading_sink_for_stack,
@@ -64,7 +67,10 @@ from HotGauge.thermal.microrefrigeration import (MRParams, run_mr_clipping, mr_a
                                                  DEFAULT_H_MAX_W_PER_MM2, DEFAULT_DT_MAX_K, DEFAULT_ETA_ASF, DEFAULT_LASER_WALLPLUG, DEFAULT_LPC_EFFICIENCY)
 from HotGauge.thermal.ice_server import ICESessionCache
 from HotGauge.thermal.mr_array import (ArrayWiring, wiring_for_stack, DEFAULT_PITCH_UM,
-                                       device_pitch_range_um)
+                                       device_pitch_range_um, DEFAULT_COVERAGE)
+from HotGauge.thermal.extractor import (make_extractor, EXTRACTORS, DualZoneExtractor, ZONE_MODES,
+                                        DEFAULT_ZONE_MODE, DEFAULT_COLD_ZONE_PATTERN,
+                                        DEFAULT_COLD_EXTRACTOR)
 from HotGauge.power.clock_search import (scale_cores, single_core_turbo,
                                          mixed_utilisation, emphasise_units)
 from HotGauge.thermal.floorplan_metrics import relative_plateau, peak_to_runner_up_gap
@@ -163,7 +169,8 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
     if arm != 'control' and not args.no_array:
         wiring = wiring_for_stack(stack, flp, os.path.join(args.out_dir, tag),
                                   want_array=True,
-                                  pitch_um=args.pitch_um, cell_um=args.cell_um)
+                                  pitch_um=args.pitch_um, cell_um=args.cell_um,
+                                  coverage=args.array_coverage)
 
     def solver_factory(sub):
         return ICEThermalSolver(stack, flp, args.tech_node,
@@ -171,6 +178,8 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
                                 initial_temp=args.ambient_K, num_cores=n_cores,
                                 single_thread=True, mode='steady',
                                 session_cache=args.session_cache,
+                                # §P0.19: the extractor cap needs the array die's own temperatures
+                                mr_temps=bool(wiring is not None and args.mr_extractor != 'none'),
                                 # re-read every time: the planner revises between solves
                                 **(wiring.solver_kwargs() if wiring else {}))
 
@@ -179,15 +188,24 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
     # fail verification on an intermediate MR iteration and still finish with a reassuring
     # 0.01 K spread, which invites someone to wave the flag away.
     ver = {'n_solves': 0, 'n_unconverged': 0, 'worst_spread_K': None}
+    solve_history = []
 
     def solve_with_leakage(tr):
         counter['n'] += 1
-        r = run_leakage_feedback(tr, leak_ref, solver_factory('it{:02d}'.format(counter['n'])),
+        solver = solver_factory('it{:02d}'.format(counter['n']))
+        r = run_leakage_feedback(tr, leak_ref, solver,
                                  model=leak_model, T_ref=t_ref, num_cores=n_cores,
                                  tol_K=args.tol, max_iter=args.max_iter, relax=args.relax,
                                  t_floor_K=T_FLOOR_K, bridge_aggregates=True,
                                  verify=not args.no_verify, verify_tol_K=args.verify_tol)
         solve_with_leakage.last = r
+        # the array die's tile temperatures from the solve that produced this field (§P0.19)
+        solve_with_leakage.last_mr_temps = getattr(solver, 'last_mr_temps', None)
+        # Every solve, so the row can be built from the solve that produced the REPORTED
+        # field rather than the last one executed -- the planner's bisections deliberately
+        # end on a failing probe, and a row built from that probe reports a runaway's power
+        # under a holding plan's peak (found in P0.19: p_chip 1527 W on a 263 W die at 91 C).
+        solve_history.append(r)
         ver['n_solves'] += 1
         spread = r.get('peak_spread_K')
         if spread is not None:
@@ -199,10 +217,23 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
             ver['n_unconverged'] += 1
         return r['temp_trace']
 
+    # §P0.19: with an extractor model the lift is derived from the extractor's own cooling curve
+    # at the tile's temperature; the scalar dt_max is dropped unless given explicitly.
+    extractor = None if args.mr_extractor == 'none' else make_extractor(args.mr_extractor)
+    cold_tiles = set()
+    if extractor is not None and args.mr_zone_mode == 'dual' and wiring is not None:
+        # §P0.21: the flagged dual-material arrangement -- cold-zone tiles (majority under the
+        # blocks matching --mr-cold-zone-pattern) get the storage-zone material's curve.
+        from HotGauge.thermal.mr_array import tiles_over_blocks
+        cold_tiles = tiles_over_blocks(wiring.tiles, wiring.blocks, args.mr_cold_zone_pattern)
+        extractor = DualZoneExtractor(make_extractor(args.mr_cold_extractor), extractor, cold_tiles)
+    dt_max = (args.mr_dt_max if args.mr_dt_max is not None
+              else (None if extractor is not None else DEFAULT_DT_MAX_K))
     mr = MRParams(target_K=target_C + 273.15, h_max=args.mr_h_max,
-                  dt_max_K=args.mr_dt_max, eta_asf=args.eta_asf,
+                  dt_max_K=dt_max, eta_asf=args.eta_asf,
                   laser_wallplug=args.eta_laser, lpc_efficiency=args.eta_lpc,
-                  spot_min_um=args.spot_min_um, spot_policy=args.spot_policy)
+                  spot_min_um=args.spot_min_um, spot_policy=args.spot_policy,
+                  extractor=extractor)
 
     def last_status():
         # Lets run_mr_clipping tell a converged baseline from a divergent one, which is what
@@ -210,7 +241,18 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
         r = getattr(solve_with_leakage, 'last', None) or {}
         return {'diverged': bool(r.get('diverged')), 'unconverged': bool(r.get('unconverged'))}
 
+    def last_tile_temps():
+        return getattr(solve_with_leakage, 'last_mr_temps', None)
+
+    def converged_die_power():
+        # The die power the cooling actually produced, for the energy cap (P0.18.2's over-pull).
+        r = getattr(solve_with_leakage, 'last', None) or {}
+        if r.get('diverged') or not r.get('power_trace'):
+            return None
+        return die_power_of_trace(r['power_trace'], flp, args.tech_node, num_cores=n_cores)
+
     res = None
+    flux = None
     if use_mr:
         # The die power the plan must conserve against -- the one PHYSICAL cap alongside the
         # three device caps (h_max, dt_max, need). See clipping_plan for why it exists.
@@ -221,17 +263,30 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
                               die_power_W=p_die_W,
                               recovery_at_junction=args.recovery_at_junction,
                               T_0_K=args.T0_K,
+                              tile_temps_fn=(last_tile_temps if extractor is not None else None),
+                              die_power_fn=(converged_die_power
+                                            if args.mr_energy_cap == 'converged' else None),
                               # No wiring under --no-array: omitting all three of tiles /
                               # tile_blocks / set_mr_powers is what selects the legacy
                               # in-source-layer placement. A HALF-specified array is refused by
                               # CoolingApplication rather than half-applied.
                               **(wiring.planner_kwargs() if wiring else {}))
         temps, acc = res['temp_trace'], res['accounting']
+        # Per-TILE flux of the plan the reported field was solved on, against h_max. The
+        # planner caps per block; the device emits per tile, and coverage shrinks the tile.
+        flux = wiring.flux_report(args.mr_h_max) if wiring else None
     else:
         temps = solve_with_leakage(trace)
         acc = mr_accounting({}, mr)
 
     last = getattr(solve_with_leakage, 'last', None)
+    if use_mr and res is not None and res.get('temp_trace') is not None:
+        # The solve whose field the planner REPORTED, found by identity of its temperature
+        # trace; falls back to the last executed solve only if none matches.
+        for _r in reversed(solve_history):
+            if _r.get('temp_trace') is res['temp_trace']:
+                last = _r
+                break
     # For an MR point the verdict belongs to the MR loop, not to the last leakage solve: the
     # envelope-anchored descent deliberately probes past the stability boundary and then reports
     # the last plan that held, so its final solve can be a diverged probe while the RESULT is a
@@ -271,6 +326,16 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
            'placement': (res or {}).get('placement', 'none' if arm == 'control' else 'array_above'),
            'n_tiles': len(wiring.tiles) if wiring else 0,
            'pitch_um': args.pitch_um if wiring else None,
+           # The array charged its own footprint (P0.18): requested and ACHIEVED coverage,
+           # extractor and reserved mm^2, and the worst tile flux against h_max.
+           **(wiring.area_fields() if wiring else {}),
+           'tile_flux': flux,
+           'mr_extractor': args.mr_extractor if use_mr else None,
+           'mr_zone_mode': args.mr_zone_mode if use_mr else None,
+           'n_cold_zone_tiles': (len(cold_tiles) if use_mr else None),
+           'mr_energy_cap': args.mr_energy_cap if use_mr else None,
+           'extractor': (res or {}).get('extractor') if use_mr else None,
+           'mr_dt_max_K': (None if mr.dt_max_K == float('inf') else mr.dt_max_K) if use_mr else None,
            'stack_spec': arm_stack_spec(args, arm),
            'fan_W': sink.parasitic_power_W(),
            # probe failures are diagnostics, kept so a suspicious point can still be audited
@@ -372,6 +437,14 @@ def main():
                          'fixed while sweeping something else. The device is a tile COUNT (4-16 '
                          'on ~200 mm^2), which is an annotation per die, not a pitch: see '
                          'mr_array.device_pitch_range_um')
+    ap.add_argument('--array-coverage', type=float, default=DEFAULT_COVERAGE,
+                    help='fraction of the pixel layer\'s footprint that is emitting extractor '
+                         '(AREAL). The device\'s couplers, waveguides, fibre access and '
+                         'monolithic-backside LPC share that footprint with the tiles (v91 '
+                         'Figs. 9.1/9.8/9.12), so < 1 charges the array its own area; the '
+                         'uncovered silicon is cooled only by what spreads sideways through '
+                         'the burial depth. 1.0 is every recorded result. Cannot move a '
+                         'control-arm ceiling: the control has no array. See P0.18.')
     ap.add_argument('--burial-um', type=float, default=DEFAULT_DIRECT_SOURCE_DEPTH_UM,
                     help='active-layer depth below the cooled surface; identical in every arm')
     ap.add_argument('--no-array', action='store_true',
@@ -407,6 +480,24 @@ def main():
     ap.add_argument('--ambient-K', type=float, default=SIMSCALE_T0_K)
     ap.add_argument('--leakage-cal', default=os.path.join(
         _REPO, 'leakage_calibration', 'leakage_calibration.json'))
+    # `[!]` DEFAULT 'pipeline', and it must stay that way -- same discipline as --rbb-policy.
+    # Every recorded result in this driver's catalogue was solved on the pipeline curve; changing
+    # the default would silently move all of them. A non-default curve is a deliberate, flagged
+    # re-run. See §P0.13/§P0.14 and thermal.leakage_feedback.load_leakage_model.
+    ap.add_argument('--leakage-curve', default='pipeline', choices=list(LEAKAGE_CURVES),
+                    help='which leakage-vs-temperature curve to solve on. pipeline = CACTI\'s '
+                         '11 hard-coded numbers (the recorded catalogue); simulated = BSIM-CMG '
+                         'on the ASAP7 card (P0.13); simulated-gidl-off = the other bracket')
+    # §P0.16. `stock` (default) reproduces the recorded catalogue exactly; `hierarchy-consistent`
+    # undoes the `2 * runtime_dynamic` in scripts/mcpat_to_blk_lvl_power_dict.py and residualises
+    # the bare Core<N> row, so `core_other` carries leakage only. Additive: the non-default branch
+    # is placed AHEAD of the existing path, which stays reachable and unmodified.
+    ap.add_argument('--core-other-policy', default=DEFAULT_CORE_OTHER_POLICY,
+                    choices=list(CORE_OTHER_POLICIES),
+                    help='how to treat McPAT\'s per-core accounting. "hierarchy-consistent" '
+                         '(default since P0.17) removes the converter\'s '
+                         '2x on itemised per-core dynamic and gives core_other the true leakage '
+                         'remainder (raises the die static fraction ~1.74x). See P0.16.')
     # --- workload shape, mirroring examples/thermal_tiers.py so the two are joinable ---
     ap.add_argument('--power-follows-area', default=None, metavar='FLP_DIR',
                     help='hold every block\'s power DENSITY at its value on the reference '
@@ -449,7 +540,32 @@ def main():
     ap.add_argument('--eta-laser', type=float, default=DEFAULT_LASER_WALLPLUG)
     ap.add_argument('--eta-lpc', type=float, default=DEFAULT_LPC_EFFICIENCY)
     ap.add_argument('--mr-h-max', type=float, default=DEFAULT_H_MAX_W_PER_MM2)
-    ap.add_argument('--mr-dt-max', type=float, default=DEFAULT_DT_MAX_K)
+    ap.add_argument('--mr-dt-max', type=float, default=None,
+                    help='scalar lift cap [K]; default {} K, or NONE (no scalar cap) when '
+                         '--mr-extractor is set, because the extractor curve then bounds the '
+                         'lift'.format(DEFAULT_DT_MAX_K))
+    ap.add_argument('--mr-extractor', default='none', choices=['none'] + sorted(EXTRACTORS),
+                    help='P0.19: bound each tile by the extractor\'s own cooling flux at the '
+                         'tile\'s solved temperature (thermal.extractor) instead of the scalar '
+                         'dt_max. dye = R101/R640-SMILES at v91 §8.3; gaas = Table 9.2 benchmark '
+                         'with a fixed 890 nm pump; gaas-retuned = pump follows the gap. Default '
+                         'none reproduces every recorded result.')
+    ap.add_argument('--mr-zone-mode', default=DEFAULT_ZONE_MODE, choices=ZONE_MODES,
+                    help='P0.21: single = one extractor material over the whole array (the '
+                         'DEFAULT, architecture-agnostic); dual = the flagged cold-zone / '
+                         'hot-zone arrangement, laid out against this floorplan: tiles mostly '
+                         'under --mr-cold-zone-pattern blocks get --mr-cold-extractor, the rest '
+                         '--mr-extractor. A per-architecture product; measure it, do not ship it.')
+    ap.add_argument('--mr-cold-zone-pattern', default=DEFAULT_COLD_ZONE_PATTERN,
+                    help='regex on floorplan block names that defines the cold (storage) zone')
+    ap.add_argument('--mr-cold-extractor', default=DEFAULT_COLD_EXTRACTOR,
+                    choices=sorted(EXTRACTORS),
+                    help='the storage-zone material in dual mode (decided 8 Sep: Cr:LiSAF)')
+    ap.add_argument('--mr-energy-cap', default='injected', choices=('injected', 'converged'),
+                    help='which die power the conservation cap uses: the injected trace (recorded '
+                         'behaviour) or the CONVERGED die power after each solve, which stops the '
+                         'array removing more than the cooled die dissipates (P0.18.2\'s 12 W '
+                         'over-pull at 2.60 W/mm^2)')
     ap.add_argument('--mr-iter', type=int, default=6)
     # 'auto' sizes the plan from the uncooled baseline when that baseline exists, and from the
     # device envelope (descending toward the target) when it does not. The latter is required in
@@ -523,6 +639,10 @@ def main():
                     help='sink temperature for the Carnot factor, with --recovery-at-junction')
     ap.add_argument('--out-dir', default=None)
     args = ap.parse_args()
+    # §P0.16: under a non-stock core_other policy, solve against a corrected copy of
+    # the trace. Returns args.trace_dir unchanged under the default, so the recorded
+    # path is byte-identical.
+    args.trace_dir = resolve_trace_dir(args.trace_dir, args.core_other_policy)
     args.out_dir = os.path.abspath(args.out_dir or os.path.join(os.getcwd(), 'mr_compare'))
     os.makedirs(args.out_dir, exist_ok=True)
 
@@ -554,7 +674,14 @@ def main():
         print('  clock    : dynamic power x{:.3f} vs the {:.1f} GHz trace'.format(
             args.node_obj.dynamic_power_factor(), TRACE_REFERENCE_GHZ))
 
-    if os.path.isfile(args.leakage_cal):
+    if args.leakage_curve != 'pipeline':
+        # A flagged re-run on a non-pipeline curve. --no-leakage-extrapolation is a property of
+        # the pipeline curve's Arrhenius tail and has no meaning here, so it is ignored rather
+        # than silently half-applied.
+        leak_model, t_ref = load_leakage_model(args.leakage_curve,
+                                               calibration=args.leakage_cal, extrapolate=True)
+        leak_src = 'leakage curve {!r} (P0.13/P0.14)'.format(args.leakage_curve)
+    elif os.path.isfile(args.leakage_cal):
         # `[!]` Above the measured range (top 400 K) the Arrhenius tail can hand a large block a
         # very large leakage in ONE step, before any relaxation damps it. On the 34-core die that
         # shows up as the un-itemised `core_other` slab -- 15.85 mm^2, 15.7 % of the die -- hitting
@@ -843,6 +970,7 @@ def main():
                    # script deciding whether an old result can be reused cannot.
                    'arms': list(args.arms), 'stack': args.stack,
                    'spreading': bool(args.spreading), 'base_mm2': args.base_mm2,
+                   'mr_extractor': args.mr_extractor, 'mr_energy_cap': args.mr_energy_cap,
                    'pitch_um': args.pitch_um, 'burial_um': args.burial_um,
                    'mr_material': args.mr_material, 'cell_um': args.cell_um,
                    'stack_specs': {a: arm_stack_spec(args, a) for a in args.arms},

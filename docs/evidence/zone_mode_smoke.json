@@ -1,0 +1,131 @@
+{
+ "point": "arm D, 34 cores, 88 CFM, target 92 C, 2.00 W/mm^2, coverage 1.00, target device (rung 6), scalar 45 K kept",
+ "rows": {
+  "reference_P0.20": {
+   "mr_zone_mode": null,
+   "n_cold_zone_tiles": null,
+   "n_tiles": 384,
+   "mr_minimum_plan_W": 138.72881143652103,
+   "mr_largest_failing_plan_W": 137.90662525235228,
+   "peak_C": 93.8752380371094,
+   "peak_block": "cALU_16",
+   "p_chip_W": 188.35091958610784,
+   "p_mr_net_W": 84.38691571735205,
+   "mr_plan_holds_target": true,
+   "mr_plan_is_minimum": true,
+   "mr_reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection",
+   "extractor": {
+    "label": "R640-SMILES 1e-01 M, 651 nm pump, lambda_f 590 nm, F_P 100, 50 um (rung 6)",
+    "platform": "sin_encapsulated_dye",
+    "T_min_K": 176.252054283789,
+    "h_300K_W_per_mm2": 813.0999796735441,
+    "min_engaged_tile_K": 290.8159484863281,
+    "h_at_min_tile_W_per_mm2": 631.8530420612182,
+    "eta_asf_at_min_tile": 0.10167977194172861,
+    "n_tiles_capped": 0,
+    "shortfall_W": 0.0,
+    "reported_field_has_tiles": true,
+    "dt_max_scalar_K": 45.0
+   },
+   "tile_flux": {
+    "n_engaged": 384,
+    "max_flux_W_per_mm2": 5.1732091041446555,
+    "max_flux_tile": "MR_r01_c02",
+    "mean_flux_W_per_mm2": 1.3562807361561031,
+    "h_max_W_per_mm2": 1000.0,
+    "n_tiles_over_h_max": 0,
+    "over_h_max": false,
+    "W_total": 137.90662525235277
+   }
+  },
+  "single": {
+   "mr_zone_mode": "single",
+   "n_cold_zone_tiles": 0,
+   "n_tiles": 384,
+   "mr_minimum_plan_W": 138.7288114365212,
+   "mr_largest_failing_plan_W": 137.90662525235254,
+   "peak_C": 93.8752380371094,
+   "peak_block": "cALU_16",
+   "p_chip_W": 188.35091958610784,
+   "p_mr_net_W": 84.38691571735217,
+   "mr_plan_holds_target": true,
+   "mr_plan_is_minimum": true,
+   "mr_reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection",
+   "extractor": {
+    "label": "R640-SMILES 1e-01 M, 651 nm pump, lambda_f 590 nm, F_P 100, 50 um (rung 6)",
+    "platform": "sin_encapsulated_dye",
+    "T_min_K": 176.252054283789,
+    "h_300K_W_per_mm2": 813.0999796735441,
+    "min_engaged_tile_K": 290.8159484863281,
+    "h_at_min_tile_W_per_mm2": 631.8530420612182,
+    "eta_asf_at_min_tile": 0.10167977194172861,
+    "n_tiles_capped": 0,
+    "shortfall_W": 0.0,
+    "reported_field_has_tiles": true,
+    "dt_max_scalar_K": 45.0
+   },
+   "tile_flux": {
+    "n_engaged": 384,
+    "max_flux_W_per_mm2": 5.173209104144655,
+    "max_flux_tile": "MR_r01_c02",
+    "mean_flux_W_per_mm2": 1.3562807361561031,
+    "h_max_W_per_mm2": 1000.0,
+    "n_tiles_over_h_max": 0,
+    "over_h_max": false,
+    "W_total": 137.90662525235277
+   }
+  },
+  "dual": {
+   "mr_zone_mode": "dual",
+   "n_cold_zone_tiles": 80,
+   "n_tiles": 384,
+   "mr_minimum_plan_W": 140.03687954967924,
+   "mr_largest_failing_plan_W": 139.23653867426935,
+   "peak_C": 93.8243347167969,
+   "peak_block": "cALU_16",
+   "p_chip_W": 188.50203154548964,
+   "p_mr_net_W": 85.00288291593341,
+   "mr_plan_holds_target": true,
+   "mr_plan_is_minimum": true,
+   "mr_reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection",
+   "extractor": {
+    "label": "dual-zone: Cr:LiSAF 900 nm pump, F_P 30, 10 um on 80 cold tiles / R640-SMILES 1e-01 M, 651 nm pump, lambda_f 590 nm, F_P 100, 50 um (rung 6) elsewhere",
+    "platform": "dual_zone",
+    "T_min_K": {
+     "cold": 93.16361286872782,
+     "hot": 176.252054283789
+    },
+    "h_300K_W_per_mm2": 813.0999796735441,
+    "min_engaged_tile_K": 290.72998046875,
+    "h_at_min_tile_W_per_mm2": 630.3137556077216,
+    "eta_asf_at_min_tile": 0.10167650748287538,
+    "n_tiles_capped": 23,
+    "shortfall_W": 0.10002377570772486,
+    "reported_field_has_tiles": true,
+    "dt_max_scalar_K": 45.0
+   },
+   "tile_flux": {
+    "n_engaged": 384,
+    "max_flux_W_per_mm2": 5.342683438313505,
+    "max_flux_tile": "MR_r01_c02",
+    "mean_flux_W_per_mm2": 1.369360136450327,
+    "h_max_W_per_mm2": 1000.0,
+    "n_tiles_over_h_max": 0,
+    "over_h_max": false,
+    "W_total": 139.2365386742695
+   }
+  }
+ },
+ "default_regression": {
+  "plan_W_single_minus_reference": 1.7053025658242404e-13,
+  "peak_C_single_minus_reference": 0.0
+ },
+ "dual_vs_single": {
+  "plan_W_dual_minus_single": 1.3080681131580434,
+  "peak_C_dual_minus_single": -0.0509033203125,
+  "n_cold_zone_tiles": 80,
+  "n_tiles_capped": 23,
+  "shortfall_W": 0.10002377570772486
+ },
+ "reading": "The dual arrangement is a floorplan statement: the numbers above hold for this die and this cold-zone pattern only. The default is single."
+}

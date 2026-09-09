@@ -38,8 +38,13 @@ def main():
     for f in sorted(glob.glob(os.path.join(args.base, '*', 'd*', 'probe.json'))):
         j = json.load(open(f))
         rows.extend(j['rows'])
+        # 'leakage_curve' matters as much as 'rbb_policy' does: a simulated-curve ladder and a
+        # pipeline-curve ladder produce structurally identical output, so without this stamp the
+        # two reports are indistinguishable and can be mistaken for each other. Absent in files
+        # written before P0.13, which is itself the right signal -- those are pipeline runs.
         meta = meta or {k: j[k] for k in ('floorplan', 'die_mm2', 'n_blocks', 'cores', 'cooling',
                                           'spreading', 'leak_fraction', 'leakage_model',
+                                          'leakage_curve', 'leakage_T_ref_K',
                                           'rbb_policy', 'real_map_concentration')
                         if k in j}
     if not rows:
