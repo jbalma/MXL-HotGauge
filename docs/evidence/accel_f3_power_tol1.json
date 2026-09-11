@@ -1,0 +1,252 @@
+{
+ "note": "F3 (\u00a7P0.24): the GA100 on the direct-die microchannel plate, with the array -- collect\n``results/accel_f3/<tag>_<arm>/accelerator_study.json``, score the predictions, write\n``docs/evidence/accel_f3.json``.\n\n    python examples/accel_f3_report.py",
+ "points": {
+  "occ32_1400W": {
+   "array_on": {
+    "done": true,
+    "present": true,
+    "die_W": 1400.0,
+    "realised_W": 1022.0,
+    "density": 1.2372881355932204,
+    "kernel": "occupancy",
+    "diverged": false,
+    "unconverged": false,
+    "holds": true,
+    "peak_C": 77.1016784667969,
+    "peak_block": "MEMCTRL_T1",
+    "peak_class": "mem_ctrl",
+    "plateau": 367,
+    "Q_W": 556.5411958705093,
+    "net_W": 365.2813416121471,
+    "holds_target": true,
+    "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection",
+    "tiles_capped": 0,
+    "max_tile_flux": null,
+    "converged_die_W": 992.644587371537,
+    "s": 0.5606651191683791,
+    "cooling": 0.013082084470658475
+   }
+  },
+  "occ32_700W": {
+   "array_on": {
+    "done": true,
+    "present": true,
+    "die_W": 700.0,
+    "realised_W": 511.0,
+    "density": 0.6186440677966102,
+    "kernel": "occupancy",
+    "diverged": false,
+    "unconverged": false,
+    "holds": true,
+    "peak_C": 86.25960693359377,
+    "peak_block": "SM31_DP",
+    "peak_class": "sm_dp",
+    "plateau": 160,
+    "Q_W": 112.51469596365648,
+    "net_W": 71.62661594321077,
+    "holds_target": true,
+    "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection",
+    "tiles_capped": 0,
+    "max_tile_flux": null,
+    "converged_die_W": null,
+    "s": null,
+    "cooling": 0.01797445237672501
+   }
+  },
+  "occ8_1400W": {
+   "array_on": {
+    "done": true,
+    "present": true,
+    "die_W": 1400.0,
+    "realised_W": 738.4999999999995,
+    "density": 0.8940677966101689,
+    "kernel": "occupancy",
+    "diverged": false,
+    "unconverged": false,
+    "holds": true,
+    "peak_C": 76.88433227539065,
+    "peak_block": "HBM_PHY_T2",
+    "peak_class": "hbm_phy",
+    "plateau": 346,
+    "Q_W": 312.35139934944954,
+    "net_W": 205.1596155401039,
+    "holds_target": true,
+    "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection",
+    "tiles_capped": 0,
+    "max_tile_flux": null,
+    "converged_die_W": 737.5130758243918,
+    "s": 0.4235198121745886,
+    "cooling": 0.014960197268721935
+   }
+  },
+  "occ8_700W": {
+   "array_on": {
+    "done": true,
+    "present": true,
+    "die_W": 700.0,
+    "realised_W": 369.2499999999998,
+    "density": 0.44703389830508444,
+    "kernel": "occupancy",
+    "diverged": false,
+    "unconverged": false,
+    "holds": true,
+    "peak_C": 84.99370727539065,
+    "peak_block": "SM0_DP",
+    "peak_class": "sm_dp",
+    "plateau": 182,
+    "Q_W": 31.620588678278047,
+    "net_W": 20.21399742616775,
+    "holds_target": true,
+    "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection",
+    "tiles_capped": 0,
+    "max_tile_flux": null,
+    "converged_die_W": null,
+    "s": null,
+    "cooling": 0.021730677972851935
+   }
+  },
+  "uniform_1000W": {
+   "array_on": {
+    "done": true,
+    "present": true,
+    "die_W": 1000.0,
+    "realised_W": 1000.0000000000006,
+    "density": 1.210653753026635,
+    "kernel": "uniform",
+    "diverged": false,
+    "unconverged": false,
+    "holds": true,
+    "peak_C": 88.27706298828127,
+    "peak_block": "SM8_DP",
+    "peak_class": "sm_dp",
+    "plateau": 367,
+    "Q_W": 102.24277746767665,
+    "net_W": 64.65657523562453,
+    "holds_target": true,
+    "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection",
+    "tiles_capped": 0,
+    "max_tile_flux": null,
+    "converged_die_W": null,
+    "s": null,
+    "cooling": 0.013189716564591936
+   }
+  },
+  "uniform_1400W": {
+   "array_on": {
+    "done": true,
+    "present": true,
+    "die_W": 1400.0,
+    "realised_W": 1399.9999999999977,
+    "density": 1.6949152542372854,
+    "kernel": "uniform",
+    "diverged": false,
+    "unconverged": false,
+    "holds": true,
+    "peak_C": 86.42891845703127,
+    "peak_block": "SM104_DP",
+    "peak_class": "sm_dp",
+    "plateau": 367,
+    "Q_W": 514.037134338295,
+    "net_W": 327.05217464333714,
+    "holds_target": true,
+    "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection",
+    "tiles_capped": 0,
+    "max_tile_flux": null,
+    "converged_die_W": 1584.8167960305275,
+    "s": 0.32435113990828335,
+    "cooling": 0.011761145136020517
+   }
+  },
+  "uniform_2000W": {
+   "array_on": {
+    "done": true,
+    "present": true,
+    "die_W": 2000.0,
+    "realised_W": 2000.0000000000011,
+    "density": 2.42130750605327,
+    "kernel": "uniform",
+    "diverged": false,
+    "unconverged": false,
+    "holds": true,
+    "peak_C": 75.63863525390627,
+    "peak_block": "SM120_DP",
+    "peak_class": "sm_dp",
+    "plateau": 367,
+    "Q_W": 1288.6710271841798,
+    "net_W": 849.9974501572124,
+    "holds_target": true,
+    "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection",
+    "tiles_capped": 0,
+    "max_tile_flux": null,
+    "converged_die_W": null,
+    "s": null,
+    "cooling": 0.010689716564591938
+   }
+  },
+  "uniform_2600W": {
+   "array_on": {
+    "done": true,
+    "present": true,
+    "die_W": 2600.0,
+    "realised_W": 2600.0000000000045,
+    "density": 3.1476997578692547,
+    "kernel": "uniform",
+    "diverged": false,
+    "unconverged": false,
+    "holds": true,
+    "peak_C": 67.02205810546877,
+    "peak_block": "HBM_PHY_B2",
+    "peak_class": "hbm_phy",
+    "plateau": 367,
+    "Q_W": 2244.2419832913074,
+    "net_W": 1524.5183754273703,
+    "holds_target": true,
+    "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection",
+    "tiles_capped": 0,
+    "max_tile_flux": null,
+    "converged_die_W": 2278.9141848609834,
+    "s": 0.9847856484460862,
+    "cooling": 0.010112793487668859
+   }
+  }
+ },
+ "uniform_ladder_W": {
+  "control": {
+   "holds_to_W": null,
+   "fails_at_W": null,
+   "complete": false
+  },
+  "array_idle": {
+   "holds_to_W": null,
+   "fails_at_W": null,
+   "complete": false
+  },
+  "array_on": {
+   "holds_to_W": 2600,
+   "fails_at_W": null,
+   "complete": true
+  }
+ },
+ "scorecard": {
+  "P5_concentrated_kernel": {
+   "measured": {
+    "occ8_1400W": {
+     "array_on": [
+      true,
+      312.35139934944954,
+      "HBM_PHY_T2"
+     ]
+    },
+    "occ8_700W": {
+     "array_on": [
+      true,
+      31.620588678278047,
+      "SM0_DP"
+     ]
+    }
+   },
+   "verdict": "holds, cost > 120 W"
+  }
+ },
+ "complete": false
+}

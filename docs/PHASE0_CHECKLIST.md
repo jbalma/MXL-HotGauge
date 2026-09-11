@@ -6,7 +6,7 @@ why; this says what is done.
 
 Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
-Last updated: 8 September 2026 — **P0.21: zone materials decided by the user — Cr:LiSAF storage zone, dye hot zone, no Yb:YLF — and the cold plate we test is SINGLE-material by default (`--mr-zone-mode single`); the floorplan-matched dual arrangement is a flag for Phase 2 / die-integrated arrays. Smoke point at 2.00 W/mm²: the default reproduces P0.20 exactly, the dual arrangement is a 1 % effect on the hot-spot objective (0.1 W shortfall, 80 cold tiles). P1 of P0.21 found and fixed a latent P0.20 bug (uncapped first-plan re-cap tripped the stale-plan guard).** Earlier — **P0.20: v98 supersedes v91; the target device is Table 1.1's R640-SMILES row (rung 6 of the photonic ladder), its temperature dependence is the transparency cap (thermal by construction, so the T_min bracket collapses without a measurement), it is invisible on this die (identical plans, 0 tiles capped), the near-term film delivers 17 W of the 198 W a 2.00 W/mm² rescue needs, and rung 4 (broadband Purcell) is the requirements flow-down. Both notes to the author are resolved in v98. Open: v98's zone materials vs the 3 Sep rule.** Earlier — **P0.19: `dt_max` is DERIVED from the extractor's own cooling curve (v91's constitutive parameters, no Yb:YLF) and it never binds on this die — the coldest tile the array is driven to is 263 K against floors of 207–259 K; a fixed-wavelength GaAs pump has a HOT-side limit near 380 K instead; the converged energy cap takes one rung off the array ceiling (2.40–2.60 W/mm²); and the scalar 45 K turns out to shape the plan, so keep it alongside the curve. Two notes for the book (eq. 9.5 is 3.3× its own benchmark; Fig. 9.9's scale is not the ledger's η_ext).** Earlier — **P0.18: the array charged its own footprint, and at 500 µm pitch / 200 µm burial the charge is ZERO — quarter coverage (644 of 1126 blocks under gaps, 75 mm² reserved) holds the same ceiling on the same minimum plan to ~1 %. The array-assisted ceiling under arm D is 2.60–3.00 W/mm², a full W/mm² above the recorded 1.60–1.80, but it is an ENVELOPE result (the array removes more than the die dissipates at 2.60) — quote the rescue range and cost ladder, not the top rung. SPICE now gives V_t(T), SS(T), DIBL, I_on(V,T) and a fitted alpha (1.45) from the same card; the V_t lever re-priced 2× dearer in cooling (50 mV ≈ 45–60 K, not 22 K). `--leakage-curve` default: RECOMMEND `simulated`, not applied. Two of five predictions wrong, both favourable, both from carrying a derived estimate past a measured neighbour.** Earlier — **P0.16: the MR catalogue is OFF the old leakage curve, and it barely noticed. All 18 airflow rescues survive (6/6 on pipeline, `simulated` and `simulated-gidl-off`), the clipping efficacy moves 2-4 % and the budget cliff does not move — against a 14 % move on the density ladder. So `--leakage-curve` is NOT a reason to re-run the MR catalogue; the density and clock families are the ones that moved. Four of five §P0.16 predictions were wrong, both failures from turning a CURVE ratio into a RESULT ratio. Also: `core_other`'s 2.0000x is a literal `2 *` in `scripts/mcpat_to_blk_lvl_power_dict.py` (die total and static fraction safe; `core_other`'s share of on-die LEAKAGE overstated ~1.75x), the 36 net-generating `p_mr_net_W` rows are corrected by algebra with no re-solves, and the full catalogue re-run is priced at 6.3 h wall, not 63 days.** Earlier — **P0.13/P0.14: the leakage curve is SIMULATED, and spending it moved two recorded numbers in OPPOSITE directions — the cold-zone prize is 2.2x BIGGER and the density ceiling is one rung LOWER (P0.12 predicted higher; that claim is withdrawn). Read P0.14 before quoting either.** Earlier — **P0.13: ngspice 47 + OSDI + OpenVAF-compiled BSIM-CMG evaluates the ASAP7 card directly; the tooling task P0.12 called the project's highest-value one is finished and Xyce was not needed. Two results move recorded numbers in opposite directions: the cold floor is **GIDL, not gate leakage**, so the cold-zone prize is **~20x smaller** than P0.12 promised, and the hot tail is gentler still (500 K: 5820x pipeline, 349x analytic, **123x simulated**). `[!]` P0.13 inferred from that tail that P0.11's ceiling is more conservative than recorded; **P0.14 measured it and the opposite is true** — see P0.14. Read both before quoting anything that rests on leakage-vs-temperature. Earlier — **P0.7: the power-recovery reframing. The objective
+Last updated: 11 September 2026 — **P0.25 closed (the burst ladder: the modulated array cuts the overshoot 2.5–3.3×; one transient runaway under the static array), P0.27 opened (X1/X2 on the recorded fields).** Earlier — 8 September 2026 — **P0.21: zone materials decided by the user — Cr:LiSAF storage zone, dye hot zone, no Yb:YLF — and the cold plate we test is SINGLE-material by default (`--mr-zone-mode single`); the floorplan-matched dual arrangement is a flag for Phase 2 / die-integrated arrays. Smoke point at 2.00 W/mm²: the default reproduces P0.20 exactly, the dual arrangement is a 1 % effect on the hot-spot objective (0.1 W shortfall, 80 cold tiles). P1 of P0.21 found and fixed a latent P0.20 bug (uncapped first-plan re-cap tripped the stale-plan guard).** Earlier — **P0.20: v98 supersedes v91; the target device is Table 1.1's R640-SMILES row (rung 6 of the photonic ladder), its temperature dependence is the transparency cap (thermal by construction, so the T_min bracket collapses without a measurement), it is invisible on this die (identical plans, 0 tiles capped), the near-term film delivers 17 W of the 198 W a 2.00 W/mm² rescue needs, and rung 4 (broadband Purcell) is the requirements flow-down. Both notes to the author are resolved in v98. Open: v98's zone materials vs the 3 Sep rule.** Earlier — **P0.19: `dt_max` is DERIVED from the extractor's own cooling curve (v91's constitutive parameters, no Yb:YLF) and it never binds on this die — the coldest tile the array is driven to is 263 K against floors of 207–259 K; a fixed-wavelength GaAs pump has a HOT-side limit near 380 K instead; the converged energy cap takes one rung off the array ceiling (2.40–2.60 W/mm²); and the scalar 45 K turns out to shape the plan, so keep it alongside the curve. Two notes for the book (eq. 9.5 is 3.3× its own benchmark; Fig. 9.9's scale is not the ledger's η_ext).** Earlier — **P0.18: the array charged its own footprint, and at 500 µm pitch / 200 µm burial the charge is ZERO — quarter coverage (644 of 1126 blocks under gaps, 75 mm² reserved) holds the same ceiling on the same minimum plan to ~1 %. The array-assisted ceiling under arm D is 2.60–3.00 W/mm², a full W/mm² above the recorded 1.60–1.80, but it is an ENVELOPE result (the array removes more than the die dissipates at 2.60) — quote the rescue range and cost ladder, not the top rung. SPICE now gives V_t(T), SS(T), DIBL, I_on(V,T) and a fitted alpha (1.45) from the same card; the V_t lever re-priced 2× dearer in cooling (50 mV ≈ 45–60 K, not 22 K). `--leakage-curve` default: RECOMMEND `simulated`, not applied. Two of five predictions wrong, both favourable, both from carrying a derived estimate past a measured neighbour.** Earlier — **P0.16: the MR catalogue is OFF the old leakage curve, and it barely noticed. All 18 airflow rescues survive (6/6 on pipeline, `simulated` and `simulated-gidl-off`), the clipping efficacy moves 2-4 % and the budget cliff does not move — against a 14 % move on the density ladder. So `--leakage-curve` is NOT a reason to re-run the MR catalogue; the density and clock families are the ones that moved. Four of five §P0.16 predictions were wrong, both failures from turning a CURVE ratio into a RESULT ratio. Also: `core_other`'s 2.0000x is a literal `2 *` in `scripts/mcpat_to_blk_lvl_power_dict.py` (die total and static fraction safe; `core_other`'s share of on-die LEAKAGE overstated ~1.75x), the 36 net-generating `p_mr_net_W` rows are corrected by algebra with no re-solves, and the full catalogue re-run is priced at 6.3 h wall, not 63 days.** Earlier — **P0.13/P0.14: the leakage curve is SIMULATED, and spending it moved two recorded numbers in OPPOSITE directions — the cold-zone prize is 2.2x BIGGER and the density ceiling is one rung LOWER (P0.12 predicted higher; that claim is withdrawn). Read P0.14 before quoting either.** Earlier — **P0.13: ngspice 47 + OSDI + OpenVAF-compiled BSIM-CMG evaluates the ASAP7 card directly; the tooling task P0.12 called the project's highest-value one is finished and Xyce was not needed. Two results move recorded numbers in opposite directions: the cold floor is **GIDL, not gate leakage**, so the cold-zone prize is **~20x smaller** than P0.12 promised, and the hot tail is gentler still (500 K: 5820x pipeline, 349x analytic, **123x simulated**). `[!]` P0.13 inferred from that tail that P0.11's ceiling is more conservative than recorded; **P0.14 measured it and the opposite is true** — see P0.14. Read both before quoting anything that rests on leakage-vs-temperature. Earlier — **P0.7: the power-recovery reframing. The objective
 now has a second axis (exergy, phi = 1 - T0/Th) and the book's three-zone template was tested:
 40 W of removal on a 60.7 W die buys 1.24 K of gradient against the 150 K asked for, confirmed by
 two independent methods to within 1.7x. Read docs/POWER_RECOVERY_PLAN.md first. Earlier, P0.5h: the book's three-zone template measured
@@ -2660,6 +2660,1153 @@ rather than a re-run, so the two campaigns were produced by the same code at dif
 ---
 
 ---
+
+## `[x]` §P0.27 — X1/X2/X3: the ladder past its thermal end — PDN headroom, EM acceleration and thermal clock skew from the RECORDED fields; the dense cluster at the book's utilisation. PREDICTIONS, before any run  `[x]` 11 Sep 2026
+
+`docs/PHYSICAL_DESIGN_CONSTRAINTS.md` §1–§2; the brief is `NEXT_SESSION_PROMPT.md` (10 Sep). No
+new coupled solve. The recorded solve trees hold every iteration's POWER map (`iter_NNN/IC.flp`,
+`MR.flp`) and no TEMPERATURE field — the session path renders the stack and spawns no emulator
+(`ice_server.py`), so the loop's converged field survives only as the row's summary (`peak_C`,
+`die_span_K`). **Step 0 re-solves each recorded final power map once, linearly, through the
+session on the node** (`examples/field_resolve.py`, queued as `x1_fields.par4.tsv`; 35 fields:
+the rescue ladder's `array_on` 1.00–2.40 and `array_idle` 1.00–1.10, the native 0.78 control and
+idle, the D1 family's seven holding array rungs, the twelve F1c rows) and writes the per-block
+field under `results/fields/`. `[!]` The pass that is re-solved is selected by the row's own
+`heat_removed_W`: the last `itNN` of an `array_on` tree is the bisection's largest **failing**
+plan, not the minimum (checked on d2.00 before writing this: it10's `MR.flp` sums to −137.91 W
+against the recorded 138.73 W minimum).
+
+**Assumptions, stated once.** `V_dd` = **0.70 V** on every injected-power rung (the trace's
+supply; the density ladders scale watts at fixed clock and voltage); on the F1c rows the row's
+own voltage from its V/F source (SPICE: 0.77 V at the 4.17 GHz ceiling; the table: 1.32 V at
+4.86 GHz). Per-block current density `J = P_block / (V_dd · A_block)` [A/mm²]. The reference map
+is the **native die** — the driver's control arm at 0.78 W/mm², 3.8 GHz, 0.70 V
+(`results/dark_silicon/d0.78/f1.00/34c_control`: 76.8 W converged, 78.6 °C, holds) — the rails a
+conventional floorplan of this die is sized for. Black's law `MTTF ∝ J⁻ⁿ exp(E_a / kT)` with
+**n = 2, E_a = 0.9 eV** (Cu; textbook values, stated, not fitted); the acceleration of a design
+against the reference at the same block is `(J / J_ref)ⁿ · exp(E_a / k · (1/T_ref − 1/T))`.
+Thermal skew: one H-tree per domain (core: one core's 33 blocks by the `_N` suffix; die: all
+1126), insertion delay **D_ins = 150 ps core-level, 500 ps die-level** (stated), half wire /
+half cell, `α_R` = 0.40 %/K (Cu), `α_cell` from the card's `I_on(400 K) / I_on(300 K)` = 0.942
+(delay ∝ V / I_on → 0.062 %/K); `T_skew,th = D_ins · ΔT_domain · (0.5 α_R + 0.5 α_cell)` with
+`ΔT_domain` the hottest-minus-coldest block in the domain; the frequency cost is
+`T_skew,th / T_period` at the row's clock (book pp. 55–56: `f_max = 1 / (T_comb + T_setup +
+T_skew + T_jitter)`, the skew term alone).
+
+- **P0 — the re-solve reproduces the recorded field.** Every re-solved peak matches the row's
+  `peak_C` within **1 K** (the loop's verification tolerance) and the peak block is the row's.
+  Falsifier: any point off by > 1 K — then these are not "the recorded fields" and the section
+  stops there.
+- **P1 — the rescue ladder is a current ladder.** At fixed clock and `V_dd` the injected-power
+  rungs scale every rail alike: die-average `J / J_ref` ≈ **1.3 / 1.5 / 2.0 / 2.5 / 2.9** at
+  1.00 / 1.20 / 1.60 / 2.00 / 2.40 (converged watts over the native 76.8 W), and the peak block's
+  ratio is within **10 %** of the die-average (uniform scaling; only the leakage share breaks it).
+  Falsifier: a peak-block ratio more than 1.3× the die-average on the reference die. What this
+  names: **above ~1.3 W/mm² the laser holds a die whose rails carry 1.7–3× the current they were
+  sized for** — the PDN is the gen-1 constraint the thermal solve cannot see.
+- **P2 — the dense cluster doubles the peak rail current at matched watts.** On the ×0.5 member
+  the cALU's `J / J_ref` is **2.0–2.3×** the reference's at the same die watts (2× by
+  construction; the rest is the hotter cALU's leakage); ×0.25: 4.0–4.6×; the die-average is
+  unchanged (±5 %). Falsifier: < 1.8× or > 2.6× on ×0.5. This is the number that rewrites gen 1's
+  "what binds next": not conservation — **the cluster's rails**, unless they are re-sized 2× / 4×.
+- **P3 — the clock rungs raise current less than the cubic law suggests, because the voltage
+  does the work.** F1c laser rows relative to native (`I = P / V`): **1.5–1.8× die-average at
+  4.17 GHz / 0.77 V** (127 W at 1.00, 151 W at 1.20), **1.5–1.7× at 4.86 GHz / 1.32 V on the
+  table** (230 W); the above-table row (189 W at a clamped 0.77 V) 2.1–2.3× — ARGUED only, the
+  voltage is clamped. Falsifier: the table rung above 2× or the SPICE 1.20 rung below 1.5×.
+- **P4 — the reliability dividend is 1.6–2.5× at the peak block, not 5–10×, unless the control
+  has no steady state.** Black's temperature term between the array's 92 °C landing and a
+  control at its 100 °C limit is exp(0.9 eV / k · (1/365 − 1/373)) = **1.85×**; against the
+  unpowered array's 103.7 °C at 1.10, **2.4×**; against the native control (78.6 °C) the GaAs
+  layer alone (7 K cooler) is 1.7×. The `J` term works against it on the F1c rows (the laser rung
+  carries more current) and is neutral on the ladder at matched power. The brief's 5–10× needs
+  25–30 K at the peak block, which only a control with **no steady state** provides — there the
+  acceleration is infinite and the ratio is not a number. Falsifier: < 1.5× at matched power.
+- **P5 — thermal skew is a core-level few percent and a die-level tens of percent.** On the
+  laser field at 1.20–2.00: core-domain `ΔT` **20–40 K** (cALU at 92 °C, the L2/L3 slice 30–40 K
+  cooler) → `T_skew,th` 7–14 ps at D_ins 150 ps → **2.5–5 %** of the 263 ps period at 3.8 GHz;
+  die-domain `ΔT` 50–75 K (`die_span_K` on the rows) → 15–25 % — the number that says why a die
+  this size runs per-core clock domains; reported, not claimed.
+- **P6 — the array's flattening buys 1–3 % of clock at the same density** (the brief's
+  prediction). In F1c at 1.00 and 1.20 the control at its thermal limit (cALU 98.5 °C, the rest
+  cooler) has a LARGER core-domain `ΔT` than the laser row (cALU clipped to 92 °C on a die that
+  dissipates 30–60 % more): the core-level skew cost is **1–3 % of the period lower** on the
+  laser field. Falsifier: < 0.5 % (uniformity is not a clock lever on this die), or the laser
+  field the less uniform one.
+- **P7 — density costs skew as well as watts.** The ×0.5 member's core-domain `ΔT` at matched
+  watts is **1.2–1.5×** the reference's (a 2× denser, hotter cluster beside unchanged caches);
+  ×0.25: 1.4–2×. Falsifier: ≤ 1.1× (the plan's clipping flattens the cluster).
+- **P8 — the gradient grows along the ladder even as the plan pins the peak.** Core-domain `ΔT`
+  on `array_on` at 2.00 is ≥ **1.5×** its value at 1.20 (the peak is held at 92 °C; the caches,
+  never cooled, warm with the die average). Falsifier: flat within 20 %.
+
+Nothing here is a thermal measurement of a new configuration: the fields are MEASURED
+(re-solved from the recorded maps), `J` is arithmetic on them, and every acceleration, lifetime
+and skew figure is ARGUED on the stated constants. The register row will say so in that order.
+`[!]` Not a run of anything on the login node: the 35 re-solves go through the campaign server.
+
+### `[x]` §P0.27 RESULT (X1/X2) — the rescue ladder is a CURRENT ladder: every rung above ~1.3 W/mm² runs the rails at 1.7–3× the native current, the cooled die's worst block ages 12–50× faster than the native's under Black's law, and thermal skew is a cost of the rescue, not a lever
+
+`results/fields/` (34 fields, 6 min at PAR 4 on the node), `examples/field_resolve.py`,
+`examples/pdn_em_skew_report.py` → `docs/evidence/pdn_em_skew.json`. Every acceleration and skew
+figure below is ARGUED on the constants stated above (V_dd 0.70 V; n = 2, E_a = 0.9 eV; D_ins
+150 / 500 ps, α_R 0.40 %/K, α_cell 0.062 %/K); the fields and the current densities are MEASURED.
+
+**P0 — confirmed to the third decimal.** All 34 re-solved peaks match the recorded `peak_C` to
+**±0.000 K** at the recorded peak block: the last `iter_NNN` of the selected pass IS the loop's
+final accepted solve. The maps below are the recorded fields.
+
+**X1 — the PDN-headroom map.** Die current relative to the native die (76.8 W at 0.70 V =
+110 A), and the peak block's current density against the same block on the native map:
+
+| field | V | P (W) | I / I_native | J at the peak block / native | worst EM block: AF vs native (J ratio, °C) |
+|---|---|---|---|---|---|
+| native control 0.78 | 0.70 | 76.8 | 1.00 | 1.00 (cALU_16) | 1.0 (BTB_0) |
+| rescue 1.00 (idle) / 1.10 / 1.20 | 0.70 | 99–118 | **1.29 / 1.45 / 1.54** | 1.33 / 1.49 / 1.54 | 6.6 / 16.5 / 12.0 |
+| rescue 1.60 / 2.00 / 2.40 (laser) | 0.70 | 154–221 | **2.00 / 2.45 / 2.88** | 2.05 / 2.56 / 3.08 | **21 / 40 / 50** (cALU_32 at 90–92 °C; J² alone 4.2 / 6.6 / 9.5) |
+| D1 ×0.5 at 121 / 162 / 202 W | 0.70 | 118–185 | 1.53 / 1.98 / 2.41 (= the reference's) | **3.05 / 4.07 / 5.08 — exactly 2.0× the reference's at matched watts** | 43 / 96 / 143 |
+| D1 ×0.25 at 121 / 162 W | 0.70 | 115–150 | 1.50 / 1.95 | **6.04 / 8.06 — 3.9×** | 196 / 423 (iALU_32) |
+| F1c SPICE, 1.00: control 3.66 GHz / laser 4.17 GHz | 0.68 / 0.77 | 93 / 127 | 1.25 / **1.50** | 1.31 / 1.55 | control **26.8 (IF_0 at 91.5 °C)** / laser **8.4 (cALU_32 at 85 °C)** |
+| F1c SPICE, 1.20: control 3.32 / laser 4.17 | 0.63 / 0.77 | 90 / 151 | 1.30 / **1.78** | 1.38 / 1.86 | 40.2 (IF_0) / 15.0 (cALU_32) |
+| F1c table, 1.00: control 3.64 / laser 4.86 GHz | 0.90 / 1.32 | 90 / 230 | 0.92 / **1.60** | 0.95 / 1.73 | 8.8 (IF_0) / **19.6** (cALU_32) |
+
+**P1 confirmed** — die current 1.29 / 1.54 / 2.00 / 2.45 / 2.88 at 1.00–2.40 (predicted 1.3 / 1.5
+/ 2.0 / 2.5 / 2.9); the peak block's ratio is within **3–7 %** of the die-average on the reference
+die. **The rescue ladder is a current ladder**: at fixed clock and supply the laser holds a die
+whose rails carry **1.5–3× the current a conventional floorplan of this die is sized for**
+(1.54× at 1.20, 2.45× at 2.00, 2.88× at 2.40). **P2 confirmed, and sharper than predicted** —
+the ×0.5 cluster's cALU carries **2.00×** the reference's current density at matched watts and
+the ×0.25 cluster's 3.9×, i.e. exactly the area ratio: the "hotter cALU's leakage" the
+prediction added is absent because the array clips both clusters to the same 92 °C landing. The
+die's total current is unchanged (1.53 vs 1.54; 1.98 vs 2.00). **P3 confirmed** — the F1c laser
+rows draw 1.50× (1.00) and 1.78× (1.20) the native current at 4.17 GHz / 0.77 V, and **1.60× at
+4.86 GHz on the table**, where the 1.32 V supply buys the clock with less current than the
+SPICE curve's 0.77 V; the cubic reading (2.3×) is withdrawn as the current figure — the voltage
+does the work, and the table's control at 3.64 GHz / 0.90 V draws *less* current than the
+native die (0.92×).
+
+**P4 confirmed at matched power; the F1c rows say more.** Black's temperature term between the
+laser's landing and the comparator at the comparator's peak block: **2.38× at 1.10 W/mm²** (laser
+vs unpowered array at the same injected power; T term 2.15×, the J term 1.1× because the cooled
+cALU leaks less), **1.85× from the GaAs layer alone** at native power (78.6 → 71.5 °C). At each
+design's OWN worst block (the design-level statement): the laser's worst block outlives the
+unpowered array's **3.4×** at 1.10. On the F1c rows, where the laser's headroom is spent on
+clock, **the cooled design's worst block outlives the control's by 3.2× at 1.00 (8.4 vs 26.8
+against native) and 2.7× at 1.20 while clocking 14 % and 26 % faster** — the control at its
+thermal limit is leakage-bloated in its fetch units (IF_0 at 91.5 °C, J 2.4× native), the cooled
+die's worst block sits at 85–88 °C; **on the shipped table the sign reverses**: at 4.86 GHz /
+1.32 V / 230 W the laser's worst block ages **2.2× faster** than the control's (19.6 vs 8.8). The
+brief's 5–10× exists only against a control with no steady state.
+
+`[!]` **The ladder's non-thermal end, named.** Against the native die the cooled die's worst
+block ages **12× faster at 1.20, 21× at 1.60, 40× at 2.00, 50× at 2.40** (cALU_32: J ratio 2.2–3.1
+squared = 4.8–9.5, times a temperature term of 2.5–6 because the 92 °C target is 15–30 K above
+where the native die runs its cALUs). Two levers are visible in that product and neither is
+thermal: the rails (J ∝ 1/width — holding the native EM budget at 2.00 W/mm² needs ~2.5× the
+stripe metal, the book's own remedy), and the target (92 °C is a spec choice; an EM-budgeted
+target would be lower and cost cooling watts). On the dense cluster the cALU's J is 2× / 4× on
+top of that (AF 143× at 202 W on ×0.5, 423× on ×0.25 at 162 W). **What binds gen 1 above
+~1.3 W/mm² is the PDN — unless the rails are re-sized** — MEASURED as a current density on the
+recorded fields, ARGUED as a limit until a rail model exists. `ARCHITECTURE_EVOLUTION.md` §5 and
+the ladder's gen-1 row are rewritten accordingly.
+
+**X2 — the thermal-skew metric.** Core-domain gradient (hottest − coldest of a core's 32 blocks,
+L3 excluded; worst core) and its cost at D_ins 150 ps; die-domain in brackets at 500 ps:
+
+| field | clock | ΔT_core (K) | skew cost, core (% of period) | ΔT_die (K) | die-level cost |
+|---|---|---|---|---|---|
+| native control 0.78 | 3.80 | 24.1 | **3.2 %** | 37.8 | 16.6 % |
+| rescue 1.10: unpowered / laser (same injected power) | 3.80 | 36.9 / **31.2** | 4.85 / **4.11 %** (−0.74) | 60.6 / 50.5 | 26.6 / 22.2 % |
+| rescue laser 1.20 / 1.60 / 2.00 / 2.40 | 3.80 | 31.6 / 40.3 / 49.9 / 60.2 | **4.2 / 5.3 / 6.6 / 7.9 %** | 52.8 / 62.6 / 74.0 / 92.8 | 23 / 28 / 33 / 41 % |
+| D1 ×0.5 at 121 / 162 / 202 W | 3.80 | 39.7 / 49.5 / 59.5 (**1.26 / 1.23 / 1.19×** the reference's) | 5.2 / 6.5 / 7.8 % | 55 / 66 / 88 | 24 / 29 / 38 % |
+| D1 ×0.25 at 121 / 162 W | 3.80 | 52.1 / 65.9 (**1.65 / 1.64×**) | 6.9 / 8.7 % | 62 / 79 | 27 / 35 % |
+| F1c SPICE 1.00: control / laser | 3.66 / 4.17 | 31.5 / 34.2 | 4.0 / **4.9 %** (+0.95) | 54 / 56 | 23 / 27 % |
+| F1c SPICE 1.20: control / laser | 3.32 / 4.17 | 31.0 / 40.2 | 3.6 / **5.8 %** (+2.2) | 55 / 63 | 21 / 30 % |
+| F1c table 1.00: control / laser | 3.64 / 4.86 | 30.0 / 64.2 | 3.8 / **10.8 %** (+7.0) | 51 / 96 | 21 / 54 % |
+
+**P5 in mechanism, 1.3× above the bracket** — core-level 4.2–6.6 % at 1.20–2.00 (predicted
+2.5–5 %), die-level 23–33 % (predicted 15–25 %): the core gradient is 32–50 K, not 20–40, because
+the L2/L3 slices never warm with the clipped cALU. **P6 FALSIFIED** — uniformity is not a clock
+lever on this die. At the same injected power the laser flattens the worst core by 5.7 K, worth
+**0.74 %** of the period (predicted 1–3 %; the falsifier was < 0.5 %, so "small, not nothing"); at
+the same DENSITY, where the laser's headroom has become clock and watts, **the laser field is the
+less uniform one**: +0.95 points of period at 1.00, +2.2 at 1.20, **+7.0 on the table** — a
+tax on the +14 / +26 / +34 % the clock search reported (net ≈ +13 / +23 / +26 % if the skew term
+is charged to the period at D_ins 150 ps). **P7 confirmed in substance, one rung under the
+bracket** — the ×0.5 cluster's core gradient is 1.19–1.26× the reference's (predicted 1.2–1.5;
+1.19 at 202 W), the ×0.25's 1.64×: density costs skew as well as cooling watts. **P8
+confirmed** — 49.9 / 31.6 = 1.58× from 1.20 to 2.00.
+
+`[+]` What X2 says, honestly: the array pins the peak and lets the rest of the die ride the
+average, so **thermal skew grows with every rung the laser buys** (3.2 % of the period on the
+native die → 7.9 % at 2.40, core-level at a stated 150 ps insertion delay; the die-level number,
+17 → 41 %, is why a die this size runs per-core clock domains and is reported, not claimed). It
+is the second non-thermal cost of the ladder after the rails, and the first clock-tree statement
+the project can make. The lever the book names — de-skew, per-core domains, HVT/LVT on clock
+paths — is a CTS design lever, not a cooling one. `[!]` Coefficients are stated assumptions;
+D_ins scales every skew figure linearly, so quote the gradient (K) beside every percentage.
+
+### §P0.27.3 — X3: the dense cluster at the book's utilisation and halos. PREDICTIONS, before the build and the run
+
+`PHYSICAL_DESIGN_CONSTRAINTS.md` §3. Every floorplan in this repository is a **100 %-utilisation
+abstraction**: the tiler packs McPAT's areas edge to edge with no routing, no scan/CTS/ECO
+overhead, no macro halos or channels. The book's rule (p. 34): die area = ((G + T + E)/D + IO +
+M) / U with **U = 70 %** and **T = 15 %**. Built as two generator options
+(`examples/generate_exec_density_family.py`): `--utilisation U --overhead T` scales every
+standard-cell (non-macro) unit's area by **(1 + T)/U = 1.643** at the defaults — the leftover
+`core_other` slab included, it is un-itemised control logic — with McPAT's power unchanged;
+`--cache-halo-um h` grows each SRAM macro (L2, L3, iCache, DCache) by a keep-out ring of **h =
+20 µm** (halo plus channel, stated; the book gives the rule `pins × pitch / layers`, not a
+number) **modelled as macro area at constant macro power** — the ring is not separately
+unpowered, and the caches sit at ≤ 0.3 W/mm², so the difference is under 1 K and is stated
+rather than modelled. Two members: `d1_exec0.5_u70` (the ×0.5 cluster at the book's overheads)
+and `d1_exec1_u70` (the reference's units at the same overheads — the utilisation control, so
+that utilisation and density are separated). The rungs are the D1 rungs at **matched watts**
+(111 / 121 / 162 / 202 / 243 W, `--density` = W / member mm²), arm D, 88 CFM, target device,
+scalar 45 K; the shaped control probes at 45.5–101 W. `[!]` **100 µm cells, with the reference
+die re-run on the same grid as the control** (corrected before the build: the reference two-die
+stack at 50 µm is exactly the 366,048-unknown measured limit — 248 × 164 cells × 9 layers — and a
+1.5× larger die at 50 µm would be ~540k, between it and the 629k that fails every time; D4 met
+the same wall). Quote the `u70` rows only beside the 100 µm reference rows, never the 50 µm ones.
+
+- **P9 — the die grows 1.4–1.55×.** `d1_exec1_u70`: **140–157 mm²** (logic ~57 mm² × 1.643,
+  caches +3–5 %, IMC/SoC/IO with the die by the tiler's convention); `d1_exec0.5_u70`:
+  **132–150 mm²**; the ×0.5 cluster's W/mm² is **1.22×** the reference cluster's (0.5 × 1.643 =
+  0.82 of its McPAT area), not 2× — the D1 "2× denser" is 1.2× denser in silicon. Falsifier:
+  outside 1.3–1.65× on either member.
+- **P10 — the rescue survives every rung, and regains the one the ×0.5 member lost.** At matched
+  watts the `u70` members are 1.4–1.55× the reference's area and spread better into the fixed
+  1825 mm² base, so `d1_exec0.5_u70` holds **all five rungs to 243 W** (the ×0.5 member lost 243 W
+  to the stability boundary at 2.66 W/mm²-equivalent; here 243 W is 1.6–1.8 W/mm²). 0 tiles
+  capped. Falsifier: any rung lost.
+- **P11 — the cost premium is against the utilisation control, not the reference.** Relative to
+  the reference's plan at matched watts, `d1_exec0.5_u70`'s minimum plan (normalised to 92 °C at
+  0.3247 K/W) is **0.5–0.9×** — a larger, less dense die needs less light, so the brief's "premium
+  falls toward 1.1–1.3×" cannot be against the reference; **against `d1_exec1_u70`** at the same
+  watts it is **1.1–1.3×** at 162–243 W and 1.5–3× at 111–121 W (the hot-spot premium of
+  §P0.22.3, shrunk by the flatter cluster). Falsifier: > 1.0× against the reference at ≥ 162 W, or
+  > 1.5× against the control at ≥ 162 W.
+- **P12 — the passive ceiling rises in watts by the area.** The shaped control (probe) of
+  `d1_exec1_u70` holds **85–100 W** and fails one rung above (reference: holds 60.7, fails 65.7),
+  and `d1_exec0.5_u70` holds 75–90 W (the reference ×0.5 member: 50.5 / 60.7). Falsifier: a
+  ceiling below the reference's 60.7 W on either member.
+- **P13 — the peak block is a cALU on every member at every rung.**
+
+### `[x]` §P0.27.3 RESULT (X3) — at the book's utilisation the "2× denser" cluster is 1.22× denser in silicon, the rescue holds every rung, and the cost premium against a same-utilisation reference is 1.2–1.4× at the die-wide rungs
+
+`results/x3_u70/` (36 jobs, 100 µm, 60 min at PAR 5), `examples/x3_utilisation_report.py` →
+`docs/evidence/x3_utilisation.json`; members in `docs/evidence/d1_exec_density_family_u70.json`.
+Build notes: logic × (1 + 0.15)/0.70 = 1.643 with McPAT's power unchanged; a 20 µm ring on each
+SRAM macro sized on the PLACED macro (the tiler scales L2 by 2.9× and the L3 slice by 0.5× after
+reading the JSON — the first build sized the ring on the JSON area and overstated L2's halo);
+`[!]` a parent whose children fill it to float residue (the Instruction Scheduler, 0.42 µm² of
+0.30 mm²) crossed the tiler's 0.5 µm² keep-the-parent threshold once scaled and produced a
+34-block `iSched` family carrying the scheduler's whole McPAT power on 0.2 µm² — sub-100 µm²
+leftovers are now zeroed; the default (no-overhead) path regenerates the recorded ×0.5 member
+byte-identically. The reference was re-run on the same 100 µm grid: its control cliff is the
+50 µm one (holds 60.7 W, fails 70.8) and its plans are **8–50 % below** the 50 µm plans (8.7 vs
+17.3 W at 121 W; 68 vs 75 at 162; 126 vs 139 at 202; 205 vs 222 at 243) — a coarser grid smooths
+the cALU's peak, so **no X3 number may be read beside a 50 µm row.**
+
+| member (100 µm) | die | shaped control: holds / fails | 111 W | 121 W | 162 W | 202 W | 243 W |
+|---|---|---|---|---|---|---|---|
+| `ref` (recorded reference) | 101.1 mm² | 60.7 / 70.8 W | 0.6 W (idle 102.5 °C) | 8.7 W (idle diverges) | 68.0 W | 126.1 W | 205.4 W |
+| `d1_exec1_u70` (utilisation alone) | 137.7 mm² (1.36×) | **70.8 / 80.9 W** | nothing above target (84.8 °C) | 0.2 W (idle 94.6 °C) | 34.4 W | 92.5 W | 156.6 W |
+| `d1_exec0.5_u70` (utilisation + ×0.5 cluster, 1.22× denser in silicon) | 121.5 mm² (1.20×) | **60.7 / 70.8 W** (= the reference's rung) | 0.07 W (idle 92.8 °C, lands 92.0) | 0.9 W (idle **107.2 °C**) | 50.5 W | 108.8 W | 182.7 W |
+| plan ratio, normalised to 92 °C at 0.3247 K/W: `u70×0.5 / ref` | | | — | 0.39 | **0.75** | **0.85** | **0.90** |
+| `u70×0.5 / u70×1` (density alone, at the book's overheads) | | | — | 9.8 (5.1 vs 0.5 W) | **1.44** | **1.22** | **1.16** |
+| `u70×1 / ref` (utilisation alone) | | | — | 0.04 | 0.52 | 0.70 | 0.78 |
+
+Every array rung on every member: **0 tiles capped**, peak block a cALU (on two `u70×1` rungs the
+zero-power `RBB` stub inside the cluster, a sub-cell sliver that reads the cluster's temperature —
+the utilisation transform leaves McPAT's "Area Overhead" key alone, which is a floorplan artefact
+and not a hot block).
+
+**Scorecard.** **P9 falsified low** — the dies grow **1.36× / 1.20×** (predicted 1.4–1.55 /
+1.3–1.65): the IMC / SoC / IO tiles and the cache macros (+11–17 %) grow less than the logic's
+1.643, and the ×0.5 member's cluster is **1.22× denser in silicon** (that part as predicted).
+**P10 confirmed** — `d1_exec0.5_u70` holds all five rungs to 243 W with 0 tiles capped (the 50 µm
+×0.5 member lost 243 W; on this grid the 100 µm reference holds 243 too, so the grid control
+cannot separate "utilisation regained the rung" from "the coarser grid holds it" — say both).
+**P11 half** — against the recorded reference the dense-at-70 % die is **cheaper** to hold
+(0.75 / 0.85 / 0.90× at 162–243 W: predicted 0.5–0.9, confirmed — it is a larger, lower-density
+die); against the utilisation control the premium is **1.44 / 1.22 / 1.16×** (predicted 1.1–1.3;
+1.44 at 162 W is above the bracket, under the 1.5 falsifier), converging toward 1.16× by 243 W;
+at 121 W it is 9.8× — the hot-spot rung, where the control needs 0.5 W and the 1.22× denser
+cluster's unpowered array sits at 107 °C against 95 °C. **P12 not as predicted** — the passive
+ceiling rose **one rung on `u70×1`** (60.7 → 70.8 W, +17 % against 1.36× of area) and **not at all
+on `u70×0.5`** (the reference's rung exactly; 61.8 °C vs 71.2 at 60.7 W, then the same 70.8 W
+failure): the shaped cliff is the cALU's local runaway and scales with the cluster's density
+(0.61× → one rung up; 1.22× → the rung given back), not with the die area — the concentration
+result of §P0.17 from a third floorplan. **P13 confirmed in substance** (cALU, or the RBB stub
+inside the cluster).
+
+`[+]` What X3 says for gen 1. Realistic floorplanning shrinks the D1 penalty and the D1 gain
+alike: at the book's overheads the "2× denser cluster" is **1.22× denser**, it still holds every
+rung the reference holds, and its cooling premium over a same-utilisation reference is
+**1.2–1.4× at the die-wide rungs** (a hot-spot premium of ~10× at the rung where the control
+needs no light). X1's rail statement scales with it — the cluster's current density is 1.22× the
+reference's, not 2× — so the PDN constraint on gen 1 is a fifth tighter than the reference's,
+not twice as tight. Utilisation alone makes the reference die a lower-density die: one rung of
+passive ceiling and 0.5–0.8× the plan. `[!]` 100 µm cells, matched-grid reference; the 0.3247 K/W
+normalisation was measured on the 101 mm² die and the larger members spread better into the
+fixed base, so the normalised ratios carry ~5 % of that (the raw Q ratios agree within 5 % at
+≥ 162 W); the halo is macro area at constant macro power.
+
+### §P0.27.4 — X4: the gen-3 stack with the 3D chapter's geometry. SCOPED, NOT BUILT (11 Sep); predictions for the next session
+
+`PHYSICAL_DESIGN_CONSTRAINTS.md` §4. What exists: `thermal/stack_models.py` puts a thinned memory
+die (50 µm default) **above** the logic die with a bond layer (5 µm, microbump/underfill
+conductivity as the pessimistic default) and 3D-ICE's one-footprint rule; `die_stack.StackSpec`
+puts the pixel layer over ONE processor die; `--mr-objective cache-leakage` and
+`MRParams(zone_targets)` hold a named zone at 280 K; `make_extractor('cr-lisaf')`. What is
+missing, and is the day's work: (a) a **storage-die floorplan** that carries the reference's L2/L3
+blocks at their own positions and powers (the trace's cache dynamic + the ledger's leakage at the
+solved field) and a compute-die floorplan with those blocks unpowered (the footprint stays the
+reference's, so the storage die is 30 % dark silicon plus TSV keep-outs as unpowered blocks); (b)
+a **three-layer spec** — pixel layer / storage die / bond / compute die — in `die_stack.py`, with
+the Cr:LiSAF tiles addressing the storage die (cold side) and, as the two-array variant, the dye
+array on the compute die's other face (which needs the sink on that side too); (c) the coupled
+solve at `--cell-um 100` (the stacked grid at 50 µm is 1.1 M unknowns and fails). ~A day.
+
+- **P14 — the storage die reaches its knee on its own.** With the compute die at the hot-spot
+  target and the bond layer at the microbump default, the storage die's cache zone lands at
+  **280–290 K for 5–15 W of Cr:LiSAF lift** (its own cold leakage is 1.35 W over 30 mm² plus what
+  crosses the bond), against the 99 W that the monolithic die needed (§P0.22.2). Falsifier:
+  > 40 W, or the zone above 300 K at any plan the tiles can deliver.
+- **P15 — the interface is what decides it.** Swapping the bond to hybrid-bond conductivity
+  (near silicon) raises the storage-die cost by ≥ 3× and pushes the zone above 295 K: the
+  book's thermal vias would do the same. Falsifier: the cost moves < 1.5×.
+- **P16 — the cache-leakage prize is collected**: die leakage down 2.7–3.6× on the cache zone
+  (the monolithic figures), ~14 % of die power at the corrected accounting (register §1.2), at
+  an electrical cost below the prize for the first time. Falsifier: the laser's electrical draw
+  exceeds the leakage saved.
+- **P17 — the compute die is unchanged**: its peak, plan and `s` reproduce the reference rung at
+  the same density within 5 % (the caches were never where the plan acted).
+
+Not run today: X3 held the node and the three-layer spec is the build. Gen 3 stays ARGUED.
+
+### `[x]` §P0.24 RESULT, part 1 (the recorded planner) — the control has no steady state at 700 W on the simulated curve, the GaAs layer alone holds it, and the rescue path's envelope SHAPE cannot address a concentrated accelerator kernel
+
+`results/accel_f3/` (27 invocations, 49 min), `examples/accel_f3_report.py` →
+`docs/evidence/accel_f3.json`.
+
+| point | control | `array_idle` | `array_on` (seed envelope) |
+|---|---|---|---|
+| uniform 700 W | **runaway** (residual creeps at 10 K under backtracking) | **holds 76.5 °C** (`MEMCTRL_B0`) | holds, nothing to do |
+| uniform 1000 W | runaway | runaway | holds 93.7 °C on **464 W** (`s` = 0.45) — **unconverged** (verification 362/367/367 K) |
+| uniform 1400–2600 W | runaway | runaway | "envelope insufficient" with the plan = the whole die's power |
+| occ8 / occ32 at 700 and 1400 W | runaway | runaway | "envelope insufficient" — plan = the whole die's power |
+
+**Scorecard, part 1.** **P1 FALSIFIED the other way** — the control holds *nothing*: on the
+simulated leakage curve the GA100 with the assumed 25 % leakage fraction runs away at 700 W on
+the very plate that held it at 64 °C on the pipeline curve (`microchannel_coldplate.json`,
+26 Aug). The die sits at ~337 K there, *below* the 345 K crossover where the simulated curve
+carries ~9× the pipeline's feedback gain (§P0.14) — the same mechanism that moved the CPU's
+flat ceiling down, now taking an accelerator's whole operating point. `[!]` This rests on an
+ASSUMED leakage fraction and class split (`calibrated: false` on every row); the register must
+carry it as "the accelerator's control ceiling depends on the leakage curve by more than a
+rung", not as a GA100 number. **P2 confirmed** — the unpowered GaAs layer holds 700 W where the
+grease stack does not (the passive term, one rung). **P3 open/unfavourable** — the laser's top
+rung is 1000 W and that row is unconverged. **P4 open** — max tile flux 1.5 W/mm² at 1000 W:
+the device is 500× under-used even here. **P5 FALSIFIED as run** — no kernel point holds at
+"full capability". **P6** cannot be scored (the control holds nothing).
+
+`[!]` **Why the kernel points failed, and why it is the planner, not the physics.** Every
+"envelope insufficient" log says the same thing: *"MR plan wanted 16515.0 W from a die
+dissipating 369 W (45×) and was scaled"*. 16 515 W is **367 blocks × 45 W**: the envelope path
+seeds every block's sensitivity at the 1.0 K/W placeholder, so `dt_max / s` = 45 W per block
+regardless of the block's power, and the conservation cap then scales that *uniform* shape by
+45× — the eight hot SMs of the occ8 kernel receive ~1 W each while cool blocks are pushed to
+the floor. "Full capability" was never the array's full capability; it was a guessed shape
+scaled to conservation. That is register §3's "plan shape" item (§P0.19 measured the same shape
+costing 30 % on the CPU), and on a 367-block accelerator with a concentrated kernel it costs
+the rescue outright. The CPU rescue ladder's rows carried the same seed (the 2.00 W/mm² log
+reads "wanted 19 982 W … scaled by 0.0099") and held because a 34-core die under uniform
+activity is close enough to uniform; the accelerator is not.
+
+**Built in response (additive, flagged):** `MRParams(envelope_shape='power')` /
+`--mr-envelope-shape power` on both drivers: each block is additionally capped at its **own
+dissipation**, so the full-capability plan removes every block's own heat, meets conservation
+by construction, and starts the descent from the physical "s = 1" state. Default `seed`
+(every recorded row reproduces). Three tests.
+
+**Predictions for part 2 (the `power`-shape re-run of the nine `array_on` points), before it
+runs:** **P7** — every uniform point up to 2000 W holds at full capability and the descent finds
+a minimum plan; the top holding rung is **1400–2000 W** (bistability or conservation above).
+**P8** — the concentrated kernels hold: occ8 at 700 W for **20–60 W** on the active SMs' tiles,
+occ8 at 1400 W for ≤ 200 W; the peak block is an SM datapath. **P9** — max tile flux reaches
+**≥ 20 W/mm²** on the occ8 kernel (0 tiles capped). Falsifiers: any uniform point ≤ 1400 W
+still "envelope insufficient" under the power shape (then the accelerator's runaway is not a
+shape problem); occ8 at 700 W not held.
+
+### `[~]` §P0.24 RESULT, part 2 (the `power` envelope shape) — every point finds a cool-branch plan; the device is still 150× under-used; the peaks are brackets until the loop is given its budget
+
+`results/accel_f3_power/` (9 `array_on` invocations, 77 min), `examples/accel_f3_report.py --base
+results/accel_f3_power` → `docs/evidence/accel_f3_power.json`.
+
+| point | seed shape (part 1) | **power shape**: peak, plan, `s` | max tile flux | verification (3 dampings) |
+|---|---|---|---|---|
+| uniform 1000 W | 93.7 °C on 464 W (unconv) | **91.3 °C on 110 W**, `s` 0.09 | 1.3 W/mm² | 364.4 / 364.4 / 364.5 K — agree to 0.1 K, none to the 0.1 K residual |
+| uniform 1400 W | envelope insufficient | **91.4 °C on 527 W**, `s` 0.33 | 2.1 | agree within ~1 K |
+| uniform 2000 W | envelope insufficient | 76.7 °C on 1304 W, `s` 0.65 | 3.9 | — |
+| uniform 2600 W (3.15 W/mm²) | envelope insufficient | 70.3 °C on 2294 W | 5.3 | **344 / 359 / 402 K — damping-dependent, not quotable** |
+| occ8 700 W | envelope insufficient | **90.7 °C on 32.5 W**, `s` 0.08, `SM0_DP` | 1.4 | 361.7 / 363.8 / 363.8 K |
+| occ8 1400 W | envelope insufficient | 78.1 °C on 317 W, `s` 0.43 | 4.6 | — |
+| occ32 700 / 1400 W | envelope insufficient | 87.6 °C on 115 W / 88.5 °C on 563 W | 1.6 / 4.4 | — |
+
+**Provisional scorecard.** **P7 better than predicted** — the laser holds the accelerator at
+every rung of the ladder to 2600 W (3.15 W/mm²), the top of the ladder, not 1400–2000: not
+bracketed above. **P8 half right** — occ8 at 700 W costs 32.5 W (inside 20–60) with the peak on
+an SM datapath; occ8 at 1400 W costs 317 W (outside ≤ 200). **P9 FALSIFIED, and it matters for
+the thesis** — the most any tile is asked for is **5.3 W/mm²** even at 3.15 W/mm² of die
+average and 4.6 W/mm² on the concentrated kernel, against ≥ 813 W/mm² from the dye at 300 K
+tiles: **the target device is 150× under-used on the accelerator too**, at 500 µm pitch. The
+"ideal design point" of the extractor is not reachable by any die in this repository at this
+pitch; what the device's headroom buys is pitch (finer tiles, §P0.16's plateau) and margin,
+not rescue.
+
+`[!]` **Every power-shape row is `unconverged`**, and the reason is the loop's budget, not the
+physics on most of them: the three damping levels agree to 0.1–2 K (uniform 1000 W: 364.4 /
+364.4 / 364.5 K) but none reaches the 0.1 K residual in 60 iterations on a die whose loop gain
+is near one (the same signature as the D1 55.6 W rung, §P0.22.3). The 2600 W row is the
+exception — genuinely damping-dependent — and stays a bracket. A re-run with the residual
+tolerance and iteration budget the accelerator needs (`--tol 0.5 --max-iter 150`) is queued as
+part 3; until it lands these rows are **brackets, not numbers**, and the register carries them
+as such.
+
+### `[x]` §P0.24 RESULT, part 3 (final) — with the power-shaped envelope and the loop's own budget, the laser holds the GA100 from 700 W to 2600 W on the microchannel plate; the top rung is conservation; the device is 150× under-used
+
+`results/accel_f3_power_tol1/` (8 `array_on` invocations, `--tol 1.0 --max-iter 100`, every
+row **converged** — verification passed at three damping levels), `examples/accel_f3_report.py
+--base results/accel_f3_power_tol1` → `docs/evidence/accel_f3_power_tol1.json`. Part 2's
+numbers move by ≤ 7 % and the residual plateau (0.4–0.7 K on a 365 K field) was the loop's
+0.05 K tolerance, not the physics.
+
+| GA100 on the microchannel plate, 100 µm, simulated curve, 25 % leakage assumed | control | GaAs, no light | **laser on** — peak, plan, `s` | max tile flux |
+|---|---|---|---|---|
+| uniform 700 W (0.85 W/mm²) | runaway | holds 76.5 °C | nothing to do | 0 |
+| 1000 W (1.21) | runaway | runaway | **88.3 °C on 102 W** | 1.3 W/mm² |
+| 1400 W (1.69) | runaway | runaway | **86.4 °C on 514 W**, `s` 0.32 | 2.1 |
+| 2000 W (2.42) | runaway | runaway | 75.6 °C on 1289 W | 3.9 |
+| **2600 W (3.15)** | runaway | runaway | **67.0 °C on 2244 W, `s` 0.98 — conservation** | **5.3** |
+| occ8 700 W | runaway | runaway | **85.0 °C on 31.6 W** (`SM0_DP`) | 1.4 |
+| occ8 1400 W | runaway | runaway | 76.9 °C on 312 W | 4.6 |
+| occ32 700 / 1400 W | runaway | runaway | 86.3 °C on 113 W / 77.1 °C on 557 W | 1.6 / 4.4 |
+
+**Final scorecard.** P1 falsified the other way (the control holds nothing on the simulated
+curve — an assumed-leakage result); P2 confirmed (the passive layer holds 700 W); **P3
+confirmed in substance** — the laser holds ≥ 2000 W and, with `s` = 0.98 at 2600 W, the ladder
+ends on conservation at the top rung, as on the CPU; `s`(2000) = 0.65 (predicted ≤ 0.6: the
+plate does less of the work than the cubic estimate said); **P4 FALSIFIED** — max tile flux
+**5.3 W/mm²** against ≥ 813 available: the device is **150× under-used on the accelerator**, so
+"the accelerator is where the device's rungs matter" is withdrawn; **P5 confirmed in the hold,
+not the cost** — occ8 at 1400 W costs 312 W (predicted ≤ 120); at 700 W, 32 W; the hot spot is
+an SM datapath at 700 W and an HBM PHY / memory-controller block at 1400 W (the perimeter
+stops spreading the concentrated kernel's heat). **P6** cannot be scored against a control
+that holds nothing; against the passive layer's 700 W the laser's multiplier is **3.7×** in
+watts. **P7 better than predicted** (to the ladder's top, 2600 W); **P8** half; **P9
+falsified** (5.3 W/mm²).
+
+`[+]` **What the pack may say, and how.** *On a direct-die microchannel plate the photonic
+array holds a GA100-class accelerator at every power from 700 W to 2600 W (3.15 W/mm²) where
+the conventional stack has no steady state, ending on energy conservation at the top rung; a
+concentrated eight-SM kernel at 700 W is held for 32 W of removal.* Beside it, always: the
+control's runaway is a **simulated-curve, assumed-leakage** result (`calibrated: false`), the
+rows are at 100 µm cells, and the extractor is 150× under-used — the accelerator does not
+need the device's ideal design point either; it needs the array's *shape* to follow the power
+(§P0.24 part 1's lesson, now the `power` envelope shape). Three rows for the register: the
+accelerator rescue range, the envelope-shape rule, and the tile-flux ceiling across all dies.
+
+## `[x]` §P0.26 — F1c: throughput with the CLOCK as the free variable (the missing DVFS in the density ladders). PREDICTIONS, before any run  `[~]` 10 Sep 2026
+
+**Why (user, 10 Sep).** The proposal pack's TFLOP/s was flat against die power: the density
+ladders inject watts at a fixed clock (the trace is 3.8 GHz, rescaled), and `gflops` is
+`f_effective × 32 × cores` with `f_effective` the nominal clock derated by the hottest block —
+a thermal-only proxy that cannot rise with power by construction. Throughput is ops over
+walltime, and walltime falls only when the clock rises. The clock search
+(`clock_headroom.py` / `clock_search.py`) is the measurement: the clock is bisected to the
+thermal limit with dynamic power ∝ V²f through the V/F curve and leakage ∝ V (assumed exponent
+1.0). Its recorded run was on the pipeline curve, with the MR arm read at the spec-limited
+point, and inside a V/F table that stops at **5.0 GHz / 1.4 V** (`vf_clamped` above).
+
+**The run.** `scripts/clock_f1c.sh` → `results/clock_f1c/`: 34-core, arm D, 88 CFM with the
+spreading base (this package, 0.325 K/W), three arms, `--vf-source spice` (§P0.18.3's device
+curve, α = 1.45, anchored 3.8 GHz at 0.70 V), thermal limit 100 °C, MR target = limit − 8 K,
+scalar 45 K, full coverage, `--recovery-at-junction`; bisection 2.0–5.0 GHz at 0.05 GHz. A
+second invocation with `--above-vf-table` to 6.5 GHz, whose clocks are UPPER BOUNDS (the
+voltage clamps, the power cost of the clock is understated) and are reported as ARGUED.
+Throughput is then `f × 32 × 34` FLOP/s at the measured sustainable clock (ops / walltime at
+fixed IPC), per package watt.
+
+- **P1 — the control is runaway-limited near the trace's own clock:** **3.8–4.0 GHz** (the
+  recorded 3.83 GHz at 0.3 K/W on the pipeline curve; at the runaway point the die is above the
+  345 K crossover, where the simulated curve carries *less* gain, so at or slightly above).
+  Falsifier: ≥ 4.2 GHz (the control reaches the spec, and the laser has no runaway to remove).
+- **P2 — the unpowered array is spec-limited: 4.1–4.3 GHz**, limiter the 100 °C limit.
+- **P3 — the laser runs into the table, not the cooler:** `array_on` reaches **5.0 GHz with
+  `vf_clamped`**, the die at 1.4–1.9 W/mm² there (inside the 2.4 rescue), removing 30–110 W.
+  That is **+25–32 % clock and FLOP/s over the control**. Falsifier: `array_on` < 4.5 GHz (the
+  V²f cost eats the rescue).
+- **P4 — above the table (ARGUED):** `array_on` reaches **5.5–6.2 GHz** before conservation or
+  bistability at ≥ 2.4 W/mm² ends it — the cubic-law reading of the 3.8× watts (1.56× clock,
+  5.9 GHz) as an upper bound with the voltage clamped. Never quoted as a clock.
+- **P5 — FLOP/s per package watt falls monotonically with clock on every arm** (V²f), so the
+  headline is throughput per *package*, not efficiency — as §P0.23.1 said.
+
+### `[x]` §P0.26 RESULT, part 1 — on the trace's own power the clock is device-limited, not thermally limited, on every arm; the search has to start from the ladder's operating point
+
+`results/clock_f1c/{cfm88,cfm88_above_table}`, `examples/clock_f1c_report.py` →
+`docs/evidence/clock_f1c.json`. Three minutes for both runs — the first sign something was off.
+
+| run | control | `array_idle` | `array_on` | die power at the ceiling |
+|---|---|---|---|---|
+| SPICE V/F, to the device ceiling | **4.173 GHz**, `vf_envelope`, 50.2 °C | 4.173, 46.7 °C | 4.173, 46.7 °C, 0 W removed | 38.6 W (0.38 W/mm²) |
+| `--above-vf-table` to 6.5 GHz (voltage clamped: upper bound) | **6.50 GHz**, search ceiling, 67.0 °C | 6.50, 61.5 °C | 6.50, 61.5 °C, 0 W | 59.4 W (0.59 W/mm²) |
+
+**Why.** The clock search scales power from the trace's *own* operating point: the replicated
+single-thread LINPACK trace is **31.1 W on the die at 3.8 GHz — 0.31 W/mm²** under the
+corrected accounting — so at the device's 10 % overdrive ceiling (4.173 GHz at 0.770 V, the
+SPICE curve's `f_max`) the die is at 50 °C, and even at a clamped 6.5 GHz it is at 67 °C.
+**No arm ever meets a thermal limit**, the laser removes nothing, and P1/P3/P5 are "not as
+predicted" for a reason that has nothing to do with the cooler: the density ladders — every
+rescue, dark-silicon and D1 row — sit **2.5–8× above** this trace's native density. The
+thermal problem the array solves belongs to workloads that dense (vector-heavy code, the
+accelerator), not to this trace at its own power. P2 is "confirmed" only nominally (4.17 is
+inside 4.1–4.3 because that is where the device ceiling is). **P4** is wrong in the opposite
+sense: 6.5 GHz is the *search* ceiling, and nothing thermal stops the die before it.
+
+`[+]` Two honest statements come out of this anyway. (1) **The device, not the cooler, caps
+this die's clock on this trace:** the SPICE curve's 4.17 GHz at 0.77 V (the shipped table's
+5.0 GHz is the same statement one table further) — a clock number the pack may quote with its
+provenance, and one no cooler moves. (2) **Every clock-vs-cooling claim needs the operating
+point stated in W/mm², not in GHz alone**, because the same clock on this die spans 0.3 to
+2.6 W/mm² depending on the workload's activity.
+
+**Built in response:** `clock_headroom.py --density` (scale the trace to `density × area` at
+the trace's clock, exactly as the density ladders do, then search the clock from there).
+**Part 2, predictions before the run** (`results/clock_f1c_density/`, arm D, 88 CFM, three
+arms, SPICE V/F to its ceiling, plus one `table` run and one `--above-vf-table` run at 1.00):
+
+- **P6 — at 0.78 W/mm² (the ladders' "native")**, all three arms reach the **device ceiling
+  4.17 GHz** (the driver's control holds 0.78 unaided, §P0.23.2): still device-limited.
+- **P7 — at 1.00 W/mm²** the control is **runaway-limited below 3.8 GHz** (it has no steady
+  state at 1.00 at 3.8 GHz): **3.4–3.7 GHz**; `array_idle` **3.8–4.0** (spec- or runaway-
+  limited); `array_on` reaches the **device ceiling 4.17 GHz** with 10–40 W removed — the laser
+  turns a clock-down into the device's own maximum: **+13–23 %** over the control.
+- **P8 — at 1.20 W/mm²** the control **3.0–3.4 GHz**, idle 3.4–3.7, laser **4.17 GHz** (the
+  ceiling) with 40–90 W removed: **+25–40 %**. Falsifier for P7/P8: `array_on` below 4.0 GHz.
+- **P9 — with the shipped table (5.0 GHz ceiling) at 1.00**, `array_on` reaches **4.6–5.0 GHz**
+  (`vf_clamped` at 5.0) at ~1.4–1.6 W/mm²; **above the table** (ARGUED) the laser holds to
+  **5.5–6.0 GHz** where the die crosses ~2.4 W/mm² and conservation ends it.
+- **P10 — FLOP/s per package watt falls with clock on every arm** (V²f).
+
+### `[x]` §P0.26 RESULT, part 2 — from the ladders' operating points the laser converts thermal headroom into clock until the DEVICE ends it: +14 % at 1.00 W/mm², +26 % at 1.20 on the SPICE ceiling, +34 % on the shipped table
+
+`results/clock_f1c_density/` (5 runs, 37 min), `examples/clock_f1c_report.py --base
+results/clock_f1c_density` → `docs/evidence/clock_f1c_density.json`. Throughput is
+`f × 32 × 34` FLOP/s at the sustainable clock (ops over walltime at fixed IPC).
+
+| operating point at 3.8 GHz | control | `array_idle` | `array_on` | laser gain vs control |
+|---|---|---|---|---|
+| 0.78 W/mm², SPICE V/F | **4.07 GHz** (thermal, 95.6 W) | 4.17 (device ceiling) | 4.17 (device ceiling, 0 W) | +2 % — the ceiling is 2 % away |
+| 1.00, SPICE | **3.66** (thermal, 93 W) | 3.90 (thermal) | **4.17 (device ceiling), 38 W removed, 127 W die** | **+14 %** |
+| 1.20, SPICE | **3.32** (thermal, 90 W) | 3.60 (thermal) | **4.17 (device ceiling), 78 W removed, 151 W die** | **+26 %** |
+| 1.00, shipped table (5.0 GHz ceiling) | 3.64 | 3.92 | **4.86 GHz, thermal-limited at 100 °C**, 235 W removed, 230 W die (2.28 W/mm²) | **+34 %** |
+| 1.00, SPICE, `--above-vf-table` to 6.5 (voltage clamped: upper bound) | 3.65 | 3.90 | 6.50 = the search ceiling, 154 W removed, 189 W die | ARGUED only |
+
+GFLOP/s per package watt (die + fan + net laser) **falls with clock on every arm**: 33.9 → 33.4
+at 0.78; 31.1 → 29.7 → 24.5 at 1.00; 28.8 → 27.8 → 19.5 at 1.20; 31.6 → 29.5 → 12.9 on the table.
+
+**Scorecard.** **P6 nearly** — idle and laser at the device ceiling, the control 2 % short of
+it (4.07, thermal). **P7 confirmed** — control 3.66 (3.4–3.7), idle 3.90 (3.8–4.0), laser at
+the ceiling with 38 W (10–40), +14 % (13–23 %). **P8 confirmed** — 3.32 / 3.60 / ceiling with
+78 W (40–90), +26 % (25–40 %). **P9 half** — on the table the laser reaches **4.86 GHz**
+(4.6–5.0) but **thermally limited at 2.28 W/mm²**, not clamped at 5.0 at 1.4–1.6: the V²f cost
+of the last 0.7 GHz is dearer than the cubic estimate; above the table nothing thermal stops
+the laser arm before the 6.5 GHz search ceiling (its 189 W is understated by the clamp), so the
+"5.5–6.0 with conservation" reading is withdrawn — the honest statement above the table is
+"no bound found inside the search". **P10 confirmed.**
+
+`[+]` **The statement the pack may make, MEASURED:** *at 1.0 W/mm² the conventional package
+must clock this die down to 3.66 GHz to keep a steady state; with the photonic array it runs
+at the device's own ceiling, 4.17 GHz (+14 %), and on the shipped V/F table to 4.86 GHz
+(+34 %) — the laser turns thermal headroom into clock until the transistor's V/F, not the
+cooler, ends it. Throughput per package watt falls on every arm as the clock rises: the array
+buys performance per package, not efficiency.* Every clock carries its operating point in
+W/mm² and its V/F source; the SPICE ceiling (4.17 GHz at 0.77 V, 10 % overdrive, uncalibrated)
+and the table's 5.0 GHz are both model ceilings, stated as such.
+
+## `[x]` §P0.25 — F4: burst absorption, the modulated array against the package's thermal mass. PREDICTIONS, before any run  `[x]` 10–11 Sep 2026
+
+`docs/FUTURE_EXPERIMENTS.md` experiment 4. **Built first** (all additive, 160 tests in the
+touched suites): the array is now wired for `mode='transient'` (`ICEThermalSolver` passes the
+tile floorplan and per-slot tile series to `ICETransientSim`, whose renderer already joined
+series; scalars broadcast; the extractor cap stays steady-only), `mr_array.tile_power_schedule`
+(a block-level plan per slot projected onto the tiles slot by slot), and
+`examples/burst_absorption_study.py`. The two tests that guarded the transient refusal were
+rewritten *deliberately*: the array is accepted, `mr_temps` and the session cache are still
+refused in transient mode, and a tile series of the wrong length is refused.
+
+**The experiment.** 34-core, arm D, 88 CFM, 50 µm, target 92 °C, spec 100 °C. Steady operating
+point `d0` ∈ {0.80, 1.00} W/mm²; for **10 ms** every block's DYNAMIC power is multiplied by
+**k** ∈ {1.5, 2.0, 3.0} (an activity burst at fixed voltage; the leakage reference is untouched
+and the feedback follows the temperature); 5 ms before, 10 ms after; 1 ms slots, 10 sub-steps.
+Each arm is **warm-started** from its own converged steady state (`final.tstack`). Arms:
+`control` (grease), `array_static` (GaAs array with the steady baseline plan held through the
+burst), `array_modulated` (feed-forward: the burst's own added watts removed at their source,
+block by block, during the burst slots — what a controller with a power monitor would command,
+and physically what a microsecond-response optical array can deliver).
+
+The physics the predictions rest on: the added heat at k = 2 is (k − 1) × 0.68 × 81 W ≈ **55 W**
+for 10 ms (0.55 J); the die's silicon holds ~0.04 J/K and the copper base reached by conduction
+in 10 ms (~1 mm) another ~0.3 J/K, so the *die-average* rise is small (a few kelvin) — but the
+hot block's *local* excess over its neighbourhood (~10–20 K at steady state on the cALU) tracks
+its own power on a sub-millisecond time constant, so the **peak** block overshoots by roughly
+its local excess × (k − 1).
+
+- **P1 — the control overshoots through the target and, at k = 3, through the spec.** At 0.80
+  (steady ~75 °C, cALU): overshoot **+8–20 K at k = 2** (peak ~85–95 °C), **+15–40 K at k = 3**
+  (past 100 °C for ≥ 5 of the 10 ms). The peak block is a cALU throughout. Falsifier: overshoot
+  < 5 K at k = 3 — the package's mass absorbs the burst and the burst story is moot on this die.
+- **P2 — the static array does not help with the burst.** Its overshoot matches the control's
+  within ±3 K (nothing is switched; the 30 µm GaAs layer is not a thermal mass); it only carries
+  its steady offset (~7 K cooler baseline). Falsifier: the static array's overshoot < half the
+  control's.
+- **P3 — the modulated array absorbs the burst.** Overshoot **≤ 3 K** at every k (the added heat
+  is removed where it lands, through 200 µm of silicon — a lag of ~0.1–1 ms), **0 ms above the
+  spec at k = 3**, at a laser draw during the burst of ~4× the burst's added watts (55 W removed
+  → ~200 W electrical gross at COP 0.272; 2 J per 10 ms burst at k = 2). Falsifier: overshoot
+  ≥ half the control's.
+- **P4 — at 1.00, where the control has no steady state,** the array arms start from 89 °C: the
+  static array crosses the 100 °C spec within the 10 ms at k = 2; the modulated array stays
+  within 3 K of 89 °C at every k.
+- **P5 — no transient runaway inside the 25 ms window at any k**: the die-wide runaway time
+  constant is the package's (≫ 10 ms), so the burst ends before the loop gain can act. Falsifier:
+  a `diverged` transient at k ≤ 3.
+
+`scripts/burst_ladder.sh` → `results/burst/d<d0>/k<k>/`; a one-point smoke (0.80, k = 2, all
+three arms) goes first because the warm-start and the transient array path have never run end
+to end; the ladder follows only if it lands.
+
+**Smoke point, landed 10 Sep (0.80 W/mm², k = 2, 105 min for three arms):** control steady
+80.6 °C → peak **118.1 °C** (+37.5 K; 20 ms above the target, **11 ms above the spec**);
+static array 72.8 → 108.8 °C (+36.0 K; 6 ms above spec); **modulated array 72.8 → 87.1 °C
+(+14.2 K; 0 ms above target or spec)** removing **70.4 W** during the burst (the burst adds
+70 W of dynamic power: 0.68 × 81 W × (k − 1) — the 55 W in the predictions used the wrong
+static fraction; the driver's number is the trace's). P1's *direction* holds and its magnitude
+was low by 2×: the peak block's local excess doubles on its own time constant and the leakage
+feedback rides on top. P2 holds (36 vs 37.5 K). P3's ≤ 3 K is missed (14 K) while the modulated
+array still keeps the die under the target: feed-forward removal through 200 µm of silicon
+lags the burst by more than the sub-millisecond the prediction assumed. The full ladder
+(0.80 / 1.00 × 1.5 / 2 / 3) is queued.
+
+### `[x]` §P0.25 RESULT (all six points landed 10–11 Sep) — the modulated array cuts the burst's overshoot 2.5–3.3×; the package and the static array ride it on thermal mass and cross the spec at k = 2; at 1.00 W/mm² a k = 3 burst RUNS AWAY under the static array inside the window
+
+`results/burst/`, `examples/burst_report.py` → `docs/evidence/burst_absorption.json` (complete).
+Each point is ~100 min (three arms, each a warm-started transient with damping verification);
+the last three landed at 18:56 on 10 Sep. Window 25 ms (5 pre, 10 burst, 10 post): "20 ms
+above spec" means the die never came back under 100 °C inside the window.
+
+| d0 W/mm² | k | added W | control | static array | **modulated array** (feed-forward) |
+|---|---|---|---|---|---|
+| 0.80 | 1.5 | 35 | 80.6 → 98.5 °C (+17.9 K), 0 ms above spec (7 ms above target) | 72.8 → 90.8 (+18.0 K), 0 ms | **72.8 → 79.9 (+7.1 K)**, 0 ms above target; 1.3 J of laser |
+| 0.80 | 2.0 | 70 | 80.6 → **118.1 (+37.5 K), 11 ms above spec** | 72.8 → 108.8 (+36.0 K), 6 ms above spec | **72.8 → 87.1 (+14.2 K)**, 0 ms above target; 70 W removed, 2.6 J |
+| 0.80 | 3.0 | 141 | **non-viable** (past 127 °C; +94.6 K in the model), above spec for the whole 20 ms | **non-viable** (past 127 °C; +76.1 K), 15 ms above spec | 72.8 → **101.3 (+28.5 K)**, 6 ms above spec; 141 W removed, 5.2 J |
+| 1.00 | 1.5 | 44 | no steady state to burst from | 89.1 → **113.9 (+24.9 K), 14 ms above spec** | **89.1 → 96.6 (+7.5 K)**, 0 ms above spec (10 ms above target) |
+| 1.00 | 2.0 | 88 | no steady state | **non-viable** (past 127 °C; +57.8 K), 20 ms above spec | 89.1 → 104.4 (+15.3 K), 10 ms above spec; 88 W, 3.2 J |
+| 1.00 | 3.0 | 176 | no steady state | **transient RUNAWAY** — `diverged` inside the 25 ms window | 89.1 → 122.1 (+33.1 K), 10 ms above spec; 176 W, 6.5 J |
+
+**The durable number is a sensitivity, not a temperature.** Overshoot per added watt of burst:
+control **0.51 / 0.53 / 0.67 K/W** (k = 1.5 / 2 / 3; super-linear at k = 3 as the leakage
+feedback rides on top), static array 0.51 / 0.51 / 0.54, **modulated array 0.20 / 0.20 /
+0.20 K/W at 0.80 and 0.17 / 0.17 / 0.19 at 1.00** — linear in the added watts on every arm
+that holds, so the modulated array's reduction is **2.5× at k = 1.5, 2.6× at k = 2, 3.3× at
+k = 3**. The residual 0.2 K/W is the conduction lag through 200 µm of silicon between the
+source plane and the tile plane plus the peak block's own local rise, which no feed-forward
+plan at the tile plane removes.
+
+**Final scorecard.** **P1 confirmed in direction, magnitude 2–2.4× low** — +37.5 K at k = 2
+(predicted 8–20), +94.6 K at k = 3 (predicted 15–40), above the spec for all of the burst and
+all of the recovery window at k = 3 (predicted ≥ 5 ms). The falsifier (< 5 K) is nowhere near.
+**P2 confirmed** — the static array's overshoot equals the control's within 1.5 K at k ≤ 2
+(the 30 µm GaAs layer is not a thermal mass; it carries its 8 K steady offset and nothing
+else); at k = 3 it is 18 K less, which is the offset acting through the leakage feedback, and
+still 80 % of the control's. **P3 absorbs, outside the 3 K band** — worst overshoot 28.5 K at
+k = 3 (predicted ≤ 3 K); 0 ms above the spec at k ≤ 2, **6 ms at k = 3** (predicted 0); the
+laser spends 2.6 J on a k = 2 burst (predicted ~2 J). The falsifier (≥ half the control's
+overshoot) is not met at any k. **P4 half** — the static array crosses the spec at every k at
+1.00 (14 / 20 / 20 ms: confirmed, and at k = 1.5 already, not k = 2); the modulated array does
+NOT stay within 3 K of 89 °C (7.5 / 15.3 / 33.1 K): starting 3 K under the target it has no
+margin, so it crosses the target at every k and the spec at k ≥ 2 for the 10 ms of the burst.
+**P5 falsified for one arm** — the static array at 1.00 / k = 3 **runs away inside the
+window** (`diverged`, 44 feedback iterations): a die that sits at 89 °C on its cool branch is
+tipped onto the hot one by 176 W for 10 ms, and the transient runaway time constant is the
+peak block's own, not the package's. The control cannot be tested there (no steady state),
+and the modulated array runs away nowhere.
+
+`[+]` What this says, now that the ladder is complete. The burst case is the one where the
+array's *speed* — not its steady capacity — is the claim: a conventional package and an
+unpowered array both ride a 10 ms burst on thermal mass and cross the 100 °C spec at k = 2
+(11 and 6 ms) on a die that holds 0.80 W/mm² with 20 K of margin; the modulated array,
+commanded from the power monitor (feed-forward, the burst's own added watts removed at their
+source), holds the die **under its 92 °C target through a 2× burst and under the spec (by
+1 K) through a 3× burst**, at a fifth of the package's overshoot per watt. Where the die has
+no margin (1.00 W/mm², 3 K under target) the same array cuts the overshoot by the same factor
+but the burst still crosses the target, and the spec at k ≥ 2 — the burst claim is a margin
+claim, stated with the operating point. The cost is the laser draw *during* the burst
+(70 W removed at k = 2 ≈ 260 W electrical for 10 ms, 2.6 J; 176 W ≈ 650 W for 6.5 J at the
+worst point). ARGUED beside it: the array's optical response is microseconds; the model's
+1 ms slots and 0.1 ms sub-steps resolve the thermal response, not the optical one; the
+extractor's per-tile cap is steady-only, so the modulated arm's tile flux is not capped by
+the film — read it against the device: the burst plan projected on the 500 µm tiles asks **5.2 W/mm² of one tile at 0.80 / k = 2, 10.5 at k = 3, 6.5 at 1.00 / k = 2 and 13.1 W/mm² at 1.00 / k = 3** (`MR_r01_c01`, 550 × 500 µm, read from the transient `MR.flp`) — the first demand in the repository above the steady ~5 W/mm² of register §4, for 10 ms, and still 60× under the target device's 813 W/mm² at 300 K. `[!]` Two rows are past 127 °C and are
+reported as **non-viable**, never as a temperature; one row is a transient `diverged` and is
+a runaway, not a number.
+
+## `[x]` §P0.24 — F3: the accelerator at its real operating point, with the array. PREDICTIONS, before any run  `[~]` 10 Sep 2026
+
+`docs/FUTURE_EXPERIMENTS.md` experiment 3. GA100 (826 mm², 367 blocks, areas measured from die
+shots, power split ASSUMED — every row carries `calibrated: false`) on the **direct-die
+microchannel cold plate** (`ACCEL_COOLING`: `--microchannel --dt-fluid-K 10 --inlet-C 30`,
+0.0153 K/W at 700 W, `microchannel_coldplate.json`), **100 µm cells** as every accelerator row,
+three arms by three invocations (`scripts/accel_mr_batch.sh`'s pattern), **target 92 °C** (the
+CPU ladders' target; the 26 Aug batch used 98 °C), target device with the scalar 45 K, full
+coverage, 500 µm pitch, `--recovery-at-junction`.
+
+**The driver was extended first** (`examples/accelerator_study.py`, additive): `--leakage-curve`
+(default `simulated`, as everywhere since 9 Sep; the recorded accelerator rows were on the
+pipeline curve), `--mr-extractor` / `--mr-dt-max` (the per-tile cap, `mr_temps=True`),
+`--array-coverage`, `--mr-energy-cap`, and — `[!]` — **the conservation cap on the plan**
+(`die_power_W=realised_W`), which the recorded accelerator rows never had.
+
+`scripts/accel_f3_ladder.sh` → `results/accel_f3/`: uniform kernel at **700 / 1000 / 1400 / 2000 /
+2600 W** (0.85–3.15 W/mm²) × three arms; occupancy kernels **occ8** and **occ32** (contiguous) at
+**700 and 1400 W** × three arms. 27 invocations, PAR=4 (a GA100 session peaks at 14 GB).
+
+The measured neighbours: on the microchannel plate the GA100 held 64 °C at 700 W and 51 °C at
+400 W uniform (pipeline curve, no leakage runaway); the occ8 kernel at 700 W peaked at 100.6 °C
+on `SM1_DP` with a 15-block plateau and MR removing 11 W without holding 98 °C (no conservation
+cap, pipeline curve, `results/accel_mr/`). On the CPU die the array's ceiling is conservation
+at 2.40 W/mm² on a 0.325 K/W air package; the microchannel plate is ~20× better per unit area
+(0.0153 K/W × 826 mm² against 0.325 × 101).
+
+- **P1 — the control (grease + microchannel) runs away between 1000 and 2000 W.** Uniform:
+  holds 700 (~65 °C) and 1000 W (80–90 °C); fails at 1400 or 2000 (leakage runaway on the
+  simulated curve). Falsifier: holds 2000 W (then the accelerator on this plate has no thermal
+  problem for the array to solve at any realistic power).
+- **P2 — the unpowered GaAs layer buys one rung** (the 30 µm substitution), as on both CPU dies.
+- **P3 — the laser holds ≥ 2000 W (2.4 W/mm²) and, with a sink this good, 2600 W too**, with
+  `s` ≤ 0.6 at 2000 W: the plate carries most of the heat and the array clips what the plate
+  cannot spread. The sustainable power is **1.5–2× the control's**. Falsifier: the laser fails
+  at ≤ 2000 W, or `s` ≥ 0.9 at 2000 (the plate is not doing its share).
+- **P4 — per-tile demand finally reaches the device's scale, but does not bind.** Max tile flux
+  **50–300 W/mm²** at 2000–2600 W uniform and **≥ 100 W/mm²** on the occ8 kernel — against
+  ≥ 813 W/mm² from the dye at 300 K tiles — so **0 tiles capped**, and the rung the accelerator
+  needs is rung 5–6 of Table 8.2, not rung 4 as the CPU (§P0.20). Falsifier: max tile flux
+  < 50 W/mm² everywhere (the device is still 10× under-used on an accelerator).
+- **P5 — the concentrated kernel is where the laser earns its keep.** occ8 at 700 W: the control
+  holds a steady state above the target (~100 °C on the SM datapath, as recorded); the laser
+  holds 92 °C for **10–25 W** removed from the eight active SMs' tiles. occ8 at 1400 W: the
+  control runs away; the laser holds for **≤ 120 W**. The hot spot is an SM datapath block at
+  every point. Falsifier: the laser cannot hold occ8 at 1400 W.
+- **P6 — the multiplier is smaller on the accelerator than on the CPU** (1.5–2× against 2.2–2.4×)
+  because the control's cliff sits further up a much better sink. Falsifier: ≥ 2.4×.
+
+## `[x]` §P0.23 — the second front opens: iso-package compute scaling (F1) and dark-silicon recovery (F2). PREDICTIONS, before any run  `[~]` 10 Sep 2026
+
+`docs/FUTURE_EXPERIMENTS.md` experiments 1 and 2, launched together on the campaign server.
+Same discipline: arm D, the 34-core arm-D point as the anchor, predictions here first.
+
+### §P0.23.1 — F1: iso-package compute scaling in throughput terms, and the 70-core die with the array
+
+**(a) The existing rows, restated.** `examples/iso_package_throughput_report.py` reads
+`results/array_coverage_armD/c1.00` and reports, per rung and arm, converged die watts, GFLOP/s
+(thermal-only, `gflops`), GFLOP/s per package watt (`gflops_per_total_W`: die + fan + net MR)
+and the sustainable-watts multiplier. No solve. Prediction: **3.8×** the die watts at the same
+package (2.40 vs 0.60–0.65), and GFLOP/s per package watt that *falls* from ~1.20 W/mm² up
+(the laser's draw grows faster than throughput) — the honest shape of the energy claim.
+
+**(b) The 70-core die with the array** — `scripts/iso_package_70core_ladder.sh` →
+`results/iso_package_70core/`: 70-core, **100 µm cells** (§P0.22.0), arm D, 88 CFM, target
+92 °C, target device with the scalar 45 K, full coverage, 500 µm pitch; densities 0.60 / 0.70
+(control + idle + on), 0.80 / 1.00 / 1.20 / 1.60 / 2.00 / 2.40 (idle + on). Injected energy cap,
+as the reference ladder. The measured neighbours: the 70-core control holds 0.40 shaped / 0.65
+flat (§P0.22.1); the 34-core idle holds 1.10 and the laser 2.40 on a 0.325 K/W boundary; the
+70-core boundary is 0.234 K/W (1.40× the rise at the same density).
+
+- **P1 — the unpowered array's cliff scales with the boundary.** `array_idle` holds **0.70–0.80**
+  and fails by 0.90 (34-core: 1.10 / 1.20, divided by ~1.4). Falsifier: holds ≥ 1.00.
+- **P2 — the laser holds the big die to 2.0–2.4 W/mm²-equivalent**, i.e. **390–470 W** on the
+  same air-cooled package, with `s` reaching ~1 at the top rung and 0 tiles capped. Falsifier:
+  the top holding rung ≤ 1.60 (314 W), or any tile capped.
+- **P3 — the array's cost scales with die watts, not core count.** `s` at 2.00 W/mm² within
+  **±0.10 of the 34-core's 0.74**, and the net electrical cost per die watt within ±20 % at
+  matched density. Falsifier: `s(2.00)` > 0.90 (the bigger die is dearer per watt) or < 0.60.
+- **P4 — the peak block is a cALU** on every holding rung, as on the 34-core.
+
+`[!]` **F1(a) read before the launch (`docs/evidence/iso_package_throughput.json`).** The
+watts multiplier is as predicted (2.40 against 0.60–0.65: 3.7–4.0×), and GFLOP/s per package
+watt falls monotonically from 32.8 at 1.00 to 11.2 at 2.40 — but for a reason the prediction
+did not say out loud: at fixed core count the pipeline's thermal-only GFLOP/s is **flat**
+(4.38–4.40 TFLOP/s at the 4.03 GHz the 92 °C target allows) across the whole ladder. The rescue
+ladder injects more watts into the *same* 34 cores; nothing in the model turns those watts into
+throughput. So "3.8× the compute on the same package" is **not** what the rows say — they say
+3.8× the die **watts**. The compute multiplier exists only through more cores (F1b, the 70-core
+die: 2.06× the cores at the same clock) or a higher clock (capped by the spec and the V/F
+table). Quote the watts multiplier; quote a compute multiplier only from F1b.
+
+### §P0.23.2 — F2: dark-silicon recovery
+
+`scripts/dark_silicon_ladder.sh` → `results/dark_silicon/`: 34-core, 50 µm, arm D, 88 CFM,
+target 92 °C, target device with the scalar 45 K; `--activity mixed --background 0.25
+--activity-scope iso-per-core` (the saturated die is normalised to `--density`, then the quiet
+cores drop to 25 %); active fractions **0.25 / 0.50 / 0.75 / 1.00**; per-core power at
+**0.78 W/mm²** (the trace's native map), **1.00, 1.20, 1.50**; arms control, `array_idle`,
+`array_on`. `[!]` `mixed_utilisation` activates the lowest-index cores first, and the tiler
+lays cores out row by row, so the active set is a **contiguous block** — thermally the worst
+case (a scheduler would spread them). Stated, and kept: it is the case a cooler must survive.
+Die-average density at (d, f) = d × (f + 0.25 (1 − f)).
+
+- **P1 — the traced die cannot be fully lit on this package without the array.** At the native
+  0.78 W/mm² the control lights **50 %** (die average 0.49) and fails at 75 % (0.63 — the
+  shaped cliff, with the hot cores clustered); at 1.00 it lights 25–50 %; at 1.20 and 1.50, 25 %
+  at most. Falsifier: the control holds 100 % at 1.00.
+- **P2 — the material substitution alone lights the native die.** `array_idle` (GaAs in place
+  of grease, no light) holds **100 % at 0.78 and 1.00**, 75 % at 1.20, 50 % at 1.50 — because
+  the unpowered array holds 1.10 W/mm² uniformly lit and the clustered case is somewhat worse.
+  `[!]` So at the native power the *laser* is not what recovers dark silicon on this die; the
+  passive layer is. Falsifier: idle fails at 100 % / 0.78.
+- **P3 — the laser lights 100 % at every per-core power tested**, at a cost that tracks the
+  uniform ladder: **≤ 5 W** at 0.78 and 1.00, **15–35 W** at 1.20, **50–80 W** at 1.50.
+  Falsifier: `array_on` fails to light 100 % at ≤ 1.50, or costs > 100 W there.
+- **P4 — clustering costs the control more than the array.** The control's highest lit fraction
+  at a given die average sits **one rung below** the uniform ladder's cliff (0.60–0.65) because
+  the hot cores are adjacent; the array's minimum plan at 100 % is within **±25 %** of the
+  uniform ladder's plan at the same die average (the array resolves the cluster). Falsifier:
+  the array's plan > 1.5× the uniform ladder's at the same die average.
+
+### `[x]` §P0.23 RESULT — both rounds landed in 13 minutes; two predictions falsified, both about the big die
+
+`docs/evidence/iso_package_throughput.json` (`examples/iso_package_throughput_report.py`),
+`docs/evidence/dark_silicon.json` (`examples/dark_silicon_report.py`); raw
+`results/iso_package_70core/`, `results/dark_silicon/`.
+
+**F1b — the 70-core die with the array (100 µm, arm D, target device):**
+
+| density | control | `array_idle` | `array_on` | Q | s | TFLOP/s | GF/s per package W |
+|---|---|---|---|---|---|---|---|
+| 0.60 | holds 81.4 °C (116 W) | holds 73.7 | holds, nothing to do | 0 | 0 | 9.2 | 61 |
+| 0.70 | **holds 97.0 °C (137 W)** | holds 85.3 | holds | 0 | 0 | 9.1 | 53 |
+| 0.80 | — | **holds 100.5 °C** | holds 93.2 | 0.5 (lower bound) | 0 | 9.0 | 47 |
+| 1.00 | — | fails | holds 93.3 (197 W) | 16.1 | 0.08 | 9.0 | 37 |
+| 1.20 | — | fails | holds 93.9 (234 W) | 78.3 | 0.34 | 9.0 | 28.5 |
+| 1.60 | — | fails | **holds 93.7 (301 W)** — cool branch bracketed | **279.2** | **0.93** | 9.0 | 17.8 |
+| 2.00, 2.40 | — | fails | **no steady state even at full capability** | — | — | — | — |
+
+**Scorecard.** **P1 not falsified** (idle holds 0.80, the top of the predicted 0.70–0.80, fails
+at 1.00; 0.90 not run). **P2 FALSIFIED** — the laser holds the big die to **1.60 W/mm² = 301 W**,
+not 2.0–2.4 (390–470 W); 2.00 has no steady state at full capability. **P3 FALSIFIED** — at
+1.60 the array already lifts **93 %** of the die's heat where the 34-core's lifted 49 %; the
+bigger die is dearer per watt at the same density, not the same. **P4 confirmed** (cALU).
+
+`[+]` What this says. (1) The **multiplier travels, the watts do not**: the laser takes the
+70-core from the driver's control cliff (0.70, 137 W) to 1.60 (301 W) — **2.2×**, against the
+34-core's 1.00 → 2.40, 2.4× — and s reaches ~1 one rung earlier because the fixed 1825 mm² base
+sees 1.94× the watts at 0.72× the resistance (§P0.22.1's 1.40×): the array has to take over
+sooner, and above 1.60 the die is bistable even with the array carrying everything. (2) The
+compute statement the proposal may make: **9.0 TFLOP/s (2.06× the cores) at 4.03 GHz on the same
+88 CFM package**, at 506 W of package power at the top rung against 4.4 TFLOP/s at 392 W for
+the 34-core — and the efficient point is the control's 0.60–0.70 (53–61 GFLOP/s per package
+watt), because the laser buys *density*, not efficiency (§P0.23.1's F1(a) note). (3) `[!]`
+**Two control ceilings exist and they differ by a factor ~1.5–1.75**: the density probe's
+shaped arm (leakage a fixed fraction of every block's power: 0.60–0.65 on the 34-core, 0.40–0.50
+on the 70-core) and the driver's control arm (McPAT's per-unit leakage split: holds to 0.88–1.00
+on the 34-core, 0.70 on the 70-core). Both are in the register; §P0.23.2's P1 was written
+against the wrong one. Now a standing constraint (register §4): **say which**.
+
+**F2 — dark-silicon recovery (34-core, 50 µm, arm D, hot cores a contiguous block):**
+
+| per-core W/mm² | control lights | GaAs layer, no light | laser | laser cost at 100 % (net) |
+|---|---|---|---|---|
+| 0.78 (native) | **100 %** (79 °C) | 100 % (71 °C) | 100 % | 0 W |
+| 1.00 | **50 %** (109 °C); 75 % unconverged; 100 % runaway | 100 % (89 °C) | 100 % | 0 W (the passive layer suffices) |
+| 1.20 | **none** — even a contiguous quarter runs away (die average 0.53) | 25 % (107 °C); 50 % unconverged; 75 % runaway | **100 %** (93 °C) | **17.3 W (10.6 net)**; 25 %: 0.7 W, 50 %: 1.6, 75 %: 12.8 |
+| 1.50 | none | none | **100 %** (92 °C) | **64.2 W (39.3 net)**; 25 %: 48.7, 50 %: 43.0, 75 %: 53.8 |
+
+**Scorecard.** **P1 FALSIFIED** — the control lights the traced die fully at its native power
+(the prediction used the probe's ceiling; the driver's control holds to ~1.0) and 50 % at 1.00.
+**P2 confirmed and then some** — the unpowered GaAs layer lights 100 % at 0.78 and 1.00, but
+only 25 % at 1.20 and nothing at 1.50 (predicted 75 % / 50 %): clustering hurts the passive
+layer more than predicted. **P3 confirmed** — the laser lights 100 % at every per-core power,
+at 0 / 0 / 17.3 / 64.2 W (predicted ≤ 5 / ≤ 5 / 15–35 / 50–80). **P4 confirmed trivially** — at
+100 % the mixed map *is* the uniform map, so the ratio is 1.00 by construction; the informative
+rows are the partial ones, where at 1.50 a lit **quarter costs more than a lit half** (48.7 vs
+43.0 W): a contiguous block of eight cores at 1.5 W/mm² is a harder hot spot than sixteen,
+and the minimum-plan bisection lands accordingly. Quote it as measured, with that reading.
+
+`[+]` The dark-silicon statement the proposal may make: **at 1.2 W/mm² per core no contiguous
+quarter of this die can be lit on this package; the unpowered GaAs layer lights a quarter; the
+laser lights all 34 cores for 17 W (11 W net). At 1.5 W/mm² only the laser lights any fraction
+— all of it, for 64 W (39 W net).** At the native 0.78 W/mm² the die needs no help on this
+package (driver's control), so the recovery claim starts at ~1.0 W/mm² per core.
+
+## `[~]` §P0.22 — the architecture-evolution phase opens: D4 falsification ladder, D3 cache-leakage objective, D1 dense-cluster family. PREDICTIONS, before any run  `[~]` 9 Sep 2026
+
+**The user's decisions (9 Sep).** The one-die rule is lifted; the designs are ARGUED and measured
+where the day allows; the deliverable is `docs/designs/EVOLUTION_LADDER.md`; D3's cache-leakage
+planner objective is built now. Same discipline as before: one variable at a time, the 34-core
+arm-D die as the fixed reference, predictions here before the launch, a falsifier per prediction.
+
+**Decision (user, 10 Sep):** the six future experiments proposed at the end of the session are
+recorded as a second front in `docs/FUTURE_EXPERIMENTS.md`, ranked; the net-export energy story
+is reserved for the post-evolution, ISA-classed core designs (v100 Tier III, past the BEOL
+wall). Nothing in §P0.22 licenses a net-export claim.
+
+### §P0.22.0 — one grid decision, made before the launch, and it is not free
+
+The 70-core die (196.0 mm², 18541 × 10582 µm, 2314 blocks) on the control stack at 50 µm cells
+is **629 k unknowns** (78.6 k cells × 8 layers), against the toolchain's largest measured
+factorisation of **366 k** (`leakage_feedback.LARGEST_MEASURED_UNKNOWNS`; the 34-core control
+stack is 324 k). It will not solve at the recorded grid. The D4 ladder therefore runs at
+**`--cell-um 100`** (157 k unknowns), and because a coarser grid understates peaks on small
+blocks (`METHODS.md` §5), the 34-core reference is **re-run at 100 µm around its own cliffs** so
+the two dies are compared on one grid. Nothing at 100 µm is compared with the recorded 50 µm
+rows except through that matched control.
+
+### §P0.22.1 — D4: the 70-core die as a falsification test of the 3 Sep predictions
+
+`scripts/uniform_density_ladder_d4.sh` → `results/uniform_density_70core_armD/` (70-core, uniform
+0.45–0.95, shaped 0.30–0.70) and `results/uniform_density_34core_c100_armD/` (34-core at 100 µm,
+uniform 0.80–1.00, shaped 0.55–0.75). Arm D, 88 CFM, spreading, `uniform_density_probe.py`,
+`PAR=8`. 30 points.
+
+The measured neighbours: the 34-core arm-D ladder at 50 µm holds uniform **0.85** (60.5 °C,
+`core_other_5`) and fails 0.90; holds shaped **0.60** (76.6 °C, `cALU_16`) and fails 0.65
+(`results/uniform_density_armD/`). The 70-core die sees a boundary of **0.234 K/W** against the
+34-core's 0.325 (`spreading_boundary_by_die.json`, fixed 1825 mm² base): 1.94× the watts at the
+same density on 0.72× the resistance is **1.40× the temperature rise across the base**, with the
+in-die conduction path unchanged per unit area.
+
+- **P1 — the grid control.** At 100 µm the 34-core **uniform** cliff is unchanged (holds 0.85,
+  fails 0.90): a Gini-0 die has no small hot block for the grid to smear. The **shaped** cliff
+  moves **up by 0–1 rung** (holds 0.60 or 0.65) because the 142 × 115 µm cALU is under-resolved at
+  100 µm. Falsifier: either arm moves ≥ 2 rungs, in which case the 100 µm ladders cannot be read
+  against the recorded ones at all and D4 is reported on its own grid only.
+- **P2 — the flat-die ceiling does NOT travel as a density.** 70-core uniform arm holds **0.65–0.75**
+  W/mm² and fails by 0.80 — down from the 34-core's 0.85, by roughly the 1.40× boundary factor
+  diluted by the unchanged in-die path. Falsifier: holds ≥ 0.85 (the boundary is not what sets the
+  flat-die limit) or fails ≤ 0.60 (something scales worse than the base).
+- **P3 — the shaped ceiling moves the same way.** 70-core shaped arm holds **0.45–0.55**, fails by
+  0.60.
+- **P4 — the concentration ratio TRAVELS.** uniform/shaped ceiling ratio on the 70-core inside
+  **1.2–1.7** (34-core: 0.85/0.60 = 1.42). Falsifier: outside that band — the 1.4× is a property of
+  this die, not of the floorplan family.
+- **P5 — the hot-spot identity travels.** The 70-core shaped arm's runaway block is a **cALU** at
+  every diverging rung, as on the 34-core. Falsifier: `core_other` or an edge core.
+- **P6 — the absolute WATTS rise.** The 70-core's highest holding uniform die power is **130–150 W**
+  (0.65–0.75 × 196), above the 34-core's 86 W (0.85 × 101): a fixed base is a better sink for a
+  bigger die. This is the form in which "absolute ceilings do not travel" is expected to be true:
+  they move, in the direction the package says.
+
+### `[x]` §P0.22.1 RESULT — the flat ceiling moves the way the package says, the concentration ratio and the hot block travel
+
+`results/uniform_density_70core_armD/`, `results/uniform_density_34core_c100_armD/`,
+`examples/d4_falsification_report.py` → `docs/evidence/d4_falsification_70core.json`.
+
+| | 34-core, 50 µm (recorded) | 34-core, 100 µm (grid control) | **70-core, 100 µm** |
+|---|---|---|---|
+| flat (Gini 0) | holds 0.85 (60.5 °C), fails 0.90 | holds 0.85 (60.5 °C), fails 0.90 — **unchanged** | **holds 0.65 (61.1 °C), fails 0.70** |
+| shaped (real map) | holds 0.60 (76.6 °C), fails 0.65 | holds 0.60 (71.2 °C), fails 0.65 — **same rung**, peak 5 K lower | holds 0.40 (60.0 °C), **fails 0.50**; **0.45 UNCONVERGED** (375 / 421 K / runaway at three damping levels — the rung next to the cliff; neither a hold nor a failure) |
+| runaway block, shaped | cALU_16 | cALU_0 | **cALU_0 at all five failing rungs** |
+| highest holding flat die power | 86 W | 86 W | **127 W** |
+
+**Scorecard.** **P1 confirmed** — the grid moves neither cliff by a rung (the shaped peak reads
+5 K lower at 100 µm, as a smeared 142 µm block should, and the cliff does not move); the 100 µm
+ladders can be read against the recorded ones. **P2 confirmed** — the flat ceiling lands at
+**0.65**, the bottom of the predicted 0.65–0.75 band, failing by 0.70: the 34-core's 0.85 does
+not travel as a density, and it moves by the 1.40× the base resistance predicted (0.85/1.40 =
+0.61 ≈ 0.65 with the unchanged in-die path). **P3 not falsified, not confirmed** — the cliff is
+known to one rung: 0.40 holds, 0.50 fails, and 0.45 is undecidable (register §4's rule: an
+unconverged solve is neither), so the ceiling is inside the predicted 0.45–0.55 band if that
+rung holds and one rung below it if it fails. **P4 confirmed under either resolution** — the
+concentration ratio is 1.42 (if 0.45 holds) or 1.59 (if it fails), both inside 1.2–1.7. **P5 confirmed** — cALU at every diverging shaped rung; the hot-spot identity
+travels. **P6 rises, just outside the band** — 127 W against the predicted 130–150 W: the
+absolute watts rise with die area as the fixed base predicts, by slightly less than the linear
+estimate.
+
+`[+]` **What this says.** The 3 September prediction survives on a second floorplan: the
+**ratios travel** (1.4× concentration; cALU the hot spot; the flat-die limit set by the
+boundary) and the **absolute ceilings do not** — they move down as a density and up as watts,
+by the amount a fixed 1825 mm² base spreading a bigger die predicts. That is the falsification
+test the ladder needed before any gen-0 statement could be called a property of the floorplan
+family rather than of one die. `[!]` 100 µm cells throughout the comparison; the 50 µm rows are
+reached only through the matched-grid control, which moved nothing. `[!]` The unconverged rung
+is the same lesson as §P0.14's: adjacent to a cliff the answer depends on the damping, and the
+verifier refuses it rather than picking a side — quote the bracket, never the rung.
+
+### §P0.22.2 — D3: the cache-leakage planner objective, built and smoke-tested on the monolithic die
+
+**Build** (pure python, head node): `MRParams(zone_targets=[(pattern, T_K), …], objective=…)` with a
+per-block target `target_for(block)`; `clipping_plan`, the baseline descent, the envelope descent
+and both bisections test the **objective peak** `target_K + max_b (T_b − target_for(b))`, which
+under the default objective is bit-identical to the plain peak; `run_mr_clipping` stamps a
+per-zone report; a leakage ledger `thermal.leakage_ledger.zone_leakage_W` prices every reported
+field (die leakage and cache leakage at the solved temperatures, from the same `leak_ref` and
+curve the feedback loop used). `mr_comparison.py --mr-objective {peak,cache-leakage}` (default
+`peak`), `--mr-cold-target-K` (default 280), zone pattern shared with `--mr-cold-zone-pattern`.
+Every arm's row carries `die_leakage_W` and `cache_leakage_W`. Tests first
+(`thermal/test_mr_objective.py`).
+
+**Smoke** (`scripts/d3_objective_smoke.sh` → `results/d3_objective/`): 34-core, arm D, 88 CFM,
+target 92 °C, full coverage, `--arms array_idle array_on`, target device `dye`, at **1.00 W/mm²**
+(idle holds at 89.1 °C, so the reference row is a converged baseline with **0 W removed**, and the
+cache-zone rows are a clean difference against it) and **0.60** (the control holds too). Variants:
+cold target **280 K** and **300 K** × {`dt45` scalar kept, `dtnone` curve only, `dual` Cr:LiSAF on
+the cache tiles with the curve only}, plus the `peak` objective as the regression row.
+
+- **P1 — regression.** `--mr-objective peak` reproduces the 1.00 reference row to the digit
+  (0 W, 89.1 °C, `cALU_0`) and the 0.60 control/idle rows; the default code path is bit-identical.
+- **P2 — 280 K is unreachable on a monolithic die, and CONSERVATION is what says so.** The target is
+  15 K *below* the 295 K ambient. With the curve alone (`dtnone`) the descent asks for more than the
+  die dissipates (the plan reaches the die-power cap, `+die_power_scaled` or `conservation binds`)
+  and the cache zone lands **≥ 292 K**, not holding. Reasoning from the measured neighbour: 40 W
+  buys 1.24 K of lateral gradient (`POWER_RECOVERY_PLAN.md` TEST 1), so the caches cannot sit 70 K
+  below the ALUs; to put 30 % of the die sub-ambient the array has to put all of it sub-ambient,
+  which is refrigerating the room. Falsifier: a converged hold with cache-zone mean ≤ 285 K on a
+  plan ≤ 0.9 × the converged die power.
+- **P3 — with the scalar 45 K kept, the caches are LIFT-bound**, every cache block reports
+  `limit = dt_max`, and the zone lands at (its idle temperature − 45 K) ≈ **300–310 K** at 1.00.
+- **P4 — 300 K costs the whole die.** Holding the cache zone at 300 K (above ambient, reachable)
+  needs a minimum plan of **25–60 W at 1.00 W/mm²** (25–60 % of the ~99 W die), i.e. more than the
+  cache's own dissipation (~30 % of die power: 30 % of the area, leakage-heavy), because conduction
+  makes the array cool the compute blocks to cool the caches. Falsifier: plan ≤ the cache zone's own
+  power — targeting works on a monolithic die and the separate-die argument loses its measured leg.
+- **P5 — the ledger.** Cache leakage on the 300 K row is **≥ 3× below** the idle row's (the simulated
+  curve carries ~0.036/K below 345 K: 45 K is e^1.6 ≈ 5×, less the part the zone does not reach).
+  Falsifier: < 2×.
+- **P6 — Cr:LiSAF cannot do it, even at η_EQE = 1.** On the `dual` variant the ~80 cache tiles cap
+  at ≈ 0.045 W each (0.18 W/mm² × 0.25 mm² at 290 K, falling on cooling) against a zone asking for
+  ≥ 10 W: **shortfall > 90 %**, `extractor_bound`, the cache target not met. The storage-zone film
+  the ladder needs is ≥ 10× thicker than Table 1.1's 10 µm at the volumetric ceiling. Falsifier:
+  shortfall < 50 %.
+
+### `[x]` §P0.22.2 RESULT — the objective is built; on the monolithic die the cache knee is conservation-bound and 300 K costs 77 % of the die
+
+`results/d3_objective_v2/` (twelve planner iterations, corrected ledger; the six-iteration first
+pass in `results/d3_objective/` agrees on every cache figure), `examples/d3_objective_report.py`
+→ `docs/evidence/d3_cache_objective.json`; design record `docs/designs/gen3_cache_objective.md`.
+Build: `MRParams(zone_targets, objective)`, `objective_peak`, `zone_report`,
+`thermal/leakage_ledger.py`, `--mr-objective` / `--mr-cold-target-K` on `mr_comparison.py`,
+16 tests in `thermal/test_mr_objective.py` (the ledger pinned to `cold_zone_prize.die_ratios`).
+
+| 1.00 W/mm², arm D | plan | share of die | cache zone mean / max | cache leakage | stop |
+|---|---|---|---|---|---|
+| hot-spot objective (regression) | **0 W** | 0 | 55 / 79 °C | 4.88 W | reproduces the reference row exactly |
+| caches at 300 K | **≥ 71.3 W** | 0.77 | 299.7 / 322.4 K | **1.83 W (2.7× down)** | max_iter (lower bound; +3 % from 6 to 12 iterations) |
+| caches at 280 K, curve only or scalar kept | **99.4 W** | 1.00 injected / 1.08 converged | 289.5 / 316.5 K | **1.35 W (3.6× down)** | **conservation** scales the plan every iteration |
+| caches at 280 K, Cr:LiSAF on the cache tiles | 73.5 W delivered | 0.79 | 300.6 / 326.1 K | 1.83 W | **56 tiles capped, 18.1 W short** |
+
+At 0.60 W/mm² the same shape: 300 K costs 35.6 W (63 % of the die), 280 K the whole die (59.9 W
+on 55 W converged), the dual plate caps 56 tiles and falls 9.7 W short.
+
+**Scorecard: P1 confirmed exactly; P2 confirmed** (the falsifier — a hold with the zone ≤ 285 K
+on ≤ 0.9× die power — is not met; the plan is 100 % of the die and the zone sits at 289.5 K);
+**P3 not as predicted** — conservation scales the plan before the 45 K lift binds, so the scalar
+and the curve-only variants land on the same plan (the caches' idle temperatures are 328 K mean,
+352 K max, so a 45 K lift *would* have reached 283 K had the energy been there); **P4 confirmed
+in direction, number too low** — 77 %, not 25–60 %, of die power to hold the caches 20 K above
+the knee; **P5 below the prediction, above the falsifier** — 2.7×, not 3×; **P6 confirmed in
+substance** — the storage tiles cap and the target is not met, but the "> 90 %" was framed on the
+cache tiles' own request while the row reports the whole plan's shortfall (18 W of 91 W asked).
+
+`[!]` Two lessons on the way, both about the LEDGER, both caught by the first rows and both now
+tests: summing every key of the split file tripled the die total (McPAT's `Processor`,
+`Total Cores`, `NUCA` restate their children — 45.7 W read on a 99 W die); a true-leaf rule then
+dropped the bare `Core<N>` row, which *is* the `core_other` slab. The rule that survives is the
+pipeline's own — a unit counts iff its temperature key is on the solved die — and it reproduces
+`die_ratios` to four figures. The cache figure was right under all three rules.
+
+`[+]` **What this says for the ladder.** The cache-leakage prize (2.23×, knee 280 K) cannot be
+collected on the compute die at a price a cooler can pay: the array has to cool the ALUs to cool
+the caches (the 1.24 K/40 W gradient, now from the planner's side), so the gen-3 rung's binding
+constraint is the die boundary itself. And the storage material's failure here is a *load*
+failure, not a material one: the same tiles that fall 84 % short lifting the compute die's heat
+have a ~3× margin on the cold leakage of a separate storage die (1.35 W over 30 mm² against
+0.18 W/mm² per 10 µm at η_EQE = 1). Design ARGUED; constraint MEASURED.
+
+### §P0.22.3 — D1: the dense execution cluster, as a floorplan family (if the day allows)
+
+**Build:** `examples/generate_exec_density_family.py` scales the execution-unit areas of the
+14 nm area JSON (Complex ALUs, Integer ALUs, Floating Point Units → the AVX accelerator follows at
+the shipped 1.981×) by a factor, subtracts the delta from `Execution Unit/Area` and `Core/Area` so
+the leftover `core_other` slab is unchanged, and tiles a 34-core die per factor under
+`examples/floorplans/outputs/d1_exec<f>/`. McPAT's per-unit power is unchanged, so the cluster
+gets **denser and hotter** by exactly 1/f. Compared at **matched die watts** (the §9 invariant),
+not matched density — the die shrinks.
+
+- **P1 — the control ceiling in WATTS falls.** The ×0.5 family's shaped control arm holds ≤ 55 W
+  against the 34-core's 61 W (0.60 × 101); the cALU at twice its density runs away first.
+  Falsifier: holds ≥ 61 W.
+- **P2 — the array rescues the dense cluster at the reference's watts.** `array_on` holds every rung
+  the 34-core holds (121–202 W, i.e. the 1.20–2.00 rungs × 101 mm²) with 0 tiles capped; the
+  minimum plan at matched watts is within **±20 %** of the reference's (the 200 µm plateau says the
+  array resolves the cluster; above 1.20 the plan engages every block and is set by die-average
+  heat). Falsifier: a rung lost at ≤ 162 W (the 1.60 rung), or a plan > 1.5× dearer.
+- **P3 — the peak block is a cALU** on every family member at every rung.
+- **P4 — what binds next is conservation**, as on the reference (the 2.40 rung), not the lift:
+  0 tiles capped throughout.
+
+### `[x]` §P0.22.3 RESULT — the array holds the dense cluster, one rung short of the reference and at a hot-spot premium; the passive ceiling falls
+
+`results/d1_family_arr/` (array rungs, matched watts, 50 µm, arm D, target device, scalar 45 K
+kept), `results/d1_family/` (control ladders), `examples/d1_family_report.py` →
+`docs/evidence/d1_exec_density_family_result.json`; design record
+`docs/designs/gen1_dense_cluster.md`. Reference rows: `results/array_coverage_armD/c1.00`.
+Plan ratios are normalised to a 92 °C landing at 0.3247 K/W (register §4).
+
+| die watts (reference rung) | reference: idle / laser plan | **×0.5 cluster** (2× denser) | **×0.25 cluster** (4× denser) |
+|---|---|---|---|
+| 111 W (1.10) | idle holds 103.7 °C / **0.8 W** | idle **diverges** / holds, **14.8 W** (2.8×) | idle diverges / holds, **34.7 W** (6.9×) |
+| 121 W (1.20) | idle fails / 17.3 W | holds, 27.5 W (1.6×) | holds, 55.2 W (2.9×) |
+| 162 W (1.60) | 75.3 W | holds, 93.6 W (**1.17×**) | holds, 126.5 W (1.65×) |
+| 202 W (2.00) | 138.7 W | holds, 178.6 W (**1.21×**) | **no steady state at full capability** |
+| 243 W (2.40) | 221.5 W (injected cap) | **not held**: 192.7 W delivered, 114.4 °C — "no plan in the bracket keeps the die on the cool branch" | no steady state |
+| peak block | cALU | cALU (16 / 24 / 32) | cALU_8 |
+| tiles capped | 0 | 0 at every rung | 0 at every rung |
+
+**Scorecard.** **P1 confirmed** — the ×0.5 member's shaped control holds **50.5 W** (verified)
+and fails **60.7 W**, where the reference still holds (60.7 / 65.7); the 55.6 W rung is
+`unconverged` (three damping levels agree on 84.8 °C to 0.1 K but none reaches the 0.1 K
+residual in budget — the rung next to the cliff, neither a hold nor a failure). The ×0.25
+member holds 45.5 W and fails 55.6 W. The dense cluster runs 4–6 K hotter than the reference
+at the same watts (54.8 vs 50.6 °C at 45.5 W; 62.4 vs 55.9 °C at 50.5 W) and loses one to two
+rungs of passive ceiling — the concentration penalty of §P0.17, re-measured on a denser map.
+**P2 falsified in its cost clause and, for ×0.25, in its hold clause**: the ×0.5 member holds
+every reference rung to 2.00 with 0 tiles capped but the plan is 1.17–2.8× the reference's, not
+within ±20 %; the ×0.25 member loses the 2.00 rung (the falsifier was a rung ≤ 1.60). **P3
+confirmed** — cALU everywhere. **P4 confirmed as to the extractor** (0 tiles capped on 10 rungs)
+and refined as to the mechanism: what takes the top rung is the **stability boundary** — the
+cool branch disappears one rung below the reference (bistability, §P0.18.2), and at 4× it
+disappears two rungs below — not conservation and not the lift.
+
+`[+]` **What this says, and it is the first re-measured design change in the repository.**
+(1) The rescue *travels* to a denser cluster: the laser holds a 2× denser execution cluster over
+the whole range the reference's laser covers up to 2.00 W/mm²-equivalent, and a 4× denser one to
+1.60. (2) **Density is not free — concentration re-enters through the cooling COST.** Where the
+reference die needs no light (111 W: the unpowered array holds it), the dense clusters need
+15–35 W of removal to hold the same watts, because the hotter cALU has to be clipped; the
+premium falls to ~1.2× by the rungs where the plan is die-wide anyway. (3) The unpowered array's
+own cliff moves *down* with density (idle diverges at 111 W on both members against 121 W on the
+reference) while the laser's ceiling moves down one rung: the laser's rescue range is wider on
+the dense die, its top lower. (4) The predicted "within ±20 %" rested on the 200 µm plateau
+argument — the array resolves the cluster — which is true of the *hold* and false of the *cost*:
+resolving a hotter spot costs proportionally more watts through that spot's sensitivity. Two
+of four predictions wrong, both in the direction that makes the rung's next constraint an
+electrical-budget one at the low rungs and a stability one at the top.
+
+`[!]` D1's predictions are scored only if the family runs; D2 (the 25 mV `V_t` lever end to end)
+is not predicted here because it will not be run today — it stays ARGUED on the §P0.18.3
+re-pricing.
 
 ## `[x]` §P0.21.5 — 9 September corrections: the leakage default flipped, the recovery crossing named, v100 read  `[x]` 9 Sep 2026
 

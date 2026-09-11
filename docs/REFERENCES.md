@@ -33,6 +33,8 @@ rows to Table 1.1 (NIR tricarbocyanine, J-aggregate — presets `nir-cyanine`, `
 | Why the pump wavelength is a per-temperature variable (GaAs hot-side limit, dye red-shift) | §9.3.2, last subsection |
 | Platform comparison at common thickness; the `[T_min, T_max]` axis; selection rules | Table 8.4, §8.4 |
 | **Thermal heterogeneity as a design knob**: compute hot / storage cold, the three-zone template and its three walls (BEOL 400 K, extractor material, thermal gradient / packaging) | **§10.9**, Table 10.8 (`[!]` names Yb:YLF for the cold zone; the repository's decision is Cr:LiSAF) |
+| **The array geometry** — the tile as coupler / extractor / back-reflector / sensor stacked *above* the silicon, fed by hollow-core fibre or waveguide; LPC external, monolithic-backside or on the back-reflector; the module adds < 500 µm of stack height | **Figs 1.11, 1.13, 1.14, 4.1, 9.1, 9.12, 9.16**; §9.2 Level 2.B (integration modes). `[+]` Cited from v100 since 9 Sep (§P0.22); v91 Figs 9.1/9.8/9.12 said the same |
+| What v100 does **not** carry: the demonstrated **45 K lift** and the 250 W/mm² bench figure | **Not in v100** (checked 9 Sep: no bench lift anywhere in the text). They remain Draft_5 §6.4.1 (Yb:YLF bench) — see §1.1 — and the scalar 45 K is kept beside the extractor curve because it shapes the plan (§P0.19) |
 
 v91's map, still valid where v98 did not move it:
 
@@ -53,10 +55,17 @@ is the argument the project exists to test, and it is why `h_max` matters more t
 
 ### 1.1 Related device documents
 
+- `docs/chip_design_lit/SoC-Physical-Design.pdf` — Chakravarthi & Koteshwar, *SoC Physical
+  Design: A Comprehensive Guide* (Springer 2022). **Added 10 Sep 2026** for the core-evolution
+  phase: the constraints the pipeline does not model — IR drop / PDN (pp. 36–37, 43–46, 88–90),
+  electromigration (90–91), clock skew and CTS (52–63), floorplan overheads and macro halos
+  (34–36, 44–46), 3D-IC geometry (122–128). What it changes and what it does not:
+  `docs/PHYSICAL_DESIGN_CONSTRAINTS.md`. Book page = PDF page − 21.
 - `docs/photonic_cooling/Draft_5__Photonic_cooling_of_chips_v12___Provisional_Version.pdf` —
   the **demonstrated** bench figures (§6.4.1: 250 W/mm² from 100 × 100 µm; 45 K lift; η_ASF 0.035;
-  §3.5.4 laser and LPC efficiencies). `[!]` Superseded by v91 for platform capability, but it is
-  still the source for what has actually been *built*.
+  §3.5.4 laser and LPC efficiencies). `[!]` Superseded by v91/v98/v100 for platform capability
+  and (since 9 Sep) for the array geometry, but it is still the **only** source for what has
+  actually been *built* — v100 carries no bench lift, so the 45 K stays cited here.
 - `docs/Microrefrigeration_v1.pdf`, `docs/photonic_cooling/Photonic_Cooling_Devices___v9.pdf` —
   earlier revisions. Prefer v91.
 

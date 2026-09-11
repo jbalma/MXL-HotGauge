@@ -1,0 +1,513 @@
+{
+ "note": "X3 (\u00a7P0.27.3): the dense cluster at the book's utilisation and halos, at MATCHED DIE WATTS.\n\n    python examples/x3_utilisation_report.py\n\nReads ``results/x3_u70/<member>/control/W*/probe.json`` (shaped control) and\n``results/x3_u70/<member>/array/W*/mr_comparison.json`` for the three members on ONE grid\n(100 um): ``ref`` (the recorded reference re-run at 100 um), ``d1_exec1_u70`` (utilisation alone),\n``d1_exec0.5_u70`` (utilisation + the x0.5 cluster). Scores P9-P13 and writes\n``docs/evidence/x3_utilisation.json``. Rungs still running are listed as open; an UNCONVERGED row\nis neither a hold nor a failure.",
+ "grid_um": 100,
+ "members": {
+  "ref": {
+   "die_mm2": 101.09708,
+   "control": [
+    {
+     "W": 45.494,
+     "density": 0.45,
+     "diverged": false,
+     "peak_C": 49.34500000000003,
+     "hottest_block": "cALU_16",
+     "unconverged": false
+    },
+    {
+     "W": 50.549,
+     "density": 0.5,
+     "diverged": false,
+     "peak_C": 54.27800000000002,
+     "hottest_block": "cALU_16",
+     "unconverged": false
+    },
+    {
+     "W": 60.658,
+     "density": 0.6,
+     "diverged": false,
+     "peak_C": 71.19900000000001,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 70.768,
+     "density": 0.7,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 80.878,
+     "density": 0.8,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 90.987,
+     "density": 0.9,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_16",
+     "unconverged": false
+    },
+    {
+     "W": 101.097,
+     "density": 1.0,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_16",
+     "unconverged": false
+    }
+   ],
+   "control_cliff_W": {
+    "highest_holding_W": 60.658,
+    "lowest_failing_W": 70.768,
+    "bracketed": true,
+    "unconverged_W": []
+   },
+   "array": [
+    {
+     "W": 111.2,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 93.76607666015627,
+     "Q_W": 0.5582563770277283,
+     "Q_norm_W": 5.997359118500697,
+     "peak_block": "cALU_0",
+     "tiles_capped": 0,
+     "idle_diverged": false,
+     "idle_peak_C": 102.5302673339844,
+     "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOW"
+    },
+    {
+     "W": 121.3,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 93.45647583007815,
+     "Q_W": 8.713387730766092,
+     "Q_norm_W": 13.198992381453335,
+     "peak_block": "cALU_16",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "idle_peak_C": null,
+     "reason": "minimum plan that holds the target, bracketed by bisection"
+    },
+    {
+     "W": 161.8,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 92.46795043945315,
+     "Q_W": 68.0136518902792,
+     "Q_norm_W": 69.45482971428028,
+     "peak_block": "cALU_16",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "idle_peak_C": null,
+     "reason": "minimum plan that holds the target, bracketed by bisection"
+    },
+    {
+     "W": 202.2,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 93.81588134765627,
+     "Q_W": 126.12244716101078,
+     "Q_norm_W": 131.71493668258847,
+     "peak_block": "cALU_16",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "idle_peak_C": null,
+     "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisection"
+    },
+    {
+     "W": 242.6,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 90.49349365234377,
+     "Q_W": 205.44662515811453,
+     "Q_norm_W": 200.80693822354039,
+     "peak_block": "cALU_16",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "idle_peak_C": null,
+     "reason": "minimum plan that holds the target, bracketed by bisection"
+    }
+   ],
+   "array_open_W": []
+  },
+  "d1_exec1_u70": {
+   "die_mm2": 137.655491552436,
+   "control": [
+    {
+     "W": 45.494,
+     "density": 0.3305,
+     "diverged": false,
+     "peak_C": 44.144000000000005,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 50.549,
+     "density": 0.3672,
+     "diverged": false,
+     "peak_C": 47.46900000000005,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 60.658,
+     "density": 0.4407,
+     "diverged": false,
+     "peak_C": 55.87600000000003,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 70.768,
+     "density": 0.5141,
+     "diverged": false,
+     "peak_C": 71.30600000000004,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 80.878,
+     "density": 0.5875,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 90.987,
+     "density": 0.661,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 101.097,
+     "density": 0.7344,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    }
+   ],
+   "control_cliff_W": {
+    "highest_holding_W": 70.768,
+    "lowest_failing_W": 80.878,
+    "bracketed": true,
+    "unconverged_W": []
+   },
+   "array": [
+    {
+     "W": 111.2,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 84.79030761718752,
+     "Q_W": 0.0,
+     "Q_norm_W": -22.20416502252072,
+     "peak_block": "cALU_0",
+     "tiles_capped": 0,
+     "idle_diverged": false,
+     "idle_peak_C": 84.79030761718752,
+     "reason": "nothing above target; no cooling needed"
+    },
+    {
+     "W": 121.3,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 92.11626586914065,
+     "Q_W": 0.16935578917021482,
+     "Q_norm_W": 0.5274274526769833,
+     "peak_block": "cALU_0",
+     "tiles_capped": 0,
+     "idle_diverged": false,
+     "idle_peak_C": 94.55715332031252,
+     "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOW"
+    },
+    {
+     "W": 161.8,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 92.6296325683594,
+     "Q_W": 34.429834808990414,
+     "Q_norm_W": 36.36895574634612,
+     "peak_block": "RBB_16",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "idle_peak_C": null,
+     "reason": "minimum plan that holds the target, bracketed by bisection"
+    },
+    {
+     "W": 202.2,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 92.00798950195315,
+     "Q_W": 92.48043320165135,
+     "Q_norm_W": 92.50503899762656,
+     "peak_block": "cALU_24",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "idle_peak_C": null,
+     "reason": "minimum plan that holds the target, bracketed by bisection"
+    },
+    {
+     "W": 242.6,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 91.8248229980469,
+     "Q_W": 156.5948864179375,
+     "Q_norm_W": 156.05538225423837,
+     "peak_block": "RBB_16",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "idle_peak_C": null,
+     "reason": "minimum plan that holds the target, bracketed by bisection"
+    }
+   ],
+   "array_open_W": []
+  },
+  "d1_exec0.5_u70": {
+   "die_mm2": 121.52824915276497,
+   "control": [
+    {
+     "W": 45.494,
+     "density": 0.3743,
+     "diverged": false,
+     "peak_C": 46.634000000000015,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 50.549,
+     "density": 0.4159,
+     "diverged": false,
+     "peak_C": 50.696000000000026,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 60.658,
+     "density": 0.4991,
+     "diverged": false,
+     "peak_C": 61.80800000000005,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 70.768,
+     "density": 0.5823,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 80.878,
+     "density": 0.6655,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 90.987,
+     "density": 0.7487,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 101.097,
+     "density": 0.8319,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    }
+   ],
+   "control_cliff_W": {
+    "highest_holding_W": 60.658,
+    "lowest_failing_W": 70.768,
+    "bracketed": true,
+    "unconverged_W": []
+   },
+   "array": [
+    {
+     "W": 111.2,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 91.99688110351565,
+     "Q_W": 0.06874094372897728,
+     "Q_norm_W": 0.059135472572980165,
+     "peak_block": "cALU_0",
+     "tiles_capped": 0,
+     "idle_diverged": false,
+     "idle_peak_C": 92.84453735351565,
+     "reason": "descent converged on the target; this plan holds the target but the stability bo"
+    },
+    {
+     "W": 121.3,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 93.38326416015627,
+     "Q_W": 0.8858608416019188,
+     "Q_norm_W": 5.14599068501514,
+     "peak_block": "cALU_0",
+     "tiles_capped": 0,
+     "idle_diverged": false,
+     "idle_peak_C": 107.20870361328127,
+     "reason": "max_iter reached: the descent was still building the plan, so this cost is a LOW"
+    },
+    {
+     "W": 161.8,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 92.5716491699219,
+     "Q_W": 50.50231507211377,
+     "Q_norm_W": 52.262860714004425,
+     "peak_block": "cALU_16",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "idle_peak_C": null,
+     "reason": "minimum plan that holds the target, bracketed by bisection"
+    },
+    {
+     "W": 202.2,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 93.1905456542969,
+     "Q_W": 108.83427330705713,
+     "Q_norm_W": 112.50087526054311,
+     "peak_block": "cALU_24",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "idle_peak_C": null,
+     "reason": "minimum plan that holds the target, bracketed by bisection"
+    },
+    {
+     "W": 242.6,
+     "holds_target": true,
+     "diverged": false,
+     "unconverged": false,
+     "peak_C": 91.39638671875002,
+     "Q_W": 182.65163717220298,
+     "Q_norm_W": 180.79264954901242,
+     "peak_block": "cALU_16",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "idle_peak_C": null,
+     "reason": "minimum plan that holds the target, bracketed by bisection"
+    }
+   ],
+   "array_open_W": []
+  }
+ },
+ "plan_ratios": {
+  "u70x0.5_over_ref": {
+   "111.2": 0.00986025205503513,
+   "121.3": 0.3898775403678593,
+   "161.8": 0.7524726635858255,
+   "202.2": 0.8541238988836314,
+   "242.6": 0.9003306915010684
+  },
+  "u70x0.5_over_u70x1": {
+   "111.2": -0.002663260361873623,
+   "121.3": 9.756774432002766,
+   "161.8": 1.4370184582287635,
+   "202.2": 1.2161594274170253,
+   "242.6": 1.1585159507954248
+  },
+  "u70x1_over_ref": {
+   "111.2": -3.702323736796943,
+   "121.3": 0.03995967551417804,
+   "161.8": 0.523634654291989,
+   "202.2": 0.7023124432770189,
+   "242.6": 0.7771413858246067
+  }
+ },
+ "scorecard": {
+  "P9_die_grows": {
+   "area_ratios": {
+    "d1_exec1_u70": 1.3616168889589688,
+    "d1_exec0.5_u70": 1.2020945526098772
+   },
+   "cluster_density_vs_reference": 1.2173913043478262,
+   "verdict": "NOT as predicted: {'d1_exec1_u70': 1.3616168889589688, 'd1_exec0.5_u70': 1.2020945526098772}"
+  },
+  "P10_rescue_survives": {
+   "held": [
+    111.2,
+    121.3,
+    161.8,
+    202.2,
+    242.6
+   ],
+   "lost": [],
+   "unconverged": [],
+   "open": [],
+   "max_tiles_capped": 0,
+   "verdict": "confirmed"
+  },
+  "P11_premium_vs_control": {
+   "vs_reference": {
+    "111.2": 0.00986025205503513,
+    "121.3": 0.3898775403678593,
+    "161.8": 0.7524726635858255,
+    "202.2": 0.8541238988836314,
+    "242.6": 0.9003306915010684
+   },
+   "vs_u70_control": {
+    "111.2": -0.002663260361873623,
+    "121.3": 9.756774432002766,
+    "161.8": 1.4370184582287635,
+    "202.2": 1.2161594274170253,
+    "242.6": 1.1585159507954248
+   },
+   "verdict": "NOT as predicted"
+  },
+  "P12_passive_ceiling_rises": {
+   "u70x1": {
+    "highest_holding_W": 70.768,
+    "lowest_failing_W": 80.878,
+    "bracketed": true,
+    "unconverged_W": []
+   },
+   "u70x0.5": {
+    "highest_holding_W": 60.658,
+    "lowest_failing_W": 70.768,
+    "bracketed": true,
+    "unconverged_W": []
+   },
+   "verdict": "NOT as predicted"
+  },
+  "P13_peak_is_cALU": {
+   "blocks": [
+    "RBB",
+    "cALU"
+   ],
+   "verdict": "NOT as predicted: ['RBB', 'cALU']"
+  }
+ },
+ "complete": true
+}

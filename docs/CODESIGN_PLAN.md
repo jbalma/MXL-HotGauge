@@ -253,6 +253,14 @@ already had to withdraw a catalogue of results once for exactly that class of sl
 
 ## 9. Where this is going — the evolution ladder
 
+`[+]` **10 Sep 2026.** The ladder's first rungs are measured (`docs/designs/EVOLUTION_LADDER.md`,
+§P0.22). A second front runs beside it — `docs/FUTURE_EXPERIMENTS.md`, six ranked experiments
+on what photonic cooling at its ideal design points does to performance and energy utilisation.
+**Decision:** the net-export energy story (v100 Tier III) is reserved for the ISA-classed,
+photonically cooled core designs of Phases 2–5 here, optimised for maximum performance *and*
+energy recovery, because it needs a compute zone past the 400 K BEOL wall that no rung of the
+current ladder reaches.
+
 Phases 1–4 are instruments. This section is what they are for, and it is the record of the
 destination rather than a schedule.
 

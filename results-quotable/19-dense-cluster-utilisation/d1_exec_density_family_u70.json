@@ -1,0 +1,134 @@
+{
+ "note": "D1 (\u00a7P0.22.3): the 34-core die with a DENSER execution cluster, as a floorplan family.\n\n    python examples/generate_exec_density_family.py --factors 0.5 0.25\n\nWhat changes and what does not\n------------------------------\nThe execution units -- Complex ALUs, Integer ALUs, Floating Point Units, and through the shipped\n1.981x ratio the AVX-512 accelerator -- have their AREAS scaled by ``factor``. Nothing else moves:\nthe caches, the front end, the load/store path and the leftover ``core_other`` slab keep their\nareas, because the delta is subtracted from ``Execution Unit/Area`` and the core total at the\nsame time (otherwise the tiler would hand the freed area to ``core_other``, which is the\naccounting slab and not a design element). McPAT's per-unit POWER is untouched -- the trace is\nthe same -- so a unit at half the area runs at twice the W/mm^2. That is the design move\n``ARCHITECTURE_EVOLUTION.md`` \u00a73 names second: let the cluster the array can resolve get denser\nand hotter than a conventional floorplan would allow.\n\n`[!]` The die SHRINKS. Compare family members with the reference at matched die WATTS (the\nCODESIGN_PLAN \u00a79 invariant), never at matched W/mm^2: ``--density`` on the drivers is watts\nover the family member's own area.\n\n`[!]` IMC, SoC and the IO pads are sized by the tiler from the core footprint, so they shrink\nwith the die (about 14 % on the x0.5 member) and carry their modelled power a little denser.\nThat is the tiler's convention, not a design choice, and it is recorded in the evidence file.\n\nX3 (\u00a7P0.27.3): the book's floorplan overheads (SoC Physical Design p. 34, U = 70 %, T = 15 %).\n``--utilisation U --overhead T`` scales every STANDARD-CELL unit's area by (1 + T)/U -- the\nleftover ``core_other`` slab included, it is un-itemised control logic -- with McPAT's power\nunchanged; ``--cache-halo-um h`` grows each SRAM macro (L2, L3, iCache, DCache) by a keep-out ring\nof ``h`` (physical microns at the 7 nm placement; halo + channel) modelled as macro area at\nconstant macro power (square-macro assumption; the ring is not separately unpowered). Members\nbuilt with these carry ``--tag`` in their directory name (``d1_exec<factor>_<tag>``).\n\nOutput: ``examples/floorplans/outputs/d1_exec<factor>/skylake7nm_34core_3_*.flp`` (the naming\n``mr_comparison.floorplan_path`` expects, so ``--flp-dir`` selects a member) and the scaled area\nJSON beside them, plus a per-unit density table against the reference.",
+ "reference": "examples/floorplans/outputs/skylake7nm_34core_3_3D-ICE_template.flp",
+ "reference_mm2": 101.09708178335296,
+ "scaled_units": [
+  "Execution Unit/Complex ALUs/Area",
+  "Execution Unit/Integer ALUs/Area",
+  "Execution Unit/Floating Point Units/Area"
+ ],
+ "avx_follows_fpu": true,
+ "members": [
+  {
+   "factor": 1.0,
+   "dir": "examples/floorplans/outputs/d1_exec1_u70",
+   "template": "examples/floorplans/outputs/d1_exec1_u70/skylake7nm_34core_3_3D-ICE_template.flp",
+   "blocks": 1126,
+   "die_mm2": 137.655491552436,
+   "die_area_ratio": 1.361616864940041,
+   "delta_mm2_per_core_14nm": 0.0,
+   "units": {
+    "cALU": {
+     "ref_mm2": 0.5540047833449999,
+     "mm2": 0.9101614869240003,
+     "area_ratio": 1.642876585701261,
+     "density_multiplier_at_same_power": 0.6086884484832745
+    },
+    "iALU": {
+     "ref_mm2": 1.108026489141,
+     "mm2": 1.8203402880959996,
+     "area_ratio": 1.6428671208999905,
+     "density_multiplier_at_same_power": 0.6086919552277502
+    },
+    "FPUs": {
+     "ref_mm2": 5.3655932344310004,
+     "mm2": 8.814934276500995,
+     "area_ratio": 1.6428629401005617,
+     "density_multiplier_at_same_power": 0.6086935042425321
+    },
+    "AVXs": {
+     "ref_mm2": 10.629321615189005,
+     "mm2": 17.462505006753,
+     "area_ratio": 1.6428616650191077,
+     "density_multiplier_at_same_power": 0.6086939766705003
+    },
+    "L2": {
+     "ref_mm2": 18.136327749359996,
+     "mm2": 20.177284901759993,
+     "area_ratio": 1.1125342010028474,
+     "density_multiplier_at_same_power": 0.8988487716589673
+    },
+    "L3": {
+     "ref_mm2": 11.945286145926,
+     "mm2": 13.611895465393998,
+     "area_ratio": 1.139520250842748,
+     "density_multiplier_at_same_power": 0.8775622892708016
+    },
+    "core_other": {
+     "ref_mm2": 15.849883711977999,
+     "mm2": 26.03914173596,
+     "area_ratio": 1.642860112360435,
+     "density_multiplier_at_same_power": 0.6086945519440582
+    },
+    "DCache": {
+     "ref_mm2": 7.789915977325998,
+     "mm2": 9.146271030273999,
+     "area_ratio": 1.1741167757002675,
+     "density_multiplier_at_same_power": 0.8517040388964542
+    }
+   },
+   "status": "OK"
+  },
+  {
+   "factor": 0.5,
+   "dir": "examples/floorplans/outputs/d1_exec0.5_u70",
+   "template": "examples/floorplans/outputs/d1_exec0.5_u70/skylake7nm_34core_3_3D-ICE_template.flp",
+   "blocks": 1126,
+   "die_mm2": 121.52824915276497,
+   "die_area_ratio": 1.202094531404924,
+   "delta_mm2_per_core_14nm": 0.41339804249999995,
+   "units": {
+    "cALU": {
+     "ref_mm2": 0.5540047833449999,
+     "mm2": 0.45507091117499987,
+     "area_ratio": 0.8214205451933975,
+     "density_multiplier_at_same_power": 1.2174031996783783
+    },
+    "iALU": {
+     "ref_mm2": 1.108026489141,
+     "mm2": 0.9101585567100003,
+     "area_ratio": 0.8214231028137267,
+     "density_multiplier_at_same_power": 1.2173994091164113
+    },
+    "FPUs": {
+     "ref_mm2": 5.3655932344310004,
+     "mm2": 4.407445939979998,
+     "area_ratio": 0.8214275192717604,
+     "density_multiplier_at_same_power": 1.2173928636899745
+    },
+    "AVXs": {
+     "ref_mm2": 10.629321615189005,
+     "mm2": 8.731214056841003,
+     "area_ratio": 0.8214272154832855,
+     "density_multiplier_at_same_power": 1.217393313918448
+    },
+    "L2": {
+     "ref_mm2": 18.136327749359996,
+     "mm2": 20.177287145209004,
+     "area_ratio": 1.1125343247020352,
+     "density_multiplier_at_same_power": 0.8988486717188032
+    },
+    "L3": {
+     "ref_mm2": 11.945286145926,
+     "mm2": 13.611920043775998,
+     "area_ratio": 1.139522308422759,
+     "density_multiplier_at_same_power": 0.8775607046992565
+    },
+    "core_other": {
+     "ref_mm2": 15.849883711977999,
+     "mm2": 26.039143673098987,
+     "area_ratio": 1.6428602345783023,
+     "density_multiplier_at_same_power": 0.6086945066612347
+    },
+    "DCache": {
+     "ref_mm2": 7.789915977325998,
+     "mm2": 9.146273078534001,
+     "area_ratio": 1.1741170386376354,
+     "density_multiplier_at_same_power": 0.8517038481617908
+    }
+   },
+   "status": "OK"
+  }
+ ],
+ "INVARIANT": "compare at matched die WATTS; --density = W / die_mm2 per member"
+}

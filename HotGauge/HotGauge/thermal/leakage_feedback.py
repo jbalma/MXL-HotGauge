@@ -686,9 +686,14 @@ class ICEThermalSolver(object):
         # no silicon and thinning the die changes nothing. See HotGauge.thermal.mr_array.
         if (mr_flp_template is None) != (mr_powers is None):
             raise ValueError('mr_flp_template and mr_powers must be given together')
-        if mr_flp_template is not None and mode != 'steady':
-            raise ValueError('the cooling array is only wired for mode="steady"; the transient '
-                             'path would need a per-slot tile trace, which nothing produces yet')
+        # §P0.25 (F4): the array is wired for BOTH modes. In 'transient' the tile powers may be
+        # per-slot series (``mr_array.tile_power_schedule``), rendered by the same
+        # ``fill_mr_flp_template`` the steady path uses -- ICESim already joins a series. A
+        # scalar per tile is broadcast by 3D-ICE's own floorplan semantics. The extractor cap
+        # (``mr_temps``) stays steady-only: a per-slot tile temperature field is a different
+        # output and nothing consumes it yet.
+        if mr_flp_template is not None and mode != 'steady' and mr_temps:
+            raise ValueError('mr_temps=True (the extractor cap) is wired for mode="steady" only')
         # The session cache DOES carry a cooling array as of 25 Aug 2026. The socket protocol
         # sends one flat power vector, "one value per floorplan element, in order", and with two
         # dies that order is the reverse of the stack's declaration order: 3D-ICE stores layers
@@ -755,11 +760,26 @@ class ICEThermalSolver(object):
         from HotGauge.thermal import ICETransientSim, ICESimConfig
         from HotGauge.thermal.ICE import load_3DICE_block_file, parse_file_name_from_output_line
 
-        outputs = [ICETransientSim.OUTPUT_TSTACK_FINAL, ICETransientSim.DIE_TFLP_OUTPUT]
+        outputs = ([ICETransientSim.OUTPUT_TSTACK_FINAL, ICETransientSim.DIE_TFLP_OUTPUT]
+                   + self.extra_die_outputs)
         config = ICESimConfig(initial_temp=self.initial_temp, plugin_args=self.plugin_args,
                               output_list=outputs)
+        mr_kwargs = {}
+        if self.mr_flp_template is not None:
+            # §P0.25: the array die in a transient. Series per tile must match the trace length
+            # (one value per slot); scalars are broadcast to it here so the floorplan carries
+            # one value per slot for every element, as 3D-ICE expects.
+            n = len(dice_trace)
+            mr_kwargs = {'mr_flp_template': self.mr_flp_template,
+                         'mr_powers': {t: (np.full(n, float(np.ravel(v)[0]))
+                                           if np.size(v) == 1 else np.asarray(v, dtype=float))
+                                       for t, v in self.mr_powers.items()}}
+            bad = [t for t, v in mr_kwargs['mr_powers'].items() if v.shape != (n,)]
+            if bad:
+                raise ValueError('tile power series must have one value per slot ({}); {} '
+                                 'tiles do not, e.g. {}'.format(n, len(bad), bad[:3]))
         sim = ICETransientSim(self.stack_template, self.flp_template, dice_trace, config,
-                              run_dir, steps_per_slot=self.steps_per_slot)
+                              run_dir, steps_per_slot=self.steps_per_slot, **mr_kwargs)
         if self.single_thread:
             ICETransientSim.run([sim])
         else:

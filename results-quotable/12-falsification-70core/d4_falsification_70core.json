@@ -1,0 +1,471 @@
+{
+ "note": "D4 (\u00a7P0.22.1): the 70-core die as a falsification test -- do the ratios travel, and do the\nabsolute ceilings move the way the package says?\n\n    python examples/d4_falsification_report.py\n\nReads the three ladders (34-core at 50 um recorded, 34-core at 100 um grid control, 70-core at\n100 um), finds each arm's cliff, scores \u00a7P0.22.1's P1-P6, and writes\n``docs/evidence/d4_falsification_70core.json``. Refuses to call a cliff on an arm that has not\nfailed inside its ladder (reports it as open).",
+ "cliffs": {
+  "34core_50um": {
+   "uniform": {
+    "highest_holding": 0.85,
+    "lowest_failing": 0.9,
+    "n_held": 6,
+    "n_failed": 6,
+    "unconverged": [],
+    "runaway_blocks": {
+     "core_other": 6
+    },
+    "bracketed": true,
+    "bracketed_to_one_unconverged_rung": false,
+    "rows": [
+     {
+      "density": 0.6,
+      "peak_C": 42.26400000000001,
+      "diverged": false,
+      "hottest_block": "FPUs_0"
+     },
+     {
+      "density": 0.65,
+      "peak_C": 44.601,
+      "diverged": false,
+      "hottest_block": "core_other_0"
+     },
+     {
+      "density": 0.7,
+      "peak_C": 47.164000000000044,
+      "diverged": false,
+      "hottest_block": "core_other_0"
+     },
+     {
+      "density": 0.75,
+      "peak_C": 50.59500000000003,
+      "diverged": false,
+      "hottest_block": "core_other_0"
+     },
+     {
+      "density": 0.8,
+      "peak_C": 54.471000000000004,
+      "diverged": false,
+      "hottest_block": "core_other_0"
+     },
+     {
+      "density": 0.85,
+      "peak_C": 60.53200000000004,
+      "diverged": false,
+      "hottest_block": "core_other_5"
+     },
+     {
+      "density": 0.9,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "core_other_5"
+     },
+     {
+      "density": 0.95,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "core_other_5"
+     },
+     {
+      "density": 1.0,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "core_other_5"
+     },
+     {
+      "density": 1.05,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "core_other_5"
+     },
+     {
+      "density": 1.1,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "core_other_5"
+     },
+     {
+      "density": 1.15,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "core_other_5"
+     }
+    ]
+   },
+   "shaped": {
+    "highest_holding": 0.6,
+    "lowest_failing": 0.65,
+    "n_held": 6,
+    "n_failed": 4,
+    "unconverged": [],
+    "runaway_blocks": {
+     "cALU": 4
+    },
+    "bracketed": true,
+    "bracketed_to_one_unconverged_rung": false,
+    "rows": [
+     {
+      "density": 0.35,
+      "peak_C": 42.375,
+      "diverged": false,
+      "hottest_block": "cALU_16"
+     },
+     {
+      "density": 0.4,
+      "peak_C": 46.19300000000004,
+      "diverged": false,
+      "hottest_block": "cALU_16"
+     },
+     {
+      "density": 0.45,
+      "peak_C": 50.60700000000003,
+      "diverged": false,
+      "hottest_block": "cALU_16"
+     },
+     {
+      "density": 0.5,
+      "peak_C": 55.891999999999996,
+      "diverged": false,
+      "hottest_block": "cALU_16"
+     },
+     {
+      "density": 0.55,
+      "peak_C": 63.03400000000005,
+      "diverged": false,
+      "hottest_block": "cALU_16"
+     },
+     {
+      "density": 0.6,
+      "peak_C": 76.55000000000001,
+      "diverged": false,
+      "hottest_block": "cALU_16"
+     },
+     {
+      "density": 0.65,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "cALU_16"
+     },
+     {
+      "density": 0.7,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "cALU_16"
+     },
+     {
+      "density": 0.75,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "cALU_16"
+     },
+     {
+      "density": 0.8,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "cALU_16"
+     }
+    ]
+   }
+  },
+  "34core_100um": {
+   "uniform": {
+    "highest_holding": 0.85,
+    "lowest_failing": 0.9,
+    "n_held": 2,
+    "n_failed": 3,
+    "unconverged": [],
+    "runaway_blocks": {
+     "core_other": 3
+    },
+    "bracketed": true,
+    "bracketed_to_one_unconverged_rung": false,
+    "rows": [
+     {
+      "density": 0.8,
+      "peak_C": 54.47200000000004,
+      "diverged": false,
+      "hottest_block": "core_other_0"
+     },
+     {
+      "density": 0.85,
+      "peak_C": 60.53000000000003,
+      "diverged": false,
+      "hottest_block": "core_other_5"
+     },
+     {
+      "density": 0.9,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "core_other_5"
+     },
+     {
+      "density": 0.95,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "core_other_5"
+     },
+     {
+      "density": 1.0,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "core_other_5"
+     }
+    ]
+   },
+   "shaped": {
+    "highest_holding": 0.6,
+    "lowest_failing": 0.65,
+    "n_held": 2,
+    "n_failed": 3,
+    "unconverged": [],
+    "runaway_blocks": {
+     "cALU": 3
+    },
+    "bracketed": true,
+    "bracketed_to_one_unconverged_rung": false,
+    "rows": [
+     {
+      "density": 0.55,
+      "peak_C": 60.587000000000046,
+      "diverged": false,
+      "hottest_block": "cALU_16"
+     },
+     {
+      "density": 0.6,
+      "peak_C": 71.19900000000001,
+      "diverged": false,
+      "hottest_block": "cALU_0"
+     },
+     {
+      "density": 0.65,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "cALU_0"
+     },
+     {
+      "density": 0.7,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "cALU_0"
+     },
+     {
+      "density": 0.75,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "cALU_0"
+     }
+    ]
+   }
+  },
+  "70core_100um": {
+   "uniform": {
+    "highest_holding": 0.65,
+    "lowest_failing": 0.7,
+    "n_held": 5,
+    "n_failed": 6,
+    "unconverged": [],
+    "runaway_blocks": {
+     "iALU": 1,
+     "L3": 1,
+     "AVXs": 3,
+     "core_other": 1
+    },
+    "bracketed": true,
+    "bracketed_to_one_unconverged_rung": false,
+    "rows": [
+     {
+      "density": 0.45,
+      "peak_C": 41.821000000000026,
+      "diverged": false,
+      "hottest_block": "FPUs_12"
+     },
+     {
+      "density": 0.5,
+      "peak_C": 44.88100000000003,
+      "diverged": false,
+      "hottest_block": "FPUs_12"
+     },
+     {
+      "density": 0.55,
+      "peak_C": 48.57900000000001,
+      "diverged": false,
+      "hottest_block": "FPUs_12"
+     },
+     {
+      "density": 0.6,
+      "peak_C": 53.41500000000002,
+      "diverged": false,
+      "hottest_block": "FPUs_12"
+     },
+     {
+      "density": 0.65,
+      "peak_C": 61.09800000000001,
+      "diverged": false,
+      "hottest_block": "core_other_8"
+     },
+     {
+      "density": 0.7,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "iALU_8"
+     },
+     {
+      "density": 0.75,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "L3_8"
+     },
+     {
+      "density": 0.8,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "AVXs_8"
+     },
+     {
+      "density": 0.85,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "AVXs_8"
+     },
+     {
+      "density": 0.9,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "AVXs_9"
+     },
+     {
+      "density": 0.95,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "core_other_10"
+     }
+    ]
+   },
+   "shaped": {
+    "highest_holding": 0.4,
+    "lowest_failing": 0.5,
+    "n_held": 3,
+    "n_failed": 5,
+    "unconverged": [
+     0.45
+    ],
+    "runaway_blocks": {
+     "cALU": 6
+    },
+    "bracketed": false,
+    "bracketed_to_one_unconverged_rung": true,
+    "rows": [
+     {
+      "density": 0.3,
+      "peak_C": 45.620000000000005,
+      "diverged": false,
+      "hottest_block": "cALU_0"
+     },
+     {
+      "density": 0.35,
+      "peak_C": 51.66500000000002,
+      "diverged": false,
+      "hottest_block": "cALU_0"
+     },
+     {
+      "density": 0.4,
+      "peak_C": 60.025000000000034,
+      "diverged": false,
+      "hottest_block": "cALU_0"
+     },
+     {
+      "density": 0.45,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "cALU_0"
+     },
+     {
+      "density": 0.5,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "cALU_0"
+     },
+     {
+      "density": 0.55,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "cALU_0"
+     },
+     {
+      "density": 0.6,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "cALU_0"
+     },
+     {
+      "density": 0.65,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "cALU_0"
+     },
+     {
+      "density": 0.7,
+      "peak_C": null,
+      "diverged": true,
+      "hottest_block": "cALU_0"
+     }
+    ]
+   }
+  }
+ },
+ "scorecard": {
+  "P1_grid_control": {
+   "predicted": "uniform unchanged; shaped up by 0-1 rung; falsifier: either >= 2 rungs",
+   "measured": {
+    "uniform_rungs_moved": 0.0,
+    "shaped_rungs_moved": 0.0
+   },
+   "verdict": "confirmed"
+  },
+  "P2_flat_ceiling": {
+   "predicted": "holds 0.65-0.75, fails by 0.80",
+   "measured": {
+    "highest_holding": 0.65,
+    "lowest_failing": 0.7
+   },
+   "verdict": "confirmed"
+  },
+  "P3_shaped_ceiling": {
+   "predicted": "holds 0.45-0.55, fails by 0.60",
+   "measured": {
+    "highest_holding": 0.4,
+    "lowest_failing": 0.5,
+    "undecidable_rung": 0.45
+   },
+   "verdict": "holds 0.40, fails 0.50; the 0.45 rung is UNCONVERGED (verification fails across damping levels next to the cliff) -- inside the band if it holds, one rung below it if it fails; not falsified"
+  },
+  "P4_ratio_travels": {
+   "predicted": "1.2-1.7",
+   "measured": {
+    "ratio_if_undecidable_rung_fails": 1.588235294117647,
+    "ratio_if_undecidable_rung_holds": 1.4210526315789476
+   },
+   "verdict": "confirmed under either resolution of the unconverged rung"
+  },
+  "P5_hot_block": {
+   "predicted": "cALU",
+   "measured": {
+    "cALU": 6
+   },
+   "verdict": "confirmed"
+  },
+  "P6_absolute_watts_rise": {
+   "predicted": "130-150 W on the 70-core against 86 W",
+   "measured": {
+    "W_70core": 127.4,
+    "W_34core": 85.93244999999999
+   },
+   "verdict": "rises, outside the band"
+  }
+ },
+ "die_mm2": {
+  "34core": 101.097,
+  "70core": 196.0
+ },
+ "boundary_K_per_W": {
+  "34core": 0.3247,
+  "70core": 0.2343
+ },
+ "complete": true
+}

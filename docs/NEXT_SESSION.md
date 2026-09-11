@@ -1,4 +1,176 @@
-# Next session — handoff, 8 September 2026 (§P0.20–§P0.21)
+# Next session — handoff, 11 September 2026 (§P0.25 closed, §P0.27: X1/X2/X3 done, X4 scoped)
+
+Read `docs/START_HERE.md`, then `docs/NEXT_SESSION_PROMPT.md` (rewritten 11 Sep), then
+`docs/PHASE0_CHECKLIST.md` §P0.27 (X1/X2 RESULT, X3 predictions, X4 scope), `docs/RESULTS_REGISTER.md`
+(three new §1.3 rows: burst, X1, X2; two §3 items; one §4 constraint), `docs/designs/EVOLUTION_LADDER.md`
+§2.3 (new), `CLAUDE.md`. Slurm: job **1507** on node-06. `[!]` **Nothing runs on the head node**
+(user, 11 Sep) — solves, the test suite AND pack/register builds all go through the campaign
+server (`results/campaign_queue/<name>.par<N>.tsv`). Baseline: **1075 passed, 1 skipped** (11 Sep;
+1070 before — no library code changed this session, only `examples/` and `scripts/`).
+
+## What landed 11 Sep
+
+- **§P0.25 closed (F4, burst absorption, six points):** the modulated array cuts the overshoot per
+  added watt from 0.51–0.67 K/W (package) to 0.17–0.20 (2.5–3.3×); at 0.80 W/mm² it holds a 2×
+  burst under the target and a 3× burst 1 K under the spec; at 1.00 (3 K of margin) it crosses
+  the target at every k and the spec at k ≥ 2; the static array RUNS AWAY inside the window at
+  1.00 / 3× (P5 falsified for that arm); two rows are non-viable (> 127 °C). `[!]` The burst plan
+  asks up to **13 W/mm² of one tile for 10 ms** — the first demand above the steady ~5 W/mm² rule
+  (register §4 amended). Register §1.3 row, `results-quotable/17-burst-absorption/`, pack figure.
+- **§P0.27 X1/X2 (the recorded fields, no new coupled solve):** the solve trees hold every
+  iteration's POWER map and no temperature field, so `examples/field_resolve.py` re-solves the
+  recorded final map once through the session (34 fields, `results/fields/`, peaks reproduced to
+  ±0.000 K — P0). `[!]` The last `itNN` of an `array_on` tree is the bisection's largest FAILING
+  plan; the pass is selected by the row's `heat_removed_W`. `examples/pdn_em_skew_report.py` →
+  `docs/evidence/pdn_em_skew.json`: **the rescue ladder is a current ladder** (die current 1.29 /
+  1.54 / 2.00 / 2.45 / 2.88× native at 1.00–2.40 W/mm², 0.70 V; peak block within 3–7 % of the
+  die-average); **the ×0.5 cluster's cALU carries exactly 2.00× the reference's current density at
+  matched watts** (×0.25: 3.9×) because the array clips both to 92 °C; F1c laser rows 1.50× / 1.78×
+  (SPICE) and 1.60× (table, the voltage does the work); Black's law (n = 2, 0.9 eV stated): the
+  cooled die's worst block ages 12–50× faster than the native die's along the ladder, the
+  cooling dividend at matched power is 2.4× (1.10), and on the F1c SPICE rows the cooled design's
+  worst block outlives the control's 2.7–3.2× at +14–26 % clock (on the table it ages 2.2× faster).
+  **Thermal skew grows with the rung** (core-domain 24 → 32–60 K; 3.2 → 7.9 % of the period at a
+  stated 150 ps): uniformity buys 0.74 % at matched power and the laser field is the less uniform
+  one at matched density (**P6 falsified**). Gen 1's "what binds next" is rewritten: **the PDN,
+  unless the rails are re-sized ~J×** — MEASURED as J, ARGUED as a limit (register §3: no rail
+  model). `results-quotable/18-pdn-em-skew/`, pack figure `pdn_em_skew.png`.
+- **§P0.27.3 X3 done** (`results/x3_u70/`, 36 jobs at 100 µm, ~1 h):
+  `generate_exec_density_family.py --utilisation 0.70 --overhead 0.15 --cache-halo-um 20 --tag u70`
+  (logic × 1.643; a 20 µm ring on the PLACED macro; a sub-100 µm² parent leftover is zeroed or a
+  spurious 34-block `iSched` family appears carrying the scheduler's power — found and fixed; the
+  default path is byte-identical). Members 137.7 mm² (1.36×, the utilisation control) and
+  121.5 mm² (1.20×, the cluster 1.22× denser in silicon) — **P9 falsified low**. `[!]` 100 µm cells
+  with the reference re-run on the same grid (its plans are 8–50 % below the 50 µm ones; its
+  control cliff is unchanged): the ×0.5-at-70 % member holds all five rungs to 243 W, 0 tiles
+  capped; plan 0.75 / 0.85 / 0.90× the reference's and **1.44 / 1.22 / 1.16× the utilisation
+  control's** at 162 / 202 / 243 W (9.8× at the 121 W hot-spot rung); the passive cliff scales
+  with the cluster's density, not the die area (utilisation alone 60.7 → 70.8 W; with the cluster
+  back to 60.7). Register §1.3 row, `results-quotable/19-dense-cluster-utilisation/`, ladder §2.4.
+- **§P0.27.4 X4 scoped, not built**: the gen-3 stack needs a storage-die floorplan (the L2/L3
+  blocks at their positions and powers), a three-layer spec in `die_stack.py` (pixel / storage /
+  bond / compute) and `--cell-um 100`; P14–P17 written. ~A day.
+
+## Still open, in order
+
+1. **X4** (§P0.27.4) — the measurement that turns gen 3 from ARGUED to MEASURED.
+2. A rail model (register §3) so "binds: PDN" becomes a `V_eff` in the clock search.
+3. D2 (the `V_t` lever end to end); Phase 2 (second workload class).
+
+## Files this session touched — list for staging (never `git add .`)
+
+New: `examples/field_resolve.py`, `examples/pdn_em_skew_report.py`, `examples/x3_utilisation_report.py`,
+`scripts/x1_fields_queue.py`, `scripts/x3_utilisation_ladder.sh`, `docs/evidence/pdn_em_skew.json`,
+`docs/evidence/d1_exec_density_family_u70.json`, `docs/evidence/x3_utilisation.json`, `examples/floorplans/outputs/d1_exec1_u70/`, `examples/floorplans/outputs/d1_exec0.5_u70/`,
+`results-quotable/17-burst-absorption/`, `results-quotable/18-pdn-em-skew/`, `results-quotable/19-dense-cluster-utilisation/` (+ regenerated manifests),
+`proposal_pack_2026-09-11/` (+ `.zip`; generated, not for staging).
+Modified: `examples/generate_exec_density_family.py`, `scripts/build_results_registers.py`, `docs/METHODS.md`, `docs/START_HERE.md`, `docs/ARCHITECTURE_EVOLUTION.md`,
+`scripts/build_proposal_pack.py`, `docs/evidence/burst_absorption.json`, `docs/PHASE0_CHECKLIST.md`,
+`docs/RESULTS_REGISTER.md`, `docs/FUTURE_EXPERIMENTS.md`, `docs/PHYSICAL_DESIGN_CONSTRAINTS.md`,
+`docs/designs/EVOLUTION_LADDER.md`, `docs/designs/gen1_dense_cluster.md`, `docs/NEXT_SESSION_PROMPT.md`,
+this file. `results/` trees are gitignored.
+
+---
+
+# Next session — handoff, 9 September 2026 (§P0.22, the architecture-evolution phase)
+
+Read `docs/START_HERE.md`, then **`docs/designs/EVOLUTION_LADDER.md`** (the deliverable), then
+`docs/PHASE0_CHECKLIST.md` §P0.22 (predictions and RESULT subsections), `docs/RESULTS_REGISTER.md`
+(§0 flag table, the new §1.2/§1.3 rows, §3), `CLAUDE.md`. Slurm: job **1507** on node-06.
+`[!]` **One step at a time** — a step takes the whole job (CPUs/Task=96); campaigns go through
+`scripts/campaign_server.sh` (`results/campaign_queue/<name>.par<N>.tsv`), `on_node.sh` hangs
+while it runs, `ssh node-06-8xv100` works for `free`/`ps`. Baseline: **1070 passed, 1 skipped** (head node, 6 min, 9 Sep; 1054 before §P0.22).
+
+## What landed 9 Sep
+
+- **`docs/designs/EVOLUTION_LADDER.md`** — the argued ladder in v100's §1.18/§10.9 frame, every
+  claim tagged MEASURED/ARGUED; the `s` ladder read against (1.33); design records
+  `gen1_dense_cluster.md`, `gen3_cache_objective.md`; floorplan figures under `docs/designs/figures/`.
+- **D3, the cache-leakage planner objective** — built (`--mr-objective cache-leakage`,
+  `MRParams(zone_targets)`, `objective_peak`, `thermal/leakage_ledger.py`, 16 tests) and measured
+  on the monolithic die: the cache knee (280 K) is **conservation-bound**, 300 K costs **≥ 77 %
+  of die power**, cache leakage 2.7×/3.6× down, Cr:LiSAF tiles fail by load (§P0.22.2 RESULT,
+  `docs/evidence/d3_cache_objective.json`, `results-quotable/10-cache-leakage-objective/`).
+- **D1, the dense-execution-cluster family** — `examples/generate_exec_density_family.py`
+  (×0.5, ×0.25 execution-unit area, slab invariant), `scripts/d1_family_ladder.sh`, running at
+  matched watts; `examples/d1_family_report.py` scores §P0.22.3.
+- **D4, the 70-core falsification ladder** — at 100 µm cells with a matched-grid 34-core
+  control (`scripts/uniform_density_ladder_d4.sh`, `examples/d4_falsification_report.py`); the
+  grid control confirmed (P1), the 70-core rows landing.
+- **Infrastructure:** `scripts/campaign_server.sh`; `METHODS.md` §2.2 rewritten (the one-step
+  reality), §4.2a (objective + ledger); `REFERENCES.md` §1 cites v100 Ch. 9 for the array geometry
+  and says the 45 K lift is *not* in v100 (Draft_5 stays).
+
+## Still open, in order
+
+`[+]` **10 Sep, done:** F1b (the 70-core with the array) and F2 (dark-silicon recovery) ran
+and are recorded — §P0.23 RESULT, register §1.3 (two rows) and §4 (the two control ceilings),
+`results-quotable/13-…, 14-…`, `FUTURE_EXPERIMENTS.md`. Two predictions falsified (the big
+die's laser ceiling: 301 W, not 390–470; the native die lights unaided — the probe's ceiling is
+not the driver's). **F3, the accelerator:** part 1 is recorded (§P0.24 RESULT: the control runs away at 700 W on
+the simulated curve; the seed envelope shape fails every kernel point); part 2 (power shape) is recorded (§P0.24 part 2: holds to 2600 W, tile flux ≤ 5.3 W/mm², all
+rows unconverged on the 0.05 K residual); part 3 (`--tol 1.0 --max-iter 100`) is **done and recorded** (§P0.24 part 3, register §1.3 and §4,
+`results-quotable/16-accelerator-microchannel/`, the pack's accelerator figure). **F1c (clock as the free variable, §P0.26) is done and recorded** (register §1.3,
+`results-quotable/15-clock-as-free-variable/`, the pack's clock figure): at 1.00 W/mm² the laser
+runs the die at the device ceiling, +14 %; +26 % at 1.20; +34 % on the shipped table. The
+proxy caveat is closed: quote clocks with their W/mm² operating point and V/F source. **The full F4 burst ladder is running** (`results/burst/`, `examples/burst_report.py`). **F4 is built** (§P0.25; the array in transient mode, the burst driver) and its smoke point
+`results/burst/d0.80/k2.0` is running; if it lands, queue `scripts/burst_ladder.sh` (6 points)
+and read back with `examples/burst_report.py`. Next after that: F5 (the two-die stack). The campaign server is
+still up; `touch results/campaign_queue/STOP` when nothing is queued.
+
+`[+]` **10 Sep:** the six future experiments are recorded and ranked in
+`docs/FUTURE_EXPERIMENTS.md` (iso-package throughput and the 70-core array ladder first, then
+dark-silicon recovery); the net-export energy story is reserved for the post-evolution
+ISA-classed designs (user's decision). Items 1–5 below stand.
+
+1. **Read D1 and D4 back** if they were still running when this was written:
+   `python examples/d1_family_report.py`, `python examples/d4_falsification_report.py`; score
+   §P0.22.1/§P0.22.3, update the ladder's §6/§7 scorecard and `ARCHITECTURE_EVOLUTION.md` §5's
+   last row (it flips only when D1's rows are in).
+2. **D2** — the `V_t` lever end to end at 25 mV (never run).
+3. **The two-die solve** for gen 3 (`stacked_memory_study.py --cell-um 100`, ported to the array
+   stack) — the measurement that would turn the gen-3 design from ARGUED to MEASURED.
+4. **Planner shape/mode** (§P0.19) and the envelope-path minimum for the cache objective (the
+   baseline path reports lower bounds).
+5. Phase 2 as planned (second workload class).
+
+## Also new on 10 Sep (staging list, in addition to the 9 Sep list below)
+
+`docs/PHYSICAL_DESIGN_CONSTRAINTS.md`, `docs/NEXT_SESSION_PROMPT.md` (rewritten),
+`docs/FUTURE_EXPERIMENTS.md`; scripts: `scripts/iso_package_70core_ladder.sh`,
+`scripts/dark_silicon_ladder.sh`, `scripts/accel_f3_ladder.sh`, `scripts/burst_ladder.sh`,
+`scripts/clock_f1c.sh`, `scripts/clock_f1c_density.sh`; drivers: `examples/burst_absorption_study.py`
+(new), `examples/accelerator_study.py`, `examples/clock_headroom.py`, `examples/mr_comparison.py`
+(flags); reports: `examples/iso_package_throughput_report.py`, `examples/dark_silicon_report.py`,
+`examples/accel_f3_report.py`, `examples/burst_report.py`, `examples/clock_f1c_report.py`;
+library: `HotGauge/HotGauge/thermal/microrefrigeration.py` (envelope shape), `leakage_feedback.py`
+and `mr_array.py` (transient array), tests in `test_mr_wiring.py`, `test_mr_array.py`,
+`test_mr_objective.py`; evidence: `docs/evidence/{iso_package_throughput,dark_silicon,accel_f3,
+accel_f3_power,accel_f3_power_tol1,clock_f1c,clock_f1c_density,burst_absorption}.json`;
+`results-quotable/13-…16-…`; `scripts/build_proposal_pack.py` and `scripts/build_results_registers.py`.
+
+## Files this session touched — list for staging (never `git add .`)
+
+New: `docs/designs/EVOLUTION_LADDER.md`, `docs/designs/gen1_dense_cluster.md`,
+`docs/designs/gen3_cache_objective.md`, `docs/designs/figures/` (3 × `floorplan_34core.png` +
+`density_summary.json`), `HotGauge/HotGauge/thermal/leakage_ledger.py`,
+`HotGauge/HotGauge/thermal/test_mr_objective.py`, `examples/generate_exec_density_family.py`,
+`examples/d3_objective_report.py`, `examples/d4_falsification_report.py`,
+`examples/d1_family_report.py`, `scripts/build_proposal_pack.py` (→ `proposal_pack_<date>/` + `.zip`, generated, not for staging), `examples/floorplans/outputs/d1_exec0.5/`,
+`examples/floorplans/outputs/d1_exec0.25/`, `scripts/campaign_server.sh`,
+`scripts/uniform_density_ladder_d4.sh`, `scripts/d3_objective_smoke.sh`,
+`scripts/d1_family_ladder.sh`, `docs/evidence/d3_cache_objective.json`,
+`docs/evidence/d1_exec_density_family.json`, `docs/evidence/d4_falsification_70core.json`,
+`docs/evidence/d1_exec_density_family_result.json`, `results-quotable/10-cache-leakage-objective/`
+(+ regenerated manifests).
+Modified: `HotGauge/HotGauge/thermal/microrefrigeration.py`, `examples/mr_comparison.py`,
+`scripts/build_results_registers.py`, `CLAUDE.md`, `docs/START_HERE.md`, `docs/PHASE0_CHECKLIST.md`,
+`docs/RESULTS_REGISTER.md`, `docs/METHODS.md`, `docs/REFERENCES.md`,
+`docs/ARCHITECTURE_EVOLUTION.md`, this file. `results/` trees are gitignored.
+
+---
+
+# (superseded) handoff, 8 September 2026 (§P0.20–§P0.21)
 
 `[!]` **9 Sep: the kick-off prompt for the architecture-evolution phase is `docs/NEXT_SESSION_PROMPT.md`.**
 The user lifted the one-die rule and asked for initial core designs within about a day (patent

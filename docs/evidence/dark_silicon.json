@@ -1,0 +1,753 @@
+{
+ "note": "F2 (\u00a7P0.23.2): dark-silicon recovery -- the active-core fraction each arm can light at a\ngiven per-core power, and what the laser costs to light all of it.\n\n    python examples/dark_silicon_report.py\n\nReads ``results/dark_silicon/d<density>/f<fraction>/mr_comparison.json``; per per-core power:\nthe highest lit fraction per arm (a fraction counts as lit only if the arm holds, converged,\nwith the plan holding the 92 C target), the laser cost at 100 %, and the comparison of that\ncost with the uniform-activity ladder at the same die average (``results/array_coverage_armD/\nc1.00``). Scores \u00a7P0.23.2 P1-P4 and writes ``docs/evidence/dark_silicon.json``. Rungs still\nrunning are listed as open.",
+ "background": 0.25,
+ "per_density": {
+  "0.78": {
+   "control": {
+    "highest_lit_fraction": 1.0,
+    "lowest_unlit_fraction": null,
+    "complete": true
+   },
+   "array_idle": {
+    "highest_lit_fraction": 1.0,
+    "lowest_unlit_fraction": null,
+    "complete": true
+   },
+   "array_on": {
+    "highest_lit_fraction": 1.0,
+    "lowest_unlit_fraction": null,
+    "complete": true
+   },
+   "laser_cost_at_100pct_W": 0.0,
+   "laser_net_at_100pct_W": 0.0
+  },
+  "1.0": {
+   "control": {
+    "highest_lit_fraction": 0.5,
+    "lowest_unlit_fraction": 0.75,
+    "complete": true
+   },
+   "array_idle": {
+    "highest_lit_fraction": 1.0,
+    "lowest_unlit_fraction": null,
+    "complete": true
+   },
+   "array_on": {
+    "highest_lit_fraction": 1.0,
+    "lowest_unlit_fraction": null,
+    "complete": true
+   },
+   "laser_cost_at_100pct_W": 0.0,
+   "laser_net_at_100pct_W": 0.0,
+   "plan_vs_uniform_ladder": null
+  },
+  "1.2": {
+   "control": {
+    "highest_lit_fraction": 0.0,
+    "lowest_unlit_fraction": 0.25,
+    "complete": true
+   },
+   "array_idle": {
+    "highest_lit_fraction": 0.25,
+    "lowest_unlit_fraction": 0.5,
+    "complete": true
+   },
+   "array_on": {
+    "highest_lit_fraction": 1.0,
+    "lowest_unlit_fraction": 0.25,
+    "complete": true
+   },
+   "laser_cost_at_100pct_W": 17.344440105451664,
+   "laser_net_at_100pct_W": 10.593274144003999,
+   "plan_vs_uniform_ladder": 1.0000000000000002
+  },
+  "1.5": {
+   "control": {
+    "highest_lit_fraction": 0.0,
+    "lowest_unlit_fraction": 0.25,
+    "complete": true
+   },
+   "array_idle": {
+    "highest_lit_fraction": 0.0,
+    "lowest_unlit_fraction": 0.25,
+    "complete": true
+   },
+   "array_on": {
+    "highest_lit_fraction": 1.0,
+    "lowest_unlit_fraction": null,
+    "complete": true
+   },
+   "laser_cost_at_100pct_W": 64.17395434893224,
+   "laser_net_at_100pct_W": 39.33356413622789,
+   "plan_vs_uniform_ladder": 0.9999999999999996
+  }
+ },
+ "points": [
+  {
+   "density": 0.78,
+   "fraction": 0.25,
+   "die_avg": 0.34125,
+   "done": true,
+   "control": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 72.9620300292969,
+    "p_chip_W": 32.016716280489824,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 65.6704040527344,
+    "p_chip_W": 31.46625226985078,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 65.6704040527344,
+    "p_chip_W": 31.46625226985078,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 0.78,
+   "fraction": 0.5,
+   "die_avg": 0.48750000000000004,
+   "done": true,
+   "control": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 76.30935058593752,
+    "p_chip_W": 48.6631114920857,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 67.89739379882815,
+    "p_chip_W": 47.73516308527054,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 67.89739379882815,
+    "p_chip_W": 47.73516308527054,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 0.78,
+   "fraction": 0.75,
+   "die_avg": 0.63375,
+   "done": true,
+   "control": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 78.04458007812502,
+    "p_chip_W": 63.45769037056305,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 69.27410278320315,
+    "p_chip_W": 62.30374068094315,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_16",
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 69.27410278320315,
+    "p_chip_W": 62.30374068094315,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_16",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 0.78,
+   "fraction": 1.0,
+   "die_avg": 0.78,
+   "done": true,
+   "control": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 78.58132324218752,
+    "p_chip_W": 76.75985539403513,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_16",
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 71.4517761230469,
+    "p_chip_W": 75.32614442222734,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_16",
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 71.4517761230469,
+    "p_chip_W": 75.32614442222734,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_16",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 1.0,
+   "fraction": 0.25,
+   "die_avg": 0.4375,
+   "done": true,
+   "control": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 97.06374511718752,
+    "p_chip_W": 43.01287063724753,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 82.48824462890627,
+    "p_chip_W": 41.35651624989289,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 82.48824462890627,
+    "p_chip_W": 41.35651624989289,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 1.0,
+   "fraction": 0.5,
+   "die_avg": 0.625,
+   "done": true,
+   "control": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 108.9385925292969,
+    "p_chip_W": 66.60644821578282,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 86.38897094726565,
+    "p_chip_W": 62.9512211633991,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 86.38897094726565,
+    "p_chip_W": 62.9512211633991,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 1.0,
+   "fraction": 0.75,
+   "die_avg": 0.8125,
+   "done": true,
+   "control": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": true,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 88.50588378906252,
+    "p_chip_W": 82.09240623719738,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 88.50588378906252,
+    "p_chip_W": 82.09240623719738,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 1.0,
+   "fraction": 1.0,
+   "die_avg": 1.0,
+   "done": true,
+   "control": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 89.06905517578127,
+    "p_chip_W": 99.27684915260328,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 89.06905517578127,
+    "p_chip_W": 99.27684915260328,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 1.2,
+   "fraction": 0.25,
+   "die_avg": 0.525,
+   "done": true,
+   "control": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 107.05767211914065,
+    "p_chip_W": 52.217758497971325,
+    "Q_W": 0.0,
+    "p_mr_net_W": 0.0,
+    "peak_block": "cALU_0",
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": false,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 94.4223571777344,
+    "p_chip_W": 51.13072471709173,
+    "Q_W": 0.7300539817382816,
+    "p_mr_net_W": 0.44414735445398845,
+    "peak_block": "cALU_0",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 1.2,
+   "fraction": 0.5,
+   "die_avg": 0.75,
+   "done": true,
+   "control": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": true,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 93.8615661621094,
+    "p_chip_W": 77.7236837737236,
+    "Q_W": 1.5566605850252848,
+    "p_mr_net_W": 0.9457852232046662,
+    "peak_block": "cALU_0",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 1.2,
+   "fraction": 0.75,
+   "die_avg": 0.975,
+   "done": true,
+   "control": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 91.70559082031252,
+    "p_chip_W": 97.90837618918926,
+    "Q_W": 12.810615792143887,
+    "p_mr_net_W": 7.845941039397417,
+    "peak_block": "cALU_16",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 1.2,
+   "fraction": 1.0,
+   "die_avg": 1.2,
+   "done": true,
+   "control": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 92.70049438476565,
+    "p_chip_W": 117.85062503513042,
+    "Q_W": 17.344440105451664,
+    "p_mr_net_W": 10.593274144003999,
+    "peak_block": "cALU_16",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 1.5,
+   "fraction": 0.25,
+   "die_avg": 0.65625,
+   "done": true,
+   "control": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 93.9349304199219,
+    "p_chip_W": 60.25366696682091,
+    "Q_W": 48.74976587128358,
+    "p_mr_net_W": 29.64304361789692,
+    "peak_block": "cALU_0",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 1.5,
+   "fraction": 0.5,
+   "die_avg": 0.9375,
+   "done": true,
+   "control": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 90.48067626953127,
+    "p_chip_W": 92.95221960110639,
+    "Q_W": 43.03983275249443,
+    "p_mr_net_W": 26.469751421661044,
+    "peak_block": "cALU_0",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 1.5,
+   "fraction": 0.75,
+   "die_avg": 1.21875,
+   "done": true,
+   "control": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 92.43279418945315,
+    "p_chip_W": 119.7256231627773,
+    "Q_W": 53.77789973103729,
+    "p_mr_net_W": 32.86698463091065,
+    "peak_block": "cALU_16",
+    "tiles_capped": 0
+   }
+  },
+  {
+   "density": 1.5,
+   "fraction": 1.0,
+   "die_avg": 1.5,
+   "done": true,
+   "control": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_idle": {
+    "lit": false,
+    "diverged": true,
+    "unconverged": false,
+    "peak_C": null,
+    "p_chip_W": null,
+    "Q_W": null,
+    "p_mr_net_W": null,
+    "peak_block": null,
+    "tiles_capped": null
+   },
+   "array_on": {
+    "lit": true,
+    "diverged": false,
+    "unconverged": false,
+    "peak_C": 91.5650573730469,
+    "p_chip_W": 144.21380079289932,
+    "Q_W": 64.17395434893224,
+    "p_mr_net_W": 39.33356413622789,
+    "peak_block": "cALU_16",
+    "tiles_capped": 0
+   }
+  }
+ ],
+ "scorecard": {
+  "P1_control_cannot_light_the_die": {
+   "predicted": "control lights 50 % at 0.78, 25-50 % at 1.00, <= 25 % at 1.20/1.50",
+   "measured": {
+    "0.78": 1.0,
+    "1.0": 0.5,
+    "1.2": 0.0,
+    "1.5": 0.0
+   },
+   "verdict": "NOT as predicted"
+  },
+  "P2_passive_layer_lights_the_native_die": {
+   "predicted": "idle lights 100 % at 0.78 and 1.00",
+   "measured": {
+    "0.78": 1.0,
+    "1.0": 1.0,
+    "1.2": 0.25,
+    "1.5": 0.0
+   },
+   "verdict": "confirmed"
+  },
+  "P3_laser_lights_100pct_everywhere": {
+   "predicted": "100 % at every per-core power; <=5 W at 0.78/1.00, 15-35 W at 1.20, 50-80 W at 1.50",
+   "measured": {
+    "0.78": 0.0,
+    "1.0": 0.0,
+    "1.2": 17.344440105451664,
+    "1.5": 64.17395434893224
+   },
+   "verdict": "confirmed"
+  },
+  "P4_array_resolves_the_cluster": {
+   "predicted": "plan at 100 % within +-25 % of the uniform ladder at the same die average",
+   "measured": {
+    "0.78": null,
+    "1.0": null,
+    "1.2": 1.0000000000000002,
+    "1.5": 0.9999999999999996
+   },
+   "verdict": "confirmed"
+  }
+ }
+}

@@ -62,10 +62,13 @@ from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
                                           chip_area_m2_from_floorplan, simscale_fan_power,
                                           SIMSCALE_T0_K)
 from HotGauge.thermal.microrefrigeration import (MRParams, run_mr_clipping, mr_accounting,
+                                                 zone_report,
                                                  DEFAULT_SPOT_MIN_UM,
                                                  DEFAULT_SPOT_POLICY,
                                                  DEFAULT_H_MAX_W_PER_MM2, DEFAULT_DT_MAX_K, DEFAULT_ETA_ASF, DEFAULT_LASER_WALLPLUG, DEFAULT_LPC_EFFICIENCY)
 from HotGauge.thermal.ice_server import ICESessionCache
+from HotGauge.thermal.leakage_ledger import leakage_ledger
+from HotGauge.thermal.leakage_feedback import aggregate_aware_name_map
 from HotGauge.thermal.mr_array import (ArrayWiring, wiring_for_stack, DEFAULT_PITCH_UM,
                                        device_pitch_range_um, DEFAULT_COVERAGE)
 from HotGauge.thermal.extractor import (make_extractor, EXTRACTORS, DualZoneExtractor, ZONE_MODES,
@@ -229,11 +232,17 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
         extractor = DualZoneExtractor(make_extractor(args.mr_cold_extractor), extractor, cold_tiles)
     dt_max = (args.mr_dt_max if args.mr_dt_max is not None
               else (None if extractor is not None else DEFAULT_DT_MAX_K))
+    # §P0.22 (D3): the cache-leakage objective plans the cache-zone blocks (the same pattern the
+    # dual-material arrangement uses) against --mr-cold-target-K and everything else against
+    # the hot-spot target. Default 'peak' passes no zones, so the recorded rows are untouched.
+    zone_targets = ([(args.mr_cold_zone_pattern, args.mr_cold_target_K)]
+                    if args.mr_objective == 'cache-leakage' else None)
     mr = MRParams(target_K=target_C + 273.15, h_max=args.mr_h_max,
                   dt_max_K=dt_max, eta_asf=args.eta_asf,
                   laser_wallplug=args.eta_laser, lpc_efficiency=args.eta_lpc,
                   spot_min_um=args.spot_min_um, spot_policy=args.spot_policy,
-                  extractor=extractor)
+                  extractor=extractor, zone_targets=zone_targets, objective=args.mr_objective,
+                  envelope_shape=args.mr_envelope_shape)
 
     def last_status():
         # Lets run_mr_clipping tell a converged baseline from a divergent one, which is what
@@ -334,6 +343,11 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
            'mr_zone_mode': args.mr_zone_mode if use_mr else None,
            'n_cold_zone_tiles': (len(cold_tiles) if use_mr else None),
            'mr_energy_cap': args.mr_energy_cap if use_mr else None,
+           # §P0.22 (D3): the objective the plan was built against and where each zone landed.
+           'mr_objective': args.mr_objective if use_mr else None,
+           'mr_envelope_shape': args.mr_envelope_shape if use_mr else None,
+           'mr_cold_target_K': (args.mr_cold_target_K if (use_mr and mr.has_zones) else None),
+           'mr_zones': (res or {}).get('zones') if use_mr else None,
            'extractor': (res or {}).get('extractor') if use_mr else None,
            'mr_dt_max_K': (None if mr.dt_max_K == float('inf') else mr.dt_max_K) if use_mr else None,
            'stack_spec': arm_stack_spec(args, arm),
@@ -363,6 +377,30 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
         return row
 
     finals = {k: float(np.ravel(v)[-1]) for k, v in temps.items()}
+    # §P0.22 (D3): the leakage ledger. Every arm's reported field is priced on the SAME leakage
+    # reference and curve the feedback loop solved with, so "cooling the caches saved X W of
+    # leakage" is a difference of two rows built by one rule. The cache zone is the same pattern
+    # the objective and the dual-material arrangement use; its temperatures are summarised for
+    # every arm too, so the idle row says where the caches sit before anything is asked of them.
+    _nm = aggregate_aware_name_map(include_core_idx=(n_cores > 1), num_cores=n_cores)
+    _led = leakage_ledger(temps, leak_ref, leak_model, t_ref, _nm,
+                          zones={'cache': args.mr_cold_zone_pattern}, t_floor_K=T_FLOOR_K)
+    _zr = zone_report(temps, MRParams(target_K=args.mr_target_C + 273.15,
+                                      zone_targets=[(args.mr_cold_zone_pattern,
+                                                     args.mr_cold_target_K)]), T_FLOOR_K)
+    _cz = _zr.get(args.mr_cold_zone_pattern) or {}
+    row.update({'die_leakage_W': _led['die_leakage_W'],
+                'cache_leakage_W': _led['zones']['cache'],
+                'reference_leakage_W': _led['reference_leakage_W'],
+                'n_leakage_units': _led['n_units'],
+                'n_leakage_units_at_floor': _led['n_units_at_floor'],
+                'n_leakage_units_off_die': _led['n_units_off_die'],
+                'off_die_reference_leakage_W': _led['off_die_reference_W'],
+                'cache_zone_pattern': args.mr_cold_zone_pattern,
+                'n_cache_blocks': _cz.get('n_blocks'),
+                'cache_zone_max_C': (K_to_C(_cz['max_K']) if _cz.get('max_K') is not None else None),
+                'cache_zone_mean_C': (K_to_C(_cz['mean_K']) if _cz.get('mean_K') is not None
+                                      else None)})
     hot_name, hot_K = None, -np.inf
     for k, v in finals.items():
         if v > T_FLOOR_K and v > hot_K:
@@ -561,6 +599,22 @@ def main():
     ap.add_argument('--mr-cold-extractor', default=DEFAULT_COLD_EXTRACTOR,
                     choices=sorted(EXTRACTORS),
                     help='the storage-zone material in dual mode (decided 8 Sep: Cr:LiSAF)')
+    ap.add_argument('--mr-objective', default='peak', choices=('peak', 'cache-leakage'),
+                    help='§P0.22 (D3). "peak" (default, every recorded row): hold every block at '
+                         'or below --mr-target-C. "cache-leakage": hold the cache-zone blocks '
+                         '(--mr-cold-zone-pattern) at --mr-cold-target-K and everything else at '
+                         '--mr-target-C, at minimum cooling watts -- the objective under which a '
+                         'storage-zone material has a job. Rows carry die_leakage_W and '
+                         'cache_leakage_W under either objective.')
+    ap.add_argument('--mr-cold-target-K', type=float, default=280.0,
+                    help='cache-zone temperature the cache-leakage objective holds [K]. 280 K is '
+                         'the measured knee of the cold-zone prize (RESULTS_REGISTER §1.2); it is '
+                         'BELOW the 295 K ambient, which is the point (§P0.22.2 P2).')
+    ap.add_argument('--mr-envelope-shape', default='seed', choices=('seed', 'power'),
+                    help='§P0.24. Shape of the rescue path\'s first (full-capability) plan: "seed" '
+                         '(every recorded row) is dt_max / 1.0 K/W per block, uniform, scaled by '
+                         'conservation; "power" caps each block at its own dissipation, so full '
+                         'capability means removing every block\'s own heat.')
     ap.add_argument('--mr-energy-cap', default='injected', choices=('injected', 'converged'),
                     help='which die power the conservation cap uses: the injected trace (recorded '
                          'behaviour) or the CONVERGED die power after each solve, which stops the '
@@ -971,6 +1025,8 @@ def main():
                    'arms': list(args.arms), 'stack': args.stack,
                    'spreading': bool(args.spreading), 'base_mm2': args.base_mm2,
                    'mr_extractor': args.mr_extractor, 'mr_energy_cap': args.mr_energy_cap,
+                   'mr_objective': args.mr_objective, 'mr_cold_target_K': args.mr_cold_target_K,
+                   'mr_cold_zone_pattern': args.mr_cold_zone_pattern,
                    'pitch_um': args.pitch_um, 'burial_um': args.burial_um,
                    'mr_material': args.mr_material, 'cell_um': args.cell_um,
                    'stack_specs': {a: arm_stack_spec(args, a) for a in args.arms},

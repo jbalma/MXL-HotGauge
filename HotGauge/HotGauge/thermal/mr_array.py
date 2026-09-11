@@ -52,6 +52,7 @@ of the power map rather than of the device. ``coverage_report`` reports the rati
 it good or bad; a pitch sweep is what decides it. See ``examples/tile_pitch_sweep.py``.
 """
 
+import numpy as np
 import os
 import math
 import logging
@@ -599,6 +600,27 @@ def tile_powers_for_stack(tile_plan_W, tiles):
     template placeholder that never got substituted.
     """
     return {t['name']: -float(tile_plan_W.get(t['name'], 0.0)) for t in tiles}
+
+
+def tile_power_schedule(plans_by_slot, tiles, blocks, gap_policy='nearest'):
+    """Per-slot tile powers for a TRANSIENT solve (§P0.25, F4): ``{tile: array(n_slots)}``,
+    negative, every tile present in every slot.
+
+    ``plans_by_slot`` is a list of block-level plans (``{block: W}``, or ``{}`` for an idle
+    slot), one per slot of the power trace. Each plan is projected onto the tiles exactly as a
+    steady plan is (:func:`project_plan_to_tiles`), so a modulated array is the steady planner's
+    plan switched on and off slot by slot -- the laser is optical and follows in microseconds,
+    which is the capability this schedule exists to measure.
+    """
+    n = len(plans_by_slot)
+    out = {t['name']: np.zeros(n) for t in tiles}
+    for i, plan in enumerate(plans_by_slot):
+        if not plan:
+            continue
+        tp = project_plan_to_tiles(plan, blocks, tiles, gap_policy=gap_policy)
+        for name, q in tp.items():
+            out[name][i] = -float(q)
+    return out
 
 
 def blocks_from_floorplan(flp):

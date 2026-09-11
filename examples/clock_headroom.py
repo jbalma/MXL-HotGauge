@@ -63,6 +63,7 @@ from HotGauge.thermal.rbb import amortize_rbb, add_rbb_argument
 from HotGauge.thermal.ICE import Floorplan
 from HotGauge.thermal.leakage_feedback import (die_power_of_trace, mcpat_flp_name_map,
                                                replicate_trace_cores, peak_temp_K,
+                                               scale_trace_to_die_power,
                                                load_calibrated_leakage_model,
                                                load_leakage_model, LEAKAGE_CURVES,
                                                mcpat_tref_from_trace_dir)
@@ -524,6 +525,12 @@ def main():
                          'clock and are quieted by --turbo-background')
     ap.add_argument('--turbo-background', type=float, default=0.25,
                     help='activity of the non-boosted cores (with --turbo-core)')
+    ap.add_argument('--density', type=float, default=None,
+                    help='§P0.26: scale the trace so the die dissipates this W/mm^2 AT THE '
+                         'TRACE CLOCK (3.8 GHz), exactly as the density ladders do, before the '
+                         'clock search rescales from there. Without it the search starts from '
+                         'the trace\'s own power (31 W on the 34-core die -- 0.31 W/mm^2 -- '
+                         'where no arm ever meets a thermal limit).')
     ap.add_argument('--emphasise', default=None,
                     help="concentrate each core's power into units matching this substring, "
                          "e.g. 'Floating Point Units' (accelerator-style core)")
@@ -698,6 +705,14 @@ def main():
     if args.turbo_core is not None:
         base = scale_cores(base, single_core_turbo(args.cores, args.turbo_core,
                                                    args.turbo_background))
+    if args.density is not None:
+        # §P0.26: the operating point in W/mm^2 at the trace clock; the leakage reference is a
+        # per-unit power and scales with the trace it references.
+        base, _dscale, _ = scale_trace_to_die_power(base, flp, args.tech_node,
+                                                    args.density * area_m2 * 1e6,
+                                                    num_cores=args.cores)
+        if leak_ref_base:
+            leak_ref_base = {u: v * _dscale for u, v in leak_ref_base.items()}
     # `[!]` RBB policy: applied ONCE here, after every other trace transform (replication,
     # emphasis, turbo) and before the clock search rescales anything -- so p_ref, every candidate
     # clock and the accounting all see one power map. The leakage reference moves with it;
@@ -855,6 +870,7 @@ def main():
         json.dump({'node': args.node, 'cores': args.cores, 'area_mm2': area_m2 * 1e6,
                    'rbb_policy': args.rbb_policy, 'rbb': rbb_meta,
                    'p_ref_W': p_ref, 'trace_GHz': TRACE_REFERENCE_GHZ,
+                   'density_at_trace_clock': args.density,
                    'thermal_limit_C': args.thermal_limit_C,
                    'leak_v_exponent': args.leak_v_exponent,
                    'vf_source': args.vf_source,

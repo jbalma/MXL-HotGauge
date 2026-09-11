@@ -1,0 +1,158 @@
+{
+ "note": "F1c (\u00a7P0.26): throughput with the CLOCK as the free variable -- read ``results/clock_f1c/*/\nclock_headroom.json``, restate each arm's sustainable clock as FLOP/s = f x FLOP/cycle x cores\n(ops over walltime at fixed IPC) per package watt, score the predictions, write\n``docs/evidence/clock_f1c.json``.\n\n    python examples/clock_f1c_report.py",
+ "runs": {
+  "cfm88": {
+   "vf_source": "spice",
+   "vf_ceiling_GHz": 4.173245518213478,
+   "thermal_limit_C": 100.0,
+   "trace_GHz": 3.8,
+   "cores": 34,
+   "rows": {
+    "control": {
+     "f_GHz": 4.173245518213478,
+     "limited_by": "vf_envelope",
+     "vf_clamped": true,
+     "at_ceiling": true,
+     "peak_C": 50.19515380859377,
+     "peak_block": "cALU_16",
+     "p_chip_W": 38.63841816519466,
+     "density": 0.3818396727677563,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 73.62241816519466,
+     "TFLOPs": 4.540491123816264,
+     "GFLOPs_per_package_W": 61.67267032207864
+    },
+    "array_idle": {
+     "f_GHz": 4.173245518213478,
+     "limited_by": "vf_envelope",
+     "vf_clamped": true,
+     "at_ceiling": true,
+     "peak_C": 46.65169677734377,
+     "peak_block": "cALU_16",
+     "p_chip_W": 38.505827749013406,
+     "density": 0.38052936340389126,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 73.48982774901341,
+     "TFLOPs": 4.540491123816264,
+     "GFLOPs_per_package_W": 61.783940211742014
+    },
+    "array_on": {
+     "f_GHz": 4.173245518213478,
+     "limited_by": "vf_envelope",
+     "vf_clamped": true,
+     "at_ceiling": true,
+     "peak_C": 46.65169677734377,
+     "peak_block": "cALU_16",
+     "p_chip_W": 38.505827749013406,
+     "density": 0.38052936340389126,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 73.48982774901341,
+     "TFLOPs": 4.540491123816264,
+     "GFLOPs_per_package_W": 61.783940211742014
+    }
+   },
+   "done": true
+  },
+  "cfm88_above_table": {
+   "vf_source": "spice",
+   "vf_ceiling_GHz": 4.173245518213478,
+   "thermal_limit_C": 100.0,
+   "trace_GHz": 3.8,
+   "cores": 34,
+   "rows": {
+    "control": {
+     "f_GHz": 6.5,
+     "limited_by": "search_ceiling",
+     "vf_clamped": true,
+     "at_ceiling": true,
+     "peak_C": 67.01741943359377,
+     "peak_block": "cALU_16",
+     "p_chip_W": 59.422639457714276,
+     "density": 0.5872373218934978,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 94.40663945771428,
+     "TFLOPs": 7.072,
+     "GFLOPs_per_package_W": 74.90998557540672
+    },
+    "array_idle": {
+     "f_GHz": 6.5,
+     "limited_by": "search_ceiling",
+     "vf_clamped": true,
+     "at_ceiling": true,
+     "peak_C": 61.5010925292969,
+     "peak_block": "cALU_16",
+     "p_chip_W": 59.12143426275421,
+     "density": 0.5842606965930577,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 94.10543426275422,
+     "TFLOPs": 7.072,
+     "GFLOPs_per_package_W": 75.14975150376637
+    },
+    "array_on": {
+     "f_GHz": 6.5,
+     "limited_by": "search_ceiling",
+     "vf_clamped": true,
+     "at_ceiling": true,
+     "peak_C": 61.5010925292969,
+     "peak_block": "cALU_16",
+     "p_chip_W": 59.12143426275421,
+     "density": 0.5842606965930577,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 94.10543426275422,
+     "TFLOPs": 7.072,
+     "GFLOPs_per_package_W": 75.14975150376637
+    }
+   },
+   "done": true
+  }
+ },
+ "scorecard": {
+  "P1_control_runaway_limited": {
+   "measured": [
+    4.173245518213478,
+    "vf_envelope"
+   ],
+   "verdict": "NOT as predicted"
+  },
+  "P2_idle_spec_limited": {
+   "measured": [
+    4.173245518213478,
+    "vf_envelope"
+   ],
+   "verdict": "confirmed"
+  },
+  "P3_laser_hits_the_table": {
+   "measured": {
+    "f_GHz": 4.173245518213478,
+    "vf_clamped": true,
+    "density": 0.38052936340389126,
+    "Q_W": 0.0,
+    "gain_vs_control": 0.0
+   },
+   "verdict": "FALSIFIED: < 4.5 GHz"
+  },
+  "P4_above_table_ARGUED": {
+   "measured": [
+    6.5,
+    "search_ceiling",
+    0.5842606965930577
+   ],
+   "verdict": "outside the band: 6.50 GHz"
+  },
+  "P5_efficiency_falls_with_clock": {
+   "measured": [
+    61.67267032207864,
+    61.783940211742014,
+    61.783940211742014
+   ],
+   "verdict": "NOT as predicted"
+  }
+ },
+ "complete": true
+}

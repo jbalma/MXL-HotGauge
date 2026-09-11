@@ -1,0 +1,13 @@
+[
+  {
+    "die_mm2": 86.33028074131941,
+    "die_avg": 2.316684230406724,
+    "peak": 345.12077261013235,
+    "top1pct_avg": 278.47846098008296,
+    "ratio": 148.97186594546895,
+    "cores": 34,
+    "blocks": 1126,
+    "hottest": "RBB_16",
+    "png": "docs/designs/figures/d1_exec0.25/floorplan_34core.png"
+  }
+]

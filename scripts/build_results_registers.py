@@ -187,6 +187,192 @@ QUOTABLE = [
                   'do until the objective is cache leakage or the floorplan is the variable. '
                   'Cr:LiSAF fails breakeven at its demonstrated eta_EQE (0.85-0.95; needs > 0.94).',
     },
+    {
+        'slug': '10-cache-leakage-objective',
+        'claim': 'The cache-leakage prize cannot be collected on the compute die at a price a '
+                 'cooler can pay: holding the caches at their knee is conservation-bound and '
+                 '20 K above it costs 77 % of die power (lower bound).',
+        'figure': '280 K: the whole die (99 W plan on a 99 W die, zone at 289.5 K); 300 K: '
+                  '>= 71 W = 77 %; cache leakage 2.7x / 3.6x down; Cr:LiSAF tiles 56 capped, 18 W short',
+        'register': '§1.2',
+        'files': ['d3_cache_objective.json'],
+        'raw': ['results/d3_objective_v2', 'results/d3_objective'],
+        'driver': 'scripts/d3_objective_smoke.sh; python examples/d3_objective_report.py',
+        'caveat': 'Monolithic 34-core die, arm D, target device, planner objective cache-leakage '
+                  '(§P0.22.2). Costs are LOWER bounds (baseline planning path; +3 % from 6 to 12 '
+                  'iterations). The measured leg of the separate-die argument, not a two-die '
+                  'measurement. Cr:LiSAF figures are ceilings at eta_EQE = 1. results/d3_objective/ '
+                  'is the first pass: cache figures valid, die_leakage_W totals NOT (ledger rule).',
+    },
+    {
+        'slug': '11-dense-cluster-family',
+        'claim': 'The rescue travels to a denser execution cluster, and density is paid for in '
+                 'cooling watts: the first re-measured design change (D1).',
+        'figure': 'x0.5: holds to 202 W, plan 1.17-2.8x the reference; x0.25: holds to 162 W, '
+                  '1.65-6.9x; 0 tiles capped; each loses the top rung to the stability boundary',
+        'register': '§1.3',
+        'files': ['d1_exec_density_family_result.json', 'd1_exec_density_family.json'],
+        'raw': ['results/d1_family_arr', 'results/d1_family'],
+        'driver': 'examples/generate_exec_density_family.py; scripts/d1_family_ladder.sh; '
+                  'python examples/d1_family_report.py',
+        'caveat': 'Matched die WATTS, not density (the members are 0.90x / 0.85x the reference '
+                  'area). Arm D, 50 um, target device, scalar 45 K. Plans normalised to a 92 C '
+                  'landing at 0.3247 K/W. Control-arm cliffs may still be open in the result file '
+                  '(check "control_cliff_W"."bracketed").',
+    },
+    {
+        'slug': '12-falsification-70core',
+        'claim': 'The gen-0 ratios travel to a second floorplan and the absolute ceilings do '
+                 'not: the 70-core die as a falsification test (D4).',
+        'figure': 'flat ceiling 0.65/0.70 (34-core 0.85/0.90, down by the 1.40x the base '
+                  'predicts); 127 W vs 86 W; cALU the runaway block at every failing shaped rung',
+        'register': '§1.3',
+        'files': ['d4_falsification_70core.json'],
+        'raw': ['results/uniform_density_70core_armD', 'results/uniform_density_34core_c100_armD'],
+        'driver': 'scripts/uniform_density_ladder_d4.sh; python examples/d4_falsification_report.py',
+        'caveat': '100 um cells (the 70-core stack is 629 k unknowns at 50 um); read only beside '
+                  'the 34-core matched-grid control, which moved neither cliff. Check "complete" '
+                  'in the file: the shaped 0.45 rung may still be open.',
+    },
+    {
+        'slug': '13-iso-package-70core',
+        'claim': 'The laser\'s multiplier travels to the 70-core die and the watts do not: 2.2x the '
+                 'driver\'s control (0.70 -> 1.60 W/mm^2, 301 W), s = 0.93 at the top rung, '
+                 '9.0 TFLOP/s on the same air-cooled package (F1).',
+        'figure': 'control 0.70 (137 W); unpowered array 0.80; laser 1.60 = 301 W; 2.00 no steady state '
+                  'at full capability; 2.06x the cores at 4.03 GHz',
+        'register': '§1.3',
+        'files': ['iso_package_throughput.json'],
+        'raw': ['results/iso_package_70core', 'results/array_coverage_armD'],
+        'driver': 'scripts/iso_package_70core_ladder.sh; python examples/iso_package_throughput_report.py',
+        'caveat': '100 um cells. GFLOP/s is the thermal-only proxy, flat at fixed core count: quote '
+                  'the watts multiplier and the core-count multiplier, never "N x the compute" from '
+                  'one die. Predicted 390-470 W, measured 301 (§P0.23.1 P2 falsified).',
+    },
+    {
+        'slug': '14-dark-silicon',
+        'claim': 'Dark-silicon recovery: at 1.2 W/mm^2 per core no contiguous quarter of the die '
+                 'lights on this package, the unpowered GaAs layer lights a quarter, the laser '
+                 'lights all 34 cores for 17 W; at 1.5 only the laser lights any fraction (64 W).',
+        'figure': '17.3 W (10.6 net) at 1.2; 64.2 W (39.3 net) at 1.5; native 0.78 lights unaided; '
+                  '1.0: control 50 %, passive layer 100 %',
+        'register': '§1.3',
+        'files': ['dark_silicon.json'],
+        'raw': ['results/dark_silicon'],
+        'driver': 'scripts/dark_silicon_ladder.sh; python examples/dark_silicon_report.py',
+        'caveat': 'Hot cores are a contiguous block (worst case). The recovery claim starts at '
+                  '~1.0 W/mm^2 per core: the driver\'s control lights the native die unaided '
+                  '(§P0.23.2 P1 falsified -- it was written against the probe\'s ceiling). At 1.5 a lit '
+                  'quarter costs more than a lit half (48.7 vs 43.0 W): measured.',
+    },
+    {
+        'slug': '15-clock-as-free-variable',
+        'claim': 'The laser converts thermal headroom into clock until the device\'s V/F ends it: '
+                 '+14 % at 1.00 W/mm^2 and +26 % at 1.20 on the SPICE ceiling, +34 % on the shipped '
+                 'table (F1c).',
+        'figure': '1.00 W/mm^2: control 3.66 GHz, unpowered array 3.90, laser 4.17 (device ceiling, '
+                  '38 W); table: 4.86 GHz thermal-limited at 2.28 W/mm^2 (235 W removed)',
+        'register': '§1.3',
+        'files': ['clock_f1c_density.json', 'clock_f1c.json'],
+        'raw': ['results/clock_f1c_density', 'results/clock_f1c'],
+        'driver': 'scripts/clock_f1c_density.sh; python examples/clock_f1c_report.py --base results/clock_f1c_density',
+        'caveat': 'Operating point in W/mm^2 at the trace clock (--density); the trace\'s own 0.31 W/mm^2 '
+                  'never meets a thermal limit (clock_f1c.json). Dynamic ~ V^2 f, leakage ~ V (assumed). '
+                  'The SPICE 4.17 GHz and the table\'s 5.0 GHz are MODEL ceilings; above the table the '
+                  'voltage clamps and no clock may be quoted. GFLOP/s per package watt falls with clock '
+                  'on every arm.',
+    },
+    {
+        'slug': '16-accelerator-microchannel',
+        'claim': 'The array holds a GA100-class accelerator from 700 W to 2600 W on a direct-die '
+                 'microchannel plate where the conventional stack has no steady state; the top rung '
+                 'ends on conservation; a concentrated eight-SM kernel at 700 W is held for 32 W (F3).',
+        'figure': '102 / 514 / 1289 / 2244 W removed at 1000 / 1400 / 2000 / 2600 W; s = 0.98 at 2600; '
+                  'occ8 700 W: 32 W; max tile flux 5.3 W/mm^2',
+        'register': '§1.3',
+        'files': ['accel_f3_power_tol1.json', 'accel_f3_power.json', 'accel_f3.json'],
+        'raw': ['results/accel_f3_power_tol1', 'results/accel_f3_power', 'results/accel_f3'],
+        'driver': 'SHAPE=power ARRAY_ON_ONLY=1 TOL=1.0 MAXITER=100 scripts/accel_f3_ladder.sh; '
+                  'python examples/accel_f3_report.py --base results/accel_f3_power_tol1',
+        'caveat': 'The control runaway at 700 W is a simulated-curve, ASSUMED 25 %-leakage result on '
+                  'an uncalibrated power split (calibrated: false); 100 um cells; needs the power '
+                  'envelope shape (accel_f3.json shows the seed shape failing every kernel point) and '
+                  'tol 1.0 (accel_f3_power.json rows are the same answers flagged unconverged on a '
+                  '0.05 K residual). The device is 150x under-used: max tile flux 5.3 W/mm^2.',
+    },
+    {
+        'slug': '17-burst-absorption',
+        'claim': 'Burst absorption (F4): a 10 ms activity burst that the package rides on thermal '
+                 'mass is removed at its source by the MODULATED array -- 2.5-3.3x less overshoot '
+                 'per added watt; at 0.80 W/mm^2 a 2x burst sends the package 11 ms above the spec '
+                 'and the modulated array holds the die under its target.',
+        'figure': '0.80 W/mm^2, k=2: control 118 C (11 ms > spec), static array 109 C (6 ms), '
+                  'modulated 87 C (0 ms > target, 70 W removed, 2.6 J); k=3: control and static '
+                  'array non-viable (> 127 C), modulated 101 C (6 ms > spec); per added watt '
+                  '0.51-0.67 K/W control, 0.51-0.54 static, 0.17-0.20 modulated; 1.00, k=3: the '
+                  'static array runs away inside the 25 ms window',
+        'register': '§1.3',
+        'files': ['burst_absorption.json'],
+        'raw': ['results/burst'],
+        'driver': 'scripts/burst_ladder.sh; python examples/burst_report.py',
+        'caveat': 'Transient 3D-ICE (1 ms slots, 10 sub-steps), each arm warm-started from its own '
+                  'steady state; whole-die burst on DYNAMIC power at fixed voltage; feed-forward '
+                  'modulation (the burst\'s own added watts removed at their source -- what a power '
+                  'monitor commands; the array\'s microsecond optical response is ARGUED, the model '
+                  'resolves the thermal one). A MARGIN claim: quote with the operating point and '
+                  'its steady margin (0.80: 20 K under target; 1.00: 3 K, where the modulated array '
+                  'still crosses the target at every k and the spec at k >= 2). Rows past 127 C '
+                  'are non-viable, not temperatures; the 1.00/k3 static row is a transient runaway, '
+                  'not a number. The extractor\'s per-tile cap is steady-only: the burst plan asks up to '
+                  '13 W/mm^2 of one tile for 10 ms (1.00 / 3x; 5.2 at 0.80 / 2x), the first demand above '
+                  'the steady ~5 W/mm^2 rule and 60x under the device at 300 K.',
+    },
+    {
+        'slug': '18-pdn-em-skew',
+        'claim': 'The rescue ladder is a current ladder and the ladder\'s non-thermal end is the PDN: '
+                 'every rung above ~1.3 W/mm^2 runs the rails at 1.5-3x the native current, the dense '
+                 'cluster doubles the peak rail current on top, and thermal clock skew grows with every '
+                 'rung (a cost of the rescue, not a lever) -- X1/X2 on the recorded fields.',
+        'figure': 'die current vs native 1.29 / 1.54 / 2.00 / 2.45 / 2.88x at 1.00-2.40 W/mm^2; x0.5 '
+                  'cluster cALU 2.00x, x0.25 3.9x at matched watts; F1c laser 1.50x / 1.78x (SPICE) and '
+                  '1.60x (table); Black n=2, Ea=0.9 eV: worst block 12x / 21x / 40x / 50x vs native at '
+                  '1.20-2.40; cooling dividend 2.4x at matched power (1.10); core-domain dT 24 K native -> '
+                  '32-60 K, 3.2 % -> 4.2-7.9 % of the period at D_ins 150 ps; uniformity buys 0.74 % at '
+                  'matched power and the laser field is less uniform at matched density (+1 to +7 points)',
+        'register': '§1.3',
+        'files': ['pdn_em_skew.json'],
+        'raw': ['results/fields'],
+        'driver': 'python scripts/x1_fields_queue.py > results/campaign_queue/x1_fields.par4.tsv (node); '
+                  'python examples/pdn_em_skew_report.py',
+        'caveat': 'Fields and current densities MEASURED (the recorded final power maps re-solved once '
+                  'through the session; peaks reproduced to +-0.000 K); every acceleration, lifetime, '
+                  'skew percentage and the PDN LIMIT are ARGUED on stated constants (V_dd 0.70 V, n=2, '
+                  'Ea=0.9 eV, D_ins 150/500 ps, alpha_R 0.40 %/K, alpha_cell 0.062 %/K). No rail model: '
+                  '"binds: PDN" means the rails must be re-sized ~J x, not that the die fails. Quote the '
+                  'gradient in K beside any skew percentage and n, Ea beside any lifetime.',
+    },
+    {
+        'slug': '19-dense-cluster-utilisation',
+        'claim': 'At the book\'s floorplan overheads (U = 70 %, T = 15 %, 20 um cache halos) the '
+                 '"2x denser" cluster is 1.22x denser in silicon, the rescue holds every rung to 243 W, '
+                 'and the cooling premium over a same-utilisation reference is 1.2-1.4x at the die-wide '
+                 'rungs (X3).',
+        'figure': 'members 137.7 mm^2 (1.36x) and 121.5 mm^2 (1.20x); plan vs reference 0.75 / 0.85 / '
+                  '0.90x at 162 / 202 / 243 W, vs the utilisation control 1.44 / 1.22 / 1.16x (9.8x at '
+                  '121 W); passive ceiling 60.7 -> 70.8 W with utilisation alone, back to 60.7 W with '
+                  'the x0.5 cluster; 0 tiles capped',
+        'register': '§1.3',
+        'files': ['x3_utilisation.json', 'd1_exec_density_family_u70.json'],
+        'raw': ['results/x3_u70'],
+        'driver': 'python examples/generate_exec_density_family.py --factors 1.0 0.5 --utilisation 0.70 '
+                  '--overhead 0.15 --cache-halo-um 20 --tag u70; scripts/x3_utilisation_ladder.sh; '
+                  'python examples/x3_utilisation_report.py',
+        'caveat': '100 um cells with the reference re-run on the same grid -- quote only beside those '
+                  'ref rows (the 100 um reference plans are 8-50 % below the 50 um ones; its control '
+                  'cliff is unchanged). Logic x 1.643 with McPAT power unchanged; halos as macro area '
+                  'at constant power; normalisation at 0.3247 K/W measured on the 101 mm^2 die. P9 '
+                  'falsified low (dies grow 1.36x / 1.20x, not 1.4-1.55x); P12 not as predicted.',
+    },
 ]
 
 HISTORICAL = [

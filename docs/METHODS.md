@@ -55,10 +55,31 @@ scripts/on_node.sh <jobid> <command>      # one command inside the allocation
 ```
 Always `OMP_NUM_THREADS=1`.
 
-### 2.2 Campaigns: one slurm step, N local workers
+### 2.2 Campaigns: ONE slurm step, N local workers
 
-This allocation admits about **eight** concurrent slurm steps. One `srun` per point queues 88 of 96
-cores into idleness. Use the campaign runner, which forks workers inside a single step:
+`[!]` **A step takes the whole job by default** — `scontrol show step` reads CPUs=96,
+mem=237000M, because job 1507 was allocated with CPUs/Task=96 — so a second `srun --overlap`
+sits on *"Requested nodes are busy"* until the first step ends (measured 9 Sep: D3's launcher
+waited eight minutes, then grabbed the node the moment D4's step was cancelled). The earlier
+"about eight concurrent steps" note is from a differently-shaped allocation and is withdrawn.
+Consequences: **`scripts/on_node.sh` hangs while any campaign step is running** (kill it by
+PID; read progress from the log files on NFS instead, and node memory from
+`sinfo -N -n node-06-8xv100 -o '%e/%m'`), and every campaign must go through the one step:
+
+```bash
+nohup srun --jobid=<id> --overlap -n1 --cpu-bind=none scripts/campaign_server.sh \
+     > results/campaign_queue/server.log 2>&1 &
+scripts/some_ladder.sh > results/campaign_queue/<name>.par<N>.tsv     # queues it
+touch results/campaign_queue/STOP                                      # winds down
+```
+
+`scripts/campaign_server.sh` (9 Sep) is that step: it runs every `<name>.par<N>.tsv` dropped
+into `results/campaign_queue/` through `campaign_inner.sh` with `PAR=N`, concurrently, and keeps
+watching. Size the sum of the PARs against 96 cores and 237 GB. The full test suite goes through
+it too (`suite.par1.tsv` → `spice_toolchain/tmp/run_suite_node.sh`) once the worker count is
+down to ~10.
+
+The older form, for a single campaign, still works and is what the server runs per file:
 
 ```bash
 scripts/build_joblist.sh > /tmp/jobs.tsv
@@ -99,6 +120,26 @@ finish all its points and leave no marker). Use `scripts/rerun_progress.sh`, whi
 each run's own `plan.json`.
 
 ---
+
+### 2.6 The recorded solve trees hold POWER maps, not temperature fields (11 Sep)
+
+Every study directory keeps `itNN/iter_NNN/{IC.stk, IC.flp, MR.flp}` — the rendered stack and the
+per-block powers of every solve — and **no per-block temperatures**: the session path renders the
+files and never spawns the emulator (`ice_server.py`), so the converged field survives only as the
+row's summary (`peak_C`, `die_span_K`). To read a recorded field, re-solve its final power map
+once, linearly, through the session on the node:
+
+```bash
+python scripts/x1_fields_queue.py > results/campaign_queue/x1_fields.par4.tsv   # 34 fields, 6 min at PAR 4
+python examples/field_resolve.py --run <arm dir> --expect-removed-W <Q> --expect-peak-C <peak> --out results/fields/<label>/field.json
+```
+
+`[!]` Two traps. (1) **The last `itNN` of an `array_on` tree is the bisection's largest FAILING
+plan**, not the minimum: select the pass by the row's `heat_removed_W` (`field_resolve.py` does,
+and refuses if no pass matches within 0.05 W). (2) The last `iter_NNN` of the selected pass is
+the loop's final accepted solve — measured: 34 of 34 re-solved peaks reproduce `peak_C` to
+±0.000 K. `examples/pdn_em_skew_report.py` reads the fields as current densities and gradients
+(§P0.27). `[!]` Nothing on the head node — the re-solve is a factorisation per field.
 
 ## 3. The device layer: what SPICE gives you, and what it does not
 
@@ -227,6 +268,22 @@ withdrawn** — the range is 0.10–0.60 and 0.32 stands — so the first-law le
 generation at the default and the two ledgers must still not be conflated.
 `examples/findings_recovery_correction.py` re-prices the 36 recorded rows.
 
+### 4.2a The planner's objective, and the leakage ledger (§P0.22, D3)
+
+`mr_comparison.py --mr-objective {peak,cache-leakage}` (default `peak`, every recorded row).
+`cache-leakage` plans the cache-zone blocks (`--mr-cold-zone-pattern`, default `^(L2|L3)`)
+against `--mr-cold-target-K` (default 280, the measured knee — *below* the 295 K ambient) and
+everything else against `--mr-target-C`. Inside: `MRParams(zone_targets=[(pattern, T_K)])`,
+`target_for(block)`, and an *objective peak* `target_K + max_b (T_b − target_for(b))` that every
+hold and convergence test reads — bit-identical to the plain peak when there are no zones
+(pinned by `test_mr_objective.py`). Every arm's row now carries **`die_leakage_W`** and
+**`cache_leakage_W`** at the reported field (`thermal.leakage_ledger`), priced on the loop's own
+reference and curve; a unit counts iff its temperature key is on the solved die, which
+reproduces `cold_zone_prize.die_ratios` to four figures (test). `[!]` Two wrong ledger rules
+preceded that one on 9 Sep — summing every key tripled the die total, a leaf rule dropped the
+`core_other` slab — so `results/d3_objective/` (first pass) has valid cache figures and invalid
+die totals; `results/d3_objective_v2/` is the corrected pass.
+
 ### 4.3 Comparing MR costs
 
 `[!]` **Never compare MR cost in watts across leakage curves or accounting policies.** The
@@ -260,9 +317,17 @@ bounds the cost claims without re-running a single solve's thermal outcome.
 
 ---
 
+## 5a. The proposal pack
+
+`python scripts/build_proposal_pack.py` renders `proposal_pack_<date>/` (+ `.zip`): `index.html`
+with every register §1 table and its caveat, plots from the evidence JSONs, our floorplan
+renderings, the ladder and design records under `docs/`, the curated evidence under `evidence/`,
+and the §2 withdrawn list as a guard page. Self-contained, offline, scp-able. Regenerate after
+any register change; it is a build product, not a source.
+
 ## 6. Before you finish a session
 
-1. `python -m pytest HotGauge/HotGauge -q` — **1050 passed, 1 skipped** as of 8 Sep (§P0.21, on node-06 in 4 min 39 s; 1042 after §P0.20, 1025 after §P0.19, 992 after §P0.18, 947 before). Do not run it
+1. `python -m pytest HotGauge/HotGauge -q` — **1070 passed, 1 skipped** as of 9 Sep (§P0.22, on the **head node** in 6 min 06 s — it did not stall; 1054 after §P0.21.5, 1050 after §P0.21, 1042 after §P0.20, 1025 after §P0.19, 992 after §P0.18, 947 before). While a campaign step holds the node the suite cannot get a step of its own; the head node in the background works. Do not run it
    with ~20 campaign workers active (it starves on NFS: 8 s of CPU in 17 min). At ~10 it is fine.
 2. Update `docs/RESULTS_REGISTER.md` if a number moved — **including moving a claim to §2**.
 3. Record any prediction you made, right or wrong, in `docs/PHASE0_CHECKLIST.md`. Four of five

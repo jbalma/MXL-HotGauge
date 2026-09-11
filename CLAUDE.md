@@ -481,3 +481,15 @@ plain `skylake` stack works without it, so this failure only appears on plugin s
   its three walls). (3) `recovery_at_temperature.json`'s "crossing at 408 K" was the
   *self-powering* temperature; the **export crossing is 614 K** (90 % laser preset), from the
   rows' own expression. Quote the export crossing.
+- **`[+]` §P0.22 (9 Sep) — the architecture-evolution phase.** The one-die rule is lifted; the
+  deliverable is the ARGUED ladder `docs/designs/EVOLUTION_LADDER.md` (v100 §1.18/§10.9 frame),
+  with design records in `docs/designs/`. Built: the **cache-leakage planner objective**
+  (`--mr-objective cache-leakage --mr-cold-target-K 280`; `MRParams(zone_targets)`,
+  `objective_peak`, bit-identical default) and the **leakage ledger** (`thermal/leakage_ledger.py`;
+  `die_leakage_W` / `cache_leakage_W` on every row; a unit counts iff it lands on the solved die —
+  two wrong rules preceded it, both now tests). Measured on the monolithic die: the cache knee
+  is **conservation-bound** and 300 K costs **77 % of die power**; Cr:LiSAF tiles fail by load.
+  `[!]` **One slurm step at a time**: a step takes the whole job (CPUs/Task=96), so campaigns go
+  through `scripts/campaign_server.sh` (drop `<name>.par<N>.tsv` into `results/campaign_queue/`)
+  and `on_node.sh` hangs while it runs — read logs on NFS, `ssh node-06-8xv100` works. D4 runs at
+  **100 µm cells** (the 70-core stack is 629 k unknowns at 50 µm) beside a matched-grid control.

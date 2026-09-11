@@ -124,11 +124,19 @@ class TestSolverPlumbing(unittest.TestCase):
         with self.assertRaises(ValueError):
             self._solver(mr_flp_template='MR.flp')
 
-    def test_transient_mode_refuses_an_array(self):
-        """It would need a per-slot tile trace, and nothing produces one."""
+    def test_transient_mode_accepts_an_array_but_not_the_extractor_cap(self):
+        """§P0.25 (F4): the array is wired for transients -- ``tile_power_schedule`` produces
+        the per-slot tile trace the old refusal said nothing produced. The extractor cap
+        (mr_temps) is still steady-only: a per-slot tile temperature field is a different
+        output and nothing consumes it yet. Both halves are DELIBERATE; the refusal was lifted
+        on purpose, not by accident."""
         from HotGauge.thermal import ICEThermalSolver
+        s = ICEThermalSolver('s.stk', 'f.flp', 7, run_base_dir='.', mode='transient',
+                             mr_flp_template='MR.flp', mr_powers={'MR_r00_c00': -1.0})
+        self.assertEqual(s.mode, 'transient')
         with self.assertRaises(ValueError):
             ICEThermalSolver('s.stk', 'f.flp', 7, run_base_dir='.', mode='transient',
+                             mr_temps=True,
                              mr_flp_template='MR.flp', mr_powers={'MR_r00_c00': -1.0})
 
     def test_set_mr_powers_refuses_a_solver_with_no_array(self):
@@ -216,12 +224,53 @@ class TestSolverPlumbing(unittest.TestCase):
         self.assertEqual(s.session_powers(_Trace(), _Session()),
                          {'CORE_0': 3.0, 'CORE_1': 4.0})
 
-    def test_the_array_is_still_refused_in_transient_mode(self):
-        """Lifting the session-cache limit must not quietly lift the transient one too."""
+    def test_a_transient_array_still_refuses_the_session_cache(self):
+        """The transient path does its own multi-step solve; the cache is steady-only."""
         from HotGauge.thermal import ICEThermalSolver
         with self.assertRaises(ValueError):
             ICEThermalSolver('s.stk', 'f.flp', 7, run_base_dir='.', mode='transient',
+                             session_cache=object(),
                              mr_flp_template='MR.flp', mr_powers={'MR_r00_c00': -1.0})
+
+    def test_a_tile_series_must_have_one_value_per_slot(self):
+        """The transient branch broadcasts scalars and refuses a series of the wrong length --
+        a short series would let 3D-ICE pad the array with zeros and read as a cooler that
+        switches itself off."""
+        import numpy as np
+        from HotGauge.thermal import ICEThermalSolver
+        from HotGauge.thermal.leakage_feedback import ICEThermalSolver as _S
+        s = ICEThermalSolver('s.stk', 'f.flp', 7, run_base_dir='.', mode='transient',
+                             mr_flp_template='MR.flp',
+                             mr_powers={'MR_r00_c00': -1.0, 'MR_r00_c01': np.array([-1.0, -2.0])})
+        captured = {}
+
+        class _Sim(object):
+            OUTPUT_TSTACK_FINAL = 'Tstack ("final.tstack", final ) ;'
+            DIE_TFLP_OUTPUT = 'Tflp (PROCESSOR_DIE, "die_elements.temps", average, slot) ;'
+            def __init__(self, *a, **k):
+                captured.update(k); self.run_path = '.'
+            @staticmethod
+            def run(sims): raise RuntimeError('stop here')
+        import HotGauge.thermal as th
+        orig = th.ICETransientSim
+        th.ICETransientSim = _Sim
+        try:
+            class _T(object):
+                powers = {'B': np.array([1.0, 2.0])}; time_step = 1e-3
+                def __len__(self): return 2
+            try:
+                s._run_and_read_temps(_T(), '.')
+            except RuntimeError:
+                pass
+            np.testing.assert_allclose(captured['mr_powers']['MR_r00_c00'], [-1.0, -1.0])
+            np.testing.assert_allclose(captured['mr_powers']['MR_r00_c01'], [-1.0, -2.0])
+            s3 = ICEThermalSolver('s.stk', 'f.flp', 7, run_base_dir='.', mode='transient',
+                                  mr_flp_template='MR.flp',
+                                  mr_powers={'MR_r00_c00': np.array([-1.0, -2.0, -3.0])})
+            with self.assertRaises(ValueError):
+                s3._run_and_read_temps(_T(), '.')
+        finally:
+            th.ICETransientSim = orig
 
 
 if __name__ == '__main__':

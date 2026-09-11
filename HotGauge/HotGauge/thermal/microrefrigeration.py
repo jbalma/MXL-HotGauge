@@ -39,6 +39,7 @@ For ``cALU_0`` the naive R_die estimate gives 153 K for 0.5 W; the measured resp
 and never trusts an analytical value.
 """
 
+import re
 import logging
 
 import numpy as np
@@ -317,9 +318,32 @@ class MRParams(object):
                  spot_policy=DEFAULT_SPOT_POLICY, max_total_W=None,
                  laser_wallplug=DEFAULT_LASER_WALLPLUG, lpc_efficiency=DEFAULT_LPC_EFFICIENCY,
                  collection_efficiency=DEFAULT_COLLECTION_EFFICIENCY, recover=True, cop=None,
-                 extractor=None):
+                 extractor=None, zone_targets=None, objective=None, envelope_shape='seed'):
         if target_K <= 0:
             raise ValueError('target_K must be > 0')
+        # §P0.24 (F3): the SHAPE of the envelope the rescue path starts from. 'seed' (every
+        # recorded row): each block's cap is dt_max / s with s the 1.0 K/W placeholder, i.e. a
+        # uniform 45 W per block, which the conservation cap then scales -- 367 x 45 W = 16.5 kW
+        # on the GA100, scaled 45x, so the eight hot SMs of a concentrated kernel got ~1 W each
+        # and the "full capability" solve ran away (register §3, the plan-shape item). 'power':
+        # each block is additionally capped at its OWN dissipation, so full capability means
+        # removing every block's own heat and the conservation cap is met by construction.
+        if envelope_shape not in ('seed', 'power'):
+            raise ValueError("envelope_shape must be 'seed' or 'power', got {!r}".format(envelope_shape))
+        self.envelope_shape = envelope_shape
+        # §P0.22 (D3): a PER-ZONE target. ``zone_targets`` is ``[(pattern, T_K), ...]``; a block
+        # whose name matches a pattern (regex search, first match wins -- the same rule
+        # ``mr_array.tiles_over_blocks`` uses) is planned against that temperature instead of
+        # ``target_K``. This is what turns the hot-spot planner into a cache-leakage planner:
+        # ``[('^(L2|L3)', 280.0)]`` asks for the caches at 280 K and everything else at the
+        # hot-spot target. With no zones every code path is bit-identical to the recorded one --
+        # ``target_for`` returns ``target_K`` and ``objective_peak`` is the plain maximum.
+        self.zone_targets = []
+        for pat, tk in (zone_targets or ()):
+            if float(tk) <= 0:
+                raise ValueError('zone target must be > 0 K, got {!r} for {!r}'.format(tk, pat))
+            self.zone_targets.append((re.compile(pat), float(tk)))
+        self.objective = str(objective) if objective else ('zoned' if self.zone_targets else 'peak')
         if h_max <= 0:
             raise ValueError('h_max must be > 0')
         for name, val in (('laser_wallplug', laser_wallplug),
@@ -357,6 +381,20 @@ class MRParams(object):
             self.eta_asf = float(cop) / self.laser_wallplug
         else:
             self.eta_asf = float(eta_asf)
+
+    @property
+    def has_zones(self):
+        """True when at least one block is planned against a zone target rather than ``target_K``."""
+        return bool(self.zone_targets)
+
+    def target_for(self, block):
+        """The temperature this block is planned against: its zone's target, else ``target_K``."""
+        if self.zone_targets:
+            name = str(block)
+            for rx, tk in self.zone_targets:
+                if rx.search(name):
+                    return tk
+        return self.target_K
 
     @property
     def cop(self):
@@ -425,7 +463,7 @@ class MRParams(object):
                .format(self.lpc_efficiency, self.eta_asf, self.laser_wallplug,
                        self.breakeven_ratio)
                if self.recover else 'no recovery (eta_ASF={:.2f})'.format(self.eta_asf))
-        return ('MRParams(target={:.1f} K, H<={:.1f} W/mm^2, dT<={} K, COP_elec={:.3f}, '
+        return (('MRParams(target={:.1f} K, H<={:.1f} W/mm^2, dT<={} K, COP_elec={:.3f}, '
                 'spot>={:.0f} um, {}{}{})'.format(
                     self.target_K, self.h_max,
                     'inf' if self.dt_max_K == float('inf') else '{:.1f}'.format(self.dt_max_K),
@@ -434,6 +472,9 @@ class MRParams(object):
                     ', budget<={:.2f} W'.format(self.max_total_W),
                     '' if self.extractor is None else
                     ', extractor={}'.format(getattr(self.extractor, 'label', 'yes'))))
+                + ('' if not self.zone_targets else
+                   ' zones=[{}]'.format(', '.join('{}->{:.0f} K'.format(rx.pattern, tk)
+                                                  for rx, tk in self.zone_targets))))
 
 
 #: Prefix marking a Tflp key that is BOOKKEEPING, not a floorplan block.
@@ -453,8 +494,73 @@ def is_synthetic_temp_key(name):
     return str(name).startswith(SYNTHETIC_TEMP_PREFIX)
 
 
+def _last_K(t):
+    return float(np.ravel(t)[-1]) if np.ndim(t) else float(t)
+
+
+def objective_peak(temps, params, t_floor_K=200.0):
+    """The temperature the planner's convergence and hold tests are read against (§P0.22, D3).
+
+    Under the default objective (no zone targets) this is the plain peak over the die, computed
+    by exactly the expression every descent used before -- so the recorded rows reproduce
+    bit-for-bit. With zone targets it is ``target_K + max_b (T_b - target_for(b))``: the block
+    that is furthest above ITS OWN target, expressed on the hot-spot target's scale, so that
+    every existing ``peak > target_K + tol`` test becomes "some block is above its target by more
+    than tol" without touching the tests themselves. Synthetic bookkeeping keys are skipped in
+    the zoned form (they have no target); in the plain form they are harmless (a mean of blocks
+    is never the maximum).
+    """
+    if not getattr(params, 'has_zones', False):
+        return max((float(np.ravel(t)[-1]) for t in temps.values()
+                    if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+    worst = None
+    for blk, t in temps.items():
+        if is_synthetic_temp_key(blk):
+            continue
+        T = _last_K(t)
+        if T <= t_floor_K:
+            continue
+        ex = T - params.target_for(blk)
+        worst = ex if worst is None else max(worst, ex)
+    return float('nan') if worst is None else params.target_K + worst
+
+
+def zone_report(temps, params, t_floor_K=200.0):
+    """Per-zone summary of a solved field: how far each zone sits from its own target.
+
+    Returns ``{'<pattern>': {...}, 'rest': {...}}`` with block count, max / mean temperature (a
+    plain mean over blocks, not area-weighted -- stated so nobody reads it as a die average),
+    the target, the count above target and the worst excess. ``rest`` is every block no zone
+    pattern matches, against ``target_K``.
+    """
+    zones = [(rx.pattern, rx, tk) for rx, tk in getattr(params, 'zone_targets', [])]
+    buckets = {label: [] for label, _, _ in zones}
+    buckets['rest'] = []
+    for blk, t in temps.items():
+        if is_synthetic_temp_key(blk):
+            continue
+        T = _last_K(t)
+        if T <= t_floor_K:
+            continue
+        for label, rx, _ in zones:
+            if rx.search(str(blk)):
+                buckets[label].append(T)
+                break
+        else:
+            buckets['rest'].append(T)
+    out = {}
+    for label, _, tk in zones + [('rest', None, params.target_K)]:
+        vals = buckets[label]
+        out[label] = {'target_K': float(tk), 'n_blocks': len(vals),
+                      'max_K': (max(vals) if vals else None),
+                      'mean_K': (float(np.mean(vals)) if vals else None),
+                      'n_above_target': int(sum(1 for v in vals if v > tk)),
+                      'worst_excess_K': ((max(vals) - tk) if vals else None)}
+    return out
+
+
 def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floor_K=200.0,
-                  die_power_W=None, h_max_by_block=None):
+                  die_power_W=None, h_max_by_block=None, q_cap_by_block=None):
     """Heat to remove per block [W] to clip everything above ``params.target_K``.
 
     block_temps_K       : {block: T_K}
@@ -497,7 +603,8 @@ def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floo
             # target threshold that expresses it, which is why the filter is on the key itself.
             continue
         T = float(np.ravel(T)[-1]) if np.ndim(T) else float(T)
-        if T <= t_floor_K or T <= params.target_K:
+        target = params.target_for(blk)          # §P0.22: the block's OWN target (zone or die)
+        if T <= t_floor_K or T <= target:
             continue
         geom = block_geom.get(blk)
         if geom is None:
@@ -506,9 +613,9 @@ def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floo
         if s <= 0:
             # Without a positive measured sensitivity we cannot size the removal; skipping is
             # the honest choice (removing a guessed amount would be untraceable).
-            detail[blk] = {'limit': 'no_sensitivity', 'q_W': 0.0, 'excess_K': T - params.target_K}
+            detail[blk] = {'limit': 'no_sensitivity', 'q_W': 0.0, 'excess_K': T - target}
             continue
-        excess = T - params.target_K
+        excess = T - target
         q_need = excess / s
         h_cap = params.h_max
         capped_by_extractor = False
@@ -525,6 +632,14 @@ def clipping_plan(block_temps_K, block_geom, params, sensitivity_K_per_W, t_floo
         q = min(q_need, q_H, q_dT)
         limit = ('need' if q == q_need else
                  (('extractor' if capped_by_extractor else 'h_max') if q == q_H else 'dt_max'))
+        if q_cap_by_block is not None and blk in q_cap_by_block:
+            # §P0.24: an explicit per-block ceiling (the block's own dissipation under the
+            # 'power' envelope shape). A block with no power to remove is skipped.
+            q_own = float(q_cap_by_block[blk])
+            if q_own <= 0.0:
+                continue
+            if q_own < q:
+                q, limit = q_own, 'own_power'
         if q <= 0:
             continue
 
@@ -769,7 +884,7 @@ def estimate_sensitivity(temps_before_K, temps_after_K, plan, floor=1e-6):
 
 
 def envelope_plan(block_geom, params, sensitivity_K_per_W, blocks=None, t_floor_K=200.0,
-                  die_power_W=None, h_max_by_block=None):
+                  die_power_W=None, h_max_by_block=None, q_cap_by_block=None):
     """The most cooling the device can apply to each block, ignoring how much is needed.
 
     Obtained by asking ``clipping_plan`` about an unboundedly hot die, so ``q_need`` never binds
@@ -784,7 +899,8 @@ def envelope_plan(block_geom, params, sensitivity_K_per_W, blocks=None, t_floor_
     names = list(blocks if blocks is not None else block_geom)
     hot = {b: params.target_K + 1.0e6 for b in names}
     return clipping_plan(hot, block_geom, params, sensitivity_K_per_W, t_floor_K=t_floor_K,
-                         die_power_W=die_power_W, h_max_by_block=h_max_by_block)
+                         die_power_W=die_power_W, h_max_by_block=h_max_by_block,
+                         q_cap_by_block=q_cap_by_block)
 
 
 def extractor_caps(params, tile_temps_K, tiles, tile_blocks, block_geom=None,
@@ -959,7 +1075,7 @@ def _relax_plan_toward_target(plan, envelope, temps, params, sens, relax, t_floo
         if s <= 0:
             new[blk] = plan.get(blk, 0.0)
             continue
-        step = (t - params.target_K) / s          # >0 wants more cooling, <0 wants less
+        step = (t - params.target_for(blk)) / s   # >0 wants more cooling, <0 wants less (own target)
         q = plan.get(blk, 0.0) + relax * step
         new[blk] = min(max(q, 0.0), q_env)
     return {b: q for b, q in new.items() if q > 0.0}
@@ -1136,6 +1252,16 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
             return extractor_tile_caps(params, latest['temps'], tiles, base_tiles['temps'],
                                        latest['tile_plan'])
         apply_plan.tile_caps_fn = _tile_caps
+    block_power_W = None
+    if getattr(params, 'envelope_shape', 'seed') == 'power':
+        # Every geometry block starts at zero: a block the trace gives no power has nothing to
+        # remove, and leaving it out would hand it the 45 W seed instead (found by the test).
+        block_power_W = {b: 0.0 for b in block_geom if not is_synthetic_temp_key(b)}
+        for unit, series in trace.powers.items():
+            blk = name_map(unit)
+            if blk is None or blk not in block_geom or is_synthetic_temp_key(blk):
+                continue
+            block_power_W[blk] = block_power_W.get(blk, 0.0) + float(np.ravel(series)[-1])
     result = _run_mr_clipping_dispatch(
         trace, thermal_solve_fn, block_geom, params, name_map,
         initial_sensitivity=initial_sensitivity, max_iter=max_iter, tol_K=tol_K, relax=relax,
@@ -1143,9 +1269,16 @@ def run_mr_clipping(trace, thermal_solve_fn, block_geom, params, name_map,
         die_power_W=die_power_W, calibrate=calibrate,
         calibration_fraction=calibration_fraction,
         tile_temps_fn=tile_temps_fn, die_power_fn=die_power_fn,
-        tile_geom=(tiles, tile_blocks))
+        tile_geom=(tiles, tile_blocks), block_power_W=block_power_W)
+    result['envelope_shape'] = getattr(params, 'envelope_shape', 'seed')
     result['placement'] = apply_plan.placement
     result['tile_plan'] = apply_plan.last_tile_plan
+    # §P0.22 (D3): which objective the plan was built against, and where each zone landed. The
+    # plain 'peak' objective stamps the label only, so the recorded rows gain one key and lose
+    # nothing.
+    result['objective'] = params.objective
+    if params.has_zones and result.get('temp_trace'):
+        result['zones'] = zone_report(result['temp_trace'], params, t_floor_K)
     if params.extractor is not None:
         # What the extractor model did, stamped once at the single exit, from the REPORTED
         # solve's tile snapshot: the coldest engaged tile, the curve's flux there, T_min, and how
@@ -1207,7 +1340,7 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
                               initial_sensitivity=None, max_iter=6, tol_K=1.0, relax=0.7,
                               t_floor_K=200.0, status_fn=None, plan_mode='auto',
                               apply_plan=None, tile_temps_fn=None, die_power_fn=None,
-                              tile_geom=(None, None)):
+                              tile_geom=(None, None), block_power_W=None):
     """Iterate MR cooling against the thermal solver until hot blocks reach the target.
 
     Structurally the same fixed point as the leakage loop: the plan changes the temperatures,
@@ -1323,7 +1456,8 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
             max_iter=max_iter, tol_K=tol_K, relax=relax, t_floor_K=t_floor_K,
             status_fn=_status, base_temps=base_temps, base_status=base_status,
             apply_plan=apply_plan, die_power_W=die_power_W, caps_fn=_caps,
-            die_power_fn=(_die_power if die_power_fn is not None else None))
+            die_power_fn=(_die_power if die_power_fn is not None else None),
+            block_power_W=block_power_W)
 
     # `[!]` The synthetic-key filter is needed HERE as well as in `clipping_plan` (§P0.17).
     # `base_hot` feeds the sensitivity-calibration PROBE below, which builds its own plan and hands
@@ -1332,7 +1466,7 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
     # KeyError from a different stack, which is how a "fixed" re-run failed 10 of 11 points.
     base_hot = {b: float(np.ravel(t)[-1]) for b, t in base_temps.items()
                 if not is_synthetic_temp_key(b)
-                and float(np.ravel(t)[-1]) > max(t_floor_K, params.target_K)}
+                and float(np.ravel(t)[-1]) > max(t_floor_K, params.target_for(b))}
 
     # MEASURE the sensitivity before sizing anything from it.
     #
@@ -1349,7 +1483,7 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
     # is a fraction of die power, which is the only scale available that is a property of the
     # workload rather than of the device. One extra solve per planning call.
     if base_hot and calibrate and die_power_W and thermal_solve_fn is not None:
-        excess = {b: base_hot[b] - params.target_K for b in base_hot}
+        excess = {b: base_hot[b] - params.target_for(b) for b in base_hot}
         tot_excess = sum(excess.values())
         if tot_excess > 0:
             probe_W = calibration_fraction * float(die_power_W)
@@ -1409,8 +1543,7 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
         # Refine dT/dq against the baseline, which is what the plan is sized from.
         sens.update(estimate_sensitivity(base_temps, temps, blended))
 
-        peak = max((float(np.ravel(t)[-1]) for t in temps.values()
-                    if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+        peak = objective_peak(temps, params, t_floor_K)
         delta_plan = max((abs(blended[b] - plan.get(b, 0.0)) for b in blended), default=0.0)
         total = float(sum(blended.values()))
         history.append({'iter': it, 'peak_K': peak, 'heat_removed_W': total,
@@ -1434,8 +1567,7 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
     # None, which is indistinguishable from a key that was never populated -- so a partial descent
     # looked the same as a converged one that forgot to say so. It gets an explicit verdict now,
     # and on a truncated descent that verdict is almost always False.
-    peak_now = max((float(np.ravel(t)[-1]) for t in temps.values()
-                    if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+    peak_now = objective_peak(temps, params, t_floor_K)
     holds = bool(peak_now == peak_now and peak_now <= params.target_K + tol_K)
 
     # Distinguish "ran out of iterations" from "ran out of DEVICE", because they are opposite
@@ -1446,9 +1578,8 @@ def _run_mr_clipping_dispatch(trace, thermal_solve_fn, block_geom, params, name_
     # of lift against a 12.6-37 K requirement, reported as an iteration budget problem.
     base_peak = None
     if base_temps:
-        vals = [float(np.ravel(t)[-1]) for t in base_temps.values()]
-        vals = [v for v in vals if v > t_floor_K]
-        base_peak = max(vals) if vals else None
+        _bp = objective_peak(base_temps, params, t_floor_K)
+        base_peak = _bp if _bp == _bp else None
     dt_bound = bool(base_peak is not None and peak_now == peak_now and not holds
                     and peak_now <= base_peak - params.dt_max_K + 0.05)
 
@@ -1479,7 +1610,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                               max_iter=6, tol_K=1.0, relax=0.7, t_floor_K=200.0,
                               status_fn=None, base_temps=None, base_status=None,
                               bisect_iters=8, apply_plan=None, die_power_W=None,
-                              caps_fn=None, die_power_fn=None):
+                              caps_fn=None, die_power_fn=None, block_power_W=None):
     """MR sizing anchored on the device envelope rather than on an uncooled baseline.
 
     Used when the bare die has no steady state, where the baseline the original scheme plans
@@ -1501,7 +1632,8 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
         # most the device can do, self-consistent with how far the cooling has pulled the tiles.
         return envelope_plan(block_geom, params, sens, t_floor_K=t_floor_K,
                              die_power_W=_die_power_for_envelope(),
-                             h_max_by_block=caps_fn(last_plan))
+                             h_max_by_block=caps_fn(last_plan),
+                             q_cap_by_block=block_power_W)
 
     # Seed sensitivities for every block we might cool. 1.0 K/W is a placeholder that the
     # secant update replaces after the first cooled solve; it only sets the first step.
@@ -1529,8 +1661,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
     # deliberately visit unstable states, so "some solve was unverified" is not a statement about
     # the answer; this is.
     result_status = dict(st)
-    peak = max((float(np.ravel(t)[-1]) for t in temps.values()
-                if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+    peak = objective_peak(temps, params, t_floor_K)
     history.append({'iter': 0, 'peak_K': peak, 'heat_removed_W': float(sum(plan.values())),
                     'max_plan_change_W': float('inf'), 'stage': 'full envelope'})
 
@@ -1567,8 +1698,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
         capped = _delivered(apply_plan, capped)
         temps_c = thermal_solve_fn(_tr)
         st_c = status_fn()
-        peak_c = max((float(np.ravel(t)[-1]) for t in temps_c.values()
-                      if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+        peak_c = objective_peak(temps_c, params, t_floor_K)
         history.append({'iter': 0, 'peak_K': peak_c, 'heat_removed_W': float(sum(capped.values())),
                         'max_plan_change_W': float(sum(plan.values())) - float(sum(capped.values())),
                         'stage': 'conservation cap at the converged die power'})
@@ -1605,8 +1735,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
             plan = _delivered(apply_plan, plan)
             temps_x = thermal_solve_fn(_tr)
             st_x = status_fn()
-            peak_x = max((float(np.ravel(t)[-1]) for t in temps_x.values()
-                          if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+            peak_x = objective_peak(temps_x, params, t_floor_K)
             history.append({'iter': 0, 'peak_K': peak_x, 'heat_removed_W': float(sum(plan.values())),
                             'max_plan_change_W': short, 'stage': 'extractor cap on the first plan'})
             if st_x.get('diverged') or not (peak_x == peak_x) or peak_x > params.target_K + tol_K:
@@ -1657,8 +1786,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
             # steady state uncooled, it does not.
             temps = thermal_solve_fn(trace)
             st = status_fn()
-            peak = max((float(np.ravel(t)[-1]) for t in temps.values()
-                        if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+            peak = objective_peak(temps, params, t_floor_K)
             history.append({'iter': it, 'peak_K': peak, 'heat_removed_W': 0.0,
                             'max_plan_change_W': float(sum(prev_plan.values())),
                             'stage': 'relaxed to zero'})
@@ -1716,8 +1844,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
         sens.update(estimate_sensitivity(prev_temps, temps,
                                          {b: plan.get(b, 0.0) - prev_plan.get(b, 0.0)
                                           for b in set(plan) | set(prev_plan)}))
-        peak = max((float(np.ravel(t)[-1]) for t in temps.values()
-                    if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+        peak = objective_peak(temps, params, t_floor_K)
         total = float(sum(plan.values()))
         delta_plan = max((abs(plan.get(b, 0.0) - prev_plan.get(b, 0.0))
                           for b in set(plan) | set(prev_plan)), default=0.0)
@@ -1745,8 +1872,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                 trial = _delivered(apply_plan, trial)
                 t_trial = thermal_solve_fn(_tr)
                 st_trial = status_fn()
-                pk = max((float(np.ravel(t)[-1]) for t in t_trial.values()
-                          if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+                pk = objective_peak(t_trial, params, t_floor_K)
                 history.append({'iter': len(history), 'peak_K': pk,
                                 'heat_removed_W': float(sum(trial.values())),
                                 'max_plan_change_W': float('nan'),
@@ -1766,8 +1892,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                 lo, hi = float(sum(plan.values())), float(sum(bad.values()))
                 if lo <= 0 or (lo - hi) <= 0.01 * lo:
                     break
-            final_peak = max((float(np.ravel(t)[-1]) for t in (temps or {}).values()
-                              if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+            final_peak = objective_peak(temps or {}, params, t_floor_K)
             on_cool_branch = bool(final_peak <= params.target_K + tol_K)
             return {'plan': plan, 'detail': detail, 'temp_trace': temps,
                     'result_unconverged': bool(result_status.get('unconverged')),
@@ -1804,8 +1929,7 @@ def _run_mr_clipping_envelope(trace, thermal_solve_fn, block_geom, params, name_
                 trial = _delivered(apply_plan, trial)
                 t_trial = thermal_solve_fn(_tr)
                 st_trial = status_fn()
-                pk = max((float(np.ravel(t)[-1]) for t in t_trial.values()
-                          if float(np.ravel(t)[-1]) > t_floor_K), default=float('nan'))
+                pk = objective_peak(t_trial, params, t_floor_K)
                 history.append({'iter': len(history), 'peak_K': pk,
                                 'heat_removed_W': float(sum(trial.values())),
                                 'max_plan_change_W': float('nan'),

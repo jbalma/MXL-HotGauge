@@ -60,6 +60,17 @@ here disagree, the doc is newer — fix `CLAUDE.md`.
     (`--mr-zone-mode dual`) for measuring a per-architecture layout, never the product default.
     On the hot-spot objective at 2.00 W/mm² it is a 1 % effect (the planner never cools the
     caches there); the default reproduces P0.20 exactly.
+11. **The architecture-evolution phase is open (9 Sep, §P0.22).** The ladder is
+    `docs/designs/EVOLUTION_LADDER.md`; the cache-leakage objective exists (`--mr-objective`);
+    on the monolithic die the cache knee is conservation-bound. **Campaigns go through one
+    slurm step** (`scripts/campaign_server.sh`); `on_node.sh` hangs while it runs.
+12. **Every rung above ~1.3 W/mm² is a current statement (11 Sep, §P0.27).** At fixed clock and
+    0.70 V the laser holds a die whose rails carry 1.5–3× the native current; the dense cluster's
+    cALU 2× / 4× that. "Binds: PDN" is a re-sizing statement (no rail model), EM lifetimes carry
+    `n` and `E_a`, skew percentages carry `D_ins` and the gradient in kelvin. The recorded solve
+    trees hold power maps, not fields — `examples/field_resolve.py` (`METHODS.md` §2.6).
+13. **Nothing runs on the head node** (user, 11 Sep): solves, the suite and the pack builds all go
+    through the campaign server on job 1507.
 
 ---
 
@@ -71,9 +82,9 @@ the MR planner, the evidence set.
 **Measured:** one architecture (34-core 7 nm skylake) on one workload (single-threaded LINPACK,
 replicated), end to end.
 
-**Not started:** evolving an architecture *because* of a measurement. See
-`ARCHITECTURE_EVOLUTION.md` §5 — the apparatus exists; the evolution loop has not taken its first
-step.
+**First step taken (9 Sep):** one architecture change made *because* of a measurement and
+re-measured — the dense execution cluster (D1); the argued ladder is written. See
+`ARCHITECTURE_EVOLUTION.md` §5 for exactly which rows changed.
 
 ---
 
@@ -122,6 +133,14 @@ candidates, in order of evidential support:
 1. split the cache onto a separate die (measured constraint — conduction shorts the zones);
 2. densify the execution cluster and target the array at it;
 3. spend headroom on `V_t` rather than clock (blocked on `dt_max`).
+
+### The second front — future experiments (10 Sep)
+
+`docs/FUTURE_EXPERIMENTS.md`: six ranked experiments (iso-package throughput scaling,
+dark-silicon recovery, the accelerator at its real operating point, burst absorption, the
+two-die cold-cache stack, the `V_t` lever end to end) beside the ladder. `[!]` **The net-export
+energy story is reserved for after the architectural evolution** (v100 Tier III needs a hot
+zone past the BEOL wall): the defensible energy claim now is performance per package watt.
 
 ### Phase 4 — across ISAs, toward a licensable core
 

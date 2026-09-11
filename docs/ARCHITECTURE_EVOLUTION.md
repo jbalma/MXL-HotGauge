@@ -169,13 +169,16 @@ re-measure**, across ISAs, until the design stops improving.
 | Thermal/power model trustworthy enough to compare designs | **done** — but only after correcting a leakage curve that was not a device and a converter that double-counted per-core dynamic power |
 | The cooler's envelope pinned to measured device physics | **done** — `h_max` from v91; the lift derived from the extractor's own curve (§P0.19), with a three-input bracket for the device team to confirm |
 | One architecture measured end to end under that model | **done** — 34-core 7 nm skylake |
-| A second architecture measured the same way | **not started** |
+| A second architecture measured the same way | **started 9 Sep (D4)** — the 70-core die's gen-0 ladder, as a falsification test; `docs/evidence/d4_falsification_70core.json` when it lands |
 | An ISA-level comparison | **not started** (`CODESIGN_PLAN.md` is a plan) |
-| A design changed *because* of a measurement, then re-measured | **not started** — this is the first real step of the evolution loop and nothing in the repository has taken it yet |
+| The objective a storage zone needs (cool the caches for leakage, not the hot spot) | **built and measured 9 Sep (§P0.22.2)** — on the monolithic die the cache knee is conservation-bound and 300 K costs 77 % of the die; the gen-3 constraint is measured, its design argued |
+| A design changed *because* of a measurement, then re-measured | **done 9 Sep (D1, §P0.22.3)** — the execution cluster made 2× / 4× denser *because* the rescue ladder said the array closes the concentration penalty, re-measured at matched watts: the laser holds the 2× cluster to the 2.00-equivalent rung and the 4× cluster to 1.60, 0 tiles capped, at 1.2–6.9× the reference's cooling; each loses the top rung. One die, one workload, one change: the loop has taken its first step, not run its course |
+| The ladder's binding constraint named where it stops being thermal | **done 11 Sep (X1/X2, §P0.27)** — the recorded fields re-solved and read as current density: above ~1.3 W/mm² the rails carry 1.5–3× the native current (the dense cluster's cALU 2× / 4× that), and thermal skew grows with every rung; gen 1's next constraint is the PDN, MEASURED as `J`, ARGUED as a limit (no rail model) — the first non-thermal end on the ladder, for the reference floorplan's rails |
 
 `[!]` **Be precise about this in external material.** The project has built and validated the
-measurement apparatus and produced one architecture's worth of results with it. It has **not yet
-evolved an architecture.** That is the next phase, not a completed one, and claiming otherwise is
+measurement apparatus and produced one architecture's worth of results with it. It has taken **one
+step** of the evolution loop (D1, 9 Sep: one change, one die, one workload, re-measured on the
+array rungs) — say that, and no more; the argued ladder is `docs/designs/EVOLUTION_LADDER.md`. That is the next phase, not a completed one, and claiming otherwise is
 the fastest way to lose a technical reviewer.
 
 

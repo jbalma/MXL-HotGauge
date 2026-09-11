@@ -679,3 +679,20 @@ class TestDegenerateGrid:
             pytest.skip('34-core floorplan not present')
         w = ArrayWiring(flp, tempfile.mkdtemp(), pitch_um=2000.0)
         assert len(w.tiles) >= 4 and not w.degenerate
+
+
+def test_tile_power_schedule_switches_the_plan_on_and_off_per_slot():
+    """§P0.25 (F4): a modulated array is the steady projection applied slot by slot, negative,
+    every tile present in every slot, idle slots at zero."""
+    import numpy as np
+    from HotGauge.thermal.mr_array import tile_grid, tile_power_schedule, project_plan_to_tiles
+    tiles = tile_grid(1000, 1000, pitch_um=500, cell_um=50)
+    blocks = {'A': (0.0, 0.0, 400.0, 400.0), 'B': (600.0, 600.0, 300.0, 300.0)}
+    plan = {'A': 2.0, 'B': 1.0}
+    sched = tile_power_schedule([{}, plan, plan, {}], tiles, blocks)
+    assert set(sched) == {t['name'] for t in tiles}
+    for v in sched.values():
+        assert v.shape == (4,) and v[0] == 0.0 and v[3] == 0.0 and (v <= 0).all()
+    steady = project_plan_to_tiles(plan, blocks, tiles)
+    tot = -sum(v[1] for v in sched.values())
+    assert abs(tot - sum(steady.values())) < 1e-9 and abs(tot - 3.0) < 1e-9

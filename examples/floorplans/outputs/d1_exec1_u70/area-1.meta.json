@@ -1,0 +1,36 @@
+{
+ "factor": 1.0,
+ "scaled": [
+  "Execution Unit/Complex ALUs/Area",
+  "Execution Unit/Integer ALUs/Area",
+  "Execution Unit/Floating Point Units/Area"
+ ],
+ "delta_mm2_per_core": 0.0,
+ "source": "examples/floorplans/adjusted_14nm-area.json",
+ "overheads": {
+  "utilisation": 0.7,
+  "overhead": 0.15,
+  "halo_um": 20.0,
+  "logic_scale": 1.6428571428571428,
+  "core_area_mm2_before": 5.18282,
+  "core_area_mm2_after": 7.4807131236812126,
+  "macros": {
+   "L2/Area": {
+    "before": 0.7337036,
+    "after": 0.8162705573053788
+   },
+   "Instruction Fetch Unit/Instruction Cache/Area": {
+    "before": 0.5251161999999999,
+    "after": 0.6474600429585633
+   },
+   "Load Store Unit/Data Cache/Area": {
+    "before": 0.9164721999999998,
+    "after": 1.0760442872744116
+   },
+   "Processor/Total L3s/Area": {
+    "before": 2.81071,
+    "after": 3.202862543157418
+   }
+  }
+ }
+}

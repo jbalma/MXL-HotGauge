@@ -52,7 +52,9 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'HotGauge'))
 
 from HotGauge.power import BasicPowerTrace, LeakageModel
-from HotGauge.thermal.leakage_feedback import load_calibrated_leakage_model
+from HotGauge.thermal.leakage_feedback import (load_calibrated_leakage_model, load_leakage_model,
+                                               LEAKAGE_CURVES)
+from HotGauge.thermal.extractor import make_extractor, EXTRACTORS
 from HotGauge.thermal import get_stack_template, ICEThermalSolver, run_leakage_feedback
 from HotGauge.thermal.ice_server import ICESessionCache, shared_cache
 from HotGauge.thermal.sink_models import (BaffledFinSink, ThermalResistanceSink,
@@ -63,7 +65,7 @@ from HotGauge.thermal.stack_models import coarsen_stack_grid
 from HotGauge.thermal.cooling_spec import (CoolingSpec, CoolingSpecSink, air_spec,
                                            solve_flow_for_peak, velocity_is_plausible)
 from HotGauge.thermal.mr_array import (wiring_for_stack, stack_carries_an_array,
-                                       DEFAULT_PITCH_UM, device_pitch_range_um)
+                                       DEFAULT_PITCH_UM, device_pitch_range_um, DEFAULT_COVERAGE)
 from HotGauge.thermal.microrefrigeration import (MRParams, run_mr_clipping, mr_accounting,
                                                  DEFAULT_H_MAX_W_PER_MM2, DEFAULT_DT_MAX_K, DEFAULT_ETA_ASF, DEFAULT_LASER_WALLPLUG, DEFAULT_LPC_EFFICIENCY)
 from HotGauge.thermal.accelerator_floorplan import (
@@ -244,6 +246,28 @@ def main():
                     # it by typo is not.
                     default=os.path.join(_REPO, 'leakage_calibration',
                                          'leakage_calibration.json'))
+    # §P0.24 (F3): the four things every current CPU row has that this driver predated. All
+    # additive; the recorded accelerator rows reproduce with --leakage-curve pipeline and the
+    # defaults below otherwise (no extractor, full coverage, injected cap).
+    ap.add_argument('--leakage-curve', default='simulated', choices=list(LEAKAGE_CURVES),
+                    help='leakage-vs-temperature curve (default simulated, the shipped default '
+                         'since 9 Sep; "pipeline" reproduces the recorded accelerator rows)')
+    ap.add_argument('--mr-extractor', default='none', choices=['none'] + sorted(EXTRACTORS),
+                    help='extractor model as a per-TILE cooling cap at the tile\'s own '
+                         'temperature (§P0.19); "dye" is the target device')
+    ap.add_argument('--mr-dt-max', type=float, default=None,
+                    help='scalar lift cap [K] kept beside the extractor curve (default: '
+                         '--dt-max-K without an extractor, none with one)')
+    ap.add_argument('--array-coverage', type=float, default=DEFAULT_COVERAGE,
+                    help='areal fraction of the pixel layer that is emitting extractor (§P0.18)')
+    ap.add_argument('--mr-envelope-shape', default='seed', choices=('seed', 'power'),
+                    help='§P0.24. Shape of the rescue path\'s first (full-capability) plan: "seed" '
+                         '(every recorded row) is dt_max / 1.0 K/W per block, uniform, scaled by '
+                         'conservation; "power" caps each block at its own dissipation, so full '
+                         'capability means removing every block\'s own heat.')
+    ap.add_argument('--mr-energy-cap', default='injected', choices=('injected', 'converged'),
+                    help='conservation cap on the plan: the injected die power, or the converged '
+                         'one the cooling produced (§P0.19)')
     ap.add_argument('--tol', type=float, default=0.05)
     ap.add_argument('--max-iter', type=int, default=120)
     ap.add_argument('--relax', type=float, default=0.5)
@@ -321,7 +345,11 @@ def main():
     cal = args.leakage_cal
     if not os.path.isabs(cal):
         cal = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', cal)
-    if os.path.isfile(cal):
+    if args.leakage_curve != 'pipeline':
+        leak_model, t_ref = load_leakage_model(args.leakage_curve, calibration=cal,
+                                               extrapolate=True)
+        leak_src = 'leakage curve {!r} (P0.13/P0.14)'.format(args.leakage_curve)
+    elif os.path.isfile(cal):
         leak_model, t_ref = load_calibrated_leakage_model(cal, extrapolate=True)
         leak_src = 'MEASURED McPAT curve + Arrhenius tail'
     else:
@@ -416,7 +444,8 @@ def main():
     wiring = None if args.no_array else wiring_for_stack(
         stack, flp_path, os.path.join(args.out_dir, 'mr_array'),
         want_array=bool(args.mr) or stack_carries_an_array(stack),
-        pitch_um=args.pitch_um, cell_um=args.cell_um)
+        pitch_um=args.pitch_um, cell_um=args.cell_um, coverage=args.array_coverage)
+    extractor = None if args.mr_extractor == 'none' else make_extractor(args.mr_extractor)
 
     solver = ICEThermalSolver(stack, flp_path, args.tech_node,
                               run_base_dir=os.path.join(args.out_dir, 'solve'),
@@ -463,27 +492,47 @@ def main():
 
         def solve_fn(tr):
             counter['n'] += 1
-            r = run_leakage_feedback(tr, leak_ref, ICEThermalSolver(
+            _solver = ICEThermalSolver(
                 stack, flp_path, args.tech_node,
                 run_base_dir=os.path.join(args.out_dir, 'solve',
                                           'mr{:02d}'.format(counter['n'])),
                 initial_temp=args.ambient_K, num_cores=1, single_thread=True, mode='steady',
                 session_cache=session,
                 already_dice_named=True,
-                **(wiring.solver_kwargs() if wiring else {})),
+                # §P0.19: the extractor cap needs the array die's own tile temperatures
+                mr_temps=bool(wiring is not None and extractor is not None),
+                **(wiring.solver_kwargs() if wiring else {}))
+            r = run_leakage_feedback(tr, leak_ref, _solver,
                 model=leak_model, T_ref=t_ref, num_cores=1, tol_K=args.tol,
                 max_iter=args.max_iter, relax=args.relax, t_floor_K=T_FLOOR_K,
                 bridge_aggregates=False,
                                name_map=(lambda u: u), verify=True)
             holder['last'] = r
+            holder['mr_temps'] = getattr(_solver, 'last_mr_temps', None)
             return r['temp_trace']
 
+        def converged_die_power():
+            r = holder.get('last') or {}
+            if r.get('diverged') or not r.get('power_trace'):
+                return None
+            return float(sum(float(np.sum(v)) for v in r['power_trace'].powers.values()))
+
+        dt_max = (args.mr_dt_max if args.mr_dt_max is not None
+                  else (None if extractor is not None else args.dt_max_K))
         mrp = MRParams(target_K=args.mr_target_C + 273.15, h_max=args.mr_h_max,
-                       dt_max_K=args.dt_max_K, eta_asf=args.eta_asf,
+                       dt_max_K=dt_max, eta_asf=args.eta_asf,
                        laser_wallplug=args.eta_laser, lpc_efficiency=args.eta_lpc,
-                       spot_min_um=args.spot_min_um, spot_policy=args.spot_policy)
+                       spot_min_um=args.spot_min_um, spot_policy=args.spot_policy,
+                       extractor=extractor, envelope_shape=args.mr_envelope_shape)
         mres = run_mr_clipping(trace, solve_fn, geom, mrp, name_map=lambda u: u,
                                max_iter=args.mr_iter, tol_K=2.0, relax=0.7,
+                               # §P0.24: the one PHYSICAL cap -- the array cannot remove more
+                               # than the die makes. The recorded accelerator rows had none.
+                               die_power_W=realised_W,
+                               tile_temps_fn=((lambda: holder.get('mr_temps'))
+                                              if extractor is not None else None),
+                               die_power_fn=(converged_die_power
+                                             if args.mr_energy_cap == 'converged' else None),
                                **(wiring.planner_kwargs() if wiring else {}),
                                status_fn=lambda: {
                                    'diverged': bool((holder.get('last') or {}).get('diverged')),
@@ -514,7 +563,16 @@ def main():
                   'dt_max_bound': mres.get('dt_max_bound'),
                   'lift_achieved_K': mres.get('lift_achieved_K'),
                   'lift_needed_K': mres.get('lift_needed_K'),
-                  'reason': mres.get('reason')}
+                  'reason': mres.get('reason'),
+                  # §P0.24: what the extractor did, the plan's conservation share, the tile flux
+                  'extractor': mres.get('extractor'),
+                  'mr_extractor': args.mr_extractor, 'mr_dt_max_K': dt_max,
+                  'mr_energy_cap': args.mr_energy_cap,
+                  'mr_envelope_shape': args.mr_envelope_shape,
+                  'conservation_bound': mres.get('conservation_bound'),
+                  'converged_die_W': converged_die_power(),
+                  'tile_flux': (wiring.flux_report(args.mr_h_max) if wiring else None),
+                  'array': (wiring.area_fields() if wiring else None)}
         print('  [MR] target {:.0f} C -> {} blocks, {:.4f} W removed, {:.3f} W net electrical'
               '  (holds={}, minimal={})'.format(
                   args.mr_target_C, out_mr['n_targets'], out_mr['heat_removed_W'] or 0.0,
@@ -545,6 +603,8 @@ def main():
            'cell_um': args.cell_um, 'split_sm': not args.no_split_sm,
            'leak_fraction': args.leak_fraction, 'leak_basis': leak_basis,
            'cfm': args.cfm, 'r_th': args.r_th, 'dt_max_K': args.dt_max_K,
+           'leakage_curve': args.leakage_curve, 'leakage_model': leak_src,
+           'array_coverage': args.array_coverage,
            'cooling_fluid': args.cooling_fluid, 'cooling': cooling_note,
            'power_split': GA100_POWER_SPLIT, 'power_split_is_assumed': True,
            'geometry': g, 'consistency': cons,

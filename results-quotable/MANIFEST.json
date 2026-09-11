@@ -191,6 +191,178 @@
    "raw": [
     "results/zone_mode_smoke"
    ]
+  },
+  {
+   "slug": "10-cache-leakage-objective",
+   "files": [
+    {
+     "file": "d3_cache_objective.json",
+     "from": "docs/evidence/d3_cache_objective.json",
+     "sha256": "d9d350aa856aeebbc67f1941ec9a29b02c8ded8323f0c495d566b9bc0937ba1f"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/d3_objective_v2",
+    "results/d3_objective"
+   ]
+  },
+  {
+   "slug": "11-dense-cluster-family",
+   "files": [
+    {
+     "file": "d1_exec_density_family_result.json",
+     "from": "docs/evidence/d1_exec_density_family_result.json",
+     "sha256": "67eb2bab8f515028735805cc793394cb199c0b2a446fd1fe7d826fe515527692"
+    },
+    {
+     "file": "d1_exec_density_family.json",
+     "from": "docs/evidence/d1_exec_density_family.json",
+     "sha256": "2f3e9129a755c27b45651b2e5720e5421f60c0584d44d6244f77f39370465242"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/d1_family_arr",
+    "results/d1_family"
+   ]
+  },
+  {
+   "slug": "12-falsification-70core",
+   "files": [
+    {
+     "file": "d4_falsification_70core.json",
+     "from": "docs/evidence/d4_falsification_70core.json",
+     "sha256": "b926b449e5d52ee12abe45bab3913404df70ed8ebd5d1e88f63180e1591f4c84"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/uniform_density_70core_armD",
+    "results/uniform_density_34core_c100_armD"
+   ]
+  },
+  {
+   "slug": "13-iso-package-70core",
+   "files": [
+    {
+     "file": "iso_package_throughput.json",
+     "from": "docs/evidence/iso_package_throughput.json",
+     "sha256": "c89824e15968a6a1efeeef175800c30924020b6d3ccbbe3e3f2f832163e8a340"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/iso_package_70core",
+    "results/array_coverage_armD"
+   ]
+  },
+  {
+   "slug": "14-dark-silicon",
+   "files": [
+    {
+     "file": "dark_silicon.json",
+     "from": "docs/evidence/dark_silicon.json",
+     "sha256": "d4ff82634c3a7fd45c820d03238d0fb62ca2ed4b4c361bbb04235737c9b6574c"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/dark_silicon"
+   ]
+  },
+  {
+   "slug": "15-clock-as-free-variable",
+   "files": [
+    {
+     "file": "clock_f1c_density.json",
+     "from": "docs/evidence/clock_f1c_density.json",
+     "sha256": "4ba66398845f3ace186ab17130d7db5c1035898aefd14636cdba75af393fdbb1"
+    },
+    {
+     "file": "clock_f1c.json",
+     "from": "docs/evidence/clock_f1c.json",
+     "sha256": "04ff9b5e1d4672f8d7548b32b1e2c09eb199941370d0edd00cc12f26bdd67dd4"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/clock_f1c_density",
+    "results/clock_f1c"
+   ]
+  },
+  {
+   "slug": "16-accelerator-microchannel",
+   "files": [
+    {
+     "file": "accel_f3_power_tol1.json",
+     "from": "docs/evidence/accel_f3_power_tol1.json",
+     "sha256": "5209add42f9f76d53abebd67ca2fc5e4dc16140b9f421102736dae2d36e9c35a"
+    },
+    {
+     "file": "accel_f3_power.json",
+     "from": "docs/evidence/accel_f3_power.json",
+     "sha256": "8fd05b3953f08bcdc8f581ff0f352403665f8bbe399882c7f8b0cb8da1359669"
+    },
+    {
+     "file": "accel_f3.json",
+     "from": "docs/evidence/accel_f3.json",
+     "sha256": "02887f8c1ee7b35800050083d4a929b7a975535b054eed5ff39d2e5908153a6a"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/accel_f3_power_tol1",
+    "results/accel_f3_power",
+    "results/accel_f3"
+   ]
+  },
+  {
+   "slug": "17-burst-absorption",
+   "files": [
+    {
+     "file": "burst_absorption.json",
+     "from": "docs/evidence/burst_absorption.json",
+     "sha256": "94514b9a7f54d9ee2f2f3c0506cba427ca622b95566d0455661abc97229ac384"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/burst"
+   ]
+  },
+  {
+   "slug": "18-pdn-em-skew",
+   "files": [
+    {
+     "file": "pdn_em_skew.json",
+     "from": "docs/evidence/pdn_em_skew.json",
+     "sha256": "8b3c6404ab12d538345164d27edeb6f0fe7fc38fcf70d2ff463ca40921e80d63"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/fields"
+   ]
+  },
+  {
+   "slug": "19-dense-cluster-utilisation",
+   "files": [
+    {
+     "file": "x3_utilisation.json",
+     "from": "docs/evidence/x3_utilisation.json",
+     "sha256": "3a1132579edadc4a2f5a8cc8d9dd71205c6fec049155b7c327d9e1fd3a586a0b"
+    },
+    {
+     "file": "d1_exec_density_family_u70.json",
+     "from": "docs/evidence/d1_exec_density_family_u70.json",
+     "sha256": "d84a05d70ba62a5ab68928002adf51ee242e7d83d5a6be24869975eb852b0a26"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/x3_u70"
+   ]
   }
  ]
 }

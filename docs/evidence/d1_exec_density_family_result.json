@@ -1,0 +1,397 @@
+{
+ "note": "D1 (\u00a7P0.22.3): the dense-execution-cluster family against the reference die at MATCHED WATTS.\n\n    python examples/d1_family_report.py\n\nReads the members' control ladders (``results/d1_family/exec<f>/control/W*/probe.json``) and\narray rungs (``results/d1_family_arr/exec<f>/array/W*/mr_comparison.json``, falling back to\n``results/d1_family/...``), places each beside the reference rows at the same die watts\n(``results/uniform_density_armD/shaped`` and ``results/array_coverage_armD/c1.00``), scores\n\u00a7P0.22.3's P1-P4, and writes ``docs/evidence/d1_exec_density_family_result.json``. Rungs still\nrunning are listed as open; a cliff is only called between ADJACENT rungs.",
+ "reference": {
+  "control_cliff_W": {
+   "highest_holding_W": 60.658248,
+   "lowest_failing_W": 65.713102,
+   "bracketed": true,
+   "bracketed_to_one_unconverged_rung": false,
+   "unconverged_W": []
+  },
+  "die_mm2": 101.09708
+ },
+ "members": {
+  "0.5": {
+   "die_mm2": 91.24900308892299,
+   "control": [
+    {
+     "W": 45.494,
+     "density": 0.4986,
+     "diverged": false,
+     "peak_C": 54.783000000000015,
+     "hottest_block": "cALU_16",
+     "unconverged": false
+    },
+    {
+     "W": 50.549,
+     "density": 0.554,
+     "diverged": false,
+     "peak_C": 62.418000000000006,
+     "hottest_block": "cALU_16",
+     "unconverged": false
+    },
+    {
+     "W": 55.603,
+     "density": 0.6094,
+     "diverged": false,
+     "peak_C": 84.83100000000002,
+     "hottest_block": "cALU_16",
+     "unconverged": true
+    },
+    {
+     "W": 60.658,
+     "density": 0.6648,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_16",
+     "unconverged": false
+    },
+    {
+     "W": 65.713,
+     "density": 0.7202,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_16",
+     "unconverged": false
+    },
+    {
+     "W": 70.768,
+     "density": 0.7755,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_16",
+     "unconverged": false
+    }
+   ],
+   "control_cliff_W": {
+    "highest_holding_W": 50.549,
+    "lowest_failing_W": 60.658,
+    "bracketed": false,
+    "bracketed_to_one_unconverged_rung": true,
+    "unconverged_W": [
+     55.603
+    ]
+   },
+   "array": [
+    {
+     "W": 111.2,
+     "diverged": false,
+     "holds_target": true,
+     "peak_C": 92.39461669921877,
+     "Q_W": 14.792544574694583,
+     "Q_norm_W": 16.00787164343118,
+     "ref_Q_W": 0.8230399377355264,
+     "ref_Q_norm_W": 5.809971233691479,
+     "Q_ratio_vs_ref": 2.755241119027067,
+     "peak_block": "cALU_16",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "reason": "minimum plan that holds the target, bracketed by bisection",
+     "unconverged": false
+    },
+    {
+     "W": 121.3,
+     "diverged": false,
+     "holds_target": true,
+     "peak_C": 93.10683593750002,
+     "Q_W": 27.53045905903627,
+     "Q_norm_W": 30.939254678069297,
+     "ref_Q_W": 17.34444010545166,
+     "ref_Q_norm_W": 19.501798851265175,
+     "Q_ratio_vs_ref": 1.5864820939870437,
+     "peak_block": "cALU_16",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "reason": "minimum plan that holds the target, bracketed by bisection",
+     "unconverged": false
+    },
+    {
+     "W": 161.8,
+     "diverged": false,
+     "holds_target": true,
+     "peak_C": 91.94429931640627,
+     "Q_W": 93.56681169620477,
+     "Q_norm_W": 93.39526662816125,
+     "ref_Q_W": 75.28154020368109,
+     "ref_Q_norm_W": 79.80483364041122,
+     "Q_ratio_vs_ref": 1.170295862641435,
+     "peak_block": "cALU_24",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "reason": "minimum plan that holds the target, bracketed by bisection",
+     "unconverged": false
+    },
+    {
+     "W": 202.2,
+     "diverged": false,
+     "holds_target": true,
+     "peak_C": 90.7835632324219,
+     "Q_W": 178.63230728542894,
+     "Q_norm_W": 174.88596676316808,
+     "ref_Q_W": 138.72881143652086,
+     "ref_Q_norm_W": 144.50410566845616,
+     "Q_ratio_vs_ref": 1.2102491202874106,
+     "peak_block": "cALU_32",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "reason": "minimum plan that holds the target, bracketed by bisection",
+     "unconverged": false
+    },
+    {
+     "W": 242.6,
+     "diverged": false,
+     "holds_target": false,
+     "peak_C": 114.38579711914065,
+     "Q_W": 192.6678591333287,
+     "Q_norm_W": 261.6108745911071,
+     "ref_Q_W": 221.52769761815267,
+     "ref_Q_norm_W": 216.23743268610008,
+     "Q_ratio_vs_ref": 1.2098315788408067,
+     "peak_block": "cALU_32",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "reason": "no plan in the bracket keeps the die on the cool branch: this system i",
+     "unconverged": false
+    }
+   ]
+  },
+  "0.25": {
+   "die_mm2": 86.33028074132,
+   "control": [
+    {
+     "W": 45.494,
+     "density": 0.527,
+     "diverged": false,
+     "peak_C": 60.947,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 55.603,
+     "density": 0.6441,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 60.658,
+     "density": 0.7026,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 65.713,
+     "density": 0.7612,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    },
+    {
+     "W": 70.768,
+     "density": 0.8197,
+     "diverged": true,
+     "peak_C": null,
+     "hottest_block": "cALU_0",
+     "unconverged": false
+    }
+   ],
+   "control_cliff_W": {
+    "highest_holding_W": 45.494,
+    "lowest_failing_W": 55.603,
+    "bracketed": false,
+    "bracketed_to_one_unconverged_rung": false,
+    "unconverged_W": []
+   },
+   "array": [
+    {
+     "W": 111.2,
+     "diverged": false,
+     "holds_target": true,
+     "peak_C": 93.84139404296877,
+     "Q_W": 34.661026138982685,
+     "Q_norm_W": 40.33208879056498,
+     "ref_Q_W": 0.8230399377355264,
+     "ref_Q_norm_W": 5.809971233691479,
+     "Q_ratio_vs_ref": 6.941874093400494,
+     "peak_block": "cALU_8",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "reason": "minimum plan that holds the target, bracketed by bisection",
+     "unconverged": false
+    },
+    {
+     "W": 121.3,
+     "diverged": false,
+     "holds_target": true,
+     "peak_C": 92.5875183105469,
+     "Q_W": 55.20868366392515,
+     "Q_norm_W": 57.01810254457467,
+     "ref_Q_W": 17.34444010545166,
+     "ref_Q_norm_W": 19.501798851265175,
+     "Q_ratio_vs_ref": 2.923735547650551,
+     "peak_block": "cALU_8",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "reason": "minimum plan that holds the target, bracketed by bisection",
+     "unconverged": false
+    },
+    {
+     "W": 161.8,
+     "diverged": false,
+     "holds_target": true,
+     "peak_C": 93.7999206542969,
+     "Q_W": 126.49170632377401,
+     "Q_norm_W": 132.0350406456,
+     "ref_Q_W": 75.28154020368109,
+     "ref_Q_norm_W": 79.80483364041122,
+     "Q_ratio_vs_ref": 1.654474229475001,
+     "peak_block": "cALU_8",
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "reason": "minimum plan that keeps the die on the cool branch, bracketed by bisec",
+     "unconverged": false
+    },
+    {
+     "W": 202.2,
+     "diverged": true,
+     "holds_target": false,
+     "peak_C": null,
+     "Q_W": null,
+     "Q_norm_W": null,
+     "ref_Q_W": 138.72881143652086,
+     "ref_Q_norm_W": 144.50410566845616,
+     "Q_ratio_vs_ref": null,
+     "peak_block": null,
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "reason": "envelope insufficient: no steady state even at full MR capability",
+     "unconverged": true
+    },
+    {
+     "W": 242.6,
+     "diverged": true,
+     "holds_target": false,
+     "peak_C": null,
+     "Q_W": null,
+     "Q_norm_W": null,
+     "ref_Q_W": 221.52769761815267,
+     "ref_Q_norm_W": 216.23743268610008,
+     "Q_ratio_vs_ref": null,
+     "peak_block": null,
+     "tiles_capped": 0,
+     "idle_diverged": true,
+     "reason": "envelope insufficient: no steady state even at full MR capability",
+     "unconverged": false
+    }
+   ]
+  }
+ },
+ "scorecard": {
+  "x0.5": {
+   "P1_control_watts_fall": {
+    "predicted": "holds <= 55 W (reference 60.7 W)",
+    "measured": {
+     "highest_holding_W": 50.549,
+     "lowest_failing_W": 60.658,
+     "bracketed": false,
+     "bracketed_to_one_unconverged_rung": true,
+     "unconverged_W": [
+      55.603
+     ]
+    },
+    "verdict": "confirmed: verified hold 50.5 W, fails 60.7 W, against the reference's 60.7 W hold; the 55.6 W rung is UNCONVERGED (neither a hold nor a failure)"
+   },
+   "P2_array_holds_at_matched_watts": {
+    "predicted": "every reference rung holds, 0 tiles capped, plan within +-20 %",
+    "measured": {
+     "rungs_held": [
+      111.2,
+      121.3,
+      161.8,
+      202.2
+     ],
+     "rungs_lost": [
+      242.6
+     ],
+     "plan_ratios": {
+      "111.2": 2.755241119027067,
+      "121.3": 1.5864820939870437,
+      "161.8": 1.170295862641435,
+      "202.2": 1.2102491202874106
+     },
+     "worst_plan_ratio": 1.7552411190270671,
+     "max_tiles_capped": 0
+    },
+    "verdict": "plan outside +-20 %: worst ratio 2.76"
+   },
+   "P3_peak_block_is_cALU": {
+    "measured": [
+     "cALU"
+    ],
+    "verdict": "confirmed"
+   },
+   "P4_next_is_conservation": {
+    "measured": {
+     "max_tiles_capped": 0,
+     "reasons": [
+      "no plan in the bracket keeps the die on the cool branch: this system i"
+     ]
+    },
+    "verdict": "confirmed"
+   }
+  },
+  "x0.25": {
+   "P1_control_watts_fall": {
+    "verdict": "open",
+    "measured": {
+     "highest_holding_W": 45.494,
+     "lowest_failing_W": 55.603,
+     "bracketed": false,
+     "bracketed_to_one_unconverged_rung": false,
+     "unconverged_W": []
+    }
+   },
+   "P2_array_holds_at_matched_watts": {
+    "predicted": "every reference rung holds, 0 tiles capped, plan within +-20 %",
+    "measured": {
+     "rungs_held": [
+      111.2,
+      121.3,
+      161.8
+     ],
+     "rungs_lost": [
+      202.2,
+      242.6
+     ],
+     "plan_ratios": {
+      "111.2": 6.941874093400494,
+      "121.3": 2.923735547650551,
+      "161.8": 1.654474229475001
+     },
+     "worst_plan_ratio": 5.941874093400494,
+     "max_tiles_capped": 0
+    },
+    "verdict": "plan outside +-20 %: worst ratio 6.94"
+   },
+   "P3_peak_block_is_cALU": {
+    "measured": [
+     "cALU"
+    ],
+    "verdict": "confirmed"
+   },
+   "P4_next_is_conservation": {
+    "measured": {
+     "max_tiles_capped": 0,
+     "reasons": [
+      "envelope insufficient: no steady state even at full MR capability"
+     ]
+    },
+    "verdict": "confirmed"
+   }
+  }
+ }
+}

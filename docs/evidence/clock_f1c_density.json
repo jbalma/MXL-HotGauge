@@ -1,0 +1,335 @@
+{
+ "note": "F1c (\u00a7P0.26): throughput with the CLOCK as the free variable -- read ``results/clock_f1c/*/\nclock_headroom.json``, restate each arm's sustainable clock as FLOP/s = f x FLOP/cycle x cores\n(ops over walltime at fixed IPC) per package watt, score the predictions, write\n``docs/evidence/clock_f1c.json``.\n\n    python examples/clock_f1c_report.py",
+ "runs": {
+  "spice_above_d1.00": {
+   "vf_source": "spice",
+   "vf_ceiling_GHz": 4.173245518213478,
+   "thermal_limit_C": 100.0,
+   "trace_GHz": 3.8,
+   "cores": 34,
+   "rows": {
+    "control": {
+     "f_GHz": 3.65234375,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": true,
+     "at_ceiling": false,
+     "peak_C": 97.16610107421877,
+     "peak_block": "cALU_0",
+     "p_chip_W": 92.28972247974284,
+     "density": 0.9120424464797577,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 127.27372247974284,
+     "TFLOPs": 3.97375,
+     "GFLOPs_per_package_W": 31.22207728804719
+    },
+    "array_idle": {
+     "f_GHz": 3.8984375,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": true,
+     "at_ceiling": false,
+     "peak_C": 97.02163085937502,
+     "peak_block": "cALU_0",
+     "p_chip_W": 107.5883436902105,
+     "density": 1.0632292909263283,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 142.5723436902105,
+     "TFLOPs": 4.2415,
+     "GFLOPs_per_package_W": 29.749809045828542
+    },
+    "array_on": {
+     "f_GHz": 6.5,
+     "limited_by": "search_ceiling",
+     "vf_clamped": true,
+     "at_ceiling": true,
+     "peak_C": 91.6625915527344,
+     "peak_block": "cALU_16",
+     "p_chip_W": 188.90819618602032,
+     "density": 1.8668632733985453,
+     "heat_removed_W": 153.9649912293929,
+     "p_mr_net_W": 94.32694165581813,
+     "p_total_W": 318.21913784183846,
+     "TFLOPs": 7.072,
+     "GFLOPs_per_package_W": 22.223679090963195
+    }
+   },
+   "done": true
+  },
+  "spice_d0.78": {
+   "vf_source": "spice",
+   "vf_ceiling_GHz": 4.173245518213478,
+   "thermal_limit_C": 100.0,
+   "trace_GHz": 3.8,
+   "cores": 34,
+   "rows": {
+    "control": {
+     "f_GHz": 4.0713746345472215,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": true,
+     "at_ceiling": false,
+     "peak_C": 97.32338867187502,
+     "peak_block": "cALU_0",
+     "p_chip_W": 95.62425294533021,
+     "density": 0.9449955559049501,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 130.6082529453302,
+     "TFLOPs": 4.429655602387378,
+     "GFLOPs_per_package_W": 33.91558728100846
+    },
+    "array_idle": {
+     "f_GHz": 4.173245518213478,
+     "limited_by": "vf_envelope",
+     "vf_clamped": true,
+     "at_ceiling": true,
+     "peak_C": 88.74477539062502,
+     "peak_block": "cALU_0",
+     "p_chip_W": 101.1535552982859,
+     "density": 0.9996382431925068,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 136.1375552982859,
+     "TFLOPs": 4.540491123816264,
+     "GFLOPs_per_package_W": 33.35223049854072
+    },
+    "array_on": {
+     "f_GHz": 4.173245518213478,
+     "limited_by": "vf_envelope",
+     "vf_clamped": true,
+     "at_ceiling": true,
+     "peak_C": 88.74477539062502,
+     "peak_block": "cALU_0",
+     "p_chip_W": 101.1535552982859,
+     "density": 0.9996382431925068,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 136.1375552982859,
+     "TFLOPs": 4.540491123816264,
+     "GFLOPs_per_package_W": 33.35223049854072
+    }
+   },
+   "done": true
+  },
+  "spice_d1.00": {
+   "vf_source": "spice",
+   "vf_ceiling_GHz": 4.173245518213478,
+   "thermal_limit_C": 100.0,
+   "trace_GHz": 3.8,
+   "cores": 34,
+   "rows": {
+    "control": {
+     "f_GHz": 3.6638910998821945,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": true,
+     "at_ceiling": false,
+     "peak_C": 98.4940124511719,
+     "peak_block": "cALU_0",
+     "p_chip_W": 93.24416829651459,
+     "density": 0.9214746462347407,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 128.22816829651458,
+     "TFLOPs": 3.9863135166718275,
+     "GFLOPs_per_package_W": 31.08765858258135
+    },
+    "array_idle": {
+     "f_GHz": 3.9015898284367934,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": true,
+     "at_ceiling": false,
+     "peak_C": 97.29696044921877,
+     "peak_block": "cALU_0",
+     "p_chip_W": 107.86597939899218,
+     "density": 1.0659729935214137,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 142.8499793989922,
+     "TFLOPs": 4.244929733339231,
+     "GFLOPs_per_package_W": 29.715998218542126
+    },
+    "array_on": {
+     "f_GHz": 4.173245518213478,
+     "limited_by": "vf_envelope",
+     "vf_clamped": true,
+     "at_ceiling": true,
+     "peak_C": 91.2984558105469,
+     "peak_block": "cALU_16",
+     "p_chip_W": 127.05133907414088,
+     "density": 1.2555700787066837,
+     "heat_removed_W": 37.91801861610397,
+     "p_mr_net_W": 23.264666353667565,
+     "p_total_W": 185.30000542780846,
+     "TFLOPs": 4.540491123816264,
+     "GFLOPs_per_package_W": 24.503459205699844
+    }
+   },
+   "done": true
+  },
+  "spice_d1.20": {
+   "vf_source": "spice",
+   "vf_ceiling_GHz": 4.173245518213478,
+   "thermal_limit_C": 100.0,
+   "trace_GHz": 3.8,
+   "cores": 34,
+   "rows": {
+    "control": {
+     "f_GHz": 3.3243214876613383,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": true,
+     "at_ceiling": false,
+     "peak_C": 98.80367431640627,
+     "peak_block": "cALU_0",
+     "p_chip_W": 90.39093440898257,
+     "density": 0.8932778942536648,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 125.37493440898257,
+     "TFLOPs": 3.616861778575536,
+     "GFLOPs_per_package_W": 28.848364273332802
+    },
+    "array_idle": {
+     "f_GHz": 3.595977177438023,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": true,
+     "at_ceiling": false,
+     "peak_C": 98.22243652343752,
+     "peak_block": "cALU_0",
+     "p_chip_W": 105.95993298986534,
+     "density": 1.0471367116107646,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 140.94393298986535,
+     "TFLOPs": 3.912423169052569,
+     "GFLOPs_per_package_W": 27.75871998217826
+    },
+    "array_on": {
+     "f_GHz": 4.173245518213478,
+     "limited_by": "vf_envelope",
+     "vf_clamped": true,
+     "at_ceiling": true,
+     "peak_C": 91.56899414062502,
+     "peak_block": "cALU_16",
+     "p_chip_W": 150.49253683794367,
+     "density": 1.4872249887277555,
+     "heat_removed_W": 77.75867065291898,
+     "p_mr_net_W": 47.65675206688232,
+     "p_total_W": 233.133288904826,
+     "TFLOPs": 4.540491123816264,
+     "GFLOPs_per_package_W": 19.475945049056754
+    }
+   },
+   "done": true
+  },
+  "table_d1.00": {
+   "vf_source": "table",
+   "vf_ceiling_GHz": 5.0,
+   "thermal_limit_C": 100.0,
+   "trace_GHz": 3.8,
+   "cores": 34,
+   "rows": {
+    "control": {
+     "f_GHz": 3.640625,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": false,
+     "at_ceiling": false,
+     "peak_C": 94.6368347167969,
+     "peak_block": "cALU_0",
+     "p_chip_W": 90.40266689489467,
+     "density": 0.8933938391808683,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 125.38666689489466,
+     "TFLOPs": 3.961,
+     "GFLOPs_per_package_W": 31.59028067410315
+    },
+    "array_idle": {
+     "f_GHz": 3.921875,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": false,
+     "at_ceiling": false,
+     "peak_C": 99.14263305664065,
+     "peak_block": "cALU_0",
+     "p_chip_W": 109.61467224431179,
+     "density": 1.0832542471424442,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 144.59867224431179,
+     "TFLOPs": 4.267,
+     "GFLOPs_per_package_W": 29.50926128001051
+    },
+    "array_on": {
+     "f_GHz": 4.859375,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": false,
+     "at_ceiling": false,
+     "peak_C": 92.90023193359377,
+     "peak_block": "cALU_32",
+     "p_chip_W": 230.2969238772227,
+     "density": 2.275882560117652,
+     "heat_removed_W": 234.49081837722423,
+     "p_mr_net_W": 143.07317004366814,
+     "p_total_W": 408.3540939208908,
+     "TFLOPs": 5.287,
+     "GFLOPs_per_package_W": 12.9470968424385
+    }
+   },
+   "done": true
+  }
+ },
+ "scorecard": {
+  "P6_0.78_all_at_device_ceiling": {
+   "measured": [
+    4.0713746345472215,
+    4.173245518213478,
+    4.173245518213478
+   ],
+   "verdict": "nearly: control 4.07 (over_thermal_limit), array arms at the ceiling"
+  },
+  "P7_1.00": {
+   "measured": {
+    "control": 3.6638910998821945,
+    "idle": 3.9015898284367934,
+    "laser": 4.173245518213478,
+    "Q_W": 37.91801861610397,
+    "gain": 0.13902007577344766
+   },
+   "verdict": "confirmed"
+  },
+  "P8_1.20": {
+   "measured": {
+    "control": 3.3243214876613383,
+    "idle": 3.595977177438023,
+    "laser": 4.173245518213478,
+    "Q_W": 77.75867065291898,
+    "gain": 0.25536760921079216
+   },
+   "verdict": "confirmed"
+  },
+  "P9_table_and_above": {
+   "measured": {
+    "table_laser": [
+     4.859375,
+     "over_thermal_limit",
+     2.275882560117652
+    ],
+    "above_table_laser": [
+     6.5,
+     "search_ceiling",
+     1.8668632733985453
+    ]
+   },
+   "verdict": "clock inside 4.6-5.0 (4.86) but thermal-limited at 2.28 W/mm^2, not clamped; above the table no thermal bound inside the search"
+  },
+  "P10_efficiency_falls_with_clock": {
+   "measured": [
+    true,
+    true,
+    true,
+    true
+   ],
+   "verdict": "confirmed"
+  }
+ },
+ "complete": true
+}
