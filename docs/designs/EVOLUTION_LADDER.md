@@ -332,7 +332,7 @@ rows in the scorecard when it lands. What is already decided: **holding the cach
 leakage knee on the compute die costs the whole die's heat**, because the array has to cool the
 ALUs to cool the caches — the measured 1.24 K/40 W, now seen from the planner's side.
 
-### 4.2 The design — ARGUED
+### 4.2 The design as argued on 9 Sep — FALSIFIED by X4 on 11 Sep (kept as written; read §4.3)
 
 A two-die stack: the **storage die** (L2/L3, 30 mm²-class) held near 280 K on Cr:LiSAF tiles;
 the **compute die** at the hot-spot target on the dye, cooled by the gen-1 array. What the
@@ -356,6 +356,34 @@ which is a packaging element (v100 §10.9 wall 3, §10.10 item 1). That is the h
 thermal ladder on this die: past it, the limit is wire, not heat. ARGUED; the two-die solve
 (`examples/stacked_memory_study.py`, a size limit at 50 µm — `--cell-um 100` works) is the
 measurement, and it did not run today.
+
+### 4.3 The two-die stack, measured (X4, §P0.27.4) — the storage die must be OFF the heat path
+
+Built with the book's geometry (pp. 122–128): the reference's 68 L2/L3 blocks on a **50 µm
+storage die**, face-to-back **above** the compute die on a **5 µm bond** of stated conductivity,
+the array above the storage die (the cold side), 100 µm cells; the compute die keeps the cache
+area as dark silicon. Anchor reproduced after the stack and solver edits.
+
+| bond k (W/mK) | 1.00 W/mm², caches at 280 K on the dye | Cr:LiSAF on the cache tiles | compute die, hot-spot objective at 2.00 |
+|---|---|---|---|
+| 120 / 50 / 5 | **99.3 W, s = 1.08 (conservation), zone 289 K, cache leakage 3.6× down, 66 W net** — identical to the monolithic die's 99.4 W / 289.5 K | 73.7 W, **58 tiles capped** (monolithic: 73.5, 56) | 121.8 W held at 93.8 °C — the 100 µm reference's 126.1 W within 3.4 % |
+| 0.5 (isolating) | the unpowered array **diverges** (the compute die's only sink is the 0.1 K/W bond); nothing holds | 80 capped, not held | — |
+
+**What it says.** §4.2's argument held only if the compute die's heat did not cross the storage
+die. In this stack **all of it does** — the storage die *is* the compute die's heat path — so the
+array above it must lift the whole die to hold the caches cold, and the bond's conductivity
+(swept 240×) changes the cost by under 0.1 % until it is low enough to take the compute die's
+sink away. The 1.24 K / 40 W result of §P0.7 TEST 1 reproduced itself one layer up, as §4.2
+warned. MEASURED. **Gen 3 as argued is falsified in this geometry.** The cache prize itself
+(2.23×, the 280 K knee, 3.6× leakage reduction) is untouched.
+
+**The surviving design — ARGUED.** The storage die must be *off* the compute die's heat path:
+beside it on an interposer (2.5D) with its own tiles, or on the compute die's far face with the
+compute die's sink and dye array on the other side (two sinks). Then the only heat entering the
+storage zone is what the interface conducts laterally, and the 1.35 W argument of §4.2 applies.
+Its measurement is a two-sink stack, which is a new stack template, not a flag — the next build.
+Gen 3's row in the scorecard reads: constraint MEASURED (monolithic and stacked), design as
+argued FALSIFIED, surviving variant ARGUED.
 
 ---
 
@@ -408,7 +436,7 @@ the floorplan family, not of one die.
 | gen 0 | leakage runaway through `cALU`; 0.60–0.65 shaped, 0.85–0.90 flat; the traced die has no steady state on this package | §P0.17, register §1.3 | **MEASURED** | — | — | — |
 | gen 1 | conservation at 2.40 W/mm² (`s` = 1.00); envelope at 2.60 | §P0.18.2, §P0.19–20, register §1.3 | **MEASURED** | execution cluster 2×/4× denser at the same power (D1 family) — **re-measured**: holds to 202 W / 162 W, 0 tiles capped, cost 1.2–6.9× the reference's | **the PDN above ~1.3 W/mm², unless the rails are re-sized ~J×** (§2.3, §P0.27: die current 1.5–2.9× native along the ladder, the dense cluster's cALU 2× / 4× that at 100 % utilisation and 1.22× at the book's 70 % — §2.4; worst-block EM 12–50× vs native at n = 2, 0.9 eV) — MEASURED as `J`, ARGUED as a limit; thermal skew grows with the rung (3.2 → 7.9 % of the period) | §P0.22.3 P1–P4: P2 falsified on cost, P4 refined; §P0.27 P1–P4 confirmed, P6 (uniformity as a lever) falsified |
 | gen 2 | (predicted) MR electrical budget | §P0.18.3 | **ARGUED** on measured inputs | low-`V_th` on the cooled cluster, 25 mV | budget/COP | D2's coupled solve |
-| gen 3 | on the monolithic die: conservation at 280 K, ≥ 70 % of die power at 300 K; the cache never reaches its knee | §P0.22.2 (today), §P0.7 TEST 1, register §1.2 | constraint **MEASURED**, design **ARGUED** | storage die on Cr:LiSAF at ~280 K, compute die on the dye | stack interconnect / interface isolation — not thermal | the two-die solve |
+| gen 3 | on the monolithic die: conservation at 280 K, ≥ 70 % of die power at 300 K; **on the two-die stack with the storage die on the sink side: the same, at every bond (X4)** | §P0.22.2, §P0.27.4, §P0.7 TEST 1, register §1.2 | constraint **MEASURED**; the design as argued **FALSIFIED** (§4.3); the surviving variant **ARGUED** | storage die on Cr:LiSAF at ~280 K **off the compute die's heat path** (2.5D, or the far face with two sinks) | interface isolation and two-sided packaging — not thermal | the two-sink stack |
 | end | the limit is wire, not heat | v100 §10.9–10.10 | **ARGUED** | — | — | — |
 
 **Predictions scored today** (§P0.22): filled in as the campaigns land — see the RESULT
@@ -423,15 +451,15 @@ holds to 2.40 under conservation) and the cost ladder (17 W removed at 1.20 → 
 11 → 84 W net); the array's heat share `s` reaching 1.0 at the top rung; 0 tiles capped by the
 target device; the 200 µm plateau and the zero coverage charge; the 2.23× cold-zone ratio and the
 280 K knee; the 1.24 K/40 W gradient; the cache-leakage objective's cost on the monolithic die
-(the whole die at 280 K; ≥ 70 % of it at 300 K, lower bound) and the 2.6–3.6× cache-leakage
-reduction it buys; the `V_th` re-pricing (25 mV ≈ 22–30 K, +7.6 %); and whatever D1/D4 rows the
+(the whole die at 280 K; ≥ 70 % of it at 300 K, lower bound) **and on the sink-side two-die stack
+(the same, at every bond — X4)** and the 2.6–3.6× cache-leakage reduction it buys; the `V_th` re-pricing (25 mV ≈ 22–30 K, +7.6 %); and whatever D1/D4 rows the
 scorecard marks measured.
 
 **May say, MEASURED on the recorded fields (§P0.27):** the die current relative to the native
 die at every rung (1.29 → 2.88× from 1.00 to 2.40 W/mm² at 0.70 V), the dense cluster's cALU at 2×
 / 4× the reference's current density at matched watts, the core-domain gradient in kelvin.
 
-**Argued, not measured:** the two-die design as a whole; the dense-cluster design until D1's
+**Argued, not measured:** the two-die design in its surviving form (the storage die off the heat path); **never** the 9 Sep form (storage die on the sink side, one array) as a design — it is measured and it fails; the dense-cluster design until D1's
 rows say otherwise; the `V_th` lever until D2 runs; the reading of (1.33) against the ladder;
 **every EM lifetime or acceleration (state `n` and `E_a`), every skew percentage (state `D_ins`),
 and "binds: PDN" itself** — a re-sizing statement, not a failure, until a rail model exists.

@@ -71,6 +71,10 @@ here disagree, the doc is newer — fix `CLAUDE.md`.
     trees hold power maps, not fields — `examples/field_resolve.py` (`METHODS.md` §2.6).
 13. **Nothing runs on the head node** (user, 11 Sep): solves, the suite and the pack builds all go
     through the campaign server on job 1507.
+14. **Gen 3 as argued is falsified (11 Sep, §P0.27.4).** A storage die between the compute die and
+    the sink costs the whole die to hold cold at every bond conductivity; the cache prize
+    (2.23×, 280 K knee) stands, the geometry that collects it must keep the storage die off the
+    compute die's heat path. Never quote the 9 Sep two-die design as viable.
 
 ---
 

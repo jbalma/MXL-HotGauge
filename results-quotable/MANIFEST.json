@@ -363,6 +363,20 @@
    "raw": [
     "results/x3_u70"
    ]
+  },
+  {
+   "slug": "20-gen3-stack",
+   "files": [
+    {
+     "file": "gen3_stack.json",
+     "from": "docs/evidence/gen3_stack.json",
+     "sha256": "c428664267f7f3e8d594c98346659e3ad6e3fe17d9904e99e78fd47d2202440d"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/gen3_stack"
+   ]
   }
  ]
 }

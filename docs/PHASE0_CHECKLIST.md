@@ -6,7 +6,7 @@ why; this says what is done.
 
 Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked
 
-Last updated: 11 September 2026 — **P0.25 closed (the burst ladder: the modulated array cuts the overshoot 2.5–3.3×; one transient runaway under the static array), P0.27 opened (X1/X2 on the recorded fields).** Earlier — 8 September 2026 — **P0.21: zone materials decided by the user — Cr:LiSAF storage zone, dye hot zone, no Yb:YLF — and the cold plate we test is SINGLE-material by default (`--mr-zone-mode single`); the floorplan-matched dual arrangement is a flag for Phase 2 / die-integrated arrays. Smoke point at 2.00 W/mm²: the default reproduces P0.20 exactly, the dual arrangement is a 1 % effect on the hot-spot objective (0.1 W shortfall, 80 cold tiles). P1 of P0.21 found and fixed a latent P0.20 bug (uncapped first-plan re-cap tripped the stale-plan guard).** Earlier — **P0.20: v98 supersedes v91; the target device is Table 1.1's R640-SMILES row (rung 6 of the photonic ladder), its temperature dependence is the transparency cap (thermal by construction, so the T_min bracket collapses without a measurement), it is invisible on this die (identical plans, 0 tiles capped), the near-term film delivers 17 W of the 198 W a 2.00 W/mm² rescue needs, and rung 4 (broadband Purcell) is the requirements flow-down. Both notes to the author are resolved in v98. Open: v98's zone materials vs the 3 Sep rule.** Earlier — **P0.19: `dt_max` is DERIVED from the extractor's own cooling curve (v91's constitutive parameters, no Yb:YLF) and it never binds on this die — the coldest tile the array is driven to is 263 K against floors of 207–259 K; a fixed-wavelength GaAs pump has a HOT-side limit near 380 K instead; the converged energy cap takes one rung off the array ceiling (2.40–2.60 W/mm²); and the scalar 45 K turns out to shape the plan, so keep it alongside the curve. Two notes for the book (eq. 9.5 is 3.3× its own benchmark; Fig. 9.9's scale is not the ledger's η_ext).** Earlier — **P0.18: the array charged its own footprint, and at 500 µm pitch / 200 µm burial the charge is ZERO — quarter coverage (644 of 1126 blocks under gaps, 75 mm² reserved) holds the same ceiling on the same minimum plan to ~1 %. The array-assisted ceiling under arm D is 2.60–3.00 W/mm², a full W/mm² above the recorded 1.60–1.80, but it is an ENVELOPE result (the array removes more than the die dissipates at 2.60) — quote the rescue range and cost ladder, not the top rung. SPICE now gives V_t(T), SS(T), DIBL, I_on(V,T) and a fitted alpha (1.45) from the same card; the V_t lever re-priced 2× dearer in cooling (50 mV ≈ 45–60 K, not 22 K). `--leakage-curve` default: RECOMMEND `simulated`, not applied. Two of five predictions wrong, both favourable, both from carrying a derived estimate past a measured neighbour.** Earlier — **P0.16: the MR catalogue is OFF the old leakage curve, and it barely noticed. All 18 airflow rescues survive (6/6 on pipeline, `simulated` and `simulated-gidl-off`), the clipping efficacy moves 2-4 % and the budget cliff does not move — against a 14 % move on the density ladder. So `--leakage-curve` is NOT a reason to re-run the MR catalogue; the density and clock families are the ones that moved. Four of five §P0.16 predictions were wrong, both failures from turning a CURVE ratio into a RESULT ratio. Also: `core_other`'s 2.0000x is a literal `2 *` in `scripts/mcpat_to_blk_lvl_power_dict.py` (die total and static fraction safe; `core_other`'s share of on-die LEAKAGE overstated ~1.75x), the 36 net-generating `p_mr_net_W` rows are corrected by algebra with no re-solves, and the full catalogue re-run is priced at 6.3 h wall, not 63 days.** Earlier — **P0.13/P0.14: the leakage curve is SIMULATED, and spending it moved two recorded numbers in OPPOSITE directions — the cold-zone prize is 2.2x BIGGER and the density ceiling is one rung LOWER (P0.12 predicted higher; that claim is withdrawn). Read P0.14 before quoting either.** Earlier — **P0.13: ngspice 47 + OSDI + OpenVAF-compiled BSIM-CMG evaluates the ASAP7 card directly; the tooling task P0.12 called the project's highest-value one is finished and Xyce was not needed. Two results move recorded numbers in opposite directions: the cold floor is **GIDL, not gate leakage**, so the cold-zone prize is **~20x smaller** than P0.12 promised, and the hot tail is gentler still (500 K: 5820x pipeline, 349x analytic, **123x simulated**). `[!]` P0.13 inferred from that tail that P0.11's ceiling is more conservative than recorded; **P0.14 measured it and the opposite is true** — see P0.14. Read both before quoting anything that rests on leakage-vs-temperature. Earlier — **P0.7: the power-recovery reframing. The objective
+Last updated: 11 September 2026 — **P0.25 closed (the burst ladder); P0.27 X1–X4 done: the rescue ladder is a current ladder and gen 1's next constraint is the PDN; thermal skew grows with the rung; at the book's utilisation the dense cluster is 1.22× denser and holds every rung; and the gen-3 stack as argued is FALSIFIED — with the storage die on the sink side of the compute die the cache prize costs the whole die at every bond, and an isolating bond takes the compute die's sink away.** Earlier — 8 September 2026 — **P0.21: zone materials decided by the user — Cr:LiSAF storage zone, dye hot zone, no Yb:YLF — and the cold plate we test is SINGLE-material by default (`--mr-zone-mode single`); the floorplan-matched dual arrangement is a flag for Phase 2 / die-integrated arrays. Smoke point at 2.00 W/mm²: the default reproduces P0.20 exactly, the dual arrangement is a 1 % effect on the hot-spot objective (0.1 W shortfall, 80 cold tiles). P1 of P0.21 found and fixed a latent P0.20 bug (uncapped first-plan re-cap tripped the stale-plan guard).** Earlier — **P0.20: v98 supersedes v91; the target device is Table 1.1's R640-SMILES row (rung 6 of the photonic ladder), its temperature dependence is the transparency cap (thermal by construction, so the T_min bracket collapses without a measurement), it is invisible on this die (identical plans, 0 tiles capped), the near-term film delivers 17 W of the 198 W a 2.00 W/mm² rescue needs, and rung 4 (broadband Purcell) is the requirements flow-down. Both notes to the author are resolved in v98. Open: v98's zone materials vs the 3 Sep rule.** Earlier — **P0.19: `dt_max` is DERIVED from the extractor's own cooling curve (v91's constitutive parameters, no Yb:YLF) and it never binds on this die — the coldest tile the array is driven to is 263 K against floors of 207–259 K; a fixed-wavelength GaAs pump has a HOT-side limit near 380 K instead; the converged energy cap takes one rung off the array ceiling (2.40–2.60 W/mm²); and the scalar 45 K turns out to shape the plan, so keep it alongside the curve. Two notes for the book (eq. 9.5 is 3.3× its own benchmark; Fig. 9.9's scale is not the ledger's η_ext).** Earlier — **P0.18: the array charged its own footprint, and at 500 µm pitch / 200 µm burial the charge is ZERO — quarter coverage (644 of 1126 blocks under gaps, 75 mm² reserved) holds the same ceiling on the same minimum plan to ~1 %. The array-assisted ceiling under arm D is 2.60–3.00 W/mm², a full W/mm² above the recorded 1.60–1.80, but it is an ENVELOPE result (the array removes more than the die dissipates at 2.60) — quote the rescue range and cost ladder, not the top rung. SPICE now gives V_t(T), SS(T), DIBL, I_on(V,T) and a fitted alpha (1.45) from the same card; the V_t lever re-priced 2× dearer in cooling (50 mV ≈ 45–60 K, not 22 K). `--leakage-curve` default: RECOMMEND `simulated`, not applied. Two of five predictions wrong, both favourable, both from carrying a derived estimate past a measured neighbour.** Earlier — **P0.16: the MR catalogue is OFF the old leakage curve, and it barely noticed. All 18 airflow rescues survive (6/6 on pipeline, `simulated` and `simulated-gidl-off`), the clipping efficacy moves 2-4 % and the budget cliff does not move — against a 14 % move on the density ladder. So `--leakage-curve` is NOT a reason to re-run the MR catalogue; the density and clock families are the ones that moved. Four of five §P0.16 predictions were wrong, both failures from turning a CURVE ratio into a RESULT ratio. Also: `core_other`'s 2.0000x is a literal `2 *` in `scripts/mcpat_to_blk_lvl_power_dict.py` (die total and static fraction safe; `core_other`'s share of on-die LEAKAGE overstated ~1.75x), the 36 net-generating `p_mr_net_W` rows are corrected by algebra with no re-solves, and the full catalogue re-run is priced at 6.3 h wall, not 63 days.** Earlier — **P0.13/P0.14: the leakage curve is SIMULATED, and spending it moved two recorded numbers in OPPOSITE directions — the cold-zone prize is 2.2x BIGGER and the density ceiling is one rung LOWER (P0.12 predicted higher; that claim is withdrawn). Read P0.14 before quoting either.** Earlier — **P0.13: ngspice 47 + OSDI + OpenVAF-compiled BSIM-CMG evaluates the ASAP7 card directly; the tooling task P0.12 called the project's highest-value one is finished and Xyce was not needed. Two results move recorded numbers in opposite directions: the cold floor is **GIDL, not gate leakage**, so the cold-zone prize is **~20x smaller** than P0.12 promised, and the hot tail is gentler still (500 K: 5820x pipeline, 349x analytic, **123x simulated**). `[!]` P0.13 inferred from that tail that P0.11's ceiling is more conservative than recorded; **P0.14 measured it and the opposite is true** — see P0.14. Read both before quoting anything that rests on leakage-vs-temperature. Earlier — **P0.7: the power-recovery reframing. The objective
 now has a second axis (exergy, phi = 1 - T0/Th) and the book's three-zone template was tested:
 40 W of removal on a 60.7 W die buys 1.24 K of gradient against the 150 K asked for, confirmed by
 two independent methods to within 1.7x. Read docs/POWER_RECOVERY_PLAN.md first. Earlier, P0.5h: the book's three-zone template measured
@@ -2661,7 +2661,7 @@ rather than a re-run, so the two campaigns were produced by the same code at dif
 
 ---
 
-## `[x]` §P0.27 — X1/X2/X3: the ladder past its thermal end — PDN headroom, EM acceleration and thermal clock skew from the RECORDED fields; the dense cluster at the book's utilisation. PREDICTIONS, before any run  `[x]` 11 Sep 2026
+## `[x]` §P0.27 — X1/X2/X3/X4: the ladder past its thermal end — PDN headroom, EM acceleration and thermal clock skew from the RECORDED fields; the dense cluster at the book's utilisation. PREDICTIONS, before any run  `[x]` 11 Sep 2026
 
 `docs/PHYSICAL_DESIGN_CONSTRAINTS.md` §1–§2; the brief is `NEXT_SESSION_PROMPT.md` (10 Sep). No
 new coupled solve. The recorded solve trees hold every iteration's POWER map (`iter_NNN/IC.flp`,
@@ -2953,7 +2953,7 @@ normalisation was measured on the 101 mm² die and the larger members spread bet
 fixed base, so the normalised ratios carry ~5 % of that (the raw Q ratios agree within 5 % at
 ≥ 162 W); the halo is macro area at constant macro power.
 
-### §P0.27.4 — X4: the gen-3 stack with the 3D chapter's geometry. SCOPED, NOT BUILT (11 Sep); predictions for the next session
+### `[x]` §P0.27.4 — X4: the gen-3 stack with the 3D chapter's geometry. PREDICTIONS, before the build and the run (11 Sep; built and run the same day — RESULT above)
 
 `PHYSICAL_DESIGN_CONSTRAINTS.md` §4. What exists: `thermal/stack_models.py` puts a thinned memory
 die (50 µm default) **above** the logic die with a bond layer (5 µm, microbump/underfill
@@ -2984,7 +2984,79 @@ solve at `--cell-um 100` (the stacked grid at 50 µm is 1.1 M unknowns and fails
 - **P17 — the compute die is unchanged**: its peak, plan and `s` reproduce the reference rung at
   the same density within 5 % (the caches were never where the plan acted).
 
-Not run today: X3 held the node and the three-layer spec is the build. Gen 3 stays ARGUED.
+- **P18 (added before the run, same day) — the single-array stack cannot isolate the storage
+  die without losing the compute die.** With the array above the storage die, the compute die's
+  ONLY path to the sink is through the bond and the storage die. At the hybrid (120 W/mK) and
+  microbump (50) bonds the storage die sits within **2 K of the compute die** (the bond is
+  ~0.001 K/W) and the whole stack behaves as the monolithic die of §P0.22.2 — the 280 K knee is
+  conservation-bound again; at the underfill (5) and isolating (0.5) bonds the storage die cools
+  toward its knee **and the compute die diverges at 1.00 W/mm²** (its sink is gone). Falsifier:
+  a bond at which the storage zone lands ≤ 290 K AND the compute die holds 92 °C with a plan
+  below the die's own power. The two-array variant (the dye array on the compute die's other
+  face) is the design consequence, and it needs the sink on that face too — next session.
+
+Built and run 11 Sep (second half of the day) after X3 landed: `die_stack.StackSpec(storage_um,
+bond_um, bond_k_si)` (spec keys `storage`, `bond`, `bondk`), `ICESim.fill_storage_flp_template`,
+`ICEThermalSolver(storage_flp_template=)`, `examples/split_storage_die.py` → `examples/floorplans/
+outputs/gen3_stack/`, `mr_comparison.py --gen3-split`. Anchor re-run queued beside it (the stack
+and solver changed; the storage die is off by default and the default path must reproduce
+138.73 W / 93.875 °C). Grid 100 µm (four powered layers at 50 µm would be ~490k unknowns).
+
+### `[x]` §P0.27.4 RESULT (X4) — the two-die stack with the storage die between the compute die and the sink collects NOTHING the monolithic die did not: at every bond from hybrid to near-insulating the 280 K objective costs the whole die, and where the bond finally isolates, the compute die loses its sink. Gen 3 as argued is falsified; the storage die must be off the heat path
+
+`results/gen3_stack/` (17 points, 100 µm, ~2 h at PAR 4), `examples/gen3_stack_report.py` →
+`docs/evidence/gen3_stack.json`; the split floorplans in `examples/floorplans/outputs/gen3_stack/`
+(68 L2/L3 blocks, 30.08 mm², 29.8 % of the die, moved to a 50 µm storage die at their reference
+positions; the compute die keeps them as dark silicon). Anchor after the stack/solver edits:
+**138.72881 W / 93.8752 °C at cALU_16 — identical**; the suite 1079 passed + the new storage
+tests. The stack (top-down): sink, the array, the storage die, a 5 µm bond of stated `k`, the
+compute die — the book's face-to-back arrangement with the array on the storage (cold) side.
+
+| bond k (W/mK) | d (W/mm²) | unpowered array: compute peak / cache zone | dye, caches at 280 K: plan, share, zone mean / max, cache leakage | Cr:LiSAF on the cache tiles: delivered, capped, zone |
+|---|---|---|---|---|
+| **120** (hybrid) | 1.00 | 85.8 °C / 328 K | **99.3 W, s = 1.08, 289 / 313 K**, 4.70 → **1.30 W** (3.6×), net 66 W; not held (conservation) | 73.7 W, **58 tiles capped**, 300 / 324 K, 1.77 W |
+| 50 (microbump) | 1.00 | 86.1 °C / 328 K | 99.3 W, 1.08, 289 / 314 K, 1.30 W | 73.7 W, 58 capped, 300 K |
+| 5 (underfill) | 1.00 | 88.3 °C / 328 K | 99.3 W, 1.08, 289 / 315 K, 1.29 W | 73.7 W, 58 capped, 300 K |
+| **0.5** (isolating) | 1.00 | **DIVERGED** — the compute die's only sink is a 0.1 K/W bond and a dark die | 30.1 W (a lower bound: envelope descent hit `max_iter`), 86.8 °C, **319 / 350 K** — not held | 82.8 W, **80 capped**, 304 / 334 K — not held |
+| 120 / 50 / 5 | 0.60 | 56.8–57.7 °C / 313 K | 59.9 W, 1.08, 290 / 305 K, 1.67 → 0.82 W | 46.0 W, 57 capped, 296 K |
+| 0.5 | 0.60 | 64.0 °C / 315 K | 59.9 W, 1.07, 292 / 311 K | 46.0 W, 58 capped, 299 K |
+| 50, hot-spot objective (P17) | 2.00 | idle diverges | **plan 121.8 W, 93.76 °C, held** — the 100 µm reference at 202 W: 126.1 W, 93.82 °C (**−3.4 %**) | — |
+
+Monolithic reference (§P0.22.2, 50 µm, 1.00): dye 99.4 W → 289.5 K, 1.35 W; Cr:LiSAF 73.5 W,
+56 capped. **The stack reproduces the monolithic die to three figures.**
+
+**Scorecard.** **P14 falsified** — the storage die does not reach its knee for 5–15 W; it costs
+the whole die (99.3 W at s = 1.08) and lands at 289 K, exactly as on the monolithic die.
+**P15 falsified** — the bond's conductivity moves the cost by **< 0.1 %** across 120 → 5 W/mK
+(a 5 µm bond is 0.001–0.01 K/W against a die that dissipates 99 W); only at 0.5 W/mK (0.1 K/W)
+does anything move, and what moves is the unpowered array's cliff, not the storage cost.
+**P16 falsified** — the cache prize is collected (4.70 → 1.30 W, 3.6×, the monolithic ratio) at
+a laser draw of 66 W net against 3.4 W of leakage saved: the laser draws 20× what it saves.
+**P17 confirmed** — under the hot-spot objective the compute die is the reference's within
+3.4 % of plan and 0.06 K of peak: the split changed nothing the planner acts on. **P18 confirmed,
+with its mechanism sharpened** — at the conducting bonds the stack IS the monolithic die (the
+zone is within 2 K of the monolithic landing); at the isolating bond the unpowered array
+diverges at 1.00 (the compute die's sink is gone) and neither objective holds (the dye's
+descent runs out at 30 W with the caches at 319 K; Cr:LiSAF caps 80 tiles). No bond satisfies
+the falsifier (zone ≤ 290 K AND the compute die held below its own power).
+
+`[!]` **What this says, and it is a rung of the ladder falsified by measurement.** The gen-3
+argument (`EVOLUTION_LADDER.md` §4.2, 9 Sep) was that the separate die makes the storage-zone
+material viable because its tiles then lift only the storage die's own 1.35 W. That is true
+only if the compute die's heat does not pass through the storage die — and in the face-to-back
+stack with the array on the sink side, **all of it does**: the storage die is the compute die's
+heat path, so the array above it must lift the whole die's heat to hold it cold (s = 1.08,
+conservation), and making the bond insulating merely takes the compute die's sink away. The
+1.24 K / 40 W result (§P0.7 TEST 1) has reproduced itself one layer up, as `EVOLUTION_LADDER.md`
+§4.2 warned it might. **The design consequence:** the storage die must be **off the compute
+die's heat path** — beside it on an interposer (2.5D) with its own tiles, or on the compute
+die's far face with the compute die's sink and dye array on the other side (the two-array
+variant, which needs a sink on both faces) — so that the only heat crossing into the storage
+zone is what the interface conducts *laterally*. That is ARGUED; its measurement is the next
+build (a sink and array on the compute die's underside is a new stack, not a flag). `[!]` 100 µm
+cells; the 0.5 W/mK rows carry a hot-branch baseline (register §3's open planner item) and
+their costs are lower bounds; the bond is 5 µm — a thicker isolating interposer would isolate
+more and cook the compute die sooner, which is the same conclusion.
 
 ### `[x]` §P0.24 RESULT, part 1 (the recorded planner) — the control has no steady state at 700 W on the simulated curve, the GaAs layer alone holds it, and the rescue path's envelope SHAPE cannot address a concentrated accelerator kernel
 

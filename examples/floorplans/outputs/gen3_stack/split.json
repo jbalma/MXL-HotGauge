@@ -1,0 +1,13 @@
+{
+ "reference": "examples/floorplans/outputs/skylake7nm_34core_3_3D-ICE_template.flp",
+ "compute_template": "examples/floorplans/outputs/gen3_stack/compute_template.flp",
+ "storage_template": "examples/floorplans/outputs/gen3_stack/storage_template.flp",
+ "n_compute_blocks": 1058,
+ "n_storage_blocks": 68,
+ "n_dark_blocks_on_compute_die": 68,
+ "compute_powered_mm2": 71.01546788806733,
+ "storage_mm2": 30.081613895285994,
+ "storage_share_of_die": 0.2975517528760087,
+ "storage_pattern": "^(L2|L3)_\\d+$",
+ "note": "the union is the reference die; account die power on the reference floorplan"
+}

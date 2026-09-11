@@ -129,6 +129,13 @@ DEFAULT_DIRECT_DIE_UM = (DEFAULT_DIRECT_SOURCE_DEPTH_UM + DEFAULT_SOURCE_UM
 #: gradient is.
 _LEGACY_ABOVE = (100.0, 80.0, 80.0, 60.0, 40.0)
 
+#: X4 (§P0.27.4): the storage die and its bond. 50 um is the thinned-die figure the 3D chapter
+#: and stack_models both use; the bond defaults follow stack_models (5 um, a microbump-ish 50
+#: W/(m K)); hybrid bonding is near silicon (~120), underfill-dominated microbumps ~5.
+DEFAULT_STORAGE_SOURCE_UM = 10.0
+DEFAULT_BOND_UM = 5.0
+DEFAULT_BOND_K_SI = 50.0
+
 
 #: 3D-ICE's comment scanner (flex/stack_description_scanner.l:244-247) leaves a block comment
 #: only on ``"*/"``, and skips ``"*"[^/]`` -- **two characters at a time**. A run of ``*``
@@ -251,7 +258,9 @@ class StackSpec(object):
                  mr_layer=False, mr_powered=False, mr_material='GAAS', mr_um=30.0,
                  grease_um=30.0, spreader_um=3000.0, solder_um=200.0, sink_um=2000.0,
                  sink_in_stack=True, package_in_boundary=False,
-                 cell_um=50.0, htc_3dice=1.0e-7, ambient_K=303.15, name=None):
+                 cell_um=50.0, htc_3dice=1.0e-7, ambient_K=303.15, name=None,
+                 storage_um=None, storage_source_um=DEFAULT_STORAGE_SOURCE_UM,
+                 bond_um=DEFAULT_BOND_UM, bond_k_si=DEFAULT_BOND_K_SI):
         if package not in ('direct_die', 'lidded'):
             raise ValueError('package must be direct_die or lidded, got {!r}'.format(package))
         if mr_material not in MR_PIXEL_MATERIALS:
@@ -318,11 +327,51 @@ class StackSpec(object):
         self.cell_um = float(cell_um)
         self.htc_3dice = float(htc_3dice)
         self.ambient_K = float(ambient_K)
-        self.name = name or ('{}_{:.0f}um_src{:.0f}{}{}'
+        # X4 (§P0.27.4): a STORAGE die -- the gen-3 design's cache die -- bonded face-to-back
+        # ABOVE the processor die, between it and the pixel array (or the grease), on a bond
+        # layer of stated conductivity. It is a third powered die with its own floorplan
+        # (``{storage_flp_file}``, the L2/L3 blocks at their reference positions), so the array
+        # cools it first and the processor die's heat crosses the bond and the storage die on
+        # its way to the sink. That is the book's geometry (SoC Physical Design pp. 122-128) and
+        # the thermally hostile one; the bond's conductivity is the design variable.
+        self.storage_um = None if storage_um is None else float(storage_um)
+        self.storage_source_um = float(storage_source_um)
+        self.bond_um = float(bond_um)
+        self.bond_k_si = float(bond_k_si)
+        if self.storage_um is not None:
+            if self.package != 'direct_die':
+                raise ValueError('a storage die is a direct-die stack element; lidded packages '
+                                 'put the lid between it and the sink')
+            if self.storage_um < self.storage_source_um + 4.0:
+                raise ValueError('storage die {} um is too thin for a {} um source layer'
+                                 .format(self.storage_um, self.storage_source_um))
+        self.name = name or ('{}_{:.0f}um_src{:.0f}{}{}{}'
                              .format(package, self.die_um, self.source_depth_um,
                                      '_mrp' if self.mr_powered else
                                      '_mr' if self.mr_layer else '',
-                                     '' if self.sink_in_stack else '_extsink'))
+                                     '' if self.sink_in_stack else '_extsink',
+                                     '' if self.storage_um is None else '_st{:.0f}'.format(self.storage_um)))
+
+    @property
+    def storage_die(self):
+        return self.storage_um is not None
+
+    def storage_layers(self):
+        """The storage die's sub-layers top-down: silicon / source / silicon (like stack_models)."""
+        if not self.storage_die:
+            return []
+        rest = self.storage_um - self.storage_source_um
+        return [{'kind': 'layer', 'height_um': rest * 0.5, 'material': 'SILICON'},
+                {'kind': 'source', 'height_um': self.storage_source_um, 'material': 'SILICON'},
+                {'kind': 'layer', 'height_um': rest * 0.5, 'material': 'SILICON'}]
+
+    def material_table(self):
+        """MATERIALS plus the stack's own bond material (its conductivity is a parameter)."""
+        mats = dict(MATERIALS)
+        if self.storage_die:
+            mats['BOND'] = (self.bond_k_si, 1.628e6,
+                            'die-to-die bond, k stated (microbump/underfill ~5-50, hybrid ~120)')
+        return mats
 
     def die_layers(self):
         return die_layers(self.die_um, self.source_depth_um, self.source_um,
@@ -347,6 +396,12 @@ class StackSpec(object):
             out.append(('MR_PIXELS', 'MR_LAYER', self.mr_um, self.mr_material))
         else:
             out.append(('TIM', 'TIM_LAYER', self.grease_um, 'THERMAL_GREASE'))
+        if self.storage_die:
+            # Listed top-down: the storage die under the pixels, the bond under it, then the
+            # processor die. The die is emitted as a die element (its own floorplan); the bond
+            # is a plain layer. Both count in the budget the processor die's heat crosses.
+            out.append(('STORAGE', 'STORAGE_DIE', self.storage_um, 'SILICON'))
+            out.append(('BOND', 'BOND_LAYER', self.bond_um, 'BOND'))
         return out
 
     def boundary_base(self):
@@ -381,6 +436,10 @@ class StackSpec(object):
             used.add(mat)
         return sorted(used)
 
+    def storage_flp_placeholder(self):
+        """``{storage_flp_file}`` when the stack carries a storage die the caller must fill."""
+        return '{storage_flp_file}' if self.storage_die else None
+
     def resistance_budget(self, die_area_mm2):
         """Per-layer 1-D resistance [K/W] at this die area, in stack order, plus the total.
 
@@ -390,8 +449,9 @@ class StackSpec(object):
         """
         area_m2 = float(die_area_mm2) / 1e6
         rows = []
+        mats = self.material_table()
         for inst, _, h, mat in self.package_layers():
-            k = MATERIALS[mat][0]
+            k = mats[mat][0]
             rows.append({'name': inst, 'material': mat, 'height_um': h, 'k_si': k,
                          'r_K_per_W': (h * 1e-6) / (k * area_m2)})
         for i, dl in enumerate(self.die_layers()):
@@ -439,8 +499,9 @@ def render_stack_text(spec):
     A('// Generated by HotGauge.thermal.die_stack -- edit the spec, not this file.')
     A('// Conductivity is W/(um K) and capacity J/(um^3 K); the SI value is in the comment.')
     A('')
+    mats = spec.material_table()
     for mat in spec.materials_used():
-        k_si, cap_si, note = MATERIALS[mat]
+        k_si, cap_si, note = mats[mat]
         A('material {} :'.format(mat))
         A('   thermal conductivity     {:.6g} ; // {:.0f} W/(m K) -- {}'
           .format(k_si * K_SI_TO_ICE, k_si, note))
@@ -469,6 +530,8 @@ def render_stack_text(spec):
     for inst, typ, h, mat in spec.package_layers():
         if spec.mr_powered and inst == 'MR_PIXELS':
             continue                      # emitted as a die element below, not a passive layer
+        if inst == 'STORAGE':
+            continue                      # a die element with its own floorplan, rendered below
         if typ in seen:
             continue
         seen.add(typ)
@@ -486,6 +549,12 @@ def render_stack_text(spec):
         A('die MR_DIE :')
         A('   source {:<6s} {} ; // photonic cooling tiles, negative power'
           .format(_fmt(spec.mr_um), spec.mr_material))
+        A('')
+    if spec.storage_die:
+        A('// X4: the storage (cache) die, face-to-back above the processor die on the bond.')
+        A('die STORAGE :')
+        for dl in spec.storage_layers():
+            A('   {:<7s}{:<6s} {} ;'.format(dl['kind'], _fmt(dl['height_um']), dl['material']))
         A('')
     A('// Listed top-down. The active layer sits {} um below the top surface of a {} um die;'
       .format(_fmt(spec.source_depth_um), _fmt(spec.die_um)))
@@ -508,6 +577,8 @@ def render_stack_text(spec):
     for inst, typ, _, _ in spec.package_layers():
         if spec.mr_powered and inst == 'MR_PIXELS':
             A('   die MR_ARRAY MR_DIE floorplan "{mr_flp_file}";')
+        elif inst == 'STORAGE':
+            A('   die STORAGE_DIE STORAGE floorplan "{storage_flp_file}";')
         else:
             A('   layer {} {} ;'.format(inst, typ))
     A('   die PROCESSOR_DIE IC floorplan "{flp_file}";')
@@ -592,6 +663,8 @@ _SPEC_KEYS = {
     'mr_powered': ('mr_powered', lambda v: bool(int(v))),
     'sink_in_stack': ('sink_in_stack', lambda v: bool(int(v))),
     'package_in_boundary': ('package_in_boundary', lambda v: bool(int(v))),
+    # X4: the storage die above the processor die, on a bond of stated conductivity [W/(m K)].
+    'storage': ('storage_um', float), 'bond': ('bond_um', float), 'bondk': ('bond_k_si', float),
 }
 
 SPEC_PREFIX = 'spec:'
@@ -669,6 +742,7 @@ _SPEC_IDENTITY_FIELDS = (
     'mr_layer', 'mr_powered', 'mr_material', 'mr_um',
     'grease_um', 'sink_um', 'spreader_um', 'solder_um',
     'sink_in_stack', 'package_in_boundary', 'ambient_K', 'htc_3dice',
+    'storage_um', 'storage_source_um', 'bond_um', 'bond_k_si',
 )
 
 

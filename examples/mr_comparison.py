@@ -132,8 +132,12 @@ def arm_stack_spec(args, arm):
     # in the boundary with its real overhang. Both arms lose it, so the arms still differ by
     # exactly the 30 um layer.
     sink_term = ',sink_in_stack=0' if args.spreading else ''
-    return 'spec:package=direct_die,mr={},src={:.0f},cell={:.0f}{}'.format(
-        mr, args.burial_um, args.cell_um, sink_term)
+    # X4 (§P0.27.4): the gen-3 storage die above the processor die, in EVERY arm -- the stack is
+    # the design, the arms differ by the 30 um layer above it exactly as before.
+    gen3 = (',storage={:g},bond={:g},bondk={:g}'.format(args.storage_um, args.bond_um, args.bond_k)
+            if getattr(args, 'gen3_split', None) else '')
+    return 'spec:package=direct_die,mr={},src={:.0f},cell={:.0f}{}{}'.format(
+        mr, args.burial_um, args.cell_um, sink_term, gen3)
 
 
 def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax,
@@ -175,12 +179,21 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
                                   pitch_um=args.pitch_um, cell_um=args.cell_um,
                                   coverage=args.array_coverage)
 
+    # X4: with --gen3-split the SOLVER sees the compute-die template (caches dark) plus the
+    # storage-die template (caches only); the accounting, the name map and the tile wiring keep
+    # the reference floorplan, whose blocks are the union of the two.
+    gen3_kw = {}
+    solver_flp = flp
+    if getattr(args, 'gen3_split', None):
+        solver_flp = os.path.join(args.gen3_split, 'compute_template.flp')
+        gen3_kw['storage_flp_template'] = os.path.join(args.gen3_split, 'storage_template.flp')
+
     def solver_factory(sub):
-        return ICEThermalSolver(stack, flp, args.tech_node,
+        return ICEThermalSolver(stack, solver_flp, args.tech_node,
                                 run_base_dir=os.path.join(args.out_dir, tag, sub),
                                 initial_temp=args.ambient_K, num_cores=n_cores,
                                 single_thread=True, mode='steady',
-                                session_cache=args.session_cache,
+                                session_cache=args.session_cache, **gen3_kw,
                                 # §P0.19: the extractor cap needs the array die's own temperatures
                                 mr_temps=bool(wiring is not None and args.mr_extractor != 'none'),
                                 # re-read every time: the planner revises between solves
@@ -464,6 +477,14 @@ def main():
                          "control, 30 um pixel array for the others, nothing else different. "
                          "Give a template name or a spec: string to override, in which case "
                          "every arm shares it.")
+    ap.add_argument('--gen3-split', default=None,
+                    help='X4: directory holding compute_template.flp / storage_template.flp '
+                         '(examples/split_storage_die.py); puts the storage die above the '
+                         'processor die in every arm')
+    ap.add_argument('--storage-um', type=float, default=50.0, help='X4: storage die thickness')
+    ap.add_argument('--bond-um', type=float, default=5.0, help='X4: die-to-die bond thickness')
+    ap.add_argument('--bond-k', type=float, default=50.0,
+                    help='X4: bond conductivity W/(m K) -- hybrid ~120, microbump ~50, underfill ~5')
     ap.add_argument('--arms', nargs='+', default=list(ARMS), choices=list(ARMS),
                     help='control = grease, no cooling; array_idle = pixels at 0 W (the passive '
                          'term); array_on = pixels under the planner (the laser term, measured '
@@ -1029,6 +1050,8 @@ def main():
                    'mr_cold_zone_pattern': args.mr_cold_zone_pattern,
                    'pitch_um': args.pitch_um, 'burial_um': args.burial_um,
                    'mr_material': args.mr_material, 'cell_um': args.cell_um,
+                   'gen3_split': args.gen3_split, 'storage_um': args.storage_um if args.gen3_split else None,
+                   'bond_um': args.bond_um if args.gen3_split else None, 'bond_k_W_per_mK': args.bond_k if args.gen3_split else None,
                    'stack_specs': {a: arm_stack_spec(args, a) for a in args.arms},
                    'rows': rows}, f, indent=2)
     print('  written: {}'.format(os.path.join(args.out_dir, 'mr_comparison.json')))

@@ -88,6 +88,16 @@ less), which is the §P0.18.2 over-pull seen from the other side.
 Two of six numerically wrong, both in the direction that strengthens the rung: the monolithic
 route is dearer than predicted and the 45 K scalar never got a chance to bind.
 
+## The two-die stack, measured (X4, 11 Sep, §P0.27.4)
+
+The storage die was built with the book's geometry (50 µm, face-to-back above the compute die
+on a 5 µm bond, the array above it) and measured at 100 µm: the cache-leakage objective costs
+**99.3 W (s = 1.08) at every bond conductivity from 120 to 5 W/mK**, the zone lands at 289 K, the
+leakage falls 3.6× — the monolithic rows above to three figures — and at 0.5 W/mK the unpowered
+array diverges. The compute die under the hot-spot objective is the reference's (−3.4 %). The
+design argued in `EVOLUTION_LADDER.md` §4.2 is falsified in this geometry; the surviving variant
+puts the storage die off the compute die's heat path (§4.3). `docs/evidence/gen3_stack.json`.
+
 ## Honest limits
 
 Lower-bound costs (baseline planning path; the envelope path with a descent-from-full plan would

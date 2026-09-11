@@ -479,7 +479,9 @@ class TestGeneratedStackFilenamesAreUnique:
                 'mr_layer': False, 'mr_powered': True, 'mr_material': 'SI3N4', 'mr_um': 31.0,
                 'grease_um': 31.0, 'sink_um': 2001.0, 'spreader_um': 3001.0,
                 'solder_um': 201.0, 'sink_in_stack': False, 'package_in_boundary': True,
-                'ambient_K': 304.0, 'htc_3dice': 2.5e-7}
+                'ambient_K': 304.0, 'htc_3dice': 2.5e-7,
+                # X4: the storage die and its bond (None = no storage die on the base spec)
+                'storage_um': 50.0, 'storage_source_um': 11.0, 'bond_um': 6.0, 'bond_k_si': 51.0}
         for f in _SPEC_IDENTITY_FIELDS:
             assert f in VARY, 'no perturbation defined for identity field {}'.format(f)
             import copy
@@ -548,3 +550,47 @@ def test_write_stack_is_atomic_under_concurrency(tmp_path):
     assert not bad, bad[:3]
     # and no temp files left behind
     assert not [p for p in tmp_path.iterdir() if p.name.startswith('.tmp_stack_')]
+
+
+class TestStorageDie(unittest.TestCase):
+    """X4 (§P0.27.4): the gen-3 storage die above the processor die on a stated bond."""
+
+    SPEC = 'spec:package=direct_die,mr=GAAS,src=200,cell=100,sink_in_stack=0,storage=50,bond=5,bondk=50'
+
+    def test_storage_die_is_a_third_die_element_between_the_array_and_the_silicon(self):
+        text = render_stack_text(parse_spec_string(self.SPEC))
+        stack = text[text.index('stack:'):text.index('// ---------------------------- Analysis')]
+        lines = [l.strip() for l in stack.splitlines() if l.strip().startswith(('die', 'layer'))]
+        self.assertIn('die MR_ARRAY MR_DIE floorplan "{mr_flp_file}";', lines)
+        self.assertIn('die STORAGE_DIE STORAGE floorplan "{storage_flp_file}";', lines)
+        self.assertIn('layer BOND BOND_LAYER ;', lines)
+        i = [n for n, l in enumerate(lines) if l.startswith('die')]
+        self.assertEqual([lines[n].split()[1] for n in i], ['MR_ARRAY', 'STORAGE_DIE', 'PROCESSOR_DIE'])
+        self.assertLess(lines.index('die STORAGE_DIE STORAGE floorplan "{storage_flp_file}";'),
+                        lines.index('layer BOND BOND_LAYER ;'))
+
+    def test_bond_conductivity_is_the_stated_one(self):
+        text = render_stack_text(parse_spec_string(self.SPEC.replace('bondk=50', 'bondk=5')))
+        block = text[text.index('material BOND :'):]
+        self.assertIn('thermal conductivity     5e-06', block)      # 5 W/(m K) in W/(um K)
+
+    def test_default_stack_carries_no_storage_placeholder(self):
+        text = render_stack_text(parse_spec_string('spec:package=direct_die,mr=GAAS,src=200,cell=50'))
+        self.assertNotIn('{storage_flp_file}', text)
+        self.assertNotIn('STORAGE', text)
+
+    def test_storage_die_changes_the_identity_and_the_budget(self):
+        a = parse_spec_string(self.SPEC)
+        b = parse_spec_string(self.SPEC.replace('bondk=50', 'bondk=5'))
+        c = parse_spec_string(self.SPEC.replace(',storage=50,bond=5,bondk=50', ''))
+        self.assertNotEqual(spec_string_filename(a), spec_string_filename(b))
+        self.assertNotEqual(spec_string_filename(a), spec_string_filename(c))
+        names = [r['name'] for r in a.resistance_budget(101.1)['rows']]
+        self.assertIn('STORAGE', names)
+        self.assertIn('BOND', names)
+        self.assertGreater(a.resistance_budget(101.1)['total_K_per_W'], c.resistance_budget(101.1)['total_K_per_W'])
+        self.assertGreater(b.resistance_budget(101.1)['total_K_per_W'], a.resistance_budget(101.1)['total_K_per_W'])
+
+    def test_storage_die_is_refused_on_a_lidded_package(self):
+        with self.assertRaises(ValueError):
+            parse_spec_string('spec:package=lidded,storage=50')

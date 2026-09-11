@@ -634,7 +634,7 @@ class ICEThermalSolver(object):
                  core_sources=None, single_thread=True, steps_per_slot=None,
                  mode='transient', steady_reduce='mean', session_cache=None,
                  extra_die_outputs=None, already_dice_named=False, mr_temps=False,
-                 mr_flp_template=None, mr_powers=None):
+                 mr_flp_template=None, mr_powers=None, storage_flp_template=None):
         if mode not in self.SIM_MODES:
             raise ValueError('mode must be one of {}, got {!r}'.format(self.SIM_MODES, mode))
         if steady_reduce not in STEADY_REDUCERS:
@@ -703,6 +703,14 @@ class ICEThermalSolver(object):
         # asymmetric power pattern -- measured agreement 5.1e-4 K across a 121 K field.
         self.mr_flp_template = mr_flp_template
         self.mr_powers = dict(mr_powers) if mr_powers else None
+        # X4 (§P0.27.4): the gen-3 storage die -- a third powered die filled from the same trace
+        # by name (ICESim.fill_storage_flp_template). Its temperatures come back in the named
+        # field with the processor blocks' once the stack's output section reports it: pass
+        # STORAGE_DIE_TFLP_OUTPUT in extra_die_outputs. The session path needs nothing extra --
+        # stack_floorplans reads every powered die and solve_named keys by name.
+        self.storage_flp_template = storage_flp_template
+        if storage_flp_template is not None and STORAGE_DIE_TFLP_OUTPUT not in self.extra_die_outputs:
+            self.extra_die_outputs.append(STORAGE_DIE_TFLP_OUTPUT)
         self._iter = 0
 
     def set_mr_powers(self, mr_powers):
@@ -778,6 +786,8 @@ class ICEThermalSolver(object):
             if bad:
                 raise ValueError('tile power series must have one value per slot ({}); {} '
                                  'tiles do not, e.g. {}'.format(n, len(bad), bad[:3]))
+        if self.storage_flp_template is not None:
+            mr_kwargs['storage_flp_template'] = self.storage_flp_template
         sim = ICETransientSim(self.stack_template, self.flp_template, dice_trace, config,
                               run_dir, steps_per_slot=self.steps_per_slot, **mr_kwargs)
         if self.single_thread:
@@ -817,7 +827,8 @@ class ICEThermalSolver(object):
                               output_list=outputs)
         sim = ICESteadySim(self.stack_template, self.flp_template, steady_trace, config, run_dir,
                            mr_flp_template=self.mr_flp_template,
-                           mr_powers=self.mr_powers)
+                           mr_powers=self.mr_powers,
+                           storage_flp_template=self.storage_flp_template)
 
         if self.session_cache is not None:
             # Persistent path: render IC.stk/IC.flp but do not spawn the Emulator. The session
@@ -880,6 +891,10 @@ class ICEThermalSolver(object):
 # ---------------------------------------------------------------------------
 #: The array die's average-temperature output instruction (die instance MR_ARRAY, see die_stack).
 MR_DIE_TFLP_OUTPUT = 'Tflp (MR_ARRAY, "mr_elements.temps", average, final ) ;'
+#: The gen-3 storage die's (die instance STORAGE_DIE, X4). Added automatically by
+#: ICEThermalSolver when a storage floorplan is given: a die without an output instruction
+#: reports nothing, and a storage die that is never read cannot be shown to reach its knee.
+STORAGE_DIE_TFLP_OUTPUT = 'Tflp (STORAGE_DIE, "storage_elements.temps", average, final ) ;'
 
 
 def peak_temp_K(temps, t_floor_K=200.0):

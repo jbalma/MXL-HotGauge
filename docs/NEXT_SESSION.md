@@ -1,12 +1,11 @@
-# Next session — handoff, 11 September 2026 (§P0.25 closed, §P0.27: X1/X2/X3 done, X4 scoped)
+# Next session — handoff, 11 September 2026 (§P0.25 closed, §P0.27: X1–X4 done; gen 3 as argued falsified)
 
 Read `docs/START_HERE.md`, then `docs/NEXT_SESSION_PROMPT.md` (rewritten 11 Sep), then
 `docs/PHASE0_CHECKLIST.md` §P0.27 (X1/X2 RESULT, X3 predictions, X4 scope), `docs/RESULTS_REGISTER.md`
 (three new §1.3 rows: burst, X1, X2; two §3 items; one §4 constraint), `docs/designs/EVOLUTION_LADDER.md`
 §2.3 (new), `CLAUDE.md`. Slurm: job **1507** on node-06. `[!]` **Nothing runs on the head node**
 (user, 11 Sep) — solves, the test suite AND pack/register builds all go through the campaign
-server (`results/campaign_queue/<name>.par<N>.tsv`). Baseline: **1075 passed, 1 skipped** (11 Sep;
-1070 before — no library code changed this session, only `examples/` and `scripts/`).
+server (`results/campaign_queue/<name>.par<N>.tsv`). Baseline: **1080 passed, 1 skipped** (11 Sep, on the node, after the storage-die tests; 1075 before X4).
 
 ## What landed 11 Sep
 
@@ -47,24 +46,40 @@ server (`results/campaign_queue/<name>.par<N>.tsv`). Baseline: **1075 passed, 1 
   control's** at 162 / 202 / 243 W (9.8× at the 121 W hot-spot rung); the passive cliff scales
   with the cluster's density, not the die area (utilisation alone 60.7 → 70.8 W; with the cluster
   back to 60.7). Register §1.3 row, `results-quotable/19-dense-cluster-utilisation/`, ladder §2.4.
-- **§P0.27.4 X4 scoped, not built**: the gen-3 stack needs a storage-die floorplan (the L2/L3
-  blocks at their positions and powers), a three-layer spec in `die_stack.py` (pixel / storage /
-  bond / compute) and `--cell-um 100`; P14–P17 written. ~A day.
+- **§P0.27.4 X4 built and measured the same afternoon — gen 3 as argued is FALSIFIED.**
+  Built: `die_stack.StackSpec(storage_um, bond_um, bond_k_si)` (spec keys `storage`, `bond`,
+  `bondk`; a third powered die `STORAGE_DIE` with `{storage_flp_file}`), `ICESim.fill_storage_flp_template`
+  (filled from the same trace by name), `ICEThermalSolver(storage_flp_template=)` (adds the
+  storage die's Tflp), `examples/split_storage_die.py` → `examples/floorplans/outputs/gen3_stack/`
+  (68 L2/L3 blocks to the storage die; dark on the compute die), `mr_comparison.py --gen3-split
+  --storage-um --bond-um --bond-k`, `scripts/gen3_stack_ladder.sh`, `examples/gen3_stack_report.py`,
+  five tests in `test_die_stack.py::TestStorageDie`. **Anchor reproduced exactly** after the
+  edits (138.72881 W / 93.8752 °C). Measured (`results/gen3_stack/`, 17 points, 100 µm): with the
+  storage die between the compute die and the sink, the 280 K objective costs **99.3 W (s = 1.08)
+  at every bond from 120 to 5 W/mK** (monolithic: 99.4), zone 289 K, cache leakage 3.6× down for
+  66 W net; Cr:LiSAF 73.7 W with 58 tiles capped; at 0.5 W/mK the unpowered array diverges and
+  nothing holds; the compute die under the hot-spot objective at 2.00 is the reference's (−3.4 %).
+  P14–P16 falsified, P17–P18 confirmed. Register §1.2 row + a §2 withdrawal, ladder §4.3,
+  `results-quotable/20-gen3-stack/`. **The surviving design is ARGUED: the storage die off the
+  compute die's heat path (2.5D beside it, or the far face with two sinks).**
 
 ## Still open, in order
 
-1. **X4** (§P0.27.4) — the measurement that turns gen 3 from ARGUED to MEASURED.
+1. **The surviving gen-3 geometry** (§P0.27.4, ladder §4.3): a stack with the storage die OFF the
+   compute die's heat path — the compute die's sink and dye array on one face, the storage die
+   (Cr:LiSAF tiles) on the other, i.e. a two-sink `StackSpec` (or a 2.5D side-by-side floorplan on
+   one die footprint with an isolating channel). Predictions first; the anchor after any stack edit.
 2. A rail model (register §3) so "binds: PDN" becomes a `V_eff` in the clock search.
 3. D2 (the `V_t` lever end to end); Phase 2 (second workload class).
 
 ## Files this session touched — list for staging (never `git add .`)
 
-New: `examples/field_resolve.py`, `examples/pdn_em_skew_report.py`, `examples/x3_utilisation_report.py`,
+New: `examples/field_resolve.py`, `examples/pdn_em_skew_report.py`, `examples/x3_utilisation_report.py`, `examples/split_storage_die.py`, `examples/gen3_stack_report.py`, `scripts/gen3_stack_ladder.sh`, `examples/floorplans/outputs/gen3_stack/`, `docs/evidence/gen3_stack.json`, `results-quotable/20-gen3-stack/`,
 `scripts/x1_fields_queue.py`, `scripts/x3_utilisation_ladder.sh`, `docs/evidence/pdn_em_skew.json`,
 `docs/evidence/d1_exec_density_family_u70.json`, `docs/evidence/x3_utilisation.json`, `examples/floorplans/outputs/d1_exec1_u70/`, `examples/floorplans/outputs/d1_exec0.5_u70/`,
 `results-quotable/17-burst-absorption/`, `results-quotable/18-pdn-em-skew/`, `results-quotable/19-dense-cluster-utilisation/` (+ regenerated manifests),
 `proposal_pack_2026-09-11/` (+ `.zip`; generated, not for staging).
-Modified: `examples/generate_exec_density_family.py`, `scripts/build_results_registers.py`, `docs/METHODS.md`, `docs/START_HERE.md`, `docs/ARCHITECTURE_EVOLUTION.md`,
+Modified: `HotGauge/HotGauge/thermal/die_stack.py`, `HotGauge/HotGauge/thermal/ICE.py`, `HotGauge/HotGauge/thermal/leakage_feedback.py`, `HotGauge/HotGauge/thermal/test_die_stack.py`, `examples/mr_comparison.py`, `examples/generate_exec_density_family.py`, `scripts/build_results_registers.py`, `docs/METHODS.md`, `docs/START_HERE.md`, `docs/ARCHITECTURE_EVOLUTION.md`,
 `scripts/build_proposal_pack.py`, `docs/evidence/burst_absorption.json`, `docs/PHASE0_CHECKLIST.md`,
 `docs/RESULTS_REGISTER.md`, `docs/FUTURE_EXPERIMENTS.md`, `docs/PHYSICAL_DESIGN_CONSTRAINTS.md`,
 `docs/designs/EVOLUTION_LADDER.md`, `docs/designs/gen1_dense_cluster.md`, `docs/NEXT_SESSION_PROMPT.md`,

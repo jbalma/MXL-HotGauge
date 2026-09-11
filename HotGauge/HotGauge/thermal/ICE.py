@@ -222,7 +222,7 @@ class ICESim(ExecutableJob):
     parallel_options = copy.deepcopy(ExecutableJob.parallel_options)
 
     def __init__(self, stack_template, flp_template, power_trace, sim_config, *args,
-                 mr_flp_template=None, mr_powers=None, **kwargs):
+                 mr_flp_template=None, mr_powers=None, storage_flp_template=None, **kwargs):
         """``mr_flp_template`` / ``mr_powers`` add a SECOND powered die to the stack.
 
         The photonic cooling array is a 3D-ICE die element of its own, bonded above the silicon,
@@ -243,6 +243,11 @@ class ICESim(ExecutableJob):
                              'floorplan have nowhere to land')
         self.mr_flp_template = mr_flp_template
         self.mr_powers = mr_powers
+        # X4 (§P0.27.4): a THIRD powered die -- the gen-3 storage die -- whose floorplan carries
+        # ``{powers[NAME]}`` placeholders filled from the SAME trace as the processor die (the
+        # L2/L3 blocks live there by name). A stack built with StackSpec(storage_um=...) contains
+        # a ``{storage_flp_file}`` placeholder; the run directory then needs STORAGE.flp too.
+        self.storage_flp_template = storage_flp_template
         self._output_files_cache = None
         super().__init__(*args, **kwargs)
 
@@ -270,6 +275,15 @@ class ICESim(ExecutableJob):
         return self.mr_flp_template is not None
 
     @property
+    def storage_flp_file(self):
+        """The storage die's floorplan, when the stack has one (X4)."""
+        return os.path.join(self.run_path, 'STORAGE.flp')
+
+    @property
+    def has_storage_die(self):
+        return self.storage_flp_template is not None
+
+    @property
     def expected_output_length(self):
         return len(self.power_trace)
 
@@ -285,6 +299,8 @@ class ICESim(ExecutableJob):
         files = [self.stack_file, self.flp_file, self.__class__.EMULATOR_EXECUTABLE]
         if self.has_mr_array:
             files.append(self.mr_flp_file)
+        if self.has_storage_die:
+            files.append(self.storage_flp_file)
         initial_temp_file = self.sim_config.initial_temp_file
         if initial_temp_file != None:
             files.append(initial_temp_file)
@@ -306,7 +322,27 @@ class ICESim(ExecutableJob):
         self.fill_flp_template()
         if self.has_mr_array:
             self.fill_mr_flp_template()
+        if self.has_storage_die:
+            self.fill_storage_flp_template()
         self.fill_stk_template()
+
+    def fill_storage_flp_template(self):
+        """Write the storage die's floorplan from the trace, with the same landing guard.
+
+        The storage template names blocks the processor template does NOT (the cache blocks
+        moved up a die), and both are filled from one trace by name; a block present in neither
+        is simply not simulated, which is why the caller's die-power accounting must use the
+        union floorplan (the reference die) and not either half.
+        """
+        power_dict = {k: ', '.join(map(str, v)) for k, v in self.power_trace.powers.items()}
+        contents = populate_template(self.storage_flp_template, powers=power_dict)
+        written = sum(_flp_total_power(contents))
+        if written <= 1e-9:
+            raise ValueError(
+                'storage-die floorplan template accepted no power ({:.3g} W written to {}): '
+                'its blocks are not in the trace by name, or the template has literal zeros '
+                'instead of "{{powers[NAME]}}" placeholders.'.format(written, self.storage_flp_file))
+        return write_or_update_file(self.storage_flp_file, contents)
 
     def fill_flp_template(self):
         # Copy the powers
@@ -388,12 +424,21 @@ class ICESim(ExecutableJob):
                         'Build the sim with mr_flp_template= and mr_powers=, or use a stack '
                         'built without mr_powered.'.format(self.stack_template))
 
+        if not self.has_storage_die:
+            with open(self.stack_template) as f:
+                if '{storage_flp_file}' in f.read():
+                    raise ValueError(
+                        '{} declares a storage die but no storage floorplan was supplied. '
+                        'Build the sim with storage_flp_template=, or use a stack built '
+                        'without storage_um.'.format(self.stack_template))
         rel_flp_file = os.path.abspath(self.flp_file)
         # {mr_flp_file} is only present in stacks built with StackSpec(mr_powered=True). Passing
         # it unconditionally is harmless -- populate_template ignores unused keys -- and passing
         # a path for a run that has no MR floorplan would be worse than useless, so it is only
         # supplied when one was actually written.
         extra = {'mr_flp_file': os.path.abspath(self.mr_flp_file)} if self.has_mr_array else {}
+        if self.has_storage_die:
+            extra['storage_flp_file'] = os.path.abspath(self.storage_flp_file)
         contents = populate_template(self.stack_template, flp_file=rel_flp_file,
                                      flp_width=stk_width,
                                      flp_height=stk_height,
