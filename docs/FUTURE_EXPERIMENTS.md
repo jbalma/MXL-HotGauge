@@ -90,3 +90,18 @@ arm-D point at 2.00 W/mm² (plan 138.73 W, peak 93.875 °C) as the regression an
 through `scripts/campaign_server.sh`; every result lands in `RESULTS_REGISTER.md` as quotable /
 withdrawn / open with its caveat, and in `results-quotable/` through
 `scripts/build_results_registers.py`.
+
+## The plan agreed 13 September 2026 (after the MXL-006 memo review)
+
+| # | experiment | what it settles | status |
+|---|---|---|---|
+| A1 | a generalized f_max(V, T \| logic depth, wire fraction, skew) with V_max from an Arrhenius reliability budget; the clock search re-run to name its limiter | whether "10 GHz" is a device, wire, skew, reliability or thermal question (today's 4.17 GHz ceiling is an assumed 10 % overdrive) | planned — first |
+| A2 | the 8× / 16× execution-cluster ladder at 20 µm and 5 µm burial, per-block shape | where heat transport binds a >100 W/mm² functional unit (ΔT ≈ q·d/k) | planned |
+| A3 | a CoMeT IPC(f) reader (`thermal_example_test_1to20ghz/run_<f>/sim.out`) into the throughput proxy | the memory wall in the clock claims (FFT: IPC 2.88 → 1.43 from 1 to 20 GHz) | planned |
+| A4 | the D1 family and the accelerator re-run under the per-block envelope shape | the recorded seed-shape plans are upper bounds (18–33 % on the reference ladder, 12× on a concentrated quarter, §P0.29) | planned |
+
+Done 13 Sep on the way to this plan: §P0.29 (the per-block shape moves the rescue ladder's end
+from 2.40 to 3.50 W/mm² and lowers every cost 18–33 %; the dark-silicon "runaway" was an
+unfinished descent) and §P0.30 (the cooling-system ledger: the laser beats refrigerated air at
+every rung and a chilled direct-die plate only past its sub-zero crossover).
+

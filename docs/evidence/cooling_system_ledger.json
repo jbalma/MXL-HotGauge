@@ -1,0 +1,388 @@
+{
+ "note": "\u00a7P0.30: the cooling-SYSTEM ledger -- what it costs, in electrical watts, to make an inoperable\ndie operable by each route, on the coupled solve.\n\n    python examples/cooling_system_ledger.py\n\nInputs\n------\n* ``results/cop_ambient/air/d<rung>/T<ambient>``   the conventional air package (88 CFM, 35 W fan)\n  with the ambient swept: the highest ambient at which the control arm HOLDS is \"the ambient the\n  package needs\" at that rung.\n* ``results/cop_ambient/liquid/d<rung>/C<inlet>``  the direct-die microchannel plate with the inlet\n  swept: the highest inlet at which the control holds.\n* the recorded rescue ladder (``results/array_coverage_armD/c1.00``): the laser's net electrical\n  draw at the same rung, at 293 K ambient with the same 35 W fan.\n\nPricing (ported from mxl_LCEstimator_v8/thermal_model_unified.py and STATED, not fitted)\n---------------------------------------------------------------------------------------\n* chiller COP(T_in) = gamma * T_in / (T_amb - T_in), gamma = 0.4, clipped to [0.5, 6.0]\n  (LCEstimator's calculate_chiller_cop_thermodynamic), with its sub-zero penalties: 3 % of COP per\n  degree below 0 C down to -20 C, then exp((T_in + 20) / 15) below that (calculate_subzero_cop);\n* refrigerated air: supply 5 K below the required ambient; the fan stays at 88 CFM (35 W); the\n  refrigeration load is the die + fan heat (LCEstimator charges 1.5x the chip for air mass -- we\n  charge the heat actually rejected into the air stream, and say so);\n* liquid: chiller at the required inlet; pump at LCEstimator's single-pump 6.85 W scaled as\n  flow^3 with flow held at the plate's design point (a flow sweep is a separate axis);\n* photonic: the recorded p_mr_net_W (laser electrical minus LPC recovery, register \u00a71.3) plus\n  the 35 W fan; the die's own leakage saving is already inside the converged die power.\n\nSystem COP = converged die power / (fan + pump + chiller + laser net). Every number is ARGUED on\nthe stated pricing; the temperatures the package needs are MEASURED on the coupled solve.",
+ "pricing": {
+  "T_amb_K": 295.0,
+  "fan_W": 34.984,
+  "pump_W": 6.85,
+  "gamma": 0.4,
+  "cop_bounds": [
+   0.5,
+   6.0
+  ]
+ },
+ "rows": [
+  {
+   "rung": 1.2,
+   "die_W_injected": 121.316496,
+   "air": {
+    "required_ambient_K": 273.0,
+    "supply_K": 268.0,
+    "p_chip_W": 116.97642728820274,
+    "peak_C": 92.9986511230469,
+    "fan_W": 34.984,
+    "chiller_cop": 4.227886956521738,
+    "refrigeration_W": 35.94240547368368,
+    "total_W": 70.92640547368367,
+    "system_cop": 1.6492648472310547
+   },
+   "liquid": {
+    "required_inlet_K": 293.15,
+    "p_chip_W": 118.34375546875899,
+    "peak_C": 84.78615722656252,
+    "pump_W": 6.85,
+    "chiller_cop": null,
+    "chiller_W": 0.0,
+    "total_W": 6.85,
+    "system_cop": 17.276460652373576
+   },
+   "photonic": {
+    "p_chip_W": 117.85062503513042,
+    "peak_C": 92.70049438476565,
+    "heat_removed_W": 17.34444010545166,
+    "laser_net_W": 10.593274144004006,
+    "fan_W": 34.984,
+    "total_W": 45.57727414400401,
+    "system_cop": 2.5857321932587416
+   },
+   "air_sweep": [
+    [
+     293.0,
+     false
+    ],
+    [
+     283.0,
+     false
+    ],
+    [
+     273.0,
+     true
+    ],
+    [
+     263.0,
+     true
+    ],
+    [
+     253.0,
+     true
+    ],
+    [
+     243.0,
+     true
+    ],
+    [
+     233.0,
+     true
+    ]
+   ],
+   "liquid_sweep": [
+    [
+     303.15,
+     false
+    ],
+    [
+     293.15,
+     true
+    ],
+    [
+     283.15,
+     true
+    ],
+    [
+     273.15,
+     true
+    ],
+    [
+     263.15,
+     true
+    ],
+    [
+     253.14999999999998,
+     true
+    ],
+    [
+     243.14999999999998,
+     true
+    ],
+    [
+     233.14999999999998,
+     true
+    ]
+   ]
+  },
+  {
+   "rung": 1.6,
+   "die_W_injected": 161.75532800000002,
+   "air": {
+    "required_ambient_K": 243.0,
+    "supply_K": 238.0,
+    "p_chip_W": 149.85833494557312,
+    "peak_C": 84.56731567382815,
+    "fan_W": 34.984,
+    "chiller_cop": 0.7285046353864468,
+    "refrigeration_W": 253.7284266523858,
+    "total_W": 288.7124266523858,
+    "system_cop": 0.5190574464811827
+   },
+   "liquid": {
+    "required_inlet_K": 273.15,
+    "p_chip_W": 152.93431958343052,
+    "peak_C": 83.41591796875002,
+    "pump_W": 6.85,
+    "chiller_cop": 5.000457665903885,
+    "chiller_W": 31.95393907100458,
+    "total_W": 38.80393907100458,
+    "system_cop": 3.9412060539417624
+   },
+   "photonic": {
+    "p_chip_W": 153.58661426723532,
+    "peak_C": 93.46871337890627,
+    "heat_removed_W": 75.28154020368109,
+    "laser_net_W": 45.85405078371116,
+    "fan_W": 34.984,
+    "total_W": 80.83805078371117,
+    "system_cop": 1.899929708574603
+   },
+   "air_sweep": [
+    [
+     293.0,
+     false
+    ],
+    [
+     283.0,
+     false
+    ],
+    [
+     273.0,
+     false
+    ],
+    [
+     263.0,
+     false
+    ],
+    [
+     253.0,
+     false
+    ],
+    [
+     243.0,
+     true
+    ],
+    [
+     233.0,
+     true
+    ]
+   ],
+   "liquid_sweep": [
+    [
+     303.15,
+     false
+    ],
+    [
+     293.15,
+     false
+    ],
+    [
+     283.15,
+     false
+    ],
+    [
+     273.15,
+     true
+    ],
+    [
+     263.15,
+     true
+    ],
+    [
+     253.14999999999998,
+     true
+    ],
+    [
+     243.14999999999998,
+     true
+    ],
+    [
+     233.14999999999998,
+     true
+    ]
+   ]
+  },
+  {
+   "rung": 2.0,
+   "die_W_injected": 202.19416,
+   "air": null,
+   "liquid": {
+    "required_inlet_K": 263.15,
+    "p_chip_W": 192.12691446393623,
+    "peak_C": 99.63591918945315,
+    "pump_W": 6.85,
+    "chiller_cop": 3.500320366132719,
+    "chiller_W": 56.84534375456985,
+    "total_W": 63.695343754569855,
+    "system_cop": 3.0163415901205806
+   },
+   "photonic": {
+    "p_chip_W": 188.4671023583085,
+    "peak_C": 93.8752380371094,
+    "heat_removed_W": 138.72881143652086,
+    "laser_net_W": 84.38691571735205,
+    "fan_W": 34.984,
+    "total_W": 119.37091571735206,
+    "system_cop": 1.5788360274002022
+   },
+   "air_sweep": [
+    [
+     293.0,
+     false
+    ],
+    [
+     283.0,
+     false
+    ],
+    [
+     273.0,
+     false
+    ],
+    [
+     263.0,
+     false
+    ],
+    [
+     253.0,
+     false
+    ],
+    [
+     243.0,
+     false
+    ],
+    [
+     233.0,
+     false
+    ]
+   ],
+   "liquid_sweep": [
+    [
+     303.15,
+     false
+    ],
+    [
+     293.15,
+     false
+    ],
+    [
+     283.15,
+     false
+    ],
+    [
+     273.15,
+     false
+    ],
+    [
+     263.15,
+     true
+    ],
+    [
+     253.14999999999998,
+     true
+    ],
+    [
+     243.14999999999998,
+     true
+    ],
+    [
+     233.14999999999998,
+     true
+    ]
+   ]
+  },
+  {
+   "rung": 2.4,
+   "die_W_injected": 242.632992,
+   "air": null,
+   "liquid": {
+    "required_inlet_K": 243.14999999999998,
+    "p_chip_W": 225.22456747219027,
+    "peak_C": 96.63948974609377,
+    "pump_W": 6.85,
+    "chiller_cop": 1.0269282274691247,
+    "chiller_W": 225.98908206481036,
+    "total_W": 232.83908206481036,
+    "system_cop": 0.9672970940913579
+   },
+   "photonic": {
+    "p_chip_W": 220.9733706796847,
+    "peak_C": 90.28225097656252,
+    "heat_removed_W": 221.52769761815267,
+    "laser_net_W": 136.32675652590626,
+    "fan_W": 34.984,
+    "total_W": 171.31075652590627,
+    "system_cop": 1.2898978158809793
+   },
+   "air_sweep": [
+    [
+     293.0,
+     false
+    ],
+    [
+     283.0,
+     false
+    ],
+    [
+     273.0,
+     false
+    ],
+    [
+     263.0,
+     false
+    ],
+    [
+     253.0,
+     false
+    ],
+    [
+     243.0,
+     false
+    ],
+    [
+     233.0,
+     false
+    ]
+   ],
+   "liquid_sweep": [
+    [
+     303.15,
+     false
+    ],
+    [
+     293.15,
+     false
+    ],
+    [
+     283.15,
+     false
+    ],
+    [
+     273.15,
+     false
+    ],
+    [
+     263.15,
+     false
+    ],
+    [
+     253.14999999999998,
+     false
+    ],
+    [
+     243.14999999999998,
+     true
+    ],
+    [
+     233.14999999999998,
+     true
+    ]
+   ]
+  }
+ ],
+ "complete": true
+}

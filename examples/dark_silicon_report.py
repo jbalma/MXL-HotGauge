@@ -25,9 +25,16 @@ BACKGROUND = 0.25
 DT_DQ = 0.3247
 
 
-def load():
+def load(overrides=()):
+    """Recorded points, then each override base in order: a point found under an override REPLACES
+    the recorded one arm by arm and records where it came from (§P0.29: the per-block envelope
+    shape and the 12-iteration budget supersede the seed-shape rows)."""
     pts = {}
-    for f in glob.glob(os.path.join(_REPO, 'results', 'dark_silicon', 'd*', 'f*', 'mr_comparison.json')):
+    bases = [os.path.join(_REPO, 'results', 'dark_silicon')] + [os.path.join(_REPO, b) if not os.path.isabs(b) else b for b in overrides]
+    files = []
+    for b in bases:
+        files += sorted(glob.glob(os.path.join(b, 'd*', 'f*', 'mr_comparison.json')))
+    for f in files:
         d = float(re.search(r'/d([0-9.]+)/', f).group(1)); fr = float(re.search(r'/f([0-9.]+)/', f).group(1))
         j = json.load(open(f)); rows = {r['arm']: r for r in j['rows']}
         rec = {'density': d, 'fraction': fr, 'die_avg': d * (fr + BACKGROUND * (1 - fr)),
@@ -35,10 +42,18 @@ def load():
         for arm, r in rows.items():
             lit = (not r.get('diverged')) and not r.get('unconverged') and (r.get('mr_plan_holds_target', True) is not False)
             rec[arm] = {'lit': lit, 'diverged': r.get('diverged'), 'unconverged': r.get('unconverged'),
+                        'reason': (r.get('mr_reason') or '')[:90], 'unfinished': (r.get('mr_reason') or '').startswith('max_iter'),
                         'peak_C': r.get('peak_C'), 'p_chip_W': r.get('p_chip_W'),
                         'Q_W': r.get('heat_removed_W'), 'p_mr_net_W': r.get('p_mr_net_W'),
-                        'peak_block': r.get('peak_block'), 'tiles_capped': (r.get('extractor') or {}).get('n_tiles_capped')}
-        pts[(d, fr)] = rec
+                        'peak_block': r.get('peak_block'), 'tiles_capped': (r.get('extractor') or {}).get('n_tiles_capped'),
+                        'source': os.path.relpath(os.path.dirname(f), _REPO), 'envelope_shape': j.get('mr_envelope_shape') or 'seed'}
+        if (d, fr) in pts:
+            # override: keep the recorded record, replace the arms this base carries
+            for arm in rows:
+                pts[(d, fr)][arm] = rec[arm]
+            pts[(d, fr)]['done'] = pts[(d, fr)]['done'] and rec['done']
+        else:
+            pts[(d, fr)] = rec
     return pts
 
 
@@ -54,9 +69,11 @@ def uniform_Q(density):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('--override', nargs='*', default=[],
+                    help='result bases whose points SUPERSEDE results/dark_silicon (e.g. results/dark_silicon_v2/power)')
     ap.add_argument('--json-out', default=os.path.join(_EV, 'dark_silicon.json'))
     args = ap.parse_args()
-    pts = load()
+    pts = load(args.override)
     dens = sorted({d for d, _ in pts}); fracs = sorted({f for _, f in pts})
     out = {'note': __doc__.strip(), 'background': BACKGROUND, 'per_density': {}, 'points': [pts[k] for k in sorted(pts)]}
     print('%6s %6s %8s | %-9s %-9s %-9s | %8s %8s' % ('d', 'f', 'die avg', 'control', 'idle', 'laser', 'Q_W', 'net_W'))

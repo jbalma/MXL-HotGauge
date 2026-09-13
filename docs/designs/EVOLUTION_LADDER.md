@@ -132,6 +132,17 @@ The rescue as a ladder in the book's variable `s` (heat lifted optically / conve
 | 2.40 | 221.5 | 221.0 | **1.00** | — | 136.3 | **3.8×** (conservation) |
 | 2.60 | 251.2 | 239.0 | 1.05 | — | 153.6 | envelope only: the array is refrigerating the sink |
 
+`[!]` **Corrected 13 Sep (§P0.29 part 3): the table above is the seed-shape planner's ladder, and
+its end was the planner's, not the die's.** Under the per-block envelope shape (`--mr-envelope-shape
+power`, each block capped at its own dissipation) the same rungs cost 18–33 % less — **11.6 / 56.5 /
+113.6 / 176.7 / 202.7 / 248.9 W at 1.20 / 1.60 / 2.00 / 2.40 / 2.60 / 3.00**, s = 0.10 / 0.36 / 0.59 /
+0.79 / 0.84 / **0.89** — and **3.00 W/mm² holds** where the seed shape had no steady state; **the ladder ends on
+conservation at 3.50 (s = 0.99, 319 W of 322 W), and 4.00 is bistable** (the hot branch is the only
+solution in the bracket). The seed shape spent light on blocks that did not
+need it, so the conservation cap at 2.40 was met by the plan's waste. The s-ladder reading below stands
+in form (the cap still beats (1.33) at s = 0.5 and conservation still ends it, two rungs higher, at 3.50);
+the numbers to quote are the per-block ones, with their shape. `docs/evidence/rescue_ladder_power.json`.
+
 `[+]` **Read against (1.33).** At `s = 0.5` the book's cap doubles; the measured cap is 2.6× the
 shaped control's — *more* than (1.33), because the control's ceiling is a runaway below the
 `ΔT_lim` wall and the first thing the laser buys is the instability, not the wall (§P0.14's
@@ -142,8 +153,9 @@ the die makes, 3.00 does not hold. The hybrid cap's asymptote is not reachable o
 sink is the array itself. Both MEASURED; the reading of (1.33) is ARGUED.
 
 `[!]` What is *not* claimed: any rung above ~1.6 as an operating point. At 2.00 the cooler draws
-84 W net against a 188 W die (effective COP with recovery 1.64); the register's rule is to quote
-the **rescue range and the cost ladder**, never the top rung.
+84 W net against a 188 W die under the seed shape (effective COP with recovery 1.64), less under
+the per-block shape; the register's rule is to quote the **rescue range and the cost ladder, with the
+planner's shape**, never the top rung.
 
 ### 2.2 What the architecture does with the freed constraint — ARGUED, D1 measures it
 
@@ -434,7 +446,7 @@ the floorplan family, not of one die.
 | rung | binding constraint (from the solve) | evidence | tag | change made because of it | predicted next constraint | falsifier |
 |---|---|---|---|---|---|---|
 | gen 0 | leakage runaway through `cALU`; 0.60–0.65 shaped, 0.85–0.90 flat; the traced die has no steady state on this package | §P0.17, register §1.3 | **MEASURED** | — | — | — |
-| gen 1 | conservation at 2.40 W/mm² (`s` = 1.00); envelope at 2.60 | §P0.18.2, §P0.19–20, register §1.3 | **MEASURED** | execution cluster 2×/4× denser at the same power (D1 family) — **re-measured**: holds to 202 W / 162 W, 0 tiles capped, cost 1.2–6.9× the reference's | **the PDN above ~1.3 W/mm², unless the rails are re-sized ~J×** (§2.3, §P0.27: die current 1.5–2.9× native along the ladder, the dense cluster's cALU 2× / 4× that at 100 % utilisation and 1.22× at the book's 70 % — §2.4; worst-block EM 12–50× vs native at n = 2, 0.9 eV) — MEASURED as `J`, ARGUED as a limit; thermal skew grows with the rung (3.2 → 7.9 % of the period) | §P0.22.3 P1–P4: P2 falsified on cost, P4 refined; §P0.27 P1–P4 confirmed, P6 (uniformity as a lever) falsified |
+| gen 1 | conservation at **3.50 W/mm²** under the per-block planner (s = 0.99; 4.00 bistable; the seed shape's "2.40, s = 1.00" was the planner's limit, §P0.29) | §P0.18.2, §P0.19–20, register §1.3 | **MEASURED** | execution cluster 2×/4× denser at the same power (D1 family) — **re-measured**: holds to 202 W / 162 W, 0 tiles capped, cost 1.2–6.9× the reference's | **the PDN above ~1.3 W/mm², unless the rails are re-sized ~J×** (§2.3, §P0.27: die current 1.5–2.9× native along the ladder, the dense cluster's cALU 2× / 4× that at 100 % utilisation and 1.22× at the book's 70 % — §2.4; worst-block EM 12–50× vs native at n = 2, 0.9 eV) — MEASURED as `J`, ARGUED as a limit; thermal skew grows with the rung (3.2 → 7.9 % of the period) | §P0.22.3 P1–P4: P2 falsified on cost, P4 refined; §P0.27 P1–P4 confirmed, P6 (uniformity as a lever) falsified |
 | gen 2 | (predicted) MR electrical budget | §P0.18.3 | **ARGUED** on measured inputs | low-`V_th` on the cooled cluster, 25 mV | budget/COP | D2's coupled solve |
 | gen 3 | on the monolithic die: conservation at 280 K, ≥ 70 % of die power at 300 K; **on the two-die stack with the storage die on the sink side: the same, at every bond (X4)** | §P0.22.2, §P0.27.4, §P0.7 TEST 1, register §1.2 | constraint **MEASURED**; the design as argued **FALSIFIED** (§4.3); the surviving variant **ARGUED** | storage die on Cr:LiSAF at ~280 K **off the compute die's heat path** (2.5D, or the far face with two sinks) | interface isolation and two-sided packaging — not thermal | the two-sink stack |
 | end | the limit is wire, not heat | v100 §10.9–10.10 | **ARGUED** | — | — | — |
@@ -447,8 +459,8 @@ subsections of §P0.22 and `gen1_dense_cluster.md`, `gen3_cache_objective.md`.
 ## 8. What the patent-facing text may and may not say (from this ladder)
 
 **May say, as measured on this die:** the rescue range (unpowered array fails at 1.20, the laser
-holds to 2.40 under conservation) and the cost ladder (17 W removed at 1.20 → 139 W at 2.00;
-11 → 84 W net); the array's heat share `s` reaching 1.0 at the top rung; 0 tiles capped by the
+holds to 2.40 under the seed-shape planner and to 3.50 under the per-block one, on conservation) and the
+cost ladder with its shape (seed 17 → 139 W at 1.20 → 2.00; per-block 12 → 114 W); the array's heat share `s` reaching 1.0 at the top rung; 0 tiles capped by the
 target device; the 200 µm plateau and the zero coverage charge; the 2.23× cold-zone ratio and the
 280 K knee; the 1.24 K/40 W gradient; the cache-leakage objective's cost on the monolithic die
 (the whole die at 280 K; ≥ 70 % of it at 300 K, lower bound) **and on the sink-side two-die stack

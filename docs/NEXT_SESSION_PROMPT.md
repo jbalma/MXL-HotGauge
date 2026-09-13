@@ -1,8 +1,9 @@
 # Kick-off prompt for the next session
 
-**Rewritten 11 September 2026, after §P0.25 closed and §P0.27 ran to the end (X1/X2 on the
-recorded fields, X3 at the book's utilisation, X4 the two-die stack — gen 3 as argued falsified).** Copy the block below verbatim; the one-paragraph form at the
-end is the same thing compressed. The 10 September version is in git history.
+**Rewritten 13 September 2026, after the user's four points on the MXL-006 memo were addressed
+(§P0.29 the planner-shape correction, §P0.30 the cooling-system ledger) and the plan below was
+agreed.** Copy the block below verbatim; the one-paragraph form at the end is the same thing
+compressed. The 11 September version is in git history.
 
 ---
 
@@ -12,68 +13,85 @@ Continue MXL-HotGauge at `/mnt/nfs01/scratch/jbalma/MXL-HotGauge`.
 
 | file | read it before you |
 |---|---|
-| `docs/NEXT_SESSION.md` (11 Sep handoff at the top) | pick anything up — what ran, what is recorded, what is open |
-| `docs/RESULTS_REGISTER.md` | quote any number — §0 flag table, §1.3 (now with the burst, X1, X2 and X3 rows), §3 (a rail model and `D_ins` are open), §4 (every rung above ~1.3 W/mm² is a current statement; two control ceilings; ~5 W/mm² steady tile demand, 13 W/mm² transient) |
-| `docs/designs/EVOLUTION_LADDER.md` §2.3 (new) + `gen1_dense_cluster.md` | write about architecture — gen 1's next constraint is the PDN, MEASURED as `J`, ARGUED as a limit |
-| `docs/PHASE0_CHECKLIST.md` §P0.27 (predictions and the X1–X4 RESULTs) | rely on any 11 Sep number |
-| `docs/PHYSICAL_DESIGN_CONSTRAINTS.md` + `docs/chip_design_lit/SoC-Physical-Design.pdf` (book page = PDF page − 21) | design the next rung |
-| `docs/FUTURE_EXPERIMENTS.md` | run anything — status current to 11 Sep; net export stays reserved |
-| `docs/METHODS.md` §2.2, §2.6 | touch the node — **nothing runs on the head node** (solves, the suite, pack builds: all through `scripts/campaign_server.sh`); recorded solve trees hold power maps, not fields — `examples/field_resolve.py` |
+| `docs/NEXT_SESSION.md` (13 Sep handoff at the top) | pick anything up — what ran, what is recorded, what is open |
+| `docs/RESULTS_REGISTER.md` | quote any number — §0 (the `--mr-envelope-shape` row: **every plan is quoted with its shape**; the seed-shape plans are upper bounds and the anchor), §1.3 (the per-block rescue ladder ends at **3.50 W/mm²**, s = 0.99; the cooling-system ledger; the corrected F2 costs), §2 (the "s = 1 at 2.40" withdrawal), §3, §4 |
+| `docs/PHASE0_CHECKLIST.md` §P0.29–§P0.30 | rely on any 13 Sep number — the unfinished-descent lesson, the 12× over-spend on a concentrated quarter, the ambient / inlet ladders |
+| `docs/designs/EVOLUTION_LADDER.md` §2.1 (corrected), §2.3, §2.4, §4.3 | write about architecture |
+| `docs/photonic_cooling/MXL-006-PRO/Update/MXL-006_update_memo.md` | touch the patent story — the memo's Section 2.2 review, Section 6 claim framing, Section 8 experiments; the user's four points of 13 Sep are answered in `NEXT_SESSION.md` |
+| `docs/METHODS.md` §2.2, §2.6 | touch the node — **nothing runs on the head node** (campaign server, `results/campaign_queue/<name>.par<N>.tsv`; pandoc is head-node only and is the one exception, a text conversion) |
 | `CLAUDE.md` | everything else |
 
-**The state (11 Sep).** F4's six burst points are recorded (register §1.3, `results-quotable/17-…`).
-X1/X2 are recorded on 34 re-solved recorded fields (`results/fields/`, `docs/evidence/pdn_em_skew.json`,
-`results-quotable/18-…`): the rescue ladder is a current ladder (1.29–2.88× the native rail current
-from 1.00 to 2.40 W/mm² at 0.70 V), the ×0.5 cluster doubles the peak rail current exactly, the
-cooled die's worst block ages 12–50× faster than the native die's (Black, n = 2, 0.9 eV), thermal
-skew grows with every rung (uniformity is not a clock lever — P6 falsified). **X3 is recorded** (§P0.27.3, register §1.3, `results-quotable/19-…`): at the book's 70 % utilisation the dense cluster is 1.22× denser in silicon, holds every rung to 243 W, and costs 1.2–1.4× a same-utilisation reference at the die-wide rungs; 100 µm, never beside a 50 µm row. **X4 is recorded and it falsifies gen 3 as argued** (§P0.27.4, register §1.2 + §2, ladder §4.3): with the storage die on the sink side of the compute die the 280 K objective costs the whole die at every bond conductivity, and an isolating bond takes the compute die's sink away; the storage die must be off the heat path. The proposal pack is `proposal_pack_2026-09-11/`.
+**The state (13 Sep).** The proposal pack is `proposal_pack_2026-09-13/` (23 quotable items). The
+memo package is `docs/photonic_cooling/MXL-006-PRO/Update/` (`.md` / `.docx` / `.html`, figures,
+evidence). The default planner shape is still `seed` so the anchor reproduces (2.00 W/mm²: 138.73 W,
+93.875 °C); a second anchor under `--mr-envelope-shape power` is 113.6 W / 91.5 °C at 2.00. The
+campaign server is stopped; restart it with `nohup srun --jobid=1507 --overlap -n1 --cpu-bind=none
+scripts/campaign_server.sh >> results/campaign_queue/server.log 2>&1 &` (check `squeue -u jbalma`).
 
-## The goal of this session
+## The plan, agreed by the user on 13 Sep — do these in this order
 
-1. **The surviving gen-3 geometry** (ladder §4.3): build the stack with the storage die OFF
-   the compute die's heat path — the compute die's sink and dye array on one face, the storage
-   die with Cr:LiSAF tiles and its own sink on the other (a two-sink `StackSpec`: the second
-   `top heat sink` is the new element — 3D-ICE has one boundary per face, check what its
-   grammar allows before building), or a 2.5D side-by-side floorplan on one footprint with an
-   isolating channel. Predictions first (what the lateral interface conducts is the number);
-   `--cell-um 100`; the anchor after any stack edit. The gen-3 storage-die machinery
-   (`StackSpec(storage_um…)`, `split_storage_die.py`, `--gen3-split`) is the starting point.
-2. **If the day allows: a first rail model** (register §3) — `IR ∝ local P/A` on a stated stripe
-   pitch, `V_eff = V_dd − IR` into `clock_search`, so "binds: PDN" becomes a clock cost like the
-   skew term. Predictions first.
+1. **A generalized f_max(V, T | logic depth, wire fraction, skew) in the framework.** Today the
+   clock search ends at an ASSUMED 10 % overdrive on a saturating I_on(V)/V that is re-anchored at
+   every temperature, so I_on(T) never reaches the clock and "10 GHz" cannot be tested either way.
+   Build: gate delay FO4(V, T) ∝ C·V / I_on(V, T) from the SPICE card (`device_vt_vf_asap7.json`
+   has I_on(V) at 14 temperatures to 0.85 V; extend the sweep upward if needed —
+   `examples/device_vt_vf_spice.py`), logic depth per stage as a stated architecture parameter
+   (~20 FO4 modern; 8–10 at Pentium-4-class pipelining), a wire-delay fraction, the measured thermal
+   skew of X2 (§P0.27), and **V_max from an Arrhenius reliability budget at the cooled temperature**
+   (EM: Black's law n = 2, E_a = 0.9 eV as in X1; TDDB: state E_a and the voltage acceleration)
+   instead of a fixed overdrive. Then re-run the clock search (`clock_headroom.py --density`, three
+   arms, arm D) so it names its limiter: device, wire, skew, reliability, or thermal. Predictions
+   first (a §P0.31): the cooled die buys 10–15 % of V_max on the reliability budget and +6 % of gate
+   speed from I_on(T), i.e. +20–30 % of clock on the same pipeline; 10 GHz needs the pipeline, not
+   the cooler. Never quote a clock above the model's own ceiling.
+2. **The 8× / 16× execution-cluster ladder at 20 µm and 5 µm burial** (the ">1000 W/mm² functional
+   units" question: ΔT ≈ q·d/k means the extractor must sit within microns). `generate_exec_density_
+   family.py --factors 0.125 0.0625` (cALU at 230–460 W/mm²), `mr_comparison.py --flp-dir … --burial-um
+   20 | 5 --pitch-um 200 | 100 --mr-envelope-shape power`, matched die watts as D1, 100 µm cells
+   (check the stack's unknown count against the 366k limit; 50 µm if it fits). Find where transport
+   binds: the rung at which the cluster's peak cannot be held at any plan. Predictions first: at
+   5 µm the 8× cluster holds every D1 rung; at 20 µm the 16× cluster loses the 2.00-equivalent rung
+   to the gradient through the silicon; the tile flux climbs past 50 W/mm² and still stays under the
+   film. Report the rails (X1's current ladder scales with the density factor).
+3. **A CoMeT IPC(f) reader.** `/mnt/nfs01/scratch/jbalma/CoMeT/test/thermal_example_test_1to20ghz/
+   run_<f>/sim.out` (and the `benchmarks_sweep` runs) carry Instructions / Cycles / IPC / Time per
+   frequency (FFT: IPC 2.88 / 2.49 / 1.95 / 1.43 at 1 / 4 / 10 / 20 GHz) and `InstantVdd.log` carries
+   CoMeT's DVFS voltage. Build `examples/comet_ipc_reader.py` → `docs/evidence/comet_ipc_vs_f.json`
+   (IPC(f) per benchmark, wall time, their V(f)), and replace the fixed-IPC GFLOP/s proxy in
+   `clock_f1c_report.py` / `iso_package_throughput_report.py` with throughput = f × IPC(f) × cores so
+   the memory wall enters the throughput claims. Only the frequency setting differs between CoMeT's
+   configs — it says nothing about whether the device can switch at 20 GHz; item 1 does.
+4. **Re-run the D1 family and the accelerator under the per-block shape.** Their recorded plans
+   are seed-shape upper bounds (§P0.29: 18–33 % on the reference ladder, 12× on a concentrated
+   quarter). D1: `scripts/d1_family_ladder.sh` with `--mr-envelope-shape power` on the array rungs
+   (both members, five rungs) → `results/d1_family_power/`; the reference per-block ladder is already
+   in `results/array_coverage_armD_power/`. Accelerator: `results/accel_f3_power_tol1` already used the
+   power shape (§P0.24) — confirm, and re-run only its seed-shape rows if any remain. Then the
+   register's D1 row and the ladder's §2.2 / §2.4 carry both shapes; the D1 premium ratios are
+   like-for-like only within a shape.
 
-**Not this session:** D2 stays argued; nothing on net export (reserved); no new floorplan family
-beyond X3's; no accelerator re-run.
+**Not this session:** the two-sink gen-3 stack (ladder §4.3; needs `bottom heat sink` in `die_stack`
+and a second array wiring — next); a rail model (register §3); D2; net export (reserved).
 
-## What the patent- and proposal-facing text may and may not say
-
-- Measured on the 34-core die: register §1 including the burst, X1 and X2 rows — always with the
-  W/mm² operating point, the V/F source, the leakage curve, the grid, and for X1/X2 the stated
-  constants (`V_dd`, `n`, `E_a`, `D_ins`) beside every derived figure; the current ratios and the
-  gradients in kelvin are the measured part.
-- Argued: the two-die design, D2, EM lifetimes and accelerations, every skew percentage, "binds:
-  PDN" (a re-sizing statement, not a failure), any cubic-law clock above the V/F table.
-- Never: a clock from above the V/F table; "N× the compute" from a fixed-core-count ladder; a
-  GA100 power as a fact; the extractor's ideal design point as needed; Yb:YLF in a zone; net
-  export from any current rung; a burst temperature above 127 °C (say non-viable); the withdrawn
-  list in register §2.
-
-## How to work here
-
-Predictions in `PHASE0_CHECKLIST.md` before any run (§P0.27's sixteen: eleven confirmed, one
-falsified, four off in magnitude). Prefer the measured neighbour to the derived estimate. An
-`unconverged` row is neither a hold nor a failure. Nothing on the head node. Never `git add .`;
-list the files. Re-run the anchor after any planner edit.
+**Rules, unchanged:** predictions in `PHASE0_CHECKLIST.md` before any run (§P0.29–§P0.30: fourteen
+written, eight confirmed, four falsified, two half); an `unconverged` row is neither a hold nor a
+failure, and an unfinished planner descent is neither (§P0.29); quote every plan with its envelope
+shape; re-run the 34-core arm-D anchor after any planner or stack edit (both shapes); nothing on the
+head node; never `git add .`; list the files.
 
 ---
 
 ## Short intro prompt (the same session, in one paragraph)
 
-Continue MXL-HotGauge at `/mnt/nfs01/scratch/jbalma/MXL-HotGauge`. Read `docs/START_HERE.md`,
-then `docs/NEXT_SESSION_PROMPT.md` (11 Sep) in full — it is the brief. Context: `docs/NEXT_SESSION.md`
-(11 Sep handoff), `docs/RESULTS_REGISTER.md` (§1.3's burst / X1 / X2 rows; §3; §4's current-ladder
-rule), `docs/designs/EVOLUTION_LADDER.md` §2.3, `docs/PHASE0_CHECKLIST.md` §P0.27 (X1–X4 RESULTs), `docs/PHYSICAL_DESIGN_CONSTRAINTS.md`, `docs/METHODS.md` §2.2/§2.6,
-`CLAUDE.md`. Goal: build and measure the surviving gen-3 geometry (the storage die off the compute die's heat path, ladder §4.3), the gen-3 stack with the 3D
-chapter's geometry (§P0.27.4, P14–P17), then a first rail model if the day allows. Predictions
-before any run; **nothing on the head node** (campaign server); re-run the 34-core arm-D anchor
-after any planner edit; never `git add .`; an unconverged row is neither a hold nor a failure.
+Continue MXL-HotGauge at `/mnt/nfs01/scratch/jbalma/MXL-HotGauge`. Read `docs/START_HERE.md`, then
+`docs/NEXT_SESSION_PROMPT.md` (13 Sep) in full — it is the brief. Context: `docs/NEXT_SESSION.md`
+(13 Sep handoff), `docs/RESULTS_REGISTER.md` (§0's envelope-shape rule; §1.3's per-block ladder to
+3.50 W/mm², the cooling-system ledger, the corrected F2 costs; §2's withdrawals), `docs/PHASE0_CHECKLIST.md`
+§P0.29–§P0.30, `docs/designs/EVOLUTION_LADDER.md`, the MXL-006 memo in
+`docs/photonic_cooling/MXL-006-PRO/Update/`, `docs/METHODS.md` §2.2/§2.6, `CLAUDE.md`. The agreed
+plan, in order: (1) a generalized f_max(V, T | logic depth, wire, skew) with V_max from an Arrhenius
+reliability budget, then the clock search re-run so it names its limiter; (2) the 8× / 16× cluster
+ladder at 20 µm and 5 µm burial under the per-block shape; (3) a CoMeT IPC(f) reader replacing the
+fixed-IPC throughput proxy; (4) the D1 family and the accelerator re-run under the per-block shape.
+Predictions before any run; quote every plan with its shape; the anchor after any planner or stack
+edit; nothing on the head node (campaign server on job 1507); never `git add .`.

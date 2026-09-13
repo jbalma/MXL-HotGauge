@@ -2661,6 +2661,299 @@ rather than a re-run, so the two campaigns were produced by the same code at dif
 
 ---
 
+## `[x]` §P0.30 — the COOLING-SYSTEM ledger: the ambient the conventional package needs at each rescue rung, priced against the laser's net draw (the COP comparison MXL-006 §2.2 asked for). PREDICTIONS, before the run  `[~]` 13 Sep 2026
+
+**Why.** The provisional's "> 10× COP" came from `mxl_LCEstimator_v8`, which priced the fans,
+pumps and chillers a conventional system needs to hold the junction (sub-zero chiller COP with
+antifreeze/cryogenic penalties, pump and fan power ∝ flow³, HVAC COP for refrigerated air).
+§P0.7 Tests 6b–6e made the same comparison on the pipeline-curve solves and found the chiller
+still wins at the measured 42 K rescue and the laser overtakes past ~100 K of depth. Neither is
+on the current (arm D) coupled solve with the calibrated fan. This ladder measures, per rung,
+the **ambient the air package needs** (control arm, 88 CFM, ambient swept 293 → 233 K in 10 K
+steps) and the **inlet a liquid plate needs** (control arm on a lumped `--r-th` sink at the
+accelerator ladder's microchannel plate resistance scaled to this die's area — 0.0153 K/W × 826 mm² / 101 mm² = **0.125 K/W** — with the coolant temperature swept 30 → −40 °C; the plate's own spreading is inside that number), at 1.20 / 1.60 / 2.00 / 2.40
+W/mm² on the 100 µm grid; the laser side is the recorded rescue ladder's net electrical draw
+(register §1.3: 10.6 / 45.9 / 84.4 / 136 W net at those rungs) plus the same 35 W fan at 293 K.
+Pricing (`examples/cooling_system_ledger.py`, ported from LCEstimator and stated): chiller COP =
+γ·T_in/(T_amb − T_in), γ = 0.4, clipped to [0.5, 6], with LCEstimator's 3 %/K antifreeze penalty
+below 0 °C and its exponential cryogenic decay below −20 °C; refrigerated air supplied 5 K
+below the required ambient; T_amb = 295 K year-round. System COP = die power / (fan + pump +
+chiller + laser net).
+
+- **P1 — the air package is rescued by ambient alone at 1.20 and 1.60 but not above.** The
+  control holds 1.20 at ≤ 273 K ambient and 1.60 at ≤ 243 K (runaway is a loop gain that falls
+  with the die's temperature; 0.325 K/W × the die's watts is the offset); **2.00 and 2.40 hold
+  at no ambient ≥ 233 K**. Falsifier: 2.00 held at ≥ 253 K.
+- **P2 — the liquid plate needs far less depth.** At the microchannel resistance the control
+  holds 1.20 at ≥ 283 K inlet, 1.60 at ≥ 263 K, 2.00 at ≥ 243 K, 2.40 not in range. Falsifier:
+  2.00 needs < 233 K.
+- **P3 — the system-COP ratio is a curve, and > 10× exists only where the conventional side
+  goes sub-zero.** At 1.20 the laser's 10.6 W net beats refrigerated air's chiller draw (COP
+  ~5 at 273 K supply → 25–40 W): **2–4×** in the laser's favour; at 1.60 the air side needs
+  243 K (COP ≤ 1 with the antifreeze penalty → ≥ 150 W) against 46 W: **3–5×**; at 2.00 air has
+  no solution in range and the ratio is unbounded; **against the liquid plate the laser loses at
+  1.20 (plate inlet 283 K, chiller COP ~6 → ~25 W plus pump, comparable) and wins from 1.60
+  up** (2–3× at 1.60, ≥ 5× at 2.00). Falsifier: the laser losing to refrigerated air at 1.60, or
+  to the liquid plate at 2.00.
+
+`scripts/cop_ambient_ladder.sh` → `results/cop_ambient/{air,liquid}/d<rung>/T<ambient>`,
+control arm only, 100 µm cells, arm D. The fan is held at 88 CFM (35 W) on the air side; a
+flow sweep is the next axis, not this one.
+
+### `[x]` §P0.30 RESULT — refrigerated air is beaten at every rung and has no solution above 1.60; a chilled direct-die liquid plate beats the laser until its coolant goes sub-zero (2.40 W/mm² on this die); > 10× exists only against air where air has no solution
+
+`results/cop_ambient/{air,liquid}/` (28 + 32 control points, 100 µm, minutes each: a control that
+runs away is decided fast), `examples/cooling_system_ledger.py` → `docs/evidence/cooling_system_ledger.json`.
+The laser side is the recorded c1.00 ladder (seed-shape plans; §P0.29 P5 tests whether the
+per-block shape lowers them). Pricing as stated in the predictions (LCEstimator's chiller COP
+with sub-zero penalties; fan 35 W at 88 CFM held; pump 6.85 W held).
+
+| rung | air: ambient needed → chiller | liquid plate (0.125 K/W): inlet needed → chiller | photonic: net laser + fan | system COP air / liquid / photonic |
+|---|---|---|---|---|
+| 1.20 | **273 K** → 36 W (COP 4.2), 71 W total | **293 K** (holds at ambient) → 0 W, 7 W total | 10.6 + 35 = 46 W | 1.65 / **17.3** / 2.59 |
+| 1.60 | **243 K** → 254 W (COP 0.73), 289 W | **273 K** → 32 W (COP 5.0), 39 W | 45.9 + 35 = 81 W | 0.52 / **3.94** / 1.90 |
+| 2.00 | no solution ≥ 233 K | **263 K** → 57 W (COP 3.5), 64 W | 84.4 + 35 = 119 W | — / **3.02** / 1.58 |
+| 2.40 | no solution | **243 K** → 226 W (COP 1.03), 233 W | 136.3 + 35 = 171 W | — / 0.97 / **1.29** |
+
+**P1 confirmed exactly** (273 / 243 / none / none). **P2 falsified in the laser's disfavour** —
+the plate is stronger than predicted: 293 / 273 / 263 / 243 K (predicted 283 / 263 / 243 /
+out of range); a direct-die microchannel plate at 0.125 K/W holds 2.40 W/mm² with −30 °C
+coolant. **P3 half** — against refrigerated air the laser wins **1.6× at 1.20, 3.7× at 1.60**
+and is the only solution at 2.00 and 2.40 (predicted 2–4× / 3–5× / unbounded: confirmed);
+against the liquid plate the laser **loses at 1.20 (6.7×), 1.60 (2.1×) and 2.00 (1.9×)** and
+wins only at **2.40 (1.33×)**, where the plate's coolant is at −30 °C and the chiller's COP has
+fallen to 1.0 (predicted a win from 1.60: falsified).
+
+`[+]` **What the ledger says, and it reconciles LCEstimator with §P0.7.** (i) The provisional's
+"> 10× COP" is the air comparison in the regime where air has no solution — a true statement
+about refrigerated air above ~1.6 W/mm² on this package, and not a statement about liquid
+cooling. (ii) Against the strongest conventional option, a direct-die microchannel plate with a
+chiller, the laser's system COP is lower until the rung at which the plate needs sub-zero
+coolant; the crossover on this die is between 2.00 and 2.40 W/mm² (§P0.7 Test 6c put it past
+~100 K of chiller depth on the old curve — consistent). (iii) The laser's advantage is
+therefore *reach* (it holds rungs no air package reaches and holds 2.40 without a sub-zero
+surface anywhere), not efficiency, until the conventional side is deep in its penalties — the
+same conclusion as §P0.7, now on arm D with the calibrated fan. `[!]` Not priced, both
+favouring the laser: condensation control for sub-dew-point coolant (a 243–263 K inlet on the
+liquid side at 2.00–2.40), and the pump's flow³ scaling at deeper rungs (held at the design
+flow); and one favouring liquid: the laser's own LPC waste heat lands on the same fan (§3).
+The photonic plans are seed-shape upper bounds (§P0.29 P5 pending); if they fall 20–35 % the
+liquid crossover moves to ~2.00.
+
+
+## `[x]` §P0.29 — the dark-silicon 1.20 / 25 % row is an UNFINISHED DESCENT mislabelled "runaway"; re-run with the planner budget it asks for. PREDICTIONS, before the run  `[~]` 13 Sep 2026
+
+**What the record says.** `results/dark_silicon/d1.20/f0.25`: control diverges; the unpowered
+array holds a STABLE hot branch at 107.1 °C (no runaway); the laser row is `diverged: False`,
+peak 94.4 °C on a 0.7 W plan with the planner's own verdict *"max_iter reached: the descent was
+still building the plan, so this cost is a LOWER BOUND"* — the baseline planning path (from a
+hot-branch baseline, the register §3 open item) ran out of its six iterations 2.4 K above the
+target. `examples/dark_silicon_report.py` scores a row "lit" only if it holds the target, and
+the pack figure paints every non-lit, non-unconverged row "runaway" — so an unfinished descent
+was drawn as a leakage runaway, which it is not: 0 tiles capped, the film 100× under-used, the
+die on its cool branch. The figure's category and the row's own bracket are corrected here.
+
+- **P1 — with twice the planner budget (`--mr-iter 12`) the 1.20 / 25 % laser row holds the
+  92 °C target for 2–8 W** (the 50 % row needs 1.6 W, the 100 % row 17 W; a concentrated
+  quarter at 1.2 W/mm² per core sits between). Falsifier: still unfinished at 12 iterations, or a
+  plan above 15 W.
+- **P2 — the `power` envelope shape (§P0.24's fix for a concentrated kernel) finds the plan in
+  fewer iterations and lands within 20 % of P1's plan.** Falsifier: the shapes disagree by > 2×.
+- **P3 — at 1.50 / 25 % the `power` shape removes the "a lit quarter costs more than a lit
+  half" anomaly (48.7 vs 43.0 W): the quarter costs LESS than the half** (fewer hot cores).
+  Falsifier: the quarter still costs more under the power shape.
+
+`results/dark_silicon_v2/`, 50 µm, arm D, `--arms array_on`, otherwise the F2 flags.
+
+### `[x]` §P0.29 RESULT, part 1 — not a runaway: the row holds for 0.8 W with twice the budget; and the seed envelope over-spent the 1.50 / 25 % row 12×
+
+| point | shape / budget | verdict | plan | peak |
+|---|---|---|---|---|
+| 1.20 / 25 % | seed, 6 iterations (recorded) | unfinished, lower bound | 0.7 W | 94.4 °C |
+| 1.20 / 25 % | seed, **12 iterations** | **holds** (descent still marked unfinished, inside tolerance) | **0.82 W** | 92.9 °C |
+| 1.20 / 25 % | `power` shape, 6 iterations | unfinished | 0.73 W | 94.4 °C |
+| 1.50 / 25 % | seed (recorded) | holds | **48.7 W** | 93.9 °C |
+| 1.50 / 25 % | **`power` shape** | holds, bisected minimum | **4.07 W** | 92.7 °C |
+
+**P1 confirmed** (holds; 0.8 W, below the 2–8 W bracket — the row was a budget artefact, and
+the figure's "runaway" a labelling artefact; both corrected). **P2 not as predicted** — the
+`power` shape does not finish the 1.20 descent in six iterations either; the budget, not the
+shape, was the limit there. **P3 confirmed and sharper** — the quarter costs **4.1 W under the
+power shape against 43.0 W for the half under the seed shape**; the recorded 48.7 W was the seed
+envelope over-spending a concentrated quarter by **12×** (§P0.24's lesson on the accelerator,
+now on the CPU). 0 tiles capped, max tile flux 5.0 W/mm².
+
+- **P4 (added before the run) — the rest of the F2 ladder at 1.50 is over-spent by the seed
+  shape too, less so as the lit fraction grows:** under the `power` shape the 1.50 rows fall to
+  **≤ 15 W at 50 %, ≤ 25 W at 75 %, 30–45 W at 100 %** (recorded 43.0 / 54.0 / 64.2 W), and the
+  1.20 rows move < 20 % (2 / 13 / 17 W). Falsifier: any 1.50 row within 20 % of its seed plan.
+  `results/dark_silicon_v2/power/`, six points.
+
+### `[x]` §P0.29 RESULT, part 2 — the seed envelope over-spent the whole F2 ladder; under the per-block shape lighting all 34 cores at 1.2 W/mm² costs 11.6 W, not 17.3, and 44 W at 1.5, not 64
+
+| d0 | lit | recorded (seed shape) | `power` shape | change |
+|---|---|---|---|---|
+| 1.20 | 25 % | 0.7 W, unfinished | 0.7 W, unfinished (holds at 0.8 W with 12 iterations) | budget, not shape |
+| 1.20 | 50 % | 1.6 W | 1.7 W | 0 |
+| 1.20 | 75 % | 12.8 W | **3.2 W** | −75 % |
+| 1.20 | 100 % | 17.3 W | **11.6 W** | −33 % |
+| 1.50 | 25 % | 48.7 W | **4.1 W** | −92 % |
+| 1.50 | 50 % | 43.0 W | **19.6 W** | −54 % |
+| 1.50 | 75 % | 53.8 W | **32.9 W** | −39 % |
+| 1.50 | 100 % | 64.2 W | **44.1 W** | −31 % |
+
+**P4 half** — every 1.50 row falls (the falsifier, a row within 20 % of its seed plan, is not
+met) but by less than predicted at 50 / 75 % (19.6 / 32.9 W against ≤ 15 / ≤ 25), and the 1.20
+rows move far MORE than the predicted 20 % (−33 % at 100 %, −75 % at 75 %). The quarter now
+costs less than the half at 1.50 (4.1 vs 19.6 W): the anomaly was the shape. `[!]` The seed
+shape (45 W per block from the 1.0 K/W placeholder, scaled by conservation) hands every block
+the same allotment and starves the blocks that need it; the `power` shape caps each block at
+its own dissipation. **The recorded F2 costs are upper bounds and are replaced** (register §1.3,
+`docs/evidence/dark_silicon.json` regenerated with the `power` rows superseding).
+
+- **P5 (added before the run) — the rescue ladder's plans are upper bounds by the same
+  mechanism, less so where the plan is die-wide:** under the `power` shape the c1.00 minimum
+  plans fall **20–35 % at 1.20 and 1.60** (17.3 → 11–14 W; 75.3 → 49–60 W) and **≤ 15 % at 2.00
+  and 2.40** (138.7 → 118–135 W; 221.5 → conservation-bound, unchanged). Falsifier: 2.00 moves
+  > 25 %, or 1.20 does not move. `results/array_coverage_armD_power/d<rung>`, 50 µm, four points.
+  `[!]` If P5 holds, the register's cost ladder becomes "17 → 139 W (seed shape, upper bounds;
+  11–14 → 118–135 under the per-block shape)" and the anchor stays the seed-shape point.
+
+  **P5, first two rungs (13 Sep, before the rest landed):** 2.00 → **113.6 W (−18 %)**, 2.40 →
+  **176.7 W (−20 %)** — both just outside the ≤ 15 % bracket, inside the 25 % falsifier — and the
+  2.40 plan is now **s = 0.80**, not 1.00: the "ends on conservation at 2.40" reading was the seed
+  shape's. 1.20 and 1.60 pending.
+- **P6 (added before the run) — under the per-block shape the ladder climbs one rung before
+  conservation ends it:** 2.60 holds with **s = 0.85–0.95** (plan 205–230 W of a ~239 W die);
+  **3.00 does not hold** (it would need s ≥ 1). Falsifier: 3.00 held, or 2.60 lost.
+  `results/array_coverage_armD_power/d2.60, d3.00`, 50 µm.
+
+### `[x]` §P0.29 RESULT, part 3 — the rescue ladder's plans were seed-shape upper bounds by 18–33 %, and its END was a planner artefact: under the per-block shape 3.00 W/mm² holds with s = 0.89 where the seed shape had no steady state
+
+`results/array_coverage_armD_power/` (six rungs, 50 µm, ~2 h at PAR 4), beside `results/array_coverage_armD/c1.00`:
+
+| rung | seed shape (recorded) | per-block (`power`) shape | change | s (power) | max tile flux (power) |
+|---|---|---|---|---|---|
+| 1.20 | 17.3 W | **11.6 W** | −33 % | 0.10 | 5.1 W/mm² |
+| 1.60 | 75.3 W | **56.5 W** | −25 % | 0.36 | 8.1 |
+| 2.00 | 138.7 W (the anchor) | **113.6 W** | −18 % | 0.59 | 11.0 |
+| 2.40 | 221.5 W, **s = 1.00** (conservation) | **176.7 W** | −20 % | **0.79** | 15.7 |
+| 2.60 | 251.2 W, envelope only (s = 1.05) | **202.7 W, held** | −19 % | 0.84 | 17.2 |
+| 3.00 | **no steady state** | **248.9 W, held** | — | **0.89** | 19.3 |
+
+**P5 half** — the low rungs fall 25–33 % (predicted 20–35 %: confirmed) and the high rungs
+18–20 % (predicted ≤ 15 %; under the 25 % falsifier). **P6 FALSIFIED** — 3.00 holds (s = 0.89,
+peak 91.7 °C, 0 tiles capped, the hottest tile asked for 19.3 W/mm² against 813). The ladder's
+end is **above 3.00** and has to be bracketed again (P7 below). `[!]` What was wrong: the seed
+shape (45 W per block from the 1.0 K/W placeholder, scaled by conservation) spends light on
+blocks that do not need it, so at 2.40 the conservation cap was reached by the *plan's waste*,
+not by the die's heat. The register's "s = 1.00 at 2.40, the ladder ends on conservation" and
+"2.60 envelope only" are withdrawn as ladder properties (they remain true of the seed-shape
+planner). The X1 current ladder is unaffected (currents are the die's, not the plan's); the
+cost ladder, the s ladder and the top rung move. The anchor (seed shape, 138.73 W) is unchanged
+because the default shape is unchanged; a second anchor at the power shape (2.00: 113.6 W,
+91.5 °C) is recorded here for the same purpose.
+
+- **P7 (added before the run) — the per-block ladder ends between 3.00 and 4.00 on
+  conservation:** 3.50 holds with s = 0.93–0.98 (plan ~310–330 W of a ~335 W die); **4.00 does
+  not hold** (s ≥ 1; the array cannot lift more than the die makes), with the hottest tile still
+  under 30 W/mm². Falsifier: 4.00 held, or 3.50 lost. `results/array_coverage_armD_power/d3.50,
+  d4.00`, 50 µm.
+
+  **P7 confirmed** — 3.50 holds with **s = 0.99** (319.2 W of a 321.8 W converged die: conservation),
+  peak 90.3 °C, hottest tile 23.1 W/mm² (35× under the film); **4.00 is bistable** — no plan in the
+  bracket keeps the die on the cool branch (hot branch 182 °C, `unconverged`). **The per-block
+  ladder ends on conservation at 3.50 W/mm²**, two rungs above the seed shape's 2.40. Register
+  §1.3 / §2 and the ladder §2.1 carry the bracket.
+
+
+
+
+## `[x]` §P0.28 — the INTEGRATION ladder for the MXL-006 update memo: burial depth and tile pitch from the decoupled cold plate to the thinned, package-integrated array. PREDICTIONS, before any run  `[~]` 12 Sep 2026
+
+**Why.** The patent update (`docs/photonic_cooling/MXL-006-PRO/Update/`) needs the one axis the
+recorded ladders never swept together: the *degree of integration* — a decoupled cold plate on a
+direct-die part (500 µm pitch, the array 200 µm above the transistors), a package-integrated
+array on a thinned die (100 / 50 µm burial), and a die-integrated one (20 µm). `--burial-um`
+sets where the pixel plane sits above the active layer (`die_stack.StackSpec.source_depth_um`);
+`--pitch-um` the tile size. Everything else is the recorded reference (34-core, arm D, 88 CFM,
+target device, scalar 45 K, full coverage, target 92 °C), **100 µm cells with the 100 µm
+reference rows of `results/x3_u70/ref/array/` as the recorded 200 µm / 500 µm baseline** (their
+plans are 8–50 % below the 50 µm ones; never mix grids). `scripts/integration_ladder.sh` →
+`results/integration/b<burial>/p<pitch>/d<density>`: burial {100, 50, 20} × pitch {500, 200} ×
+density {1.20, 2.00, 2.40, 2.60, 3.00} for `array_on`, plus pitch 200 at burial 200, plus the
+reference at 2.60 and 3.00 on this grid, plus `array_idle` at 1.20 for each burial (the passive
+cliff). ~40 points at PAR 6.
+
+- **P1 — the plan falls with burial.** At 2.00 W/mm² the minimum plan falls from **126 W**
+  (200 µm, 100 µm grid) to **95–115 W at 20 µm** (10–25 % less): 200 µm of silicon smears the
+  removal into a die-wide plan; at 20 µm the tiles resolve the cALUs and remove less. Falsifier:
+  < 5 % at 20 µm.
+- **P2 — the top rung rises by one, and conservation still ends the ladder.** 2.60 W/mm²
+  holds under the injected cap at burial ≤ 50 µm (it is envelope-only at 200 µm); **3.00 holds at
+  no burial** — the array cannot lift more than the die makes, and thinning moves the transport,
+  not the conservation, limit. Falsifier: 3.00 held at any burial, or 2.60 lost at 20 µm.
+- **P3 — pitch is inert at 200 µm burial and matters at 20 µm.** At 200 µm burial the 200 µm
+  and 500 µm pitches agree within **2 %** (the recorded plateau, §P0.16); at 20 µm burial the
+  200 µm pitch is **10–20 % cheaper** than 500 µm at 2.00 (the silicon no longer does the
+  smearing, so the tile does). Falsifier: < 3 % at 20 µm.
+- **P4 — the passive cliff does not move with burial.** The unpowered array diverges at 1.20 at
+  every burial (a thinner die spreads less, if anything): the rescue is the laser's, not the
+  thinned die's. Falsifier: idle holds 1.20 at any burial.
+- **P5 — the peak tile flux rises with integration and stays ≥ 80× under the device.** At 2.00
+  the hottest tile's demand rises from ~3 W/mm² (200 µm) to **5–10 W/mm² at 20 µm / 200 µm
+  pitch**, against 813 W/mm² at 300 K. Falsifier: > 20 W/mm².
+
+### `[x]` §P0.28 RESULT — thinning the die does NOT make the rescue cheaper: the plan is insensitive to burial depth from 200 to 20 µm (±10 %, a shallow optimum near 100 µm) and to pitch (≤ 7 %); the 200 µm of silicon is a spreader the array benefits from; 3.00 W/mm² holds only at intermediate burial
+
+`results/integration/` (38 driven + 3 unpowered points, 100 µm, ~60 min at PAR 6),
+`examples/integration_ladder_report.py` → `docs/evidence/integration_ladder.json`, figure
+`docs/photonic_cooling/MXL-006-PRO/Update/figures/fig_integration_ladder.png`. Reference at 200 µm
+burial / 500 µm pitch = `results/x3_u70/ref/array/` (100 µm grid). `[!]` The three `array_idle`
+rows at 100 / 50 / 20 µm were written to the driven rows' directories and skipped by the DONE
+marker; re-queued as `d1.20_idle` and landed.
+
+| burial (µm) | pitch (µm) | 1.20 | 2.00 | 2.40 | 2.60 | 3.00 |
+|---|---|---|---|---|---|---|
+| 200 (the reference) | 500 | 8.7 W | **126.1 W** | 205.4 | 233.3 | no steady state |
+| 200 | 200 | 7.1 | 120.9 | 197.2 | 233.0 | no steady state |
+| 100 | 500 | 1.5 | **112.6** | 183.4 | 215.2 | **289.0 W (held, injected cap)** |
+| 100 | 200 | 1.5 | 114.9 | 182.9 | 214.7 | 271.3 (held) |
+| 50 | 500 | 6.2 | 119.2 | 190.9 | 228.0 | not held (95 °C, hot branch) |
+| 50 | 200 | 3.0 | 113.6 | 181.0 | 212.8 | 278.2 (held) |
+| 20 | 500 | 15.9 | **130.8** | 209.4 | 242.5 | no steady state |
+| 20 | 200 | 8.4 | 121.6 | 199.6 | 227.4 | not held (99 °C) |
+
+Max tile flux at 2.00: **5.0–5.1 W/mm² at 500 µm pitch and 8.1–8.3 at 200 µm at EVERY burial**
+(set by the tile area and the plan, not by burial); at 3.00 / 200 µm pitch **14.2–14.8 W/mm²** —
+the highest steady tile demand in the repository (register §4 amended; 55× under the device).
+
+**Scorecard.** **P1 falsified** — the plan at 2.00 is 126 → 113 → 119 → 131 W from 200 to
+20 µm burial at 500 µm pitch (−11 % at 100 µm, **+4 % at 20 µm**), 121 → 115 → 114 → 122 at
+200 µm pitch: a shallow optimum near 100 µm, not a monotone fall; the 200 µm of silicon smears
+the removal, but it also smears the hot spot, and on this planner (uniform seed envelope) the
+two nearly cancel. **P2 falsified in both clauses** — 2.60 holds at *every* burial on this grid
+(the 50 µm grid had it envelope-only at 200 µm); **3.00 holds at 100 µm burial (289 W under the
+injected cap, s ≈ 0.95) and at 50 µm / 200 µm pitch**, diverges at 200 µm and at 20 µm / 500 µm,
+and lands on the hot branch at 50 / 500 and 20 / 200: the top rung is highest at *intermediate*
+burial — thin enough for the tiles to reach the hot spots, thick enough to spread them.
+**P3 not as predicted** — the pitch is worth 4 % at 200 µm burial (not ≤ 2 %) and **7 % at 20 µm**
+(not 10–20 %); the direction holds (pitch matters more where the silicon spreads less) and at
+3.00 the 200 µm pitch is what turns a divergence into a hot-branch hold at 20 µm. **P4 confirmed** — the
+unpowered array diverges at 1.20 at every burial (200 / 100 / 50 / 20 µm): the rescue is the
+laser's, not the thinned die's. **P5 confirmed on the number,
+wrong on the mechanism** — 8.1–8.3 W/mm² at 200 µm pitch (predicted 5–10) but flat in burial.
+
+`[+]` **What this says for the memo and the ladder.** The rescue cost and the top rung are
+nearly independent of how close the tiles sit to the transistors — a decoupled cold plate on a
+200 µm die is within 10 % of an array integrated 20 µm above the active layer, and thinning the
+die *loses* the 3.00 rung at 500 µm pitch. Integration's value is therefore not in the thermal
+cost on this floorplan; it is in what it enables structurally (the two-sided stack, the density
+co-design) and in resolving sharper hot spots with finer pitch at shallow burial, where the
+planner's envelope shape (uniform seed; the `power` shape of §P0.24 was not tried here) may hide
+a gain — that is the open item. MEASURED at 100 µm cells; the 3.00 rows are under the injected
+energy cap and would want the converged cap before being quoted as operating points.
+
 ## `[x]` §P0.27 — X1/X2/X3/X4: the ladder past its thermal end — PDN headroom, EM acceleration and thermal clock skew from the RECORDED fields; the dense cluster at the book's utilisation. PREDICTIONS, before any run  `[x]` 11 Sep 2026
 
 `docs/PHYSICAL_DESIGN_CONSTRAINTS.md` §1–§2; the brief is `NEXT_SESSION_PROMPT.md` (10 Sep). No

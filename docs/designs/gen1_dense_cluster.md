@@ -102,6 +102,12 @@ die) and **1.16–1.44× the utilisation control's** at 162–243 W (9.8× at 12
 control cliff is the reference's rung (60.7 / 70.8 W) where utilisation alone had bought one
 rung (70.8 / 80.9). `docs/evidence/x3_utilisation.json`; `EVOLUTION_LADDER.md` §2.4.
 
+## `[!]` The reference plans the family was compared against are seed-shape plans (13 Sep)
+
+The D1 rungs and the reference c1.00 rows were both planned with the seed envelope shape, so the
+plan RATIOS above are like-for-like; the absolute plans are 18–33 % above the per-block shape's on
+the reference (§P0.29 part 3). The family has not been re-run under the per-block shape.
+
 ## Scorecard
 
 | | verdict |

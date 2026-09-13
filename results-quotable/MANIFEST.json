@@ -263,7 +263,7 @@
     {
      "file": "dark_silicon.json",
      "from": "docs/evidence/dark_silicon.json",
-     "sha256": "d4ff82634c3a7fd45c820d03238d0fb62ca2ed4b4c361bbb04235737c9b6574c"
+     "sha256": "4b1de7b0824d3f2769159314737991603ef1bec89392865ee0635543d33445f8"
     }
    ],
    "missing": [],
@@ -376,6 +376,51 @@
    "missing": [],
    "raw": [
     "results/gen3_stack"
+   ]
+  },
+  {
+   "slug": "21-integration-ladder",
+   "files": [
+    {
+     "file": "integration_ladder.json",
+     "from": "docs/evidence/integration_ladder.json",
+     "sha256": "8d90dc227827071d1618e298f255cec8c963188e04629f3454ea035205b187eb"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/integration",
+    "results/x3_u70"
+   ]
+  },
+  {
+   "slug": "22-cooling-system-ledger",
+   "files": [
+    {
+     "file": "cooling_system_ledger.json",
+     "from": "docs/evidence/cooling_system_ledger.json",
+     "sha256": "6f8d69bb61e18378f1086ed257f0b08ab89db4a07d73735970c7c44e69f976af"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/cop_ambient",
+    "results/array_coverage_armD"
+   ]
+  },
+  {
+   "slug": "23-rescue-ladder-per-block-shape",
+   "files": [
+    {
+     "file": "rescue_ladder_power.json",
+     "from": "docs/evidence/rescue_ladder_power.json",
+     "sha256": "41d13173620f99e323055bb667cc4579e04706611e955b2fa9082a30ff6e7530"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/array_coverage_armD_power",
+    "results/array_coverage_armD"
    ]
   }
  ]

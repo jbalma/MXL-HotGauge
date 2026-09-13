@@ -1,3 +1,62 @@
+# 13 September 2026 — the user's four points on the memo (§P0.29, §P0.30)
+
+1. **The dark-silicon "runaway" at 1.20 / 25 % was an unfinished six-iteration planner descent**
+   (peak 94.4 °C, 0.7 W, `diverged: False`); it holds for 0.8 W at 12 iterations. The pack figure
+   now paints such rows "unfinished", not "runaway". **The seed envelope shape over-spent the
+   whole F2 ladder**: under `--mr-envelope-shape power` 17.3 → 11.6 W at 1.2 / 100 %, 64.2 → 44.1 W
+   at 1.5 / 100 %, 48.7 → 4.1 W at 1.5 / 25 % (register §1.3 row and §2 withdrawal;
+   `dark_silicon_report.py --override results/dark_silicon_v2/power results/dark_silicon_v2/iter12`
+   regenerates the evidence). **§P0.29 P5–P7 (done, `results/array_coverage_armD_power/`)**: the rescue ladder's plans fall
+   18–33 % under the per-block shape and the ladder ends on conservation at **3.50 W/mm² (s = 0.99),
+   not 2.40**; 4.00 is bistable. The register carries both shapes; the anchor stays the seed-shape
+   138.73 W (the default shape is unchanged) with a second, per-block anchor at 2.00: 113.6 W / 91.5 °C.
+2. **The cooling-system ledger (§P0.30, `examples/cooling_system_ledger.py`)**: refrigerated air needs
+   273 / 243 / none / none K ambient at 1.20 / 1.60 / 2.00 / 2.40; the 0.125 K/W liquid plate 293 /
+   273 / 263 / 243 K; system COP air 1.65 / 0.52 / – / –, liquid 17.3 / 3.94 / 3.02 / 0.97,
+   photonic 2.59 / 1.90 / 1.58 / 1.29. The laser beats air at every rung and is the only solution
+   above 1.60; it beats the chilled plate only where the coolant goes sub-zero (2.40 here). The
+   provisional's "> 10× COP" is the air statement. Open: pump flow³ scaling, condensation, the
+   laser's LPC waste heat on the fan, a fan-speed sweep on the air side.
+3. **The plan, agreed by the user on 13 Sep for the next session (see `NEXT_SESSION_PROMPT.md`), in
+   order: (1) the generalized f_max; (2) the 8× / 16× cluster ladder at 20 µm and 5 µm burial; (3)
+   the CoMeT IPC(f) reader; (4) the D1 family and the accelerator re-run under the per-block shape.
+   Earlier note on what each needs:** a generalized f_max(V, T |
+   logic depth, wire, skew) with V_max from an Arrhenius reliability budget (the clock search's
+   4.17 GHz ceiling is an assumed 10 % overdrive on a saturating I_on(V)/V, re-anchored at every
+   temperature so I_on(T) never reaches the clock); the 8× / 16× cluster ladder at 20 µm and 5 µm
+   burial (1000 W/mm² functional units need the extractor within microns: ΔT ≈ q·d/k); a reader
+   for CoMeT's 1–20 GHz run_N outputs to get IPC(f) per benchmark
+   (`/mnt/nfs01/scratch/jbalma/CoMeT/test/thermal_example_test_1to20ghz/`).
+
+---
+
+# 12 September 2026 — the MXL-006 patent update memo (§P0.28)
+
+The user asked for an update memo for patent counsel on MXL-006 (the provisional filed 13 Oct
+2025, "Chip Architectures Enabled by Integrated Photonic Cooling"), reviewing the filing against
+v100 Part VI and the HotGauge record. Delivered in `docs/photonic_cooling/MXL-006-PRO/Update/`:
+`MXL-006_update_memo.md` (+ `.docx` / `.html`), `figures/` (the evolution schematics by degree of
+integration and by ladder generation, the scale ladder, the evidence matrix, the evidence figures
+from the pack, the integration-ladder figure), `results/` (the evidence JSONs + the register),
+`README.md`. The memo's discipline is the register's: every number MEASURED / ARGUED / WITHDRAWN.
+Its headline recommendations: build the independent claims on the driven, planner-commanded array
+(the rescue as a DIFFERENCE from an undriven layer of the same film), the densified cluster with
+re-sized rails, feed-forward burst absorption from the power monitor, clock to the device V/F
+ceiling, dark-silicon recovery, and the storage die OFF the heat path; drop the filing's
+> 1000 W/mm² / > 10 GHz / > 10¹¹ cm⁻² / 160 °C / > 10× COP / > 30 % recovery / branch-predictor
+modulation numbers (not supported or contradicted). **§P0.28, the integration ladder** (burial
+200 → 20 µm × pitch 500 / 200 µm, 100 µm grid, `scripts/integration_ladder.sh`,
+`examples/integration_ladder_report.py` → `docs/evidence/integration_ladder.json`) was run for
+the memo: see §P0.28 RESULT — thinning the die does NOT make the rescue cheaper.
+
+Files to stage from this: `docs/photonic_cooling/MXL-006-PRO/Update/` (memo, figures, scripts,
+README; the `results/` copies are duplicates of `docs/evidence/` and may be left out),
+`scripts/integration_ladder.sh`, `examples/integration_ladder_report.py`,
+`docs/evidence/integration_ladder.json`, `docs/PHASE0_CHECKLIST.md`, `docs/RESULTS_REGISTER.md`,
+`scripts/build_results_registers.py`, this file.
+
+---
+
 # Next session — handoff, 11 September 2026 (§P0.25 closed, §P0.27: X1–X4 done; gen 3 as argued falsified)
 
 Read `docs/START_HERE.md`, then `docs/NEXT_SESSION_PROMPT.md` (rewritten 11 Sep), then

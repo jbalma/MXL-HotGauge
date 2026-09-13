@@ -253,14 +253,17 @@ QUOTABLE = [
         'slug': '14-dark-silicon',
         'claim': 'Dark-silicon recovery: at 1.2 W/mm^2 per core no contiguous quarter of the die '
                  'lights on this package, the unpowered GaAs layer lights a quarter, the laser '
-                 'lights all 34 cores for 17 W; at 1.5 only the laser lights any fraction (64 W).',
-        'figure': '17.3 W (10.6 net) at 1.2; 64.2 W (39.3 net) at 1.5; native 0.78 lights unaided; '
-                  '1.0: control 50 %, passive layer 100 %',
+                 'lights all 34 cores for 12 W; at 1.5 only the laser lights any fraction (44 W).',
+        'figure': '11.6 W at 1.2 (seed shape 17.3); 44.1 W at 1.5 (seed 64.2); a lit quarter at 1.5 4.1 W; '
+                  'native 0.78 lights unaided; 1.0: control 50 %, passive layer 100 %',
         'register': '§1.3',
         'files': ['dark_silicon.json'],
         'raw': ['results/dark_silicon'],
         'driver': 'scripts/dark_silicon_ladder.sh; python examples/dark_silicon_report.py',
-        'caveat': 'Hot cores are a contiguous block (worst case). The recovery claim starts at '
+        'caveat': 'Costs are the per-block (power) envelope-shape plans (§P0.29); the seed-shape plans '
+                  '(17.3 / 64.2 / 48.7 W) held but over-spent and are withdrawn as costs. The 1.2 / 25 % row '
+                  'holds for 0.8 W at 12 planner iterations (its recorded "runaway" was an unfinished descent). '
+                  'Hot cores are a contiguous block (worst case). The recovery claim starts at '
                   '~1.0 W/mm^2 per core: the driver\'s control lights the native die unaided '
                   '(§P0.23.2 P1 falsified -- it was written against the probe\'s ceiling). At 1.5 a lit '
                   'quarter costs more than a lit half (48.7 vs 43.0 W): measured.',
@@ -395,6 +398,58 @@ QUOTABLE = [
                   'is withdrawn is the geometry argued to collect it cheaply. The surviving variant '
                   '(storage die off the heat path, two sinks) is ARGUED. Anchor reproduced after the '
                   'stack/solver edits.',
+    },
+    {
+        'slug': '21-integration-ladder',
+        'claim': 'The rescue is insensitive to the degree of integration: the plan and the top rung '
+                 'barely move as the tile plane is brought from 200 um to 20 um above the transistors, '
+                 'and thinning to 20 um makes the die less forgiving (§P0.28, for the MXL-006 memo).',
+        'figure': '2.00 W/mm^2, 500 um pitch: 126 / 113 / 119 / 131 W at 200 / 100 / 50 / 20 um burial; '
+                  '200 um pitch 121 / 115 / 114 / 122 W; 2.60 holds at every burial; 3.00 only at '
+                  'intermediate burial (289 W at 100 um); tile flux 5.0 / 8.2 W/mm^2 at 2.00, 14.8 at 3.00',
+        'register': '§1.3',
+        'files': ['integration_ladder.json'],
+        'raw': ['results/integration', 'results/x3_u70'],
+        'driver': 'scripts/integration_ladder.sh; python examples/integration_ladder_report.py',
+        'caveat': '100 um cells beside the 100 um reference; the 3.00 rows are under the injected energy '
+                  'cap; uniform seed envelope shape (the power shape may favour finer pitch at shallow '
+                  'burial -- open). A decoupled cold plate on a 200 um die is within 10 % of a '
+                  'die-integrated array on this floorplan.',
+    },
+    {
+        'slug': '22-cooling-system-ledger',
+        'claim': 'The cooling-system ledger: refrigerated air is beaten at every rung (1.6x at 1.20, '
+                 '3.7x at 1.60) and has no solution above 1.60 W/mm^2; a chilled direct-die liquid '
+                 'plate beats the laser until its coolant goes sub-zero (the crossover is between 2.00 '
+                 'and 2.40 on this die). "> 10x COP" is the air statement where air has no solution.',
+        'figure': 'air needs 273 / 243 / none / none K ambient; liquid plate 293 / 273 / 263 / 243 K inlet; '
+                  'system COP air 1.65 / 0.52 / - / -, liquid 17.3 / 3.94 / 3.02 / 0.97, photonic '
+                  '2.59 / 1.90 / 1.58 / 1.29 at 1.20 / 1.60 / 2.00 / 2.40 W/mm^2',
+        'register': '§1.3',
+        'files': ['cooling_system_ledger.json'],
+        'raw': ['results/cop_ambient', 'results/array_coverage_armD'],
+        'driver': 'scripts (queue): results/campaign_queue/cop_ambient.par8.tsv, cop_liquid2.par8.tsv; '
+                  'python examples/cooling_system_ledger.py',
+        'caveat': 'Temperatures MEASURED (control arm, 100 um, arm D, calibrated 35 W fan); pricing ARGUED '
+                  'and stated (LCEstimator chiller COP gamma 0.4 with sub-zero penalties, pump 6.85 W held). '
+                  'The laser side is the recorded seed-shape plan (an upper bound, §P0.29). Condensation '
+                  'control and pump flow^3 scaling are not priced.',
+    },
+    {
+        'slug': '23-rescue-ladder-per-block-shape',
+        'claim': 'The rescue ladder under the per-block envelope shape: plans 18-33 % below the seed '
+                 'shape\'s, and 3.00 W/mm^2 holds (s = 0.89) where the seed shape had no steady state -- '
+                 'the "ends on conservation at 2.40" reading was the planner\'s, not the die\'s: it ends at 3.50 (§P0.29).',
+        'figure': 'per-block plans 11.6 / 56.5 / 113.6 / 176.7 / 202.7 / 248.9 W at 1.20-3.00 (seed 17.3 / '
+                  '75.3 / 138.7 / 221.5 / 251.2 / none); s 0.10-0.89; 0 tiles capped; max tile 19.3 W/mm^2',
+        'register': '§1.3',
+        'files': ['rescue_ladder_power.json'],
+        'raw': ['results/array_coverage_armD_power', 'results/array_coverage_armD'],
+        'driver': 'results/campaign_queue/ladder_power*.tsv (mr_comparison.py --mr-envelope-shape power); '
+                  'python examples/rescue_ladder_shape_report.py',
+        'caveat': '34-core, 50 um, arm D. The seed-shape rows remain that planner\'s plans and the anchor; '
+                  'under the per-block shape the ladder ends on conservation at 3.50 (s = 0.99; 4.00 bistable). Quote every plan '
+                  'with its shape. X1\'s current ladder is unaffected.',
     },
 ]
 

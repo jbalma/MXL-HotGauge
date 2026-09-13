@@ -290,8 +290,12 @@ def plot_dark_silicon(out):
                         txt += '\n%.0f W' % a['Q_W']
                 elif a.get('unconverged'):
                     col, txt = C['band'], 'undecided'
-                else:
+                elif a.get('diverged'):
                     col, txt = '#f3d9d0', 'runaway'
+                else:
+                    # §P0.29: a stable field the planner had not finished descending to target
+                    # (a LOWER-BOUND plan) is neither lit nor a runaway; it was drawn as one.
+                    col, txt = '#f5efd6', 'unfinished\n%.0f°C' % (a.get('peak_C') or 0)
                 ax.add_patch(plt.Rectangle((j, i), 0.94, 0.94, color=col))
                 ax.text(j + 0.47, i + 0.47, txt, ha='center', va='center', fontsize=7.5, color=C['text'] if a['lit'] else C['text2'])
         ax.set_xlim(0, len(fracs)); ax.set_ylim(0, len(dens)); ax.grid(False)
@@ -302,7 +306,7 @@ def plot_dark_silicon(out):
     fig.suptitle('Dark-silicon recovery on the 34-core die: which fraction of the cores can be lit', fontweight='bold', y=1.03)
     fn = 'dark_silicon.png'; fig.savefig(os.path.join(out, fn)); plt.close(fig)
     return fn, ('Register §1.3, §P0.23.2. Blue = holds the 92 °C target (laser cost shown where light is needed); '
-                'pink = leakage runaway; grey = undecided by the verifier. Hot cores are a contiguous block, the worst '
+                'pink = leakage runaway; grey = undecided by the verifier; cream = the planner had not finished its descent (a lower-bound plan, §P0.29). Hot cores are a contiguous block, the worst '
                 'case. Source: docs/evidence/dark_silicon.json.')
 
 
