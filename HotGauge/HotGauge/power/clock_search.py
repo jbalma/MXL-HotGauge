@@ -102,7 +102,13 @@ def clock_power_factors(f_GHz, f_ref_GHz, leakage_voltage_exponent=1.0, vf_model
         source = 'VF_PAIRS'
     else:
         v, clamp_a = vf_model.voltage(f_GHz)
-        v_ref, clamp_b = vf_model.voltage(f_ref_GHz)
+        # §P0.31: a model whose curve moves with the die's temperature must give the trace's
+        # reference supply in the ANCHOR context, else a hot die would read V_ref above 0.70 V
+        # and the (V/V_ref)^2 ratio would understate the cost of the clock.
+        if hasattr(vf_model, 'reference_voltage'):
+            v_ref, clamp_b = vf_model.reference_voltage(f_ref_GHz)
+        else:
+            v_ref, clamp_b = vf_model.voltage(f_ref_GHz)
         dyn = ((v / v_ref) ** 2 * (float(f_GHz) / float(f_ref_GHz))) if v_ref > 0 else 1.0
         # A DeviceVFModel names itself by card and temperature; an IRDS model by year/anchor.
         source = (getattr(vf_model, 'source_tag', None)
@@ -159,7 +165,12 @@ def is_sustainable(result, thermal_limit_K=DEFAULT_THROTTLE_K):
     if result.get('diverged') or result.get('unconverged'):
         return False
     peak = result.get('peak_K')
-    return peak is not None and float(peak) <= float(thermal_limit_K)
+    if peak is None or float(peak) > float(thermal_limit_K):
+        return False
+    # §P0.31: a limit that is not thermal -- the reliability-budgeted V_max, or the end of the
+    # simulated I_on sweep -- is reported by the evaluator under its own name. Additive: absent
+    # the key, the verdict is exactly the thermal one above.
+    return not result.get('unsustainable_reason')
 
 
 def reason_unsustainable(result, thermal_limit_K=DEFAULT_THROTTLE_K):
@@ -174,6 +185,8 @@ def reason_unsustainable(result, thermal_limit_K=DEFAULT_THROTTLE_K):
         return 'no_solution'
     if float(peak) > float(thermal_limit_K):
         return 'over_thermal_limit'
+    if result.get('unsustainable_reason'):
+        return str(result['unsustainable_reason'])
     return None
 
 

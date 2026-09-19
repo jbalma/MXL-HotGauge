@@ -481,6 +481,18 @@ plain `skylake` stack works without it, so this failure only appears on plugin s
   its three walls). (3) `recovery_at_temperature.json`'s "crossing at 408 K" was the
   *self-powering* temperature; the **export crossing is 614 K** (90 % laser preset), from the
   rows' own expression. Quote the export crossing.
+- **`[+]` §P0.31–§P0.34 (13 Sep) — the generalized f_max, the cluster transport ladder, IPC(f),
+  D1 per-block.** `power/fmax_model.py` (`clock_headroom.py --vf-source fmax[:N=..,w=..,ref=..]`):
+  the period is `N·[FO4(V,T) + wire(T)] + skew(ΔT) + overhead`, anchored ONCE at the trace, with
+  V_max from an EM/TDDB budget at the SOLVED temperature; rows name their limiter
+  (`reliability:tddb` / `device` / `sweep_end` / thermal). **The recorded 4.17 GHz is the gate-only
+  ceiling**: at the 92 °C target the overdrive buys +1.6 %, and 10 GHz needs a 6–7 FO4 pipeline.
+  `examples/comet_ipc_reader.py` → `comet_ipc_vs_f.json`; the F1c / iso-package reports carry
+  `f × IPC(f) × cores` (elasticity 0.78–0.84 at 3.3–4.9 GHz). D1 under `--mr-envelope-shape
+  power` holds 243 W (×0.5) / 202 W (×0.25); the seed rungs "lost" were the planner's. The
+  I_on sweep to 1.00 V is `device_vt_vf_asap7_v100.json` (the recorded file is unchanged).
+  Quote every plan with its shape, every clock with its source and limiter, every throughput
+  with IPC(f).
 - **`[+]` §P0.22 (9 Sep) — the architecture-evolution phase.** The one-die rule is lifted; the
   deliverable is the ARGUED ladder `docs/designs/EVOLUTION_LADDER.md` (v100 §1.18/§10.9 frame),
   with design records in `docs/designs/`. Built: the **cache-leakage planner objective**

@@ -14,7 +14,9 @@ the sustainable-watts multiplier per die and scores §P0.23.1. Writes
 
 `[!]` "Throughput" here is the pipeline's thermal-only GFLOP/s at 32 FLOP/cycle/core -- a
 proxy that moves only with the sustainable clock and the core count, never with IPC. Quote the
-WATTS multiplier and the per-package-watt SHAPE, not the absolute GFLOP/s.
+WATTS multiplier and the per-package-watt SHAPE, not the absolute GFLOP/s. §P0.33 adds
+``GIPS = f x IPC(f) x cores`` on CoMeT's measured IPC(f) (``--ipc-source``) beside it, so the
+memory wall enters; on a fixed-clock ladder the two differ only by the derate.
 """
 import os
 import sys
@@ -69,22 +71,40 @@ def summarise(rows, die):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--json-out', default=os.path.join(_EV, 'iso_package_throughput.json'))
+    # §P0.33: CoMeT's IPC(f) beside the fixed-IPC proxy; 'none' reproduces the recorded file.
+    ap.add_argument('--ipc-source', default=os.path.join(_EV, 'comet_ipc_vs_f.json'))
+    ap.add_argument('--ipc-benchmark', default='fft_1to20')
     args = ap.parse_args()
+    ipc_curve = None
+    if args.ipc_source != 'none' and os.path.isfile(args.ipc_source):
+        sys.path.insert(0, _HERE)
+        from comet_ipc_reader import load_ipc, ipc_at
+        ipc_curve = load_ipc(args.ipc_source, args.ipc_benchmark)
+    cores_of = {'34core': 34, '70core': 70}
     dies = {'34core': ladder(os.path.join(_REPO, 'results', 'array_coverage_armD', 'c1.00')),
             '70core': ladder(os.path.join(_REPO, 'results', 'iso_package_70core'))}
     out = {'note': __doc__.strip(), 'dies': {}}
     for die, rows in dies.items():
         if not rows:
             continue
+        if ipc_curve:
+            for r in rows:
+                for arm in ('control', 'array_idle', 'array_on'):
+                    a = r.get(arm)
+                    if a and a.get('f_GHz') and a.get('holds'):
+                        a['IPC_f'] = ipc_at(ipc_curve, a['f_GHz'])
+                        a['GIPS'] = a['f_GHz'] * a['IPC_f'] * cores_of[die]
+                        a['GIPS_per_total_W'] = (a['GIPS'] / a['p_total_W']) if a.get('p_total_W') else None
         S = summarise(rows, die); out['dies'][die] = S
+        S['ipc_benchmark'] = args.ipc_benchmark if ipc_curve else None
         print('\n%s (%.0f mm^2)' % (die, MM2[die]))
-        print('  %5s %-10s %6s %8s %8s %8s %9s %6s %6s' % ('dens', 'arm', 'holds', 'P_die', 'P_pkg', 'GFLOP/s', 'GF/pkgW', 's', 'f_GHz'))
+        print('  %5s %-10s %6s %8s %8s %8s %9s %6s %6s %6s %7s %8s' % ('dens', 'arm', 'holds', 'P_die', 'P_pkg', 'GFLOP/s', 'GF/pkgW', 's', 'f_GHz', 'IPC(f)', 'GIPS', 'GIPS/pW'))
         for r in rows:
             for arm in ('control', 'array_idle', 'array_on'):
                 a = r.get(arm)
                 if not a:
                     continue
-                print('  %5.2f %-10s %6s %8s %8s %8s %9s %6s %6s%s' % (
+                print('  %5.2f %-10s %6s %8s %8s %8s %9s %6s %6s %6s %7s %8s%s' % (
                     r['density'], arm, 'yes' if a['holds'] else 'NO',
                     '--' if a['p_chip_W'] is None else '%.1f' % a['p_chip_W'],
                     '--' if a['p_total_W'] is None else '%.1f' % a['p_total_W'],
@@ -92,6 +112,9 @@ def main():
                     '--' if a['gflops_per_total_W'] is None else '%.2f' % a['gflops_per_total_W'],
                     '--' if a['s'] is None else '%.2f' % a['s'],
                     '--' if a['f_GHz'] is None else '%.2f' % a['f_GHz'],
+                    '--' if a.get('IPC_f') is None else '%.2f' % a['IPC_f'],
+                    '--' if a.get('GIPS') is None else '%.0f' % a['GIPS'],
+                    '--' if a.get('GIPS_per_total_W') is None else '%.2f' % a['GIPS_per_total_W'],
                     '' if r['done'] else '  [running]'))
         if S.get('sustainable_die_W_with_laser'):
             print('  laser holds to %.2f W/mm^2 = %.0f W on this package; %.1f-%.1fx the shaped control; s at the top %.2f' % (

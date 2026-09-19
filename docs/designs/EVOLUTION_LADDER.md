@@ -201,6 +201,25 @@ boundary at the top** — neither the lift nor, yet, conservation. The passive c
 too: the ×0.5 control holds 50.5 W and fails 60.7 W where the reference holds (×0.25: 45.5 /
 55.6 W) — the concentration penalty re-measured on a denser map (§P0.22.3 P1).
 
+`[!]` **Corrected 13 Sep (§P0.34): the paragraph above is the seed-shape planner's family, and
+its lost rungs were the planner's.** Under the per-block envelope shape (`--mr-envelope-shape
+power`, `results/d1_family_power/`) the **×0.5 cluster holds every reference rung to 243 W**
+(188.5 W, s 0.84) and the **×0.25 holds 202 W** (166.1 W, s 0.89); the ×0.25's 243 W row is
+envelope-only (s = 1.02, the injected cap) and is not a rescue. The plans fall 9–59 % against the
+seed rows, and the premiums against the per-block reference are **1.20 / 1.20 / 1.08× (×0.5 at
+162 / 202 / 243 W) and 1.68 / 1.51× (×0.25 at 162 / 202 W)**, 2.0× / 4.9× at 111 W where the
+reference needs no light. So gen 1's density move costs 1.1–1.7× the reference's cooling die-wide
+and what binds the 4× cluster is conservation at 202–243 W, not stability. MEASURED; premiums
+like-for-like within a shape only (`docs/evidence/d1_exec_density_family_power.json`).
+
+`[!]` **And item 1 above is corrected too (§P0.31): the 4.17 GHz "device V/F ceiling" is the
+gate-only model.** With wire (30 %), skew and setup/jitter in the period, the 10 % overdrive at
+the array's 92 °C target buys **+1.6 %** of clock (3.84 GHz on a 20-FO4 pipeline); the budget
+buys supply as an Arrhenius ladder (+5.8 % of V at 60 °C, +12 % at 27 °C) and **10 GHz needs a
+6–7 FO4 pipeline** on this device at any temperature. The clock lever is smaller than item 1
+says and the pipeline is where 10 GHz lives — `docs/evidence/fmax_model.json`; the coupled
+search under the generalized model is §P0.31 part 2.
+
 ### 2.3 The non-thermal end of gen 1 — the rails, read from the recorded fields (§P0.27, X1/X2)
 
 `SoC Physical Design` (Chakravarthi & Koteshwar 2022, pp. 88–92) names what the thermal solve
@@ -277,6 +296,19 @@ passive cliff scales with the cluster's density and not the die area (utilisatio
 rung, the cluster gives it back). X1's rail ratio for the cluster is 1.22×, not 2×, at these
 overheads — gen 1's PDN constraint is a fifth tighter than the reference's, not twice. `[!]`
 100 µm: the reference's 100 µm plans are 8–50 % below its 50 µm ones; never mix grids.
+
+**The 8× / 16× clusters at 20 µm and 5 µm burial (§P0.32, 13 Sep) — MEASURED at 50 µm, per-block
+shape.** A 230 W/mm² cALU (×0.125) is held to the 2.00-equivalent rung (202 W) at every burial
+and pitch tried (152–178 W, s 0.82–0.97); a 460 W/mm² cALU (×0.0625) only at 100 µm pitch
+(164 W, s 0.88), never at 200 µm. The top rung (243 W) is lost at coarse pitch to
+**conservation** (s = 1.00–1.02, envelope-only) and at fine pitch to **the extractor's cold
+end** — the tile above the cluster is driven to 253–254 K, where the dye's transparency cap has
+collapsed, while the planner asks it for 170–200 W/mm²: the first rung on this ladder where the
+film binds. Pitch is the lever, not burial: 5 µm is 7–12 % dearer than 20 µm at 200 µm pitch and
+0–12 % cheaper at 100 µm. The premium over the reference at the same geometry is 1.84× / 1.86×
+at 202 W. And the reference itself is 14–31 % cheaper at 20 / 5 µm than at 200 µm under this
+shape (§P0.28's "thinning does not help" was the seed planner's). Rails: 8× / 16× the reference's
+cALU current density at matched watts (ARGUED from X1). `docs/evidence/cluster_transport.json`.
 
 ---
 
@@ -446,7 +478,7 @@ the floorplan family, not of one die.
 | rung | binding constraint (from the solve) | evidence | tag | change made because of it | predicted next constraint | falsifier |
 |---|---|---|---|---|---|---|
 | gen 0 | leakage runaway through `cALU`; 0.60–0.65 shaped, 0.85–0.90 flat; the traced die has no steady state on this package | §P0.17, register §1.3 | **MEASURED** | — | — | — |
-| gen 1 | conservation at **3.50 W/mm²** under the per-block planner (s = 0.99; 4.00 bistable; the seed shape's "2.40, s = 1.00" was the planner's limit, §P0.29) | §P0.18.2, §P0.19–20, register §1.3 | **MEASURED** | execution cluster 2×/4× denser at the same power (D1 family) — **re-measured**: holds to 202 W / 162 W, 0 tiles capped, cost 1.2–6.9× the reference's | **the PDN above ~1.3 W/mm², unless the rails are re-sized ~J×** (§2.3, §P0.27: die current 1.5–2.9× native along the ladder, the dense cluster's cALU 2× / 4× that at 100 % utilisation and 1.22× at the book's 70 % — §2.4; worst-block EM 12–50× vs native at n = 2, 0.9 eV) — MEASURED as `J`, ARGUED as a limit; thermal skew grows with the rung (3.2 → 7.9 % of the period) | §P0.22.3 P1–P4: P2 falsified on cost, P4 refined; §P0.27 P1–P4 confirmed, P6 (uniformity as a lever) falsified |
+| gen 1 | conservation at **3.50 W/mm²** under the per-block planner (s = 0.99; 4.00 bistable; the seed shape's "2.40, s = 1.00" was the planner's limit, §P0.29) | §P0.18.2, §P0.19–20, register §1.3 | **MEASURED** | execution cluster 2×/4× denser at the same power (D1 family) — **re-measured**: per-block shape holds to 243 W / 202 W (seed: 202 / 162), 0 tiles capped, cost 1.1–1.7× the reference's die-wide (§P0.34) | **the PDN above ~1.3 W/mm², unless the rails are re-sized ~J×** (§2.3, §P0.27: die current 1.5–2.9× native along the ladder, the dense cluster's cALU 2× / 4× that at 100 % utilisation and 1.22× at the book's 70 % — §2.4; worst-block EM 12–50× vs native at n = 2, 0.9 eV) — MEASURED as `J`, ARGUED as a limit; thermal skew grows with the rung (3.2 → 7.9 % of the period) | §P0.22.3 P1–P4: P2 falsified on cost, P4 refined; §P0.27 P1–P4 confirmed, P6 (uniformity as a lever) falsified |
 | gen 2 | (predicted) MR electrical budget | §P0.18.3 | **ARGUED** on measured inputs | low-`V_th` on the cooled cluster, 25 mV | budget/COP | D2's coupled solve |
 | gen 3 | on the monolithic die: conservation at 280 K, ≥ 70 % of die power at 300 K; **on the two-die stack with the storage die on the sink side: the same, at every bond (X4)** | §P0.22.2, §P0.27.4, §P0.7 TEST 1, register §1.2 | constraint **MEASURED**; the design as argued **FALSIFIED** (§4.3); the surviving variant **ARGUED** | storage die on Cr:LiSAF at ~280 K **off the compute die's heat path** (2.5D, or the far face with two sinks) | interface isolation and two-sided packaging — not thermal | the two-sink stack |
 | end | the limit is wire, not heat | v100 §10.9–10.10 | **ARGUED** | — | — | — |

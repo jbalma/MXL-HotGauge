@@ -1,5 +1,5 @@
 {
- "note": "F1 (\u00a7P0.23.1): iso-package compute scaling in THROUGHPUT terms -- the same air-cooled package,\nhow much compute, at what cost -- from the arm-D rescue ladder rows, and (when it lands) the\n70-core die with the array.\n\n    python examples/iso_package_throughput_report.py\n\nReads ``results/array_coverage_armD/c1.00/d*/mr_comparison.json`` (34-core) and\n``results/iso_package_70core/d*/mr_comparison.json`` (70-core, 100 um cells). Per rung and arm:\nconverged die watts, GFLOP/s (thermal-only: the hottest block's clock derate, no IPC scaling),\nGFLOP/s per PACKAGE watt (die + fan + net MR electrical), s = heat lifted / die power. Reports\nthe sustainable-watts multiplier per die and scores \u00a7P0.23.1. Writes\n``docs/evidence/iso_package_throughput.json``.\n\n`[!]` \"Throughput\" here is the pipeline's thermal-only GFLOP/s at 32 FLOP/cycle/core -- a\nproxy that moves only with the sustainable clock and the core count, never with IPC. Quote the\nWATTS multiplier and the per-package-watt SHAPE, not the absolute GFLOP/s.",
+ "note": "F1 (\u00a7P0.23.1): iso-package compute scaling in THROUGHPUT terms -- the same air-cooled package,\nhow much compute, at what cost -- from the arm-D rescue ladder rows, and (when it lands) the\n70-core die with the array.\n\n    python examples/iso_package_throughput_report.py\n\nReads ``results/array_coverage_armD/c1.00/d*/mr_comparison.json`` (34-core) and\n``results/iso_package_70core/d*/mr_comparison.json`` (70-core, 100 um cells). Per rung and arm:\nconverged die watts, GFLOP/s (thermal-only: the hottest block's clock derate, no IPC scaling),\nGFLOP/s per PACKAGE watt (die + fan + net MR electrical), s = heat lifted / die power. Reports\nthe sustainable-watts multiplier per die and scores \u00a7P0.23.1. Writes\n``docs/evidence/iso_package_throughput.json``.\n\n`[!]` \"Throughput\" here is the pipeline's thermal-only GFLOP/s at 32 FLOP/cycle/core -- a\nproxy that moves only with the sustainable clock and the core count, never with IPC. Quote the\nWATTS multiplier and the per-package-watt SHAPE, not the absolute GFLOP/s. \u00a7P0.33 adds\n``GIPS = f x IPC(f) x cores`` on CoMeT's measured IPC(f) (``--ipc-source``) beside it, so the\nmemory wall enters; on a fixed-clock ladder the two differ only by the derate.",
  "dies": {
   "34core": {
    "rows": [
@@ -34,7 +34,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": null,
       "s": 0.0,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.4792709640118513,
+      "GIPS": 340.86655638483035,
+      "GIPS_per_total_W": 2.538838079278013
      },
      "array_on": {
       "holds": true,
@@ -49,7 +52,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": null,
       "s": 0.0,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.4792709640118513,
+      "GIPS": 340.86655638483035,
+      "GIPS_per_total_W": 2.538838079278013
      }
     },
     {
@@ -83,7 +89,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": null,
       "s": 0.0,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.514007739986298,
+      "GIPS": 315.18414105215237,
+      "GIPS_per_total_W": 2.14599957214199
      },
      "array_on": {
       "holds": true,
@@ -98,7 +107,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": null,
       "s": 0.007419682132085007,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.4817877444499925,
+      "GIPS": 339.67678175276933,
+      "GIPS_per_total_W": 2.3198566907628453
      }
     },
     {
@@ -147,7 +159,10 @@
       "peak_block": "cALU_16",
       "tiles_capped": null,
       "s": 0.14717308542302096,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.4812784424811007,
+      "GIPS": 339.9171145830734,
+      "GIPS_per_total_W": 2.0799209699837595
      }
     },
     {
@@ -196,7 +211,10 @@
       "peak_block": "cALU_16",
       "tiles_capped": null,
       "s": 0.24492685783581333,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.481414263825896,
+      "GIPS": 339.853000849454,
+      "GIPS_per_total_W": 1.878706453113412
      }
     },
     {
@@ -245,7 +263,10 @@
       "peak_block": "cALU_16",
       "tiles_capped": null,
       "s": 0.3499508747591675,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.481078724059737,
+      "GIPS": 340.0114189337752,
+      "GIPS_per_total_W": 1.70358253863485
      }
     },
     {
@@ -294,7 +315,10 @@
       "peak_block": "cALU_16",
       "tiles_capped": null,
       "s": 0.44499176913789523,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.4806498156685177,
+      "GIPS": 340.21405781760916,
+      "GIPS_per_total_W": 1.5568202666374475
      }
     },
     {
@@ -343,7 +367,10 @@
       "peak_block": "cALU_16",
       "tiles_capped": null,
       "s": 0.4901569095904012,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.4817042540850207,
+      "GIPS": 339.7161647193043,
+      "GIPS_per_total_W": 1.4491485554452015
      }
     },
     {
@@ -392,7 +419,10 @@
       "peak_block": "cALU_16",
       "tiles_capped": null,
       "s": 0.6203819223529469,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.4798260384891044,
+      "GIPS": 340.60369070079537,
+      "GIPS_per_total_W": 1.3224239235900082
      }
     },
     {
@@ -441,7 +471,10 @@
       "peak_block": "cALU_16",
       "tiles_capped": null,
       "s": 0.645774310031441,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.4810283307566205,
+      "GIPS": 340.0352193062505,
+      "GIPS_per_total_W": 1.2460097588420969
      }
     },
     {
@@ -490,7 +523,10 @@
       "peak_block": "cALU_16",
       "tiles_capped": null,
       "s": 0.736090329296693,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.481929745355954,
+      "GIPS": 339.60981249866325,
+      "GIPS_per_total_W": 1.1032094561341472
      }
     },
     {
@@ -539,7 +575,10 @@
       "peak_block": "cALU_16",
       "tiles_capped": null,
       "s": 0.8724907916745126,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.481643300378437,
+      "GIPS": 339.7449207130722,
+      "GIPS_per_total_W": 0.9771216969350619
      }
     },
     {
@@ -588,7 +627,10 @@
       "peak_block": "cALU_32",
       "tiles_capped": null,
       "s": 1.0025085689590694,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.4799406410694114,
+      "GIPS": 340.54945112647914,
+      "GIPS_per_total_W": 0.8681193744757397
      }
     },
     {
@@ -637,7 +679,10 @@
       "peak_block": "cALU_32",
       "tiles_capped": null,
       "s": 1.0511122696744104,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.481029598125486,
+      "GIPS": 340.0346207112594,
+      "GIPS_per_total_W": 0.7953418679183578
      }
     },
     {
@@ -701,7 +746,8 @@
     4.0,
     4.333333333333334
    ],
-   "top_rung_s": 1.0511122696744104
+   "top_rung_s": 1.0511122696744104,
+   "ipc_benchmark": "fft_1to20"
   },
   "70core": {
    "rows": [
@@ -721,7 +767,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": null,
       "s": 0.0,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.475042310764602,
+      "GIPS": 705.9247379438484,
+      "GIPS_per_total_W": 4.668412832546392
      },
      "array_idle": {
       "holds": true,
@@ -736,7 +785,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": null,
       "s": 0.0,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.470886484927582,
+      "GIPS": 710.024838566777,
+      "GIPS_per_total_W": 4.720923829370134
      },
      "array_on": {
       "holds": true,
@@ -751,7 +803,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": 0,
       "s": 0.0,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.470886484927582,
+      "GIPS": 710.024838566777,
+      "GIPS_per_total_W": 4.720923829370134
      }
     },
     {
@@ -770,7 +825,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": null,
       "s": 0.0,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.483679484852879,
+      "GIPS": 697.5006124124344,
+      "GIPS_per_total_W": 4.049405471198604
      },
      "array_idle": {
       "holds": true,
@@ -785,7 +843,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": null,
       "s": 0.0,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.477214935558892,
+      "GIPS": 703.7934021418191,
+      "GIPS_per_total_W": 4.124412581800252
      },
      "array_on": {
       "holds": true,
@@ -800,7 +861,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": 0,
       "s": 0.0,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.477214935558892,
+      "GIPS": 703.7934021418191,
+      "GIPS_per_total_W": 4.124412581800252
      }
     },
     {
@@ -819,7 +883,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": null,
       "s": 0.0,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.4886794101614145,
+      "GIPS": 690.2238276001178,
+      "GIPS_per_total_W": 3.5983263740510205
      },
      "array_on": {
       "holds": true,
@@ -834,7 +901,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": 0,
       "s": 0.0029280643938705262,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.481573692486747,
+      "GIPS": 699.5424538805377,
+      "GIPS_per_total_W": 3.6483137176876586
      }
     },
     {
@@ -868,7 +938,10 @@
       "peak_block": "cALU_40",
       "tiles_capped": 0,
       "s": 0.0813454729593012,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.481599493880131,
+      "GIPS": 699.5173894188558,
+      "GIPS_per_total_W": 2.8882102729263144
      }
     },
     {
@@ -902,7 +975,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": 0,
       "s": 0.33505363957600365,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.481968131118234,
+      "GIPS": 699.1594075905261,
+      "GIPS_per_total_W": 2.210293363007251
      }
     },
     {
@@ -936,7 +1012,10 @@
       "peak_block": "cALU_0",
       "tiles_capped": 0,
       "s": 0.9266618141574129,
-      "unconverged": false
+      "unconverged": false,
+      "IPC_f": 2.481837967896072,
+      "GIPS": 699.2857814620415,
+      "GIPS_per_total_W": 1.3813671183047425
      }
     },
     {
@@ -1019,7 +1098,8 @@
     3.2,
     4.0
    ],
-   "top_rung_s": 0.9266618141574129
+   "top_rung_s": 0.9266618141574129,
+   "ipc_benchmark": "fft_1to20"
   }
  },
  "scorecard_70core": {

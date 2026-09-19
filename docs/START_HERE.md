@@ -1,6 +1,6 @@
 # Start here
 
-**For a fresh session, human or agent. Written 3 September 2026; updated the same day after §P0.18.**
+**For a fresh session, human or agent. Written 3 September 2026; updated 13 September after §P0.31–§P0.34.**
 
 This project has produced six weeks of results and withdrawn a substantial fraction of them. The
 withdrawn ones are the ones most likely to resurface. **Read in this order and you will not quote
@@ -71,6 +71,18 @@ here disagree, the doc is newer — fix `CLAUDE.md`.
     trees hold power maps, not fields — `examples/field_resolve.py` (`METHODS.md` §2.6).
 13. **Nothing runs on the head node** (user, 11 Sep): solves, the suite and the pack builds all go
     through the campaign server on job 1507.
+15. **The recorded 4.17 GHz "device ceiling" is the GATE-ONLY model (13 Sep, §P0.31).** With
+    wire, skew and setup/jitter in the period and a reliability-budgeted V_max at the solved
+    temperature (`--vf-source fmax`), the 10 % overdrive at the array's 92 °C target buys
+    +1.6 % of clock (3.84 GHz on a 20-FO4 pipeline); the budget buys supply as an Arrhenius
+    ladder (+6 % of V at 60 °C, +12 % at 27 °C) and **10 GHz needs a 6–7 FO4 pipeline**, not
+    the cooler. Quote every clock with its V/F source and the limiter the row names.
+16. **D1's "lost top rungs" were the seed planner's (13 Sep, §P0.34).** Under the per-block
+    shape the 2× cluster holds every rung to 243 W and the 4× holds 202 W; premiums 1.1–1.7×
+    die-wide. The ×0.25 at 243 W is envelope-only (s = 1.02) — never a hold.
+17. **Every throughput claim carries IPC(f) (13 Sep, §P0.33).** On CoMeT's FFT kernel the
+    elasticity of instructions per second to clock is 0.78–0.84 at 3.3–4.9 GHz; the FLOP/s
+    proxy overstates a clock gain by a fifth. `f × IPC(f)`, benchmark named.
 14. **Gen 3 as argued is falsified (11 Sep, §P0.27.4).** A storage die between the compute die and
     the sink costs the whole die to hold cold at every bond conductivity; the cache prize
     (2.23×, 280 K knee) stands, the geometry that collects it must keep the storage die off the

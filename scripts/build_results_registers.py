@@ -451,6 +451,84 @@ QUOTABLE = [
                   'under the per-block shape the ladder ends on conservation at 3.50 (s = 0.99; 4.00 bistable). Quote every plan '
                   'with its shape. X1\'s current ladder is unaffected.',
     },
+    {
+        'slug': '24-generalized-fmax',
+        'claim': 'A generalized f_max(V, T | logic depth, wire fraction, skew) with V_max from an '
+                 'Arrhenius reliability budget at the cooled temperature: once wire, skew and '
+                 'setup/jitter are in the period, the 10 % overdrive at the array\'s 92 C target buys '
+                 '+1.6 % of clock (not +10 %); the budget buys supply as an Arrhenius ladder and TDDB '
+                 'binds everywhere below the corner; 10 GHz needs a 6-7 FO4 pipeline on this device '
+                 '(section P0.31 part 1, model arithmetic; part 2 is the coupled search).',
+        'figure': 'anchor 3.8 GHz / 0.70 V / 330 K -> FO4_ref 8.18 ps, wire 70 ps, skew 8.3 ps, overhead '
+                  '21 ps; V_max 0.778 / 0.792 / 0.814 / 0.863 V at 92 / 78.6 / 60 / 27 C; f_max 3.84 / '
+                  '3.95 / 4.10 / 4.39 GHz (+1.6 / +4.4 / +8.4 / +16.1 % over the 100 C corner); device '
+                  'peak clock at 0.95-0.975 V; N for 10 GHz 6.0-7.1; native budget: 92 C is EM-bound at '
+                  '0.547 V / 2.82 GHz',
+        'register': '§1.6',
+        'files': ['fmax_model.json', 'device_vt_vf_asap7_v100.json', 'clock_fmax.json'],
+        'raw': ['results/clock_fmax'],
+        'driver': 'python examples/fmax_model_report.py; scripts/clock_fmax.sh > results/campaign_queue/'
+                  'clock_fmax.par3.tsv (node); python examples/clock_fmax_report.py',
+        'caveat': 'ARGUED on stated constants: qualification 0.77 V at 100 C, EM Black n=2 / 0.9 eV with '
+                  'J ~ V f, TDDB power law n=40 / 0.6 eV (n 30-50 and Ea 0.4-0.8 move f_max < 0.3 %); '
+                  'wire 30 % (+-3 %), overhead 8 %, D_ins 150 ps; FO4_ref inherits the 3.8 GHz anchor '
+                  '(uncalibrated). The recorded 4.17 GHz (15-clock-as-free-variable) is the gate-only '
+                  'ceiling. Quote every clock with its V/F source and the limiter the row names.',
+    },
+    {
+        'slug': '25-cluster-transport',
+        'claim': 'The 8x / 16x execution-cluster ladder at 20 um and 5 um burial: where heat transport '
+                 'binds a >100 W/mm^2 functional unit (section P0.32).',
+        'figure': 'see docs/evidence/cluster_transport.json and PHASE0_CHECKLIST section P0.32 RESULT',
+        'register': '§1.3',
+        'files': ['cluster_transport.json', 'd1_exec_density_family_x8x16.json'],
+        'raw': ['results/cluster_transport'],
+        'driver': 'python examples/generate_exec_density_family.py --factors 0.125 0.0625 --json-out '
+                  'docs/evidence/d1_exec_density_family_x8x16.json; scripts/cluster_transport_ladder.sh > '
+                  'results/campaign_queue/cluster.par6.tsv (node); python examples/cluster_transport_report.py',
+        'caveat': '50 um cells: the 8x cALU is one cell and the 16x cALU sub-cell, so the modelled local '
+                  'rise on the 16x rows is understated (up to ~2.5x) and every 16x hold is a lower bound '
+                  'on the block\'s real peak. Per-block envelope shape; matched die watts; a row with '
+                  's >= 1 is envelope-only, not a rescue. Rails scale with the density factor (X1).',
+    },
+    {
+        'slug': '26-dense-cluster-per-block',
+        'claim': 'D1 under the per-block envelope shape: the 2x cluster holds every reference rung to '
+                 '243 W and the 4x cluster holds 202 W (both lost under the seed shape -- the lost rungs '
+                 'were the planner\'s); the die-wide premium is 1.1-1.2x (x0.5) and 1.3-1.7x (x0.25) '
+                 '(section P0.34).',
+        'figure': 'x0.5: 6.1 / 17.4 / 73.6 / 130.4 / 188.5 W at 111 / 121 / 162 / 202 / 243 W (s 0.84 at '
+                  '243), premium 2.0 / 2.0 / 1.20 / 1.20 / 1.08x; x0.25: 31.4 / 41.5 / 104.3 / 166.1 W to '
+                  '202 W (s 0.89), premium 4.9 / 4.0 / 1.68 / 1.51x; x0.25 at 243 W envelope-only (s 1.02); '
+                  'plans 9-59 % below the seed rows; both anchors reproduced (138.72881 / 113.63869 W)',
+        'register': '§1.3',
+        'files': ['d1_exec_density_family_power.json'],
+        'raw': ['results/d1_family_power', 'results/anchor_2026-09-13'],
+        'driver': 'SHAPE=power OUT=results/d1_family_power ARRAY_ONLY=1 scripts/d1_family_ladder.sh > '
+                  'results/campaign_queue/d1_power.par4.tsv (node); python examples/d1_family_power_report.py',
+        'caveat': 'Matched die WATTS, arm D, 50 um, target device, scalar 45 K, per-block shape; premiums '
+                  'like-for-like within a shape only (the seed-shape record is 11-dense-cluster-family). '
+                  'Never quote the x0.25 243 W row as a hold.',
+    },
+    {
+        'slug': '27-ipc-of-f',
+        'claim': 'IPC(f) from CoMeT\'s 1-20 GHz sweeps: the memory wall enters the throughput claims. At '
+                 'the recorded F1c clocks the fixed-IPC proxy overstates the throughput gain by a fifth '
+                 '(elasticity 0.78-0.84); CoMeT\'s DVFS voltage is a table, not a device (section P0.33).',
+        'figure': 'FFT IPC 2.88 / 2.49 / 2.09 / 1.58 / 1.43 at 1 / 4 / 8 / 16 / 20 GHz, knee fit IPC0 3.06 '
+                  'f_k 17.3 GHz (1 % residual); +13.9 % clock -> +11.4 % instructions/s, +25.5 -> +21.1, '
+                  '+33.5 -> +26.1; 8 -> 16 GHz elasticity lu.cont 0.47, swaptions 0.84, FFT 0.60; '
+                  'PeriodicVdd 1.2 V at every f',
+        'register': '§1.3, §4',
+        'files': ['comet_ipc_vs_f.json', 'clock_f1c.json', 'iso_package_throughput.json'],
+        'raw': [],
+        'driver': 'python examples/comet_ipc_reader.py; python examples/clock_f1c_report.py --base '
+                  'results/clock_f1c_density; python examples/iso_package_throughput_report.py',
+        'caveat': 'Measured in CoMeT (Sniper) on a different core and memory system: the SHAPE of IPC(f) '
+                  'transfers, not the level. Only the frequency setting differs between CoMeT\'s configs; '
+                  'nothing there says whether the device switches at 20 GHz (21-generalized-fmax does). '
+                  'x264 rows read IPC 0 (outside the ROI); -test inputs are too short to quote.',
+    },
 ]
 
 HISTORICAL = [

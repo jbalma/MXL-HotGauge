@@ -1,7 +1,8 @@
 {
- "note": "F1c (\u00a7P0.26): throughput with the CLOCK as the free variable -- read ``results/clock_f1c/*/\nclock_headroom.json``, restate each arm's sustainable clock as FLOP/s = f x FLOP/cycle x cores\n(ops over walltime at fixed IPC) per package watt, score the predictions, write\n``docs/evidence/clock_f1c.json``.\n\n    python examples/clock_f1c_report.py",
+ "note": "F1c (\u00a7P0.26): throughput with the CLOCK as the free variable -- read ``results/clock_f1c/*/\nclock_headroom.json``, restate each arm's sustainable clock as FLOP/s = f x FLOP/cycle x cores\n(ops over walltime at fixed IPC) per package watt, and -- \u00a7P0.33 -- as instructions per second\n``f x IPC(f) x cores`` on CoMeT's measured IPC(f) (``--ipc-source``, ``--ipc-benchmark``), so the\nmemory wall enters the throughput claim; score the predictions, write ``docs/evidence/clock_f1c.json``.\n\n    python examples/clock_f1c_report.py",
  "runs": {
-  "cfm88": {
+  "spice_above_d1.00": {
+   "ipc_benchmark": "fft_1to20",
    "vf_source": "spice",
    "vf_ceiling_GHz": 4.173245518213478,
    "thermal_limit_C": 100.0,
@@ -9,54 +10,70 @@
    "cores": 34,
    "rows": {
     "control": {
-     "f_GHz": 4.173245518213478,
-     "limited_by": "vf_envelope",
+     "f_GHz": 3.65234375,
+     "limited_by": "over_thermal_limit",
      "vf_clamped": true,
-     "at_ceiling": true,
-     "peak_C": 50.19515380859377,
-     "peak_block": "cALU_16",
-     "p_chip_W": 38.63841816519466,
-     "density": 0.3818396727677563,
+     "IPC_f": 2.5173933515622178,
+     "GIPS": 312.60911971157384,
+     "GIPS_per_package_W": 2.456195305840366,
+     "at_ceiling": false,
+     "peak_C": 97.16610107421877,
+     "peak_block": "cALU_0",
+     "p_chip_W": 92.28972247974284,
+     "density": 0.9120424464797577,
      "heat_removed_W": 0.0,
      "p_mr_net_W": 0.0,
-     "p_total_W": 73.62241816519466,
-     "TFLOPs": 4.540491123816264,
-     "GFLOPs_per_package_W": 61.67267032207864
+     "p_total_W": 127.27372247974284,
+     "TFLOPs": 3.97375,
+     "GFLOPs_per_package_W": 31.22207728804719,
+     "clock_gain_vs_control": 0.0,
+     "throughput_gain_vs_control": 0.0
     },
     "array_idle": {
-     "f_GHz": 4.173245518213478,
-     "limited_by": "vf_envelope",
+     "f_GHz": 3.8984375,
+     "limited_by": "over_thermal_limit",
      "vf_clamped": true,
-     "at_ceiling": true,
-     "peak_C": 46.65169677734377,
-     "peak_block": "cALU_16",
-     "p_chip_W": 38.505827749013406,
-     "density": 0.38052936340389126,
+     "IPC_f": 2.494365211332324,
+     "GIPS": 330.62031387081413,
+     "GIPS_per_package_W": 2.3189652727404497,
+     "at_ceiling": false,
+     "peak_C": 97.02163085937502,
+     "peak_block": "cALU_0",
+     "p_chip_W": 107.5883436902105,
+     "density": 1.0632292909263283,
      "heat_removed_W": 0.0,
      "p_mr_net_W": 0.0,
-     "p_total_W": 73.48982774901341,
-     "TFLOPs": 4.540491123816264,
-     "GFLOPs_per_package_W": 61.783940211742014
+     "p_total_W": 142.5723436902105,
+     "TFLOPs": 4.2415,
+     "GFLOPs_per_package_W": 29.749809045828542,
+     "clock_gain_vs_control": 0.06737967914438503,
+     "throughput_gain_vs_control": 0.057615702881151254
     },
     "array_on": {
-     "f_GHz": 4.173245518213478,
-     "limited_by": "vf_envelope",
+     "f_GHz": 6.5,
+     "limited_by": "search_ceiling",
      "vf_clamped": true,
+     "IPC_f": 2.217995856103988,
+     "GIPS": 490.17708419898133,
+     "GIPS_per_package_W": 1.5403758790981628,
      "at_ceiling": true,
-     "peak_C": 46.65169677734377,
+     "peak_C": 91.6625915527344,
      "peak_block": "cALU_16",
-     "p_chip_W": 38.505827749013406,
-     "density": 0.38052936340389126,
-     "heat_removed_W": 0.0,
-     "p_mr_net_W": 0.0,
-     "p_total_W": 73.48982774901341,
-     "TFLOPs": 4.540491123816264,
-     "GFLOPs_per_package_W": 61.783940211742014
+     "p_chip_W": 188.90819618602032,
+     "density": 1.8668632733985453,
+     "heat_removed_W": 153.9649912293929,
+     "p_mr_net_W": 94.32694165581813,
+     "p_total_W": 318.21913784183846,
+     "TFLOPs": 7.072,
+     "GFLOPs_per_package_W": 22.223679090963195,
+     "clock_gain_vs_control": 0.7796791443850268,
+     "throughput_gain_vs_control": 0.5680191436872957
     }
    },
    "done": true
   },
-  "cfm88_above_table": {
+  "spice_d0.78": {
+   "ipc_benchmark": "fft_1to20",
    "vf_source": "spice",
    "vf_ceiling_GHz": 4.173245518213478,
    "thermal_limit_C": 100.0,
@@ -64,94 +81,363 @@
    "cores": 34,
    "rows": {
     "control": {
-     "f_GHz": 6.5,
-     "limited_by": "search_ceiling",
+     "f_GHz": 4.0713746345472215,
+     "limited_by": "over_thermal_limit",
      "vf_clamped": true,
-     "at_ceiling": true,
-     "peak_C": 67.01741943359377,
-     "peak_block": "cALU_16",
-     "p_chip_W": 59.422639457714276,
-     "density": 0.5872373218934978,
+     "IPC_f": 2.4754738790457007,
+     "GIPS": 342.67177302745,
+     "GIPS_per_package_W": 2.62366095020722,
+     "at_ceiling": false,
+     "peak_C": 97.32338867187502,
+     "peak_block": "cALU_0",
+     "p_chip_W": 95.62425294533021,
+     "density": 0.9449955559049501,
      "heat_removed_W": 0.0,
      "p_mr_net_W": 0.0,
-     "p_total_W": 94.40663945771428,
-     "TFLOPs": 7.072,
-     "GFLOPs_per_package_W": 74.90998557540672
+     "p_total_W": 130.6082529453302,
+     "TFLOPs": 4.429655602387378,
+     "GFLOPs_per_package_W": 33.91558728100846,
+     "clock_gain_vs_control": 0.0,
+     "throughput_gain_vs_control": 0.0
     },
     "array_idle": {
-     "f_GHz": 6.5,
-     "limited_by": "search_ceiling",
+     "f_GHz": 4.173245518213478,
+     "limited_by": "vf_envelope",
      "vf_clamped": true,
+     "IPC_f": 2.4617525525123085,
+     "GIPS": 349.29892542856777,
+     "GIPS_per_package_W": 2.565779330055046,
      "at_ceiling": true,
-     "peak_C": 61.5010925292969,
-     "peak_block": "cALU_16",
-     "p_chip_W": 59.12143426275421,
-     "density": 0.5842606965930577,
+     "peak_C": 88.74477539062502,
+     "peak_block": "cALU_0",
+     "p_chip_W": 101.1535552982859,
+     "density": 0.9996382431925068,
      "heat_removed_W": 0.0,
      "p_mr_net_W": 0.0,
-     "p_total_W": 94.10543426275422,
-     "TFLOPs": 7.072,
-     "GFLOPs_per_package_W": 75.14975150376637
+     "p_total_W": 136.1375552982859,
+     "TFLOPs": 4.540491123816264,
+     "GFLOPs_per_package_W": 33.35223049854072,
+     "clock_gain_vs_control": 0.02502125026811375,
+     "throughput_gain_vs_control": 0.01933965071755961
     },
     "array_on": {
-     "f_GHz": 6.5,
-     "limited_by": "search_ceiling",
+     "f_GHz": 4.173245518213478,
+     "limited_by": "vf_envelope",
      "vf_clamped": true,
+     "IPC_f": 2.4617525525123085,
+     "GIPS": 349.29892542856777,
+     "GIPS_per_package_W": 2.565779330055046,
      "at_ceiling": true,
-     "peak_C": 61.5010925292969,
-     "peak_block": "cALU_16",
-     "p_chip_W": 59.12143426275421,
-     "density": 0.5842606965930577,
+     "peak_C": 88.74477539062502,
+     "peak_block": "cALU_0",
+     "p_chip_W": 101.1535552982859,
+     "density": 0.9996382431925068,
      "heat_removed_W": 0.0,
      "p_mr_net_W": 0.0,
-     "p_total_W": 94.10543426275422,
-     "TFLOPs": 7.072,
-     "GFLOPs_per_package_W": 75.14975150376637
+     "p_total_W": 136.1375552982859,
+     "TFLOPs": 4.540491123816264,
+     "GFLOPs_per_package_W": 33.35223049854072,
+     "clock_gain_vs_control": 0.02502125026811375,
+     "throughput_gain_vs_control": 0.01933965071755961
+    }
+   },
+   "done": true
+  },
+  "spice_d1.00": {
+   "ipc_benchmark": "fft_1to20",
+   "vf_source": "spice",
+   "vf_ceiling_GHz": 4.173245518213478,
+   "thermal_limit_C": 100.0,
+   "trace_GHz": 3.8,
+   "cores": 34,
+   "rows": {
+    "control": {
+     "f_GHz": 3.6638910998821945,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": true,
+     "IPC_f": 2.516273684850022,
+     "GIPS": 313.45799379885216,
+     "GIPS_per_package_W": 2.444533037967231,
+     "at_ceiling": false,
+     "peak_C": 98.4940124511719,
+     "peak_block": "cALU_0",
+     "p_chip_W": 93.24416829651459,
+     "density": 0.9214746462347407,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 128.22816829651458,
+     "TFLOPs": 3.9863135166718275,
+     "GFLOPs_per_package_W": 31.08765858258135,
+     "clock_gain_vs_control": 0.0,
+     "throughput_gain_vs_control": 0.0
+    },
+    "array_idle": {
+     "f_GHz": 3.9015898284367934,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": true,
+     "IPC_f": 2.4940810860363345,
+     "GIPS": 330.8499674835825,
+     "GIPS_per_package_W": 2.3160659096736045,
+     "at_ceiling": false,
+     "peak_C": 97.29696044921877,
+     "peak_block": "cALU_0",
+     "p_chip_W": 107.86597939899218,
+     "density": 1.0659729935214137,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 142.8499793989922,
+     "TFLOPs": 4.244929733339231,
+     "GFLOPs_per_package_W": 29.715998218542126,
+     "clock_gain_vs_control": 0.06487603536094233,
+     "throughput_gain_vs_control": 0.055484224453662634
+    },
+    "array_on": {
+     "f_GHz": 4.173245518213478,
+     "limited_by": "vf_envelope",
+     "vf_clamped": true,
+     "IPC_f": 2.4617525525123085,
+     "GIPS": 349.29892542856777,
+     "GIPS_per_package_W": 1.8850454139066504,
+     "at_ceiling": true,
+     "peak_C": 91.2984558105469,
+     "peak_block": "cALU_16",
+     "p_chip_W": 127.05133907414088,
+     "density": 1.2555700787066837,
+     "heat_removed_W": 37.91801861610397,
+     "p_mr_net_W": 23.264666353667565,
+     "p_total_W": 185.30000542780846,
+     "TFLOPs": 4.540491123816264,
+     "GFLOPs_per_package_W": 24.503459205699844,
+     "clock_gain_vs_control": 0.13902007577344766,
+     "throughput_gain_vs_control": 0.11434046136566223
+    }
+   },
+   "done": true
+  },
+  "spice_d1.20": {
+   "ipc_benchmark": "fft_1to20",
+   "vf_source": "spice",
+   "vf_ceiling_GHz": 4.173245518213478,
+   "thermal_limit_C": 100.0,
+   "trace_GHz": 3.8,
+   "cores": 34,
+   "rows": {
+    "control": {
+     "f_GHz": 3.3243214876613383,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": true,
+     "IPC_f": 2.5510018497689306,
+     "GIPS": 288.33190898452307,
+     "GIPS_per_package_W": 2.2997572070024974,
+     "at_ceiling": false,
+     "peak_C": 98.80367431640627,
+     "peak_block": "cALU_0",
+     "p_chip_W": 90.39093440898257,
+     "density": 0.8932778942536648,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 125.37493440898257,
+     "TFLOPs": 3.616861778575536,
+     "GFLOPs_per_package_W": 28.848364273332802,
+     "clock_gain_vs_control": 0.0,
+     "throughput_gain_vs_control": 0.0
+    },
+    "array_idle": {
+     "f_GHz": 3.595977177438023,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": true,
+     "IPC_f": 2.5229174238236545,
+     "GIPS": 308.4600182054401,
+     "GIPS_per_package_W": 2.18852994706498,
+     "at_ceiling": false,
+     "peak_C": 98.22243652343752,
+     "peak_block": "cALU_0",
+     "p_chip_W": 105.95993298986534,
+     "density": 1.0471367116107646,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 140.94393298986535,
+     "TFLOPs": 3.912423169052569,
+     "GFLOPs_per_package_W": 27.75871998217826,
+     "clock_gain_vs_control": 0.08171763494745354,
+     "throughput_gain_vs_control": 0.069808816137646
+    },
+    "array_on": {
+     "f_GHz": 4.173245518213478,
+     "limited_by": "vf_envelope",
+     "vf_clamped": true,
+     "IPC_f": 2.4617525525123085,
+     "GIPS": 349.29892542856777,
+     "GIPS_per_package_W": 1.498279919909529,
+     "at_ceiling": true,
+     "peak_C": 91.56899414062502,
+     "peak_block": "cALU_16",
+     "p_chip_W": 150.49253683794367,
+     "density": 1.4872249887277555,
+     "heat_removed_W": 77.75867065291898,
+     "p_mr_net_W": 47.65675206688232,
+     "p_total_W": 233.133288904826,
+     "TFLOPs": 4.540491123816264,
+     "GFLOPs_per_package_W": 19.475945049056754,
+     "clock_gain_vs_control": 0.25536760921079216,
+     "throughput_gain_vs_control": 0.2114473443427216
+    }
+   },
+   "done": true
+  },
+  "table_d1.00": {
+   "ipc_benchmark": "fft_1to20",
+   "vf_source": "table",
+   "vf_ceiling_GHz": 5.0,
+   "thermal_limit_C": 100.0,
+   "trace_GHz": 3.8,
+   "cores": 34,
+   "rows": {
+    "control": {
+     "f_GHz": 3.640625,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": false,
+     "IPC_f": 2.5185337745984766,
+     "GIPS": 311.7472587870177,
+     "GIPS_per_package_W": 2.4862871508366973,
+     "at_ceiling": false,
+     "peak_C": 94.6368347167969,
+     "peak_block": "cALU_0",
+     "p_chip_W": 90.40266689489467,
+     "density": 0.8933938391808683,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 125.38666689489466,
+     "TFLOPs": 3.961,
+     "GFLOPs_per_package_W": 31.59028067410315,
+     "clock_gain_vs_control": 0.0,
+     "throughput_gain_vs_control": 0.0
+    },
+    "array_idle": {
+     "f_GHz": 3.921875,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": false,
+     "IPC_f": 2.4922589884177797,
+     "GIPS": 332.3271594868333,
+     "GIPS_per_package_W": 2.298272552083592,
+     "at_ceiling": false,
+     "peak_C": 99.14263305664065,
+     "peak_block": "cALU_0",
+     "p_chip_W": 109.61467224431179,
+     "density": 1.0832542471424442,
+     "heat_removed_W": 0.0,
+     "p_mr_net_W": 0.0,
+     "p_total_W": 144.59867224431179,
+     "TFLOPs": 4.267,
+     "GFLOPs_per_package_W": 29.50926128001051,
+     "clock_gain_vs_control": 0.07725321888412018,
+     "throughput_gain_vs_control": 0.06601469658431092
+    },
+    "array_on": {
+     "f_GHz": 4.859375,
+     "limited_by": "over_thermal_limit",
+     "vf_clamped": false,
+     "IPC_f": 2.3789003801542417,
+     "GIPS": 393.0389471836086,
+     "GIPS_per_package_W": 0.9624954250115852,
+     "at_ceiling": false,
+     "peak_C": 92.90023193359377,
+     "peak_block": "cALU_32",
+     "p_chip_W": 230.2969238772227,
+     "density": 2.275882560117652,
+     "heat_removed_W": 234.49081837722423,
+     "p_mr_net_W": 143.07317004366814,
+     "p_total_W": 408.3540939208908,
+     "TFLOPs": 5.287,
+     "GFLOPs_per_package_W": 12.9470968424385,
+     "clock_gain_vs_control": 0.3347639484978542,
+     "throughput_gain_vs_control": 0.26076151788115176
     }
    },
    "done": true
   }
  },
  "scorecard": {
-  "P1_control_runaway_limited": {
+  "P6_0.78_all_at_device_ceiling": {
    "measured": [
+    4.0713746345472215,
     4.173245518213478,
-    "vf_envelope"
+    4.173245518213478
    ],
-   "verdict": "NOT as predicted"
+   "verdict": "nearly: control 4.07 (over_thermal_limit), array arms at the ceiling"
   },
-  "P2_idle_spec_limited": {
-   "measured": [
-    4.173245518213478,
-    "vf_envelope"
-   ],
+  "P7_1.00": {
+   "measured": {
+    "control": 3.6638910998821945,
+    "idle": 3.9015898284367934,
+    "laser": 4.173245518213478,
+    "Q_W": 37.91801861610397,
+    "gain": 0.13902007577344766
+   },
    "verdict": "confirmed"
   },
-  "P3_laser_hits_the_table": {
+  "P8_1.20": {
    "measured": {
-    "f_GHz": 4.173245518213478,
-    "vf_clamped": true,
-    "density": 0.38052936340389126,
-    "Q_W": 0.0,
-    "gain_vs_control": 0.0
+    "control": 3.3243214876613383,
+    "idle": 3.595977177438023,
+    "laser": 4.173245518213478,
+    "Q_W": 77.75867065291898,
+    "gain": 0.25536760921079216
    },
-   "verdict": "FALSIFIED: < 4.5 GHz"
+   "verdict": "confirmed"
   },
-  "P4_above_table_ARGUED": {
-   "measured": [
-    6.5,
-    "search_ceiling",
-    0.5842606965930577
-   ],
-   "verdict": "outside the band: 6.50 GHz"
+  "P9_table_and_above": {
+   "measured": {
+    "table_laser": [
+     4.859375,
+     "over_thermal_limit",
+     2.275882560117652
+    ],
+    "above_table_laser": [
+     6.5,
+     "search_ceiling",
+     1.8668632733985453
+    ]
+   },
+   "verdict": "clock inside 4.6-5.0 (4.86) but thermal-limited at 2.28 W/mm^2, not clamped; above the table no thermal bound inside the search"
   },
-  "P5_efficiency_falls_with_clock": {
+  "P10_efficiency_falls_with_clock": {
    "measured": [
-    61.67267032207864,
-    61.783940211742014,
-    61.783940211742014
+    true,
+    true,
+    true,
+    true
    ],
-   "verdict": "NOT as predicted"
+   "verdict": "confirmed"
+  }
+ },
+ "ipc_source": "/mnt/nfs01/scratch/jbalma/MXL-HotGauge/docs/evidence/comet_ipc_vs_f.json",
+ "ipc_benchmark": "fft_1to20",
+ "throughput_elasticity": {
+  "spice_above_d1.00": {
+   "clock_gain": 0.7796791443850268,
+   "throughput_gain": 0.5680191436872957,
+   "elasticity": 0.7803388407232112
+  },
+  "spice_d0.78": {
+   "clock_gain": 0.02502125026811375,
+   "throughput_gain": 0.01933965071755961,
+   "elasticity": 0.7750879896015267
+  },
+  "spice_d1.00": {
+   "clock_gain": 0.13902007577344766,
+   "throughput_gain": 0.11434046136566223,
+   "elasticity": 0.8317133052290785
+  },
+  "spice_d1.20": {
+   "clock_gain": 0.25536760921079216,
+   "throughput_gain": 0.2114473443427216,
+   "elasticity": 0.8434116356991543
+  },
+  "table_d1.00": {
+   "clock_gain": 0.3347639484978542,
+   "throughput_gain": 0.26076151788115176,
+   "elasticity": 0.8024669775945235
   }
  },
  "complete": true

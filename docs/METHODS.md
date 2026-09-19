@@ -155,6 +155,9 @@ OpenVAF-compiled BSIM-CMG 110, fitted to nothing. What still comes from elsewher
 | **V/F curve, default in the clock search** | `power/irds_vf.py`, IRDS 2024 `MM01 - LOGIC` (`--vf-source table` is still the shipped `VF_PAIRS`; `irds:<year>` the roadmap) | roadmap; **still the default**, so recorded clock results reproduce |
 | **The absolute clock anchor of the device curve** | the trace's 3.8 GHz at the card's 0.70 V | a *choice*, stated on the model (`calibrated = False`); `clock_search` uses ratios and is insensitive to it |
 | **The analytic `V_t` in `device_leakage.py`** | still a parameter of the analytic cross-check model | kept as a cross-check; **do not quote** |
+| **`I_on(V, T)` to 1.00 V** (13 Sep, §P0.31) | the same `idsat_deck`, `--v-on-max 1.00` → `docs/evidence/device_vt_vf_asap7_v100.json` (identical to the recorded file on the common grid; the fitted alpha over the wider range is 1.34) | **SPICE, §P0.31** — `I_on/V` saturates: `f(V)` peaks at 0.95–0.975 V |
+| **A generalized `f_max(V, T \| logic depth, wire fraction, skew)` with `V_max` from a reliability budget** (13 Sep, §P0.31) | `power/fmax_model.GeneralizedFmaxModel`: period = `N·[FO4(V,T) + wire(T)] + T_skew(ΔT,T) + T_ovh`, anchored ONCE at the trace (3.8 GHz / 0.70 V / 330 K, 20-FO4 reference → FO4_ref 8.18 ps); `V_max` = the supply with the qualification point's lifetime (0.77 V at 100 °C) under EM (Black n = 2, E_a 0.9 eV, J ∝ V·f) and TDDB (power law n = 40, E_a 0.6 eV); `clock_headroom.py --vf-source fmax[:N=..,w=..,ref=qual\|native,tddb_n=..]`; `examples/fmax_model_report.py` → `docs/evidence/fmax_model.json` | **model, stated parameters** — the wire fraction (0.30), logic depth, overhead (0.08), `D_ins` (150 ps) and the reliability constants are ARCHITECTURE / textbook inputs and are swept in the evidence; absolute clocks inherit the 3.8 GHz anchor (UNCALIBRATED, as before). A row's `limited_by` is now `over_thermal_limit` / `thermal_runaway` / `reliability:tddb` / `reliability:em` / `device` / `sweep_end`, and `fmax.period_dominated_by` names the period's largest term |
+| **IPC(f)** (13 Sep, §P0.33) | `examples/comet_ipc_reader.py` over CoMeT's 1–20 GHz sweeps → `docs/evidence/comet_ipc_vs_f.json`; `clock_f1c_report.py` / `iso_package_throughput_report.py --ipc-source … --ipc-benchmark fft_1to20` report `GIPS = f × IPC(f) × cores` beside the fixed-IPC FLOP/s proxy | **measured in CoMeT** (Sniper), a different simulator and core: the memory wall's *shape*; elasticity 0.78–0.84 at 3.3–4.9 GHz on the FFT kernel. Says nothing about whether the device switches at 20 GHz |
 
 `[!]` **Three conventions travel with the numbers.** (1) A threshold is a *criterion*; compare
 temperature coefficients and shapes across sources, never levels (the roadmap's 0.156 V and the
@@ -167,6 +170,17 @@ threshold above — and a one-decade window with a 50 mV gate step returns nothi
 `[!]` **What is still not a measurement:** the lever itself. The device numbers exist; a low-`V_t`
 die has not been run under the array through the coupled solve, and `dt_max` is still the
 device team's number.
+
+`[!]` **The clock search's ceiling is a property of the SOLVED temperature now (§P0.31).** With
+`--vf-source fmax` each candidate clock is solved in the context `(T_peak, ΔT_core)` the previous
+candidate left, the field is re-read, and the solve repeats while the implied supply moves more
+than `--fmax-v-tol` (5 mV ≈ 0.03 GHz); the starting context is a linear estimate from the two
+nearest converged candidates. Do not cap such a search at a fixed `f_max` — the driver sets
+`cap_at_vf_table=False` and lets every row carry its own limit. The recorded F1c clocks
+(`--vf-source spice`, 4.17 GHz at 0.77 V) are the **gate-only** ceiling re-anchored at 300 K; the
+same 10 % overdrive buys +1.6 % at the 92 °C target once wire, skew and overhead are in the
+period (`docs/evidence/fmax_model.json`). `--mr-extractor` and `--mr-envelope-shape` now exist on
+`clock_headroom.py` too (defaults `none` / `seed`: the recorded rows).
 
 ### 3.1 Choosing a leakage curve
 

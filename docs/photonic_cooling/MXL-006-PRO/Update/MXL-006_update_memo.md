@@ -56,8 +56,8 @@ The specification frames a processor die with a photonic cold-plate layer routin
 | element in the filing | where | status | what the evidence says now |
 |---|---|---|---|
 | Extractor regions optically coupled to FU hot spots; pump routed by waveguides and gated to predicted or observed hot spots | spec §"Detailed", claims 1, 5, 7 | **MEASURED** (structure); the *controller* is measured as a planner from the coupled solve, not from branch prediction | The array is a second powered die of 500 µm GaAs/dye tiles above 200 µm of silicon; a planner derives each tile's removal from the die's own thermal sensitivities and bisects to the minimum plan that keeps the die on its cool branch. This is the embodiment that produced every rescue; the envelope *shape* the planner descends within matters (a uniform per-block allotment over-spends by 18–33 % on this die and by 12× on a concentrated quarter; the per-block shape is the one to claim, §P0.29). |
-| "Enables power densities > 1000 W/mm² in the FUs" | claims 1, 7, 13; spec | **NOT SUPPORTED as a die property** | 1000 W/mm² is the *film's* capability (GaAs / dye, v100 Table 8.2; the target device delivers 813 W/mm² at 300 K tiles and 5,900 at 400 K). No simulated die asks any tile for more than **5.3 W/mm²** steady (the GA100 at 3.15 W/mm² die average) or **13 W/mm²** for 10 ms (a 3× burst). The hottest *block* on the CPU die is 29 W/mm² (a cALU). Restate as: the extractor's cooling density exceeds the die's demand by two orders of magnitude, so the array's limit on this class of die is energy conservation, not the film. |
-| "Clockspeeds > 10 GHz" | claims 1, 7; spec | **CONTRADICTED** | The clock search on the simulated device ends at the transistor's own V/F ceiling: **4.17 GHz** at 0.77 V (10 % overdrive on the ASAP7 card) and 5.0 GHz on the shipped table. Cooling turns thermal headroom into clock *up to* that ceiling (+14 % at 1.00 W/mm², +26 % at 1.20, +34 % on the table) and no further; above the table nothing thermal stops the laser arm because the voltage is clamped, and that is a model artefact, not a clock. v100 §10.5 says the same (cubic scaling; the linear regime ends at V_th). Remove the number. |
+| "Enables power densities > 1000 W/mm² in the FUs" | claims 1, 7, 13; spec | **NOT SUPPORTED as a die property** | 1000 W/mm² is the *film's* capability (GaAs / dye, v100 Table 8.2; the target device delivers 813 W/mm² at 300 K tiles and 5,900 at 400 K). No simulated die asks any tile for more than **5.3 W/mm²** steady (the GA100 at 3.15 W/mm² die average) or **13 W/mm²** for 10 ms (a 3× burst). The hottest *block* on the CPU die is 29 W/mm² (a cALU). **Measured 13 Sep on densified clusters (§P0.32):** a **230 W/mm² cALU** (8× the reference's density) is held to the 2.00-equivalent rung (202 W of die power) at 5–20 µm burial and 100–200 µm tile pitch; a **460 W/mm² cALU** (16×) only at 100 µm pitch; the top rung is lost at coarse pitch to energy conservation and at fine pitch to **the film's own cold end** — the tile above the cluster is driven to 253–254 K, where the dye's capability has collapsed, while 170–200 W/mm² is asked of it. So the film's capability *does* bind on a several-hundred-W/mm² unit, at a fifth of its 300 K rating; the honest form is "functional units at 200–450 W/mm² held by the array, with the tile pitch resolving the unit" — not > 1000, and the die's own supply rails carry 8–16× the reference's current density there (Section 4.6). |
+| "Clockspeeds > 10 GHz" | claims 1, 7; spec | **CONTRADICTED** | The clock search on the simulated device ends at the transistor's own V/F ceiling: **4.17 GHz** at 0.77 V (10 % overdrive on the ASAP7 card, the *gate-only* model) and 5.0 GHz on the shipped table. Cooling turns thermal headroom into clock *up to* that ceiling (+14 % at 1.00 W/mm², +26 % at 1.20, +34 % on the table) and no further; above the table nothing thermal stops the laser arm because the voltage is clamped, and that is a model artefact, not a clock. **Generalized 13 Sep (§P0.31):** with wire, clock skew and setup/jitter in the period and the supply limit set by an electromigration / dielectric-breakdown lifetime budget at the *cooled* temperature instead of a fixed overdrive, the same 10 % overdrive buys **+1.6 % of clock at the array's 92 °C target** (3.84 GHz on a 20-FO4 pipeline); a die held at 60 °C buys +8 %, at 27 °C +16 %; and **10 GHz needs a 6–7 FO4-per-stage pipeline** (Pentium-4 class) on this device at any temperature — the cooler is not what stands between this core and 10 GHz. The coupled search under that model (`clock_fmax.json`) puts the laser arm at **3.76 GHz at the 92 °C target** (+7 % over the control at 1.00 W/mm², +15 % at 1.20; TDDB-limited), **4.08 GHz at a 60 °C target** for 104 W of removal, and **5.75 GHz on a 10-FO4 pipeline, where the cooler binds again** (283 W of die power, 259 W lifted, the next step runs away). In instructions per second the recorded +14 / +26 % clock gains are +11 / +21 % (CoMeT's measured IPC(f), §P0.33). v100 §10.5 says the same (cubic scaling; the linear regime ends at V_th). Remove the number; claim "clock to the device's reliability-budgeted ceiling" (Section 6.3). |
 | "Transistor densities > 10¹¹/cm²"; "> 10¹² quantum bound" | claims 5, 7, 11; spec | **NOT MEASURED** | Density was measured as *execution-cluster area at fixed power*: 2× and 4× denser clusters are held by the array at matched die watts to 202 W and 162 W respectively; at the book's 70 % utilisation the same design is 1.22× denser in silicon and holds every rung. Nothing ties this to a transistors-per-cm² figure. Restate as a cluster-density ratio. |
 | "Reducing temperatures by over 160 °C" / "115 °C vs air, 160 °C vs liquid" | spec (Background, FU list) | **CONTRADICTED** | Measured lifts at matched power: 7 K from the unpowered GaAs layer alone at native power (78.6 → 71.5 °C), 12 K at 1.10 W/mm² (103.7 → 92), 25–40 K where the control has *no* steady state (the lift is then not a number but a rescue). The die is never taken below ~263 K at any tile. |
 | "COP > 10×" vs conventional | spec, table | **SUPPORTED against refrigerated air where air has no solution; CONTRADICTED against a chilled liquid plate below its sub-zero crossover** (§P0.30, 13 Sep) | The >10× came from LCEstimator's system comparison (fans, pumps, chillers with sub-zero penalties). Re-run on the coupled solve with the calibrated fan (`cooling_system_ledger.json`): the air package needs 273 K ambient at 1.20 W/mm² and 243 K at 1.60 and has no solution above; system COP air / liquid plate / photonic = 1.65 / 17.3 / 2.59 at 1.20, 0.52 / 3.94 / 1.90 at 1.60, — / 3.02 / 1.58 at 2.00, — / 0.97 / 1.29 at 2.40. The laser beats air 1.6–3.7× and is the only solution above 1.60; it beats a direct-die microchannel plate with a chiller only where the plate's coolant goes sub-zero (2.4 W/mm² here). State the COP claim as a curve against rescue depth, with the air and liquid cases separated; the loop's own electrical COP is 0.27 (1.64 with recovery). |
@@ -116,7 +116,11 @@ Each row is a register §1 entry; the evidence file is in `results/`. Operating 
 
 **4.3 Clock as the free variable (F1c).** At 1.00 W/mm² the package clocks the die down to 3.66 GHz; the laser runs it at the device ceiling 4.17 GHz (+14 %, 38 W removed); +26 % at 1.20 (78 W); on the shipped 5 GHz table 4.86 GHz (+34 %, 235 W removed, thermally limited at 2.28 W/mm²). GFLOP/s per package watt falls with clock on every arm (`clock_f1c_density.json`).
 
-![Figure 4.3 — Clock as the free variable (F1c).](figures/ev_clock_vs_cooling.png)
+![Figure 4.3 — Clock as the free variable (F1c). The 4.17 GHz line is the gate-only model's ceiling.](figures/ev_clock_vs_cooling.png)
+
+![Figure 4.3b — The clock search generalized (§P0.31, 13 Sep): the reliability budget as an Arrhenius ladder (left) and the coupled search with each row's limiter named (right). The laser arm ends at 3.76–3.83 GHz at the 92 °C target, 4.08 GHz at a 60 °C target, 5.75 GHz on a 10-FO4 pipeline where the cooler binds again.](figures/ev_fmax_generalized.png)
+
+![Figure 4.3c — IPC(f) from CoMeT (§P0.33): a fifth of every clock gain is lost to the memory wall (elasticity 0.78–0.84 at the F1c clocks).](figures/ev_ipc_of_f.png)
 
 
 **4.4 Dark-silicon recovery (F2).** At 1.2 W/mm² per core: control 0 % of cores, unpowered layer 25 %, laser 100 % for **11.6 W**; at 1.5, only the laser lights any fraction (**44 W**; a lit quarter 4.1 W). Hot cores contiguous (worst case). These are the per-block envelope plans of §P0.29 (13 Sep): the seed-shape plans first recorded (17.3 / 64.2 / 48.7 W) held but over-spent by up to 12× on a concentrated quarter, and the one row the recorded figure showed as "runaway" at 1.2 W/mm² / 25 % was an unfinished six-iteration descent that holds for 0.8 W with twelve (`dark_silicon.json`).
@@ -128,7 +132,11 @@ Each row is a register §1 entry; the evidence file is in `results/`. Operating 
 
 **4.6 The dense execution cluster (D1, X3).** Execution units at ×0.5 / ×0.25 area (2× / 4× W/mm²): the laser holds every reference rung to 202 W / 162 W at matched die watts, 0 tiles capped, cALU the peak block everywhere; plan 1.17–2.8× (×0.5) and 1.65–6.9× (×0.25) the reference's; the passive ceiling falls (50.5 / 45.5 W vs 60.7). At the book's 70 % utilisation and 20 µm cache halos the cluster is 1.22× denser in silicon, holds all five rungs to 243 W, and costs 1.16–1.44× a same-utilisation reference at the die-wide rungs (`d1_exec_density_family_result.json`, `x3_utilisation.json`).
 
-![Figure 4.6 — The dense execution cluster at matched watts (D1).](figures/ev_dense_cluster.png)
+![Figure 4.6 — The dense execution cluster at matched watts (D1, seed-shape planner as recorded).](figures/ev_dense_cluster.png)
+
+![Figure 4.6b — D1 under the per-block planner shape (§P0.34): the 2× cluster holds every rung to 243 W, the 4× holds 202 W; the seed shape's lost rungs were the planner's. The ×0.25 at 243 W is envelope-only (s = 1.02).](figures/ev_dense_cluster_per_block.png)
+
+![Figure 4.6c — The 8× / 16× clusters at 20 µm and 5 µm burial (§P0.32): pitch, not burial, is the lever; at 100 µm pitch the tile above the cluster is driven to 253 K and the film's own cold end binds for the first time.](figures/ev_cluster_transport.png)
 
 
 **4.7 The non-thermal end (X1, X2).** Re-solving the recorded fields as current densities at 0.70 V: die current 1.29 / 1.54 / 2.00 / 2.45 / 2.88× the native die's at 1.00 / 1.20 / 1.60 / 2.00 / 2.40 W/mm²; the ×0.5 cluster's cALU exactly 2.00× the reference's at matched watts (×0.25: 3.9×); Black's-law acceleration of the worst block vs native 12–50× along the ladder (n = 2, E_a = 0.9 eV stated); the cooling dividend at matched power 2.4×; on the SPICE clock rungs the cooled design's worst block outlives the control's 2.7–3.2× while clocking 14–26 % faster. Core-domain thermal gradient 24 K (native) → 32 / 40 / 50 / 60 K along the ladder; at a stated 150 ps insertion delay 3.2 → 4.2 / 5.3 / 6.6 / 7.9 % of the period; uniformity buys 0.74 % at matched power and the laser field is the *less* uniform one at matched density (`pdn_em_skew.json`).
@@ -178,7 +186,7 @@ The recommendation is to build the independent claims on what is measured, to ca
 
 **6.2 The distinguishing fact.** Wherever a claim recites the cooling effect, recite it as the *difference between the driven array and an undriven layer of the same material*: the undriven layer fails at 1.20 W/mm² where the driven one holds to 2.40. That difference is what separates the invention from "a thin conductive film on the die", and it is the fact measured 35 of 35 times. **Basis:** 4.1.
 
-**6.3 Clock control to the device ceiling (method).** Operating the die under a thermal limit, bisecting the clock with dynamic power ∝ V²f on the device's V/F curve and leakage on the coupled solve, driving the array to hold the limit, and stopping at the transistor's V/F ceiling rather than at the package's thermal ceiling. Dependent: the operating point stated in W/mm²; the array removing 38–235 W to hold it. **Basis:** 4.3. **Do not** recite a GHz above the ceiling.
+**6.3 Clock control to the device ceiling (method).** Operating the die under a thermal limit, bisecting the clock with dynamic power ∝ V²f on the device's V/F curve and leakage on the coupled solve, driving the array to hold the limit, and stopping at the transistor's ceiling rather than at the package's thermal ceiling — where, as of 13 Sep (§P0.31), that ceiling is **the supply at which the worst block's lifetime equals the qualification point's** (electromigration and dielectric breakdown, Arrhenius in the *cooled* temperature) on a period that includes wire, thermal skew and setup/jitter: the array's target temperature is then the co-design knob (each 30 K it holds below the corner buys ~6 % of supply), and the claim should recite the budget, not a fixed overdrive. Dependent: the operating point stated in W/mm²; the array removing 38–235 W to hold it. **Basis:** 4.3. **Do not** recite a GHz above the ceiling.
 
 **6.4 Dark-silicon recovery (method).** At a per-core power density the package cannot hold for any contiguous fraction of cores, routing cooling to the active cores so that all cores are lit; the laser cost scaling with the lit fraction and the hot-spot geometry. **Basis:** 4.4.
 
@@ -200,7 +208,7 @@ The recommendation is to build the independent claims on what is measured, to ca
 
 ## 7. How core designs evolve with targeted laser cooling — the figures
 
-`figures/fig_integration_levels.png` (cross-sections by degree of integration), `figures/fig_core_evolution.png` (one core's floorplan per ladder generation), `figures/fig_scales.png` (the scale ladder and what is measured at each), `figures/fig_evidence_matrix.png` (the status of every claim-relevant statement), and the evidence figures `figures/ev_*.png` (the rescue ladder and s, the current ladder and EM acceleration, the dense cluster, the cache objective, the burst, the clock, dark silicon, the density ceilings, the cold-zone prize, the accelerator).
+`figures/fig_integration_levels.png` (cross-sections by degree of integration), `figures/fig_core_evolution.png` (one core's floorplan per ladder generation), `figures/fig_scales.png` (the scale ladder and what is measured at each), `figures/fig_evidence_matrix.png` (the status of every claim-relevant statement), **the patent-style drawings `figures/pat_fig1–8.png` (Section 7A, 13 Sep)**, and the evidence figures `figures/ev_*.png` (the rescue ladder and s, the current ladder and EM acceleration, the dense cluster, the cache objective, the burst, the clock, dark silicon, the density ceilings, the cold-zone prize, the accelerator).
 
 ![Figure 7.0 — Degrees of integration and what is measured at each.](figures/fig_scales.png)
 
@@ -225,11 +233,84 @@ The recommendation is to build the independent claims on what is measured, to ca
 
 ---
 
+
+## 7A. Patent-style drawings: the core evolved in response to localized, high-power-density cooling (13 Sep)
+
+Eight monochrome sheets with reference numerals, drawn by `make_patent_figures.py` from the real floorplans (`examples/floorplans/outputs/…`, one core of the 34-core die at 1×, 1/2, 1/4, 1/8 and 1/16 execution-unit area), the recorded fields and the evidence JSONs where a number appears. Every caption states MEASURED or ARGUED per the register; nothing in a drawing is claimed beyond its caption. The argument they carry, in order: the conventional core is bounded by a leakage runaway through its hottest execution unit and spreads that unit out to survive (FIG. 1); a driven, planner-commanded tile array above the back surface removes the runaway first and then the rungs to conservation (FIG. 2); the execution cluster can then be made 2–16× denser at unchanged power, with the tile pitch matched to the unit (FIG. 3); the rails over it are widened in proportion to its current density and the array's target is chosen on a lifetime budget, which is the co-design knob for supply and clock (FIG. 4); at fine pitch and the top rung the film's own cold end binds, which fixes the tile pitch and the hot-zone material as design variables (FIG. 5); the caches are collected on a storage die off the compute die's heat path (FIG. 6); the composed core (FIG. 7); and the ladder of constraint → cooling → response → next constraint that generated it (FIG. 8).
+
+![FIG. 1 — The conventional core 100 as traced: the execution cluster 110 (112–118) spread among the caches 120–126, the front end 130 and the control slab 140; section A–A′, the direct-die package 200–210. MEASURED (§P0.17; the native field).](figures/pat_fig1.png)
+
+![FIG. 2 — The apparatus: the photonic cooling layer 300 of tiles 302, pump routing 304, collector 306, and the controller 310 (sense 312 → plan 314 → drive 316). MEASURED: the rescue ladder, 1.20 → 3.50 W/mm² under the per-block planner.](figures/pat_fig2.png)
+
+![FIG. 3 — Gen 1: the execution cluster densified 2× / 4× / 8× / 16× at unchanged power, drawn from the five floorplans, with the tile pitch 302 that resolves it (500 / 200 / 100 µm). MEASURED at matched die watts (§P0.32, §P0.34).](figures/pat_fig3.png)
+
+![FIG. 4 — Gen 1 in section: rails 400 widened (402) over the cluster; the target 410 chosen on an EM / TDDB lifetime budget; insets: the budget's Arrhenius ladder and the period's composition. MEASURED (the ladder on the card, the coupled search) on ARGUED constants (§P0.31).](figures/pat_fig4.png)
+
+![FIG. 5 — The tile against a dense unit and the film's cold end: coarse tile → conservation; matched tile → held; matched tile at the top rung → the tile at 253 K, capped; the responses 502–508. MEASURED (§P0.32); 504–506 ARGUED.](figures/pat_fig5.png)
+
+![FIG. 6 — Gen 3: the storage die 610 on the sink side (MEASURED, falsified, X4); the two-sided stack 610–620 and the 2.5D placement 630–632 (ARGUED).](figures/pat_fig6.png)
+
+![FIG. 7 — The evolved core 100′ composed: dense cluster 110′ under matched tiles 302, rails 402, target 410, low-V_t cells 700 (ARGUED), storage die 610 off the heat path (ARGUED); section B–B′.](figures/pat_fig7.png)
+
+![FIG. 8 — The ladder: one architectural change per measured constraint, solid = MEASURED, dashed = ARGUED.](figures/pat_fig8.png)
+
+**Reference numerals.**
+
+| numeral | element | first figure |
+|---|---|---|
+| 100 | core as traced (gen 0) | FIG. 1 |
+| 110 | execution cluster | FIG. 1 |
+| 112 | complex ALU (the worst block) | FIG. 1 |
+| 114 | integer ALU | FIG. 1 |
+| 116 | floating-point units | FIG. 1 |
+| 118 | vector (AVX) units | FIG. 1 |
+| 120 | L2 cache | FIG. 1 |
+| 122 | L3 slice | FIG. 1 |
+| 124 | data cache | FIG. 1 |
+| 126 | instruction cache | FIG. 1 |
+| 130 | front end / scheduler | FIG. 1 |
+| 140 | control slab | FIG. 1 |
+| 200 | substrate and bumps | FIG. 1 |
+| 202 | active layer | FIG. 1 |
+| 204 | silicon above the transistors (burial depth) | FIG. 1 |
+| 206 | thermal interface material | FIG. 1 |
+| 208 | cold plate | FIG. 1 |
+| 210 | fin stack and fan | FIG. 1 |
+| 300 | photonic cooling layer (tile array) | FIG. 2 |
+| 302 | anti-Stokes tile (GaAs or SiN-encapsulated dye, 30 µm) | FIG. 2 |
+| 304 | pump waveguides and couplers | FIG. 2 |
+| 306 | luminescence collector | FIG. 2 |
+| 310 | controller | FIG. 2 |
+| 312 | sensing: per-tile temperature | FIG. 2 |
+| 314 | planner: minimum plan on the cool branch under the conservation cap | FIG. 2 |
+| 316 | per-tile pump drive | FIG. 2 |
+| 110′ … 110″″ | the execution cluster at 2×, 4×, 8×, 16× density | FIG. 3 |
+| 400 | power-distribution stripes (top metal) | FIG. 4 |
+| 402 | stripes widened ~J× over the dense cluster | FIG. 4 |
+| 410 | target temperature chosen on the lifetime budget | FIG. 4 |
+| 110″ | the 16× (460 W/mm²) execution unit | FIG. 5 |
+| 502 | tile pitch matched to the unit | FIG. 5 |
+| 504 | cold-tolerant hot-zone tile material over the cluster | FIG. 5 |
+| 506 | dual-material tile layout | FIG. 5 |
+| 508 | coarse pitch, conservation-bound | FIG. 5 |
+| 610 | storage die (L2 / L3 caches) | FIG. 6 |
+| 612 | Cr:LiSAF storage-zone tiles (~280 K) | FIG. 6 |
+| 614 | second sink, storage side | FIG. 6 |
+| 620 | bond / isolating interface | FIG. 6 |
+| 630 | interposer | FIG. 6 |
+| 632 | isolating channel | FIG. 6 |
+| 100′ | the evolved core | FIG. 7 |
+| 700 | low-threshold cells restricted to the cooled cluster (ARGUED) | FIG. 7 |
+
+`[!]` What the drawings do not show: a rail model (402 is a current-density statement), the two-sink stack solved (FIG. 6b/c are the next build), the 16× unit at a grid that resolves it (its holds are lower bounds), and anything above 3.50 W/mm² on the reference die.
+
 ## 8. Experiments run for this memo
 
 **The integration ladder (§P0.28, launched 12 Sep, 41 points on the allocation).** Burial depth 200 → 100 → 50 → 20 µm and tile pitch 500 / 200 µm on the reference die at 1.20, 2.00, 2.40, 2.60 and 3.00 W/mm², 100 µm grid, against the 100 µm reference at 200 µm / 500 µm. Predictions written before the run: the plan at 2.00 falls 10–25 % at 20 µm; 2.60 holds at ≤ 50 µm and 3.00 holds nowhere (conservation); pitch is inert at 200 µm burial and worth 10–20 % at 20 µm; the passive cliff does not move; the peak tile flux rises to 5–10 W/mm². Results in Section 8.1: P1–P3 falsified — the cost does not fall with integration. This is the measurement behind the Level 1 → Level 2 step of Section 7.
 
 **The cooling-system ledger (§P0.30, 13 Sep, 60 control points).** See 4.11: the COP comparison the provisional's >10× rested on, re-run on the coupled solve — the answer is a curve against rescue depth with the air and liquid cases separated. **The dark-silicon correction (§P0.29, 13 Sep, 9 points).** The recorded "runaway" at 1.2 W/mm² / 25 % was an unfinished planner descent (holds for 0.8 W); the per-block envelope shape lowers every F2 cost (17.3 → 11.6 W at 1.2; 64.2 → 44 W at 1.5).
+
+**The generalized f_max and the densified-cluster ladder (§P0.31–§P0.32, 13 Sep).** (a) A period model with wire, thermal skew (read from each solve) and setup/jitter, anchored once at the trace, with V_max from an Arrhenius reliability budget (EM Black n = 2 / 0.9 eV, TDDB power law n = 40 / 0.6 eV; the qualification point 0.77 V at 100 °C restated): at the 92 °C target the overdrive buys +1.6 % of clock, at 60 °C +8 %, at 27 °C +16 %; TDDB binds at every temperature below the corner; 10 GHz needs a 6–7 FO4 pipeline (`docs/evidence/fmax_model.json`; the coupled search `clock_fmax.json`). (b) The 8× / 16× execution clusters (230 / 460 W/mm² cALUs) at 20 µm and 5 µm burial and 200 / 100 µm pitch, matched die watts, per-block shape: the 8× holds to 202 W everywhere, the 16× only at 100 µm pitch; the top rung is lost to conservation (coarse pitch) or to the dye's cold end (fine pitch: tiles at 253–254 K asked for 170–200 W/mm²) — the first rows where the film binds; premium 1.8–1.9× over the reference at the same geometry; and the reference itself is 14–31 % cheaper at 5–20 µm burial than at 200 µm under this shape (`docs/evidence/cluster_transport.json`).
 
 **Recommended next experiments (not run):** the two-sided gen-3 stack (3D-ICE's bottom heat sink makes it buildable; a second array die and its wiring are the work); a rail model so "binds: PDN" becomes a supply-voltage term in the clock search; the anticipatory (predictor-driven) form of burst modulation against the feed-forward form; a second workload class.
 
@@ -246,9 +327,11 @@ The recommendation is to build the independent claims on what is measured, to ca
 | 20 µm (die-integrated) | 500 µm | **131** | 209 | 243 | no steady state |
 | 20 µm | 200 µm | 122 | 200 | 227 | hot branch, not held |
 
-**What it says.** The rescue cost is insensitive to how close the tiles sit to the transistors: from the decoupled cold plate (200 µm of silicon between tiles and active layer) to a die-integrated array (20 µm) the plan at 2.00 W/mm² moves within ±10 %, with a shallow optimum near 100 µm, and thinning to 20 µm is *worse* by 4 % at 500 µm pitch. Finer pitch is worth 4 % at 200 µm burial and 7 % at 20 µm. The top rung is highest at intermediate burial (3.00 W/mm² holds at 100 µm and at 50 µm with 200 µm tiles; it has no steady state at 200 µm and at 20 µm with 500 µm tiles): thin enough for the tiles to reach the hot spots, thick enough to spread them. The maximum tile demand is set by the tile area and the rung, not by burial (5 W/mm² at 500 µm pitch, 8 at 200 µm at 2.00; 14.8 W/mm² at 3.00 with 200 µm tiles, the highest steady demand simulated, 55× under the film). The unpowered array diverges at 1.20 W/mm² at every burial: thinning the die moves nothing on the passive side; the rescue is the laser's. Predictions P1–P3 (a monotone fall in cost with integration) were falsified; P4 and P5 confirmed.
+**Superseded in part on 13 Sep (§P0.32): this ladder ran the planner's uniform "seed" envelope shape; under the per-block shape the reference's plans at 20 µm and 5 µm burial are 14–31 % BELOW the 200 µm-burial plans (202 W: 78–97 W against 114; 243 W: 139–160 against 177, at 100–200 µm pitch), so the "no thermal advantage from integration" reading below is the seed planner's, not the die's. The structural reading (claim the decoupled form as an embodiment) stands.**
 
-**Implication for the claims.** The decoupled cold plate on a standard-thickness direct-die part is not a compromised form of the invention; on this floorplan it is within 10 % of the fully integrated array in cost and holds the same rungs. That supports claiming the decoupled form factor as the primary embodiment, with package and die integration claimed for what they enable *structurally* (the two-sided stack of Section 6.7, the density co-design of Section 6.6, finer pitch where the silicon spreads less) rather than for a thermal advantage the simulations do not show. Caveats: 100 µm grid; the 3.00 W/mm² rows are under the injected energy cap; the planner's envelope shape is the uniform seed shape, and a per-block shape may favour finer pitch at shallow burial (open).
+**What it says (seed shape, as run).** The rescue cost is insensitive to how close the tiles sit to the transistors: from the decoupled cold plate (200 µm of silicon between tiles and active layer) to a die-integrated array (20 µm) the plan at 2.00 W/mm² moves within ±10 %, with a shallow optimum near 100 µm, and thinning to 20 µm is *worse* by 4 % at 500 µm pitch. Finer pitch is worth 4 % at 200 µm burial and 7 % at 20 µm. The top rung is highest at intermediate burial (3.00 W/mm² holds at 100 µm and at 50 µm with 200 µm tiles; it has no steady state at 200 µm and at 20 µm with 500 µm tiles): thin enough for the tiles to reach the hot spots, thick enough to spread them. The maximum tile demand is set by the tile area and the rung, not by burial (5 W/mm² at 500 µm pitch, 8 at 200 µm at 2.00; 14.8 W/mm² at 3.00 with 200 µm tiles, the highest steady demand simulated, 55× under the film). The unpowered array diverges at 1.20 W/mm² at every burial: thinning the die moves nothing on the passive side; the rescue is the laser's. Predictions P1–P3 (a monotone fall in cost with integration) were falsified; P4 and P5 confirmed.
+
+**Implication for the claims.** The decoupled cold plate on a standard-thickness direct-die part is not a compromised form of the invention; on this floorplan it is within 10 % of the fully integrated array in cost and holds the same rungs. That supports claiming the decoupled form factor as the primary embodiment, with package and die integration claimed for what they enable *structurally* (the two-sided stack of Section 6.7, the density co-design of Section 6.6, finer pitch where the silicon spreads less) rather than for a thermal advantage the simulations do not show. Caveats: 100 µm grid; the 3.00 W/mm² rows are under the injected energy cap; the planner's envelope shape is the uniform seed shape — **and the per-block shape does favour shallow burial and finer pitch (measured 13 Sep, §P0.32: −14 to −31 % at 5–20 µm), so "within 10 %" is withdrawn as a thermal statement; the decoupled form should be claimed as an embodiment, not as cost-equivalent.**
 
 ![Figure 8.1 — The integration ladder: rescue cost and top rung versus burial depth and tile pitch (100 µm grid).](figures/fig_integration_ladder.png)
 

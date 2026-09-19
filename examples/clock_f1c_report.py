@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 """F1c (§P0.26): throughput with the CLOCK as the free variable -- read ``results/clock_f1c/*/
 clock_headroom.json``, restate each arm's sustainable clock as FLOP/s = f x FLOP/cycle x cores
-(ops over walltime at fixed IPC) per package watt, score the predictions, write
-``docs/evidence/clock_f1c.json``.
+(ops over walltime at fixed IPC) per package watt, and -- §P0.33 -- as instructions per second
+``f x IPC(f) x cores`` on CoMeT's measured IPC(f) (``--ipc-source``, ``--ipc-benchmark``), so the
+memory wall enters the throughput claim; score the predictions, write ``docs/evidence/clock_f1c.json``.
 
     python examples/clock_f1c_report.py
 """
@@ -23,7 +24,17 @@ def main():
     ap.add_argument('--base', default=os.path.join(_REPO, 'results', 'clock_f1c'))
     ap.add_argument('--flops-per-cycle', type=float, default=32.0)
     ap.add_argument('--json-out', default=os.path.join(_EV, 'clock_f1c.json'))
+    # §P0.33: CoMeT's IPC(f) so the memory wall enters the throughput claim. The fixed-IPC
+    # FLOP/s proxy is kept beside it; 'none' reproduces the recorded file exactly.
+    ap.add_argument('--ipc-source', default=os.path.join(_EV, 'comet_ipc_vs_f.json'),
+                    help="examples/comet_ipc_reader.py's evidence file, or 'none'")
+    ap.add_argument('--ipc-benchmark', default='fft_1to20')
     args = ap.parse_args()
+    ipc_curve = None
+    if args.ipc_source != 'none' and os.path.isfile(args.ipc_source):
+        sys.path.insert(0, _HERE)
+        from comet_ipc_reader import load_ipc, ipc_at
+        ipc_curve = load_ipc(args.ipc_source, args.ipc_benchmark)
     runs = {}
     for f in sorted(glob.glob(os.path.join(args.base, '*', 'clock_headroom.json'))):
         tag = os.path.basename(os.path.dirname(f)); j = json.load(open(f))
@@ -32,23 +43,38 @@ def main():
             arm = r.get('arm') or ('array_on' if r.get('mr') else 'control')
             f_ghz = r.get('f_sustainable_GHz'); cores = j.get('cores', 34)
             tflops = (f_ghz * args.flops_per_cycle * cores / 1000.0) if f_ghz else None
+            ipc_f = ipc_at(ipc_curve, f_ghz) if (ipc_curve and f_ghz) else None
+            gips = (f_ghz * ipc_f * cores) if ipc_f else None      # instructions per ns x cores = GIPS
+            p_pkg = (r.get('p_chip_W') or 0) + (r.get('p_cool_W') or 0)
             rows[arm] = {'f_GHz': f_ghz, 'limited_by': r.get('limited_by'), 'vf_clamped': r.get('vf_clamped'),
+                         'IPC_f': ipc_f, 'GIPS': gips, 'GIPS_per_package_W': (gips / p_pkg) if (gips and p_pkg) else None,
                          'at_ceiling': r.get('at_ceiling'), 'peak_C': r.get('peak_C'), 'peak_block': r.get('peak_block'),
                          'p_chip_W': r.get('p_chip_W'), 'density': r.get('density_W_per_mm2'), 'heat_removed_W': r.get('heat_removed_W'),
                          'p_mr_net_W': r.get('p_mr_net_W'), 'p_total_W': (r.get('p_chip_W') or 0) + (r.get('p_cool_W') or 0),
                          'TFLOPs': tflops, 'GFLOPs_per_package_W': (1000 * tflops / ((r.get('p_chip_W') or 0) + (r.get('p_cool_W') or 0))) if tflops and r.get('p_chip_W') else None}
-        runs[tag] = {'vf_source': j.get('vf_source'), 'vf_ceiling_GHz': j.get('vf_ceiling_GHz'), 'thermal_limit_C': j.get('thermal_limit_C'),
+        # the throughput gain against the control, clock-only (proxy) and with IPC(f)
+        c = rows.get('control', {})
+        for arm, rr in rows.items():
+            if c.get('f_GHz') and rr.get('f_GHz'):
+                rr['clock_gain_vs_control'] = rr['f_GHz'] / c['f_GHz'] - 1.0
+                if rr.get('GIPS') and c.get('GIPS'):
+                    rr['throughput_gain_vs_control'] = rr['GIPS'] / c['GIPS'] - 1.0
+        runs[tag] = {'ipc_benchmark': (args.ipc_benchmark if ipc_curve else None),
+                     'vf_source': j.get('vf_source'), 'vf_ceiling_GHz': j.get('vf_ceiling_GHz'), 'thermal_limit_C': j.get('thermal_limit_C'),
                      'trace_GHz': j.get('trace_GHz'), 'cores': j.get('cores'), 'rows': rows, 'done': os.path.isfile(os.path.join(os.path.dirname(f), 'DONE'))}
     for tag, R in runs.items():
         print('\n%s  (V/F %s, table ceiling %s GHz, limit %s C)%s' % (tag, R['vf_source'], R['vf_ceiling_GHz'], R['thermal_limit_C'], '' if R['done'] else '  [running]'))
-        print('  %-11s %7s %-22s %7s %8s %8s %8s %9s %s' % ('arm', 'f_GHz', 'limited by', 'clamp', 'P_die', 'P_pkg', 'TFLOP/s', 'GF/pkgW', 'Q_W'))
+        print('  %-11s %7s %-22s %7s %8s %8s %8s %9s %6s %7s %8s %s' % ('arm', 'f_GHz', 'limited by', 'clamp', 'P_die', 'P_pkg', 'TFLOP/s', 'GF/pkgW', 'IPC(f)', 'GIPS', 'dGIPS', 'Q_W'))
         for arm in ARMS:
             r = R['rows'].get(arm)
             if not r:
                 continue
-            print('  %-11s %7s %-22s %7s %8s %8s %8s %9s %s' % (arm, '--' if r['f_GHz'] is None else '%.2f' % r['f_GHz'], r['limited_by'], r['vf_clamped'],
+            print('  %-11s %7s %-22s %7s %8s %8s %8s %9s %6s %7s %8s %s' % (arm, '--' if r['f_GHz'] is None else '%.2f' % r['f_GHz'], r['limited_by'], r['vf_clamped'],
                   '--' if r['p_chip_W'] is None else '%.1f' % r['p_chip_W'], '%.1f' % r['p_total_W'], '--' if r['TFLOPs'] is None else '%.2f' % r['TFLOPs'],
-                  '--' if r['GFLOPs_per_package_W'] is None else '%.1f' % r['GFLOPs_per_package_W'], '--' if r['heat_removed_W'] is None else '%.1f' % r['heat_removed_W']))
+                  '--' if r['GFLOPs_per_package_W'] is None else '%.1f' % r['GFLOPs_per_package_W'],
+                  '--' if r.get('IPC_f') is None else '%.2f' % r['IPC_f'], '--' if r.get('GIPS') is None else '%.1f' % r['GIPS'],
+                  '--' if r.get('throughput_gain_vs_control') is None else '%+.1f%%' % (100 * r['throughput_gain_vs_control']),
+                  '--' if r['heat_removed_W'] is None else '%.1f' % r['heat_removed_W']))
     sc = {}
     R = runs.get('cfm88', {}).get('rows', {})
     c, i, o = R.get('control', {}), R.get('array_idle', {}), R.get('array_on', {})
@@ -102,7 +128,20 @@ def main():
         print('\nscorecard:')
         for k, v in sc.items():
             print('  %-30s %s' % (k, v['verdict']))
-    out = {'note': __doc__.strip(), 'runs': runs, 'scorecard': sc, 'complete': bool(runs) and all(r['done'] for r in runs.values())}
+    # §P0.33: the throughput elasticity at the recorded F1c clocks, from IPC(f)
+    el = {}
+    for tag, R in runs.items():
+        c, o = R['rows'].get('control', {}), R['rows'].get('array_on', {})
+        if c.get('GIPS') and o.get('GIPS') and o['f_GHz'] != c['f_GHz']:
+            el[tag] = {'clock_gain': o['clock_gain_vs_control'], 'throughput_gain': o['throughput_gain_vs_control'],
+                       'elasticity': __import__('math').log(o['GIPS'] / c['GIPS']) / __import__('math').log(o['f_GHz'] / c['f_GHz'])}
+    if el:
+        print('\nIPC(f) [%s]: the laser arm\'s throughput gain against its clock gain' % args.ipc_benchmark)
+        for tag, e in el.items():
+            print('  %-22s clock %+.1f %%  throughput %+.1f %%  elasticity %.2f' % (tag, 100 * e['clock_gain'], 100 * e['throughput_gain'], e['elasticity']))
+    out = {'note': __doc__.strip(), 'runs': runs, 'scorecard': sc, 'ipc_source': (args.ipc_source if ipc_curve else None),
+           'ipc_benchmark': (args.ipc_benchmark if ipc_curve else None), 'throughput_elasticity': el,
+           'complete': bool(runs) and all(r['done'] for r in runs.values())}
     with open(args.json_out, 'w') as f:
         json.dump(out, f, indent=1)
     print('\nwritten: %s%s' % (os.path.relpath(args.json_out, _REPO), '' if out['complete'] else '   [INCOMPLETE]'))

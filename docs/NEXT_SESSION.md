@@ -1,3 +1,97 @@
+# 13 September 2026, evening — §P0.31–§P0.34 landed: the generalized f_max, the 8× / 16× cluster transport ladder, IPC(f), D1 under the per-block shape
+
+Read `docs/START_HERE.md` (trip list 15–17 are new), then `docs/NEXT_SESSION_PROMPT.md` (rewritten
+tonight), then `docs/PHASE0_CHECKLIST.md` §P0.31–§P0.34 (predictions and RESULT subsections),
+`docs/RESULTS_REGISTER.md` (§0 `--vf-source` row; §1.3 three new / two re-labelled rows; §1.6 two
+new rows; §2 three new withdrawals; §3 one new open item; §4 three new constraints), the ladder
+§2.2 / §2.4 corrections, the memo rows ">1000 W/mm²" / ">10 GHz" / §6.3 / §8 / §8.1. Slurm: job
+**1507** on node-06; the campaign server was **stopped** at the end of the session (restart with the `nohup srun`
+line in `NEXT_SESSION_PROMPT.md`; check `squeue -s -u jbalma`). Suite baseline: **1098 passed, 1 skipped** (13 Sep, on the node; 1080
+before §P0.31's 18 tests). Both anchors reproduced to five figures after the day's edits
+(`results/anchor_2026-09-13/`: seed 138.72881 W / 93.8752 °C, per-block 113.63869 W / 91.5424 °C).
+
+## What landed (in the order the brief asked)
+
+1. **§P0.31 — the generalized f_max.** `HotGauge/power/fmax_model.py` (`GeneralizedFmaxModel`,
+   `load_fmax_model`, `parse_fmax_spec`, `core_gradient_K`; `test_fmax_model.py`, 18 tests):
+   `T_period = N·[FO4(V,T) + wire(T)] + T_skew(ΔT,T) + T_ovh`, anchored ONCE at the trace
+   (3.8 GHz / 0.70 V / 330 K, 20-FO4 reference → FO4_ref 8.18 ps), FO4 ∝ V/I_on(V,T) on the card
+   with the sweep extended to 1.00 V (`docs/evidence/device_vt_vf_asap7_v100.json`, identical to
+   the recorded file on the common grid), V_max from an EM (Black n = 2, 0.9 eV, J ∝ V·f) / TDDB
+   (power law n = 40, 0.6 eV) budget at the qualification point (0.77 V at 100 °C). `clock_search.py`
+   honours a non-thermal `unsustainable_reason` and a `reference_voltage`; `clock_headroom.py
+   --vf-source fmax[:N=..,w=..,ref=qual|native,...]` solves each candidate in the context the
+   previous one left and re-solves while the implied supply moves > 5 mV; `--mr-extractor` and
+   `--mr-envelope-shape` added to the clock driver. **Model arithmetic (`fmax_model.json`):** the
+   10 % overdrive buys **+1.6 % of clock at the 92 °C target** (3.84 GHz), +8.4 % at 60 °C,
+   +16 % at 27 °C; V_max +1.0 / +5.8 / +12.0 %; TDDB binds everywhere below the corner; f(V) peaks
+   at 0.95–0.975 V; **10 GHz needs 6.0–7.1 FO4 per stage**. **Coupled search (`scripts/clock_fmax.sh`
+   → `results/clock_fmax/`, `examples/clock_fmax_report.py` → `clock_fmax.json`):** see §P0.31
+   RESULT part 2 — the laser arm's ceiling at the 92 °C target is **3.76–3.83 GHz** (F1c's
+   gate-only 4.17), `reliability:tddb` everywhere; at 1.00 W/mm² control 3.52 (thermal), idle 3.69
+   (runaway), laser 3.76; at 1.20: 3.27 / 3.45 / 3.76 (+15 %, 36 W); a 75 °C target buys 3.94 GHz
+   for 57 W and a 60 °C target 4.08 GHz (+8.4 %) for 104 W; a 10-FO4 pipeline reaches 5.75 GHz
+   and the COOLER binds again (thermal runaway at 283 W, s 0.92); under the native budget both
+   arms are EM-bound below the trace clock (3.45 / 3.59 GHz). P4 not as predicted, P5 falsified,
+   P6 not as predicted, P7 confirmed; the brief's "+20–30 % of clock" is +7 / +15 % at the target.
+2. **§P0.32 — the 8× / 16× cluster transport ladder** (`generate_exec_density_family.py --factors
+   0.125 0.0625`, `scripts/cluster_transport_ladder.sh`, `examples/cluster_transport_report.py` →
+   `cluster_transport.json`; 48 points, 50 µm, per-block shape): the 230 W/mm² cALU holds to 202 W
+   at every burial / pitch; the 460 W/mm² cALU only at 100 µm pitch; the top rung is lost to
+   conservation (coarse pitch) or to **the dye's cold end** (fine pitch: tiles at 253–254 K asked
+   for 170–200 W/mm² — the first rows where the film binds); premium 1.84× / 1.86× at the same
+   geometry; **the reference is 14–31 % cheaper at 5–20 µm burial under the per-block shape**
+   (§P0.28's "thinning does not help" was the seed planner's — withdrawn in register §2, memo §8.1).
+3. **§P0.33 — IPC(f)** (`examples/comet_ipc_reader.py` → `comet_ipc_vs_f.json`, 38 sweeps;
+   `clock_f1c_report.py` / `iso_package_throughput_report.py --ipc-source`): elasticity 0.78–0.84
+   at the F1c clocks (+14 % clock = +11 % instructions/s); lu.cont 0.47, swaptions 0.84 from 8 to
+   16 GHz; CoMeT's Vdd is 1.2 V at every f. `clock_f1c.json` / `iso_package_throughput.json`
+   regenerated (additive).
+4. **§P0.34 — D1 under the per-block shape** (`SHAPE=power OUT=… ARRAY_ONLY=1
+   scripts/d1_family_ladder.sh`, `examples/d1_family_power_report.py` →
+   `d1_exec_density_family_power.json`): ×0.5 holds every rung to 243 W (s 0.84), ×0.25 holds
+   202 W (s 0.89) with 243 W envelope-only (s 1.02); premiums 1.20 / 1.20 / 1.08× and 1.68 / 1.51×
+   die-wide; the seed-shape "lost rungs" were the planner's. The reference per-block ladder gained
+   its 1.10 rung. The accelerator needed no re-run (§P0.24 parts 2–3 already used the power shape).
+
+`scripts/build_results_registers.py` carries four new quotable items (24–27); rebuild
+`results-quotable/` on the node (`python scripts/build_results_registers.py` through the queue)
+and the memo's `.docx` / `.html` with `docs/photonic_cooling/MXL-006-PRO/Update/build_memo.sh`
+(pandoc, the one head-node exception) — both rebuilt tonight (27 quotable items, `--verify` OK), and the memo now carries eight PATENT-STYLE drawings of the evolved core (`figures/pat_fig1–8.png` from `make_patent_figures.py`, Section 7A with the numeral legend; real floorplans, monochrome, MEASURED / ARGUED per caption) plus the four new evidence figures as 4.3b/4.3c/4.6b/4.6c (`.docx` / `.html` rebuilt 21:10); the proposal pack too: `proposal_pack_2026-09-13/` (+ `.zip`) now carries four new figures (`fmax_generalized.png`, `cluster_transport.png`, `ipc_of_f.png`, `dense_cluster_per_block.png`), the eight drawings (`pat_fig*.png`, a section under the ladder) and index sections for §P0.31–§P0.34; the recorded clock figure's caption says its 4.17 GHz is the gate-only ceiling.
+
+## Still open, in order
+
+1. **The surviving gen-3 geometry** (two-sink stack, ladder §4.3) — unchanged, next.
+2. **A rail model** (register §3) — now doubly needed: the 8× / 16× clusters carry 8–16× the
+   reference's cALU current density (ARGUED from X1).
+3. **The dense cluster's cold-end wall** (§P0.32): at 100 µm pitch the tile above a 230–460 W/mm²
+   unit is driven to 253 K and the dye caps. Candidates: `--mr-extractor gaas-retuned` over the
+   cluster, a dual-zone arrangement with a cold-capable hot-zone material, or a coarser tile with
+   a per-block seed. Predictions first.
+4. **The fmax model's architecture inputs** (register §3): a timing report for a core of this
+   class (wire share, FO4 depth); until then quote the sensitivity (wire ±3 %, pipeline ×2).
+5. D2 (the `V_t` lever end to end); Phase 2 (second workload class); net export stays reserved.
+
+## Files this session touched — list for staging (never `git add .`)
+
+New: `HotGauge/HotGauge/power/fmax_model.py`, `HotGauge/HotGauge/power/test_fmax_model.py`,
+`examples/fmax_model_report.py`, `examples/clock_fmax_report.py`, `examples/comet_ipc_reader.py`,
+`examples/cluster_transport_report.py`, `examples/d1_family_power_report.py`, `scripts/clock_fmax.sh`,
+`scripts/cluster_transport_ladder.sh`, `examples/floorplans/outputs/d1_exec0.125/`,
+`examples/floorplans/outputs/d1_exec0.0625/`, `docs/evidence/device_vt_vf_asap7_v100.json`,
+`docs/evidence/fmax_model.json`, `docs/evidence/clock_fmax.json`, `docs/evidence/comet_ipc_vs_f.json`,
+`docs/evidence/cluster_transport.json`, `docs/evidence/d1_exec_density_family_x8x16.json`,
+`docs/evidence/d1_exec_density_family_power.json`.
+Modified: `HotGauge/HotGauge/power/clock_search.py`, `examples/clock_headroom.py`,
+`examples/clock_f1c_report.py`, `examples/iso_package_throughput_report.py`, `scripts/d1_family_ladder.sh`,
+`scripts/build_results_registers.py`, `docs/evidence/clock_f1c.json`, `docs/evidence/iso_package_throughput.json`,
+`docs/PHASE0_CHECKLIST.md`, `docs/RESULTS_REGISTER.md`, `docs/METHODS.md`, `docs/START_HERE.md`,
+`docs/ARCHITECTURE_EVOLUTION.md`, `docs/designs/EVOLUTION_LADDER.md`, `docs/NEXT_SESSION_PROMPT.md`,
+`docs/photonic_cooling/MXL-006-PRO/Update/MXL-006_update_memo.md` (+ `.docx` / `.html` if rebuilt),
+`CLAUDE.md`, this file. `results/` trees are gitignored.
+
+---
+
 # 13 September 2026 — the user's four points on the memo (§P0.29, §P0.30)
 
 1. **The dark-silicon "runaway" at 1.20 / 25 % was an unfinished six-iteration planner descent**

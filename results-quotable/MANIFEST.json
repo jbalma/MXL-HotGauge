@@ -248,7 +248,7 @@
     {
      "file": "iso_package_throughput.json",
      "from": "docs/evidence/iso_package_throughput.json",
-     "sha256": "c89824e15968a6a1efeeef175800c30924020b6d3ccbbe3e3f2f832163e8a340"
+     "sha256": "7c627a4f41bc4de0c89acfa29637b571ee24df5cab49cbd4d9d12f5284dae216"
     }
    ],
    "missing": [],
@@ -282,7 +282,7 @@
     {
      "file": "clock_f1c.json",
      "from": "docs/evidence/clock_f1c.json",
-     "sha256": "04ff9b5e1d4672f8d7548b32b1e2c09eb199941370d0edd00cc12f26bdd67dd4"
+     "sha256": "bed485e54f7118d00ae2533e200e9a0708ed1d846b92727baba566b0b6e25df5"
     }
    ],
    "missing": [],
@@ -422,6 +422,86 @@
     "results/array_coverage_armD_power",
     "results/array_coverage_armD"
    ]
+  },
+  {
+   "slug": "24-generalized-fmax",
+   "files": [
+    {
+     "file": "fmax_model.json",
+     "from": "docs/evidence/fmax_model.json",
+     "sha256": "c6493fe086a5766cb620cca9a7a2266034574ed0612810f5c1a01c48e6d945b5"
+    },
+    {
+     "file": "device_vt_vf_asap7_v100.json",
+     "from": "docs/evidence/device_vt_vf_asap7_v100.json",
+     "sha256": "a868af90abbe2982053242c99ea9cb1c15725c1ca1aedc7520f1315684971b15"
+    },
+    {
+     "file": "clock_fmax.json",
+     "from": "docs/evidence/clock_fmax.json",
+     "sha256": "3fa74cd71c22b5c70c64529b2231472ccd20b6904191de3e381c476df5574cb4"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/clock_fmax"
+   ]
+  },
+  {
+   "slug": "25-cluster-transport",
+   "files": [
+    {
+     "file": "cluster_transport.json",
+     "from": "docs/evidence/cluster_transport.json",
+     "sha256": "fbca354ff7bd51aa1b675fbecb111270486165084799c310fd4fce935d62b8a8"
+    },
+    {
+     "file": "d1_exec_density_family_x8x16.json",
+     "from": "docs/evidence/d1_exec_density_family_x8x16.json",
+     "sha256": "f37c8a3e6535ca528bcc23035a6c66972c2d7a4f827fecbeaabe567239adaee7"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/cluster_transport"
+   ]
+  },
+  {
+   "slug": "26-dense-cluster-per-block",
+   "files": [
+    {
+     "file": "d1_exec_density_family_power.json",
+     "from": "docs/evidence/d1_exec_density_family_power.json",
+     "sha256": "8d82351dd0a0d6a7a08fe24bd4675dd17d4ef021dbc200caacdf3096e8463334"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/d1_family_power",
+    "results/anchor_2026-09-13"
+   ]
+  },
+  {
+   "slug": "27-ipc-of-f",
+   "files": [
+    {
+     "file": "comet_ipc_vs_f.json",
+     "from": "docs/evidence/comet_ipc_vs_f.json",
+     "sha256": "23ba312fdba7118b252ffbe5a6fd4575552ba71b4ea3f3508220929f2c136752"
+    },
+    {
+     "file": "clock_f1c.json",
+     "from": "docs/evidence/clock_f1c.json",
+     "sha256": "bed485e54f7118d00ae2533e200e9a0708ed1d846b92727baba566b0b6e25df5"
+    },
+    {
+     "file": "iso_package_throughput.json",
+     "from": "docs/evidence/iso_package_throughput.json",
+     "sha256": "7c627a4f41bc4de0c89acfa29637b571ee24df5cab49cbd4d9d12f5284dae216"
+    }
+   ],
+   "missing": [],
+   "raw": []
   }
  ]
 }

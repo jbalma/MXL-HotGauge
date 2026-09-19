@@ -86,6 +86,10 @@ from HotGauge.power.clock_search import (scale_trace_for_clock, find_max_sustain
                                          scale_trace_for_clock_per_core, scale_cores,
                                          single_core_turbo, emphasise_units, VF_TABLE_MAX_GHZ)
 from HotGauge.power.performance_model import FMaxModel, performance_summary
+# §P0.31: the generalized f_max(V, T | logic depth, wire, skew) with a reliability-budgeted V_max
+from HotGauge.power.fmax_model import (GeneralizedFmaxModel, load_fmax_model, parse_fmax_spec,
+                                       core_gradient_K)
+from HotGauge.thermal.extractor import make_extractor, EXTRACTORS
 from HotGauge.thermal.utils import K_to_C
 from HotGauge.thermal.arm_consistency import check_arm_consistency
 
@@ -155,8 +159,8 @@ def make_sink(args, area_m2, r_th):
     return BaffledFinSink(args.cfm, area_m2, ambient_K=args.ambient_K)
 
 
-def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_model, t_ref,
-                   n_cores, sink, stack, use_mr, f_GHz, tag, wiring=None):
+def _evaluate_clock_once(args, flp, base_trace, leak_ref_base, geom, name_map, leak_model, t_ref,
+                         n_cores, sink, stack, use_mr, f_GHz, tag, wiring=None, run_tag=None):
     """One coupled solve at clock ``f_GHz``: rescale the trace, run the leakage fixed point
     (with damping verification), optionally clip hotspots with MR, return the peak.
 
@@ -189,20 +193,24 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
         # plan between solves and the solver renders whatever is current when it is built.
         return ICEThermalSolver(stack, flp, args.tech_node,
                                 run_base_dir=os.path.join(args.out_dir, tag,
-                                                          'f{:.3f}'.format(f_GHz), sub),
+                                                          run_tag or 'f{:.3f}'.format(f_GHz), sub),
                                 initial_temp=args.ambient_K, num_cores=n_cores,
                                 single_thread=True, mode='steady',
                                 session_cache=args.session_cache,
+                                # §P0.19: the extractor cap needs the array die's own temperatures
+                                mr_temps=bool(wiring is not None and args.mr_extractor != 'none'),
                                 **(wiring.solver_kwargs() if wiring else {}))
 
     def solve_with_leakage(tr):
         counter['n'] += 1
-        r = run_leakage_feedback(tr, leak_ref, solver_factory('it{:02d}'.format(counter['n'])),
+        solver = solver_factory('it{:02d}'.format(counter['n']))
+        r = run_leakage_feedback(tr, leak_ref, solver,
                                  model=leak_model, T_ref=t_ref, num_cores=n_cores,
                                  tol_K=args.tol, max_iter=args.max_iter, relax=args.relax,
                                  t_floor_K=T_FLOOR_K, bridge_aggregates=True,
                                  verify=not args.no_verify, verify_tol_K=args.verify_tol)
         state['last'] = r
+        state['last_mr_temps'] = getattr(solver, 'last_mr_temps', None)
         state['n_solves'] += 1
         spread = r.get('peak_spread_K')
         if spread is not None:
@@ -211,10 +219,17 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
             state['unconverged'] += 1
         return r['temp_trace']
 
+    # §P0.19 / §P0.29: the target device's cooling curve as the per-tile cap, and the planner's
+    # envelope shape. Both default to the recorded configuration (no extractor, seed shape).
+    extractor = None if args.mr_extractor == 'none' else make_extractor(args.mr_extractor)
     mr = MRParams(target_K=args.mr_target_K, h_max=args.mr_h_max,
                   dt_max_K=args.mr_dt_max, eta_asf=args.eta_asf,
                   laser_wallplug=args.eta_laser, lpc_efficiency=args.eta_lpc,
-                  spot_min_um=args.spot_min_um, spot_policy=args.spot_policy)
+                  spot_min_um=args.spot_min_um, spot_policy=args.spot_policy,
+                  extractor=extractor, envelope_shape=args.mr_envelope_shape)
+
+    def last_tile_temps():
+        return state.get('last_mr_temps')
 
     def last_status():
         r = state.get('last') or {}
@@ -266,6 +281,7 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
                               # second-law value is +120 W.
                               recovery_at_junction=args.recovery_at_junction,
                               T_0_K=args.T0_K,
+                              tile_temps_fn=(last_tile_temps if extractor is not None else None),
                               **(wiring.planner_kwargs() if wiring else {}))
         temps, acc = res['temp_trace'], res['accounting']
     else:
@@ -326,6 +342,94 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
                                          num_cores=n_cores)
     out['p_injected_W'] = die_power_of_trace(trace, flp, args.tech_node, num_cores=n_cores)
     out['temps'] = {k: float(np.ravel(v)[-1]) for k, v in temps.items()}
+    return out
+
+
+def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_model, t_ref,
+                   n_cores, sink, stack, use_mr, f_GHz, tag, wiring=None):
+    """One candidate clock, self-consistent with the die it produces (§P0.31).
+
+    With a plain V/F curve this is one coupled solve. With the generalized f_max model the
+    supply a clock needs depends on the worst block's temperature and the core-domain gradient
+    OF THAT SOLVE, so the candidate is solved in the context the previous candidate left, the
+    context is re-read from the field, and the solve is repeated while the implied supply moves
+    by more than ``--fmax-v-tol``. The verdict then carries the non-thermal limits by name: the
+    clock needed a supply above the reliability-budgeted ``V_max`` at the solved temperature
+    (``reliability:<mechanism>``), above the device's peak-clock supply (``device``), or above
+    the simulated sweep (``sweep_end``).
+    """
+    model = args._vf_model
+    if not isinstance(model, GeneralizedFmaxModel):
+        return _evaluate_clock_once(args, flp, base_trace, leak_ref_base, geom, name_map,
+                                    leak_model, t_ref, n_cores, sink, stack, use_mr, f_GHz, tag,
+                                    wiring=wiring)
+    ctx = args._fmax_ctx.setdefault(tag, {'T_K': model.T_anchor, 'dT_K': model.p['dT_anchor_K']})
+    # The first pass is only as good as its starting context. The bisection's candidates are
+    # far apart early on, so inherit the LAST solve's (T, dT) only as a fallback and prefer a
+    # linear estimate from the two converged evaluations nearest in clock -- measured on the
+    # smoke run, the inherited context cost two re-solves per candidate on the control arm.
+    hist = args._fmax_hist.setdefault(tag, [])
+    done = sorted(hist, key=lambda h: abs(h['f'] - f_GHz))[:2]
+    if len(done) == 2 and abs(done[0]['f'] - done[1]['f']) > 1e-6:
+        (f0, T0, d0), (f1, T1, d1) = ((h['f'], h['T_K'], h['dT_K']) for h in done)
+        w = (f_GHz - f0) / (f1 - f0)
+        w = max(-1.0, min(2.0, w))                   # a bounded extrapolation
+        ctx.update({'T_K': T0 + w * (T1 - T0), 'dT_K': max(0.0, d0 + w * (d1 - d0))})
+    elif len(done) == 1:
+        ctx.update({'T_K': done[0]['T_K'], 'dT_K': done[0]['dT_K']})
+    passes = []
+    out = None
+    for i in range(max(1, int(args.fmax_max_passes))):
+        model.set_context(ctx['T_K'], ctx['dT_K'])
+        v_used, v_clamped = model.voltage(f_GHz)
+        v_pk, f_pk, at_end = model.device_peak()
+        out = _evaluate_clock_once(args, flp, base_trace, leak_ref_base, geom, name_map,
+                                   leak_model, t_ref, n_cores, sink, stack, use_mr, f_GHz, tag,
+                                   wiring=wiring,
+                                   run_tag='f{:.3f}'.format(f_GHz) + ('' if i == 0 else '_p%d' % i))
+        rec = {'pass': i, 'T_context_K': ctx['T_K'], 'dT_context_K': ctx['dT_K'],
+               'V_used_V': v_used, 'v_clamped': v_clamped, 'peak_K': out.get('peak_K')}
+        if out.get('peak_K') is None:
+            # a diverged solve leaves no field to re-read; keep the context
+            passes.append(rec)
+            break
+        dT, dT_mean, core = core_gradient_K(out['temps'])
+        ctx.update({'T_K': float(out['peak_K']), 'dT_K': dT})
+        model.set_context(ctx['T_K'], ctx['dT_K'])
+        if not out.get('diverged') and not out.get('unconverged'):
+            hist.append({'f': float(f_GHz), 'T_K': ctx['T_K'], 'dT_K': dT})
+        v_new, _ = model.voltage(f_GHz)
+        rec.update({'dT_K': dT, 'dT_mean_K': dT_mean, 'dT_core': core, 'V_implied_V': v_new,
+                    'dV_V': v_new - v_used})
+        passes.append(rec)
+        if abs(v_new - v_used) <= args.fmax_v_tol:
+            break
+    last = passes[-1]
+    v_used = last['V_used_V']
+    T_eval = ctx['T_K']
+    dT_eval = ctx['dT_K']
+    rel = model.v_max_reliability(T_eval, dT_eval)
+    ceiling = model.f_max_at(T_eval, dT_eval)
+    reason = None
+    if last['v_clamped']:
+        reason = 'sweep_end' if ceiling['limiter'] == 'sweep_end' else 'device'
+    elif v_used > rel['v_max_V'] + 1e-6:
+        reason = 'reliability:' + rel['binding']
+    if reason is not None:
+        out['unsustainable_reason'] = reason
+    terms = model.period_terms(v_used, T_eval, dT_eval)
+    out['fmax'] = {
+        'V_used_V': v_used, 'v_clamped': last['v_clamped'], 'T_eval_K': T_eval, 'dT_eval_K': dT_eval,
+        'v_max_reliability_V': rel['v_max_V'], 'reliability_binding': rel['binding'],
+        'v_max_per_mechanism': {k: v['v_max_V'] for k, v in rel['per_mechanism'].items()},
+        'acceleration_at_V_used': model.acceleration(v_used, T_eval, dT_eval),
+        'ceiling_at_context': {k: ceiling[k] for k in ('f_max_GHz', 'v_max_V', 'limiter',
+                                                        'v_device_peak_V', 'f_device_peak_GHz',
+                                                        'dominant_term')},
+        'period_terms': terms, 'period_dominated_by': terms['dominant'],
+        'logic_depth_for_report_GHz': model.logic_depth_for(args.fmax_report_GHz, v_used, T_eval, dT_eval),
+        'report_GHz': args.fmax_report_GHz,
+        'n_passes': len(passes), 'passes': passes, 'unsustainable_reason': reason}
     return out
 
 
@@ -404,6 +508,14 @@ def _parse_vf_source(spec):
     spec = (spec or 'table').strip()
     if spec == 'table':
         return None
+    if spec.startswith('fmax'):
+        # §P0.31: the generalized f_max(V, T | logic depth, wire, skew) with V_max from an
+        # Arrhenius reliability budget at the cooled temperature; anchored ONCE at the trace's
+        # 3.8 GHz / 0.70 V / 330 K. 'fmax:N=10,w=0.3,ref=native,tddb_n=40,...' sets parameters.
+        try:
+            return load_fmax_model(**parse_fmax_spec(spec))
+        except (OSError, ValueError, KeyError) as e:
+            raise SystemExit('--vf-source {}: {}'.format(spec, e))
     if spec.startswith('spice'):
         # P0.18: the V/F SHAPE simulated from the ASAP7 card (I_on(V)/V on the diagonal), at the
         # tabulated temperature nearest the one asked for; anchored on the trace's clock at the
@@ -417,8 +529,8 @@ def _parse_vf_source(spec):
             raise SystemExit('--vf-source {}: {} (run examples/device_vt_vf_spice.py first)'
                              .format(spec, e))
     if not spec.startswith('irds'):
-        raise SystemExit("--vf-source must be 'table', 'irds:<year>[:<anchor>]' or "
-                         "'spice[:<T_K>]', got %r" % spec)
+        raise SystemExit("--vf-source must be 'table', 'irds:<year>[:<anchor>]', "
+                         "'spice[:<T_K>]' or 'fmax[:k=v,...]', got %r" % spec)
     from HotGauge.power.irds_vf import IRDSVFModel
     parts = spec.split(':')
     year = int(parts[1]) if len(parts) > 1 and parts[1] else 2024
@@ -581,6 +693,23 @@ def main():
     ap.add_argument('--mr-h-max', type=float, default=DEFAULT_H_MAX_W_PER_MM2)
     ap.add_argument('--mr-dt-max', type=float, default=DEFAULT_DT_MAX_K)
     ap.add_argument('--mr-iter', type=int, default=6)
+    ap.add_argument('--mr-extractor', default='none', choices=['none'] + sorted(EXTRACTORS),
+                    help='§P0.19: the extractor platform whose cooling curve caps each tile at '
+                         'delivery (dye = the v98/v100 target device). none = the recorded rows.')
+    ap.add_argument('--mr-envelope-shape', default='seed', choices=('seed', 'power'),
+                    help="§P0.29: the planner's envelope shape. seed = every recorded clock row "
+                         "(a uniform per-block allotment, an upper bound); power = each block "
+                         "capped at its own dissipation (18-33 %% cheaper on the rescue ladder). "
+                         "Quote every plan with its shape.")
+    # §P0.31: the generalized f_max model's self-consistency loop and its 'what would 10 GHz need'
+    ap.add_argument('--fmax-v-tol', type=float, default=0.005,
+                    help='re-solve a candidate clock while the supply implied by the solved '
+                         'temperature/gradient moves by more than this [V] (fmax source only). '
+                         '5 mV is ~0.03 GHz on the card, under the 0.05 GHz bisection tolerance')
+    ap.add_argument('--fmax-max-passes', type=int, default=3)
+    ap.add_argument('--fmax-report-GHz', type=float, default=10.0,
+                    help='report the logic depth at which the solved operating point would '
+                         'clock this [GHz] (fmax source only)')
     # Design E: 'clip' targets hot blocks (the assumption behind every MR result here);
     # 'distributed' spreads a fixed budget over the die, which is the control that tests it.
     ap.add_argument('--mr-mode', default='clip', choices=('clip', 'distributed'))
@@ -643,7 +772,16 @@ def main():
     args._vf_model = _parse_vf_source(args.vf_source)
     # An explicit --f-hi is the caller's; the DEFAULT is the shipped table's top and would be a
     # silent 5.0 GHz ceiling on a node whose real ceiling is lower. Let the model set it.
-    if args._vf_model is not None and args.f_hi == VF_TABLE_MAX_GHZ:
+    args._fmax_ctx = {}
+    args._fmax_hist = {}
+    if isinstance(args._vf_model, GeneralizedFmaxModel):
+        # The ceiling is now a property of the SOLVED temperature, so the search is not capped
+        # in advance: its top is the most optimistic clock the card admits (the device's peak
+        # clock in the anchor context) and every candidate carries its own limit by name.
+        if args.f_hi == VF_TABLE_MAX_GHZ:
+            args.f_hi = args._vf_model.device_peak(args._vf_model.T_anchor,
+                                                   args._vf_model.p['dT_anchor_K'])[1]
+    elif args._vf_model is not None and args.f_hi == VF_TABLE_MAX_GHZ:
         args.f_hi = args._vf_model.f_max
 
     node_obj = NODES[args.node_model] if args.node_model else None
@@ -809,10 +947,15 @@ def main():
                 seen[round(f, 6)] = r
                 return r
 
+            _gen = isinstance(args._vf_model, GeneralizedFmaxModel)
+            if _gen:
+                # each arm starts its context afresh at the anchor; the candidates then inherit
+                args._fmax_ctx.pop(sub, None)
+                args._fmax_hist.pop(sub, None)
             search = find_max_sustainable_clock(
                 evaluate, args.f_lo, args.f_hi, tol_GHz=args.f_tol,
                 thermal_limit_K=thermal_limit_K, vf_model=args._vf_model,
-                cap_at_vf_table=not args.above_vf_table)
+                cap_at_vf_table=(not args.above_vf_table) and not _gen)
 
             f_s = search['f_sustainable_GHz']
             best = seen.get(round(f_s, 6)) if f_s is not None else None
@@ -834,6 +977,19 @@ def main():
                    'evaluations': [{k: v for k, v in e.items()} for e in search['evaluations']],
                    'fan_W': sink.parasitic_power_W(),
                    'rated_GHz': node_obj.f_nominal_GHz if node_obj else None}
+            if isinstance(args._vf_model, GeneralizedFmaxModel):
+                # §P0.31: the generalized model's diagnostics at the sustainable clock and at
+                # every candidate, so the row names its limiter and its period's composition.
+                row['fmax'] = (best or {}).get('fmax')
+                row['fmax_evaluations'] = [
+                    {'f_GHz': e['f_GHz'], 'sustainable': e['sustainable'], 'reason': e['reason'],
+                     **{k: v for k, v in ((seen.get(round(e['f_GHz'], 6)) or {}).get('fmax') or {}).items()
+                        if k in ('V_used_V', 'T_eval_K', 'dT_eval_K', 'v_max_reliability_V',
+                                 'reliability_binding', 'period_dominated_by', 'n_passes',
+                                 'unsustainable_reason')}}
+                    for e in search['evaluations']]
+                row['mr_envelope_shape'] = args.mr_envelope_shape if use_mr else None
+                row['mr_extractor'] = args.mr_extractor if use_mr else None
             if best is not None and best.get('peak_K'):
                 p_cool = sink.parasitic_power_W() + best['p_mr_net_W']
                 g = f_s * args.flops_per_cycle * args.cores
@@ -889,6 +1045,9 @@ def main():
                    'pitch_um': args.pitch_um, 'burial_um': args.burial_um,
                    'array_coverage': args.array_coverage,
                    'mr_material': args.mr_material, 'cell_um': args.cell_um,
+                   'mr_extractor': args.mr_extractor, 'mr_envelope_shape': args.mr_envelope_shape,
+                   'fmax_model': (args._vf_model.describe()
+                                  if isinstance(args._vf_model, GeneralizedFmaxModel) else None),
                    'rated_GHz': node_obj.f_nominal_GHz if node_obj else None,
                    'rows': rows}, f, indent=2)
     print('\n  written: {}'.format(out))

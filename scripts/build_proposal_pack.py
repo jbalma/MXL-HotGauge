@@ -357,7 +357,7 @@ def plot_clock(out):
     for ax in (a, b):
         ax.set_xticks(range(len(order))); ax.set_xticklabels([l for _, l in order], fontsize=8)
     a.set_ylim(2.5, 5.3); a.set_ylabel('sustainable clock, GHz'); a.set_title('The clock as the free variable: three cooling arms')
-    a.axhline(4.173, color=C['muted'], lw=1); a.text(0.01, 0.955, 'SPICE device ceiling 4.17 GHz (10 % overdrive)', transform=a.transAxes, fontsize=8, color=C['text2'])
+    a.axhline(4.173, color=C['muted'], lw=1); a.text(0.01, 0.955, 'gate-only SPICE ceiling 4.17 GHz (10 % overdrive; see the generalized search)', transform=a.transAxes, fontsize=8, color=C['text2'])
     a.legend(fontsize=8, loc='upper left', bbox_to_anchor=(0.0, 0.93))
     b.set_ylabel('GFLOP/s per package watt (die + fan + net laser)'); b.set_title('Efficiency falls as the clock rises, on every arm'); b.legend(fontsize=8, loc='upper right')
     fn = 'clock_vs_cooling.png'; fig.savefig(os.path.join(out, fn)); plt.close(fig)
@@ -365,7 +365,9 @@ def plot_clock(out):
                 'trace clock; dynamic ∝ V²f on the device V/F, leakage ∝ V (assumed). The laser runs the die at the '
                 'device\'s own ceiling where the conventional package must clock down (+14 % at 1.00 W/mm², +26 % at 1.20; '
                 '+34 % on the shipped 5 GHz table, thermal-limited at 2.28 W/mm²). Throughput is f × 32 FLOP/cycle × 34 cores. '
-                'Source: docs/evidence/clock_f1c_density.json.')
+                '[!] 13 Sep (§P0.31): the 4.17 GHz ceiling is the GATE-ONLY model; with wire, skew and overhead in the period and a '
+                'reliability-budgeted V_max at the solved temperature the laser arm ends at 3.76–3.83 GHz (next figure), and in '
+                'instructions per second the gains are +11 / +21 % (IPC(f), §P0.33). Source: docs/evidence/clock_f1c_density.json.')
 
 
 def plot_accelerator(out):
@@ -577,6 +579,165 @@ def plot_pdn(out):
                 'constants (Black n = 2, E_a = 0.9 eV; insertion delay 150 ps); the gradients are measured. Source: docs/evidence/pdn_em_skew.json.')
 
 
+def plot_fmax(out):
+    m = J('fmax_model.json'); c = J('clock_fmax.json')
+    if not m or not c or not c.get('runs'):
+        return None
+    fig, (a, b) = plt.subplots(1, 2, figsize=(14, 5.0), gridspec_kw={'width_ratios': [1, 1.35]})
+    rows = m['tables']['ceiling_vs_T_qual']
+    T = [r['T_C'] for r in rows]
+    a.plot(T, [r['v_max_per_mechanism_V']['tddb'] for r in rows], color=C['s2'], marker='o', label='V_max, TDDB budget (n = 40, 0.6 eV)')
+    a.plot(T, [min(r['v_max_per_mechanism_V']['em'], 1.0) for r in rows], color=C['s3'], marker='s', ls='--', label='V_max, EM budget (Black n = 2, 0.9 eV; 1.0 V = sweep end)')
+    a.plot(T, [r['v_device_peak_V'] for r in rows], color=C['muted'], marker='^', ls=':', label='device peak-clock supply (I_on/V saturates)')
+    a.axhline(0.77, color=C['muted'], lw=1); a.text(0.98, 0.30, 'qualification: 0.77 V at 100 °C\n(the 10 % overdrive, restated)', transform=a.transAxes, fontsize=8, color=C['text2'], ha='right')
+    a2 = a.twinx(); a2.plot(T, [r['f_max_GHz'] for r in rows], color=C['s1'], marker='D', label='f_max, same 20-FO4 pipeline (right axis)'); a2.set_ylabel('f_max, GHz'); a2.grid(False)
+    a.set_xlabel('worst block temperature, °C'); a.set_ylabel('supply, V'); a.set_title('The reliability budget buys supply as an Arrhenius ladder')
+    h1, l1 = a.get_legend_handles_labels(); h2, l2 = a2.get_legend_handles_labels(); a.legend(h1 + h2, l1 + l2, fontsize=7, loc='lower left')
+    order = [('qual_d0.78', '0.78 W/mm²\n92 °C'), ('qual_d1.00', '1.00\n92 °C'), ('qual_d1.20', '1.20\n92 °C'),
+             ('qual_d1.00_T75', '1.00\n75 °C'), ('qual_d1.00_T60', '1.00\n60 °C'), ('qual_d1.00_N10', '1.00, 92 °C\n10-FO4\npipeline'), ('native_d1.00', '1.00, 92 °C\nnative\nbudget')]
+    order = [(k, l) for k, l in order if k in c['runs']]
+    arms = (('control', 'conventional package', C['s2']), ('array_idle', 'GaAs array, no light', C['s3']), ('array_on', 'laser on', C['s1']))
+    w = 0.26
+    short = {'over_thermal_limit': 'thermal', 'thermal_runaway': 'runaway', 'reliability:tddb': 'TDDB', 'reliability:em': 'EM', 'device': 'device', 'sweep_end': 'sweep'}
+    for j, (arm, lab, col) in enumerate(arms):
+        xs = [i + (j - 1) * (w + 0.02) for i in range(len(order))]
+        f = [c['runs'][k]['rows'].get(arm, {}).get('f_GHz') or 0 for k, _ in order]
+        b.bar(xs, f, width=w, color=col, label=lab)
+        for x, v, (k, _) in zip(xs, f, order):
+            r = c['runs'][k]['rows'].get(arm, {})
+            if v:
+                b.text(x, v + 0.04, '%.2f\n%s' % (v, short.get(r.get('limited_by'), r.get('limited_by') or '')), ha='center', fontsize=6.5, color=C['text2'])
+        g = [c['runs'][k]['rows'].get(arm, {}).get('f1c_gate_only_GHz') for k, _ in order]
+        if arm == 'array_on':
+            b.plot([x for x, v in zip(xs, g) if v], [v for v in g if v], ls='none', marker='_', ms=14, mew=2, color=C['s4'], label='recorded F1c (gate-only model)')
+    b.set_xticks(range(len(order))); b.set_xticklabels([l for _, l in order], fontsize=7)
+    b.set_ylim(2.5, 6.6); b.set_ylabel('sustainable clock, GHz (uncalibrated)'); b.set_title('The clock search re-run so each row names its limiter'); b.legend(fontsize=7, loc='upper left')
+    fn = 'fmax_generalized.png'; fig.savefig(os.path.join(out, fn)); plt.close(fig)
+    return fn, ('Register §1.3 / §1.6, §P0.31. Left: the model arithmetic on the ASAP7 card — the supply at which the worst block keeps the '
+                'qualification point\'s lifetime, per mechanism; TDDB binds at every temperature below the corner and buys +1 % of supply at '
+                '92 °C, +6 % at 60 °C, +12 % at 27 °C. Right: the coupled search (34-core, arm D, per-block shape, target device): the laser '
+                'arm ends at 3.76–3.83 GHz on reliability at the 92 °C target (+7 % / +15 % over the control at 1.00 / 1.20 W/mm²), a 60 °C '
+                'target buys 4.08 GHz for 104 W, a 10-FO4 pipeline reaches 5.75 GHz where the cooler binds again (runaway at 283 W), and '
+                'under the native-lifetime budget every arm is EM-bound below the trace clock. 10 GHz needs a 6–7 FO4 pipeline. ARGUED '
+                'constants (wire 30 %, overhead 8 %, D_ins 150 ps, n and E_a); absolute clocks inherit the 3.8 GHz anchor. Sources: '
+                'docs/evidence/fmax_model.json, clock_fmax.json.')
+
+
+def plot_cluster_transport(out):
+    d = J('cluster_transport.json')
+    if not d or not d.get('members'):
+        return None
+    fig, (a, b) = plt.subplots(1, 2, figsize=(14, 5.0))
+    geoms = [(20, 200), (20, 100), (5, 200), (5, 100)]
+    labels = ['%d µm burial\n%d µm pitch' % g for g in geoms]
+    Ws = [111.2, 121.3, 161.8, 202.2, 242.6]
+    for mi, (F, name, col) in enumerate(((0.125, '8× cluster (230 W/mm²)', C['s1']), (0.0625, '16× cluster (460 W/mm²)', C['s2']))):
+        pts = d['members'].get(str(F), d['members'].get(F, {})).get('points', [])
+        for gi, (B, P) in enumerate(geoms):
+            for wi, W in enumerate(Ws):
+                v = next((p for p in pts if p['burial_um'] == B and p['pitch_um'] == P and abs(p['W'] - W) < 0.2), None)
+                if not v:
+                    continue
+                x = gi + (mi - 0.5) * 0.36
+                y = wi
+                if v.get('holds'):
+                    a.scatter(x, y, s=140, color=col, marker='s')
+                    a.text(x, y, '%.0f' % (v['Q_W'] or 0), ha='center', va='center', fontsize=6.5, color='white')
+                elif v.get('envelope_only'):
+                    a.scatter(x, y, s=140, facecolors='none', edgecolors=col, marker='s', linewidths=1.5)
+                    a.text(x, y, 's>1', ha='center', va='center', fontsize=6, color=col)
+                else:
+                    a.scatter(x, y, s=120, color=col, marker='x', linewidths=2)
+                    if v.get('tiles_capped'):
+                        a.text(x + 0.12, y, '%d capped' % v['tiles_capped'], fontsize=6, color=C['text2'], va='center')
+        a.scatter([], [], s=80, color=col, marker='s', label=name + ': held (plan, W)')
+    a.scatter([], [], s=80, facecolors='none', edgecolors=C['muted'], marker='s', label='envelope-only (s > 1, not a rescue)')
+    a.scatter([], [], s=60, color=C['muted'], marker='x', label='no steady state')
+    a.set_xticks(range(4)); a.set_xticklabels(labels, fontsize=8); a.set_yticks(range(len(Ws))); a.set_yticklabels(['%.0f W (%.2f-eq)' % (W, W / REF_MM2) for W in Ws], fontsize=8)
+    a.set_ylim(-0.6, len(Ws) - 0.4); a.set_title('Where the densified cluster holds (pitch, not burial, is the lever)', fontsize=10); a.legend(fontsize=7, loc='upper left', bbox_to_anchor=(0, -0.12), ncol=2)
+    for F, name, col in ((0.125, '8×', C['s1']), (0.0625, '16×', C['s2'])):
+        pts = d['members'].get(str(F), d['members'].get(F, {})).get('points', [])
+        for (B, P), mk in (((20, 200), 'o'), ((20, 100), 's'), ((5, 200), '^'), ((5, 100), 'D')):
+            sel = sorted([p for p in pts if p['burial_um'] == B and p['pitch_um'] == P and p.get('max_tile_flux')], key=lambda p: p['W'])
+            if sel:
+                b.plot([p['W'] for p in sel], [p['max_tile_flux'] for p in sel], color=col, marker=mk, ls='-' if P == 100 else '--', ms=5,
+                       label='%s, %d µm burial, %d µm pitch' % (name, B, P))
+    b.axhline(813, color=C['muted'], lw=1); b.text(0.02, 0.95, 'target device at 300 K tiles: 813 W/mm²', transform=b.transAxes, fontsize=8, color=C['text2'], va='top')
+    b.axhline(263, color=C['s4'], lw=1); b.text(0.02, 0.62, 'the same device at 263 K: 263 W/mm² — the tiles above the cluster\nare driven to 253–258 K at 100 µm pitch and the top rung is capped', transform=b.transAxes, fontsize=7.5, color=C['text2'], va='top')
+    b.set_yscale('log'); b.set_xlabel('die power, W'); b.set_ylabel('peak tile demand, W/mm²'); b.set_title('Tile demand vs the film\'s cold-end capability', fontsize=10); b.legend(fontsize=6.5, loc='lower right')
+    fn = 'cluster_transport.png'; fig.savefig(os.path.join(out, fn)); plt.close(fig)
+    return fn, ('Register §1.3, §P0.32. The execution cluster at 8× and 16× the reference density (230 / 460 W/mm² cALUs), matched die watts, '
+                'per-block planner shape, 50 µm cells. The 8× holds to the 2.00-equivalent rung at every burial and pitch; the 16× only at '
+                '100 µm pitch. The top rung is lost to conservation at coarse pitch (s = 1.00–1.02) and, at fine pitch, to the extractor\'s '
+                'own cold end (tiles at 253 K asked for 170–200 W/mm²). Premium over the reference at the same geometry 1.84× / 1.86× at '
+                '202 W; the reference itself is 14–31 % cheaper at 5–20 µm burial under this shape (§P0.28\'s "thinning does not help" was '
+                'the seed planner\'s). The 16× cALU is sub-cell on the 50 µm grid: its holds are lower bounds. Rails: 8× / 16× the '
+                'reference\'s cALU current density (ARGUED from X1). Source: docs/evidence/cluster_transport.json.')
+
+
+def plot_ipc(out):
+    d = J('comet_ipc_vs_f.json'); f1 = J('clock_f1c.json')
+    if not d or not d.get('benchmarks'):
+        return None
+    fig, (a, b) = plt.subplots(1, 2, figsize=(11, 4.4))
+    for name, lab, col in (('fft_1to20', 'FFT-style kernel (1 core)', C['s1']), ('splash2_lu.cont-large-4', 'lu.cont-large (4 cores)', C['s2']),
+                           ('parsec_swaptions-small-4', 'swaptions-small (4 cores)', C['s3']), ('freqmine', 'freqmine', C['s4'])):
+        s_ = d['benchmarks'].get(name)
+        if s_:
+            a.plot(s_['f_GHz'], [i / s_['ipc_active_mean'][0] for i in s_['ipc_active_mean']], marker='o', color=col, label=lab)
+    a.axvspan(3.3, 4.9, color=C['band'], zorder=0); a.text(4.1, 0.97, 'the clock\nsearch band', ha='center', fontsize=7.5, color=C['text2'])
+    a.set_xlabel('core clock, GHz (memory latency fixed in ns)'); a.set_ylabel('IPC / IPC at the lowest clock'); a.set_title('IPC(f) from CoMeT: the memory wall'); a.legend(fontsize=7.5)
+    el = (f1 or {}).get('throughput_elasticity') or {}
+    tags = [t for t in ('spice_d0.78', 'spice_d1.00', 'spice_d1.20', 'table_d1.00') if t in el]
+    if tags:
+        xs = range(len(tags)); w = 0.38
+        b.bar([x - w / 2 for x in xs], [100 * el[t]['clock_gain'] for t in tags], width=w, color=C['s4'], label='clock gain, laser vs control')
+        b.bar([x + w / 2 for x in xs], [100 * el[t]['throughput_gain'] for t in tags], width=w, color=C['s1'], label='instructions/s gain (IPC(f), FFT)')
+        for x, t in zip(xs, tags):
+            b.text(x + w / 2, 100 * el[t]['throughput_gain'] + 0.5, 'ε %.2f' % el[t]['elasticity'], ha='center', fontsize=7.5, color=C['text2'])
+        b.set_xticks(list(xs)); b.set_xticklabels([t.replace('spice_d', 'SPICE V/F\n').replace('table_d', 'shipped table\n') + ' W/mm²' for t in tags], fontsize=8)
+        b.set_ylabel('% over the conventional package'); b.set_title('A fifth of every clock gain is lost to the memory wall'); b.legend(fontsize=7.5, loc='upper left')
+    fn = 'ipc_of_f.png'; fig.savefig(os.path.join(out, fn)); plt.close(fig)
+    return fn, ('Register §1.3 / §4, §P0.33. IPC per active core from CoMeT\'s 1–20 GHz sweeps (Sniper; only the core clock changes between '
+                'configs). At the recorded F1c operating points the throughput elasticity to clock is 0.78–0.84, so +14 % clock is +11 % '
+                'instructions per second. Measured on a different simulator and core: the SHAPE transfers, not the level; it says nothing '
+                'about whether the device switches at 20 GHz. Source: docs/evidence/comet_ipc_vs_f.json, clock_f1c.json.')
+
+
+def plot_dense_power(out):
+    d = J('d1_exec_density_family_power.json')
+    if not d or not d.get('members'):
+        return None
+    fig, ax = plt.subplots(1, 2, figsize=(11, 4.4), sharey=False)
+    for i, (F, name) in enumerate(((0.5, '×0.5 cluster (2× denser)'), (0.25, '×0.25 cluster (4× denser)'))):
+        rows = d['members'].get(str(F)) or d['members'].get(F) or {}
+        Ws = sorted(float(w) for w in rows)
+        a = ax[i]
+        for shape, col, lab in (('seed', C['s4'], 'seed shape (recorded, upper bound)'), ('power', C['s1'], 'per-block shape')):
+            xs, ys, lost = [], [], []
+            for W in Ws:
+                v = rows[('%g' % W) if ('%g' % W) in rows else ('%.1f' % W)].get(shape)
+                if not v:
+                    continue
+                if v.get('holds') and not (v.get('s') and v['s'] > 1.0):
+                    xs.append(W); ys.append(v['Q_W'])
+                else:
+                    lost.append((W, v))
+            a.plot(xs, ys, marker='o', color=col, label=lab)
+            for W, v in lost:
+                a.scatter([W], [v['Q_W'] or 0], marker='x' if not (v.get('s') and v['s'] > 1) else 's', s=70, facecolors='none' if (v.get('s') and v['s'] > 1) else col, edgecolors=col, linewidths=1.5)
+                a.text(W, (v['Q_W'] or 0) + 6, 'lost' if not (v.get('s') and v['s'] > 1) else 's = %.2f\nenvelope-only' % v['s'], ha='center', fontsize=6.5, color=col)
+        ref = d['reference'].get('power', {})
+        rw = sorted((float(k), v['Q_W']) for k, v in ref.items() if v and v.get('holds') and v.get('Q_W') is not None and float(k) <= 250)
+        a.plot([r[0] for r in rw], [r[1] for r in rw], color=C['muted'], ls='--', label='reference die, per-block shape')
+        a.set_xlabel('die power, W (matched)'); a.set_ylabel('minimum plan, W removed'); a.set_title(name); a.legend(fontsize=7.5, loc='upper left')
+    fn = 'dense_cluster_per_block.png'; fig.savefig(os.path.join(out, fn)); plt.close(fig)
+    return fn, ('Register §1.3, §P0.34. The D1 family re-measured under the per-block planner shape: the ×0.5 cluster holds every rung to '
+                '243 W (s 0.84) and the ×0.25 holds 202 W (s 0.89) — both lost under the seed shape, whose "lost rungs" were the planner\'s. '
+                'Plans 9–59 % below the seed rows; premiums over the per-block reference 1.20 / 1.20 / 1.08× (×0.5) and 1.68 / 1.51× (×0.25) '
+                'die-wide. The ×0.25 at 243 W is envelope-only (s = 1.02) and is never a hold. Source: docs/evidence/d1_exec_density_family_power.json.')
+
+
 def build(out):
     if os.path.isdir(out):
         shutil.rmtree(out)
@@ -594,7 +755,8 @@ def build(out):
                      ('cold', plot_cold_zone), ('cache', plot_cache_objective), ('dense', plot_dense_cluster),
                      ('extractor', plot_extractor), ('leak', plot_leakage_curves),
                      ('dark', plot_dark_silicon), ('twodies', plot_two_dies), ('clock', plot_clock),
-                     ('accel', plot_accelerator), ('burst', plot_burst), ('pdn', plot_pdn)):
+                     ('accel', plot_accelerator), ('burst', plot_burst), ('pdn', plot_pdn),
+                     ('fmax', plot_fmax), ('cluster', plot_cluster_transport), ('ipc', plot_ipc), ('densepower', plot_dense_power)):
         try:
             figs[name] = fn(fig_dir)
         except Exception as ex:      # a missing evidence file must not sink the pack
@@ -603,6 +765,12 @@ def build(out):
         src = os.path.join(_REPO, 'docs', 'designs', 'figures', m, 'floorplan_34core.png')
         if os.path.isfile(src):
             shutil.copy(src, os.path.join(fig_dir, 'floorplan_%s.png' % m))
+    # the patent-style drawings of the evolved core (memo Section 7A, 13 Sep)
+    memo_figs = os.path.join(_REPO, 'docs', 'photonic_cooling', 'MXL-006-PRO', 'Update', 'figures')
+    pat = sorted(f for f in os.listdir(memo_figs) if f.startswith('pat_fig') and f.endswith('.png')) if os.path.isdir(memo_figs) else []
+    for f in pat:
+        shutil.copy(os.path.join(memo_figs, f), os.path.join(fig_dir, f))
+    pat_legend = os.path.join(memo_figs, 'patent_figure_legend.md')
 
     # evidence: the curated quotable set
     ev_files = []
@@ -665,8 +833,15 @@ def build(out):
     w('<h2 id="headline">Headline — the laser rescues a die that has no steady state</h2>')
     w('<h3>Throughput: the clock as the free variable <span class="tag m">MEASURED</span></h3>')
     w(fig_html('clock'))
-    w('<div><div class="tile"><b>35 / 35</b><span>rescue points, three leakage curves</span></div><div class="tile"><b>1.20 → 2.40 W/mm²</b><span>rescue range (unpowered array fails 1.20; laser holds to 2.40 under conservation)</span></div>'
-      '<div class="tile"><b>17 → 139 W</b><span>heat removed at 1.20 → 2.00 (11 → 84 W net)</span></div><div class="tile"><b>0 tiles capped</b><span>by the target device at every rung</span></div></div>')
+    w('<h3>The clock search, generalized: wire, skew, overhead and a reliability budget at the cooled temperature <span class="tag m">MEASURED</span> on <span class="tag a">ARGUED</span> constants</h3>')
+    w('<div class="warn"><strong>13 Sep (§P0.31).</strong> The 4.17 GHz above is the gate-only model at a fixed 10 % overdrive. With a third of the period in wire, skew and setup/jitter and V_max set by an EM/TDDB lifetime budget at the worst block\'s solved temperature, '
+      'the laser arm\'s ceiling at the 92 °C target is <b>3.76–3.83 GHz</b> (+7 % / +15 % over the conventional package at 1.00 / 1.20 W/mm²), a 60 °C target buys <b>4.08 GHz for 104 W</b>, a 10-FO4 pipeline reaches <b>5.75 GHz and the cooler binds again</b>, '
+      'and <b>10 GHz needs a 6–7 FO4 pipeline</b> on this device at any temperature. Quote every clock with its V/F source and the limiter its row names.</div>')
+    w(fig_html('fmax'))
+    w('<h3>Throughput carries IPC(f) <span class="tag m">MEASURED in CoMeT</span></h3>')
+    w(fig_html('ipc'))
+    w('<div><div class="tile"><b>35 / 35</b><span>rescue points, three leakage curves</span></div><div class="tile"><b>1.20 → 3.50 W/mm²</b><span>rescue range under the per-block planner shape (unpowered array fails 1.20; conservation at 3.50; the seed shape\'s 2.40 was the planner\'s)</span></div>'
+      '<div class="tile"><b>12 → 114 W</b><span>heat removed at 1.20 → 2.00, per-block shape (seed shape: 17 → 139 W, upper bounds)</span></div><div class="tile"><b>0 tiles capped</b><span>by the target device at every rung of the reference die — the densified clusters are the exception (below)</span></div></div>')
     w(fig_html('rescue'))
     w(R.get('1.1 The core result — microrefrigeration rescues a die that has no steady state', ''))
 
@@ -685,6 +860,18 @@ def build(out):
     w('<div class="grid"><figure><img src="figures/floorplan_ref.png" alt="reference floorplan"><figcaption>The reference 34-core die (our rendering of our floorplan; 101.1 mm²).</figcaption></figure>'
       '<figure><img src="figures/floorplan_d1_exec0.5.png" alt="dense cluster floorplan"><figcaption>The ×0.5 member: execution units (cALU, iALU, FPU, AVX) at half area, caches and the leftover slab unchanged; 91.3 mm², cluster 2× denser at the same power.</figcaption></figure></div>')
     w(sc_table((d1.get('scorecard') or {})))
+    if pat:
+        w('<h3>The core evolved in response to localized high-power-density cooling — patent-style drawings (13 Sep) <span class="tag m">MEASURED</span> / <span class="tag a">ARGUED</span> per caption</h3>')
+        w('<p>Eight monochrome sheets with reference numerals, drawn from the real floorplans and the evidence files (memo Section 7A). The conventional core and its constraint (FIG. 1); the driven, planner-commanded array (FIG. 2); '
+          'the execution cluster densified 2–16× under tiles matched to it (FIG. 3); the rails widened and the target chosen on a lifetime budget (FIG. 4); the tile against the unit and the film\'s cold end (FIG. 5); the storage die off the heat path (FIG. 6); the composed core (FIG. 7); the ladder (FIG. 8).</p>')
+        for f in pat:
+            w('<figure><img src="figures/%s" alt="%s"></figure>' % (f, esc(f)))
+        if os.path.isfile(pat_legend):
+            w('<details><summary>Reference numerals</summary>%s</details>' % md_to_html(pat_legend))
+    w('<h3>Gen 1 re-measured under the per-block planner shape (13 Sep, §P0.34) <span class="tag m">MEASURED</span></h3>')
+    w(fig_html('densepower'))
+    w('<h3>Gen 1 pushed to 8× / 16×: where transport binds a 230–460 W/mm² functional unit (13 Sep, §P0.32) <span class="tag m">MEASURED</span></h3>')
+    w(fig_html('cluster'))
     w('<h3>Gen 3, the constraint measured: the cache-leakage objective on the monolithic die <span class="tag m">MEASURED</span> — the two-die design <span class="tag a">ARGUED</span></h3>')
     w(fig_html('cache'))
     w(sc_table(d3.get('scorecard')))
