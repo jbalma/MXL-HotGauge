@@ -1,0 +1,2335 @@
+{
+ "note": "\u00a7P0.31 part 1: the generalized f_max model's own arithmetic, before any coupled solve.\n\n    python examples/fmax_model_report.py          # -> docs/evidence/fmax_model.json\n\nNothing here is a thermal measurement. It tabulates what ``HotGauge.power.fmax_model`` says at a\nGIVEN worst-block temperature and core gradient -- the reliability-budgeted V_max per mechanism,\nthe device's peak-clock supply, the ceiling and what sets it, the period's composition, the\nlogic depth 10 GHz would need -- under the stated constants and their sweeps, and scores the\nmodel-arithmetic predictions P1-P3 of \u00a7P0.31. The coupled clock search (``scripts/clock_fmax.sh``)\nis what turns these into operating points.",
+ "model": {
+  "label": "ASAP7 nmos_rvt",
+  "vdd_V": 0.7,
+  "V_sweep_V": [
+   0.3,
+   1.0000000000000007
+  ],
+  "T_rows_K": [
+   200.0,
+   225.0,
+   250.0,
+   275.0,
+   300.0,
+   325.0,
+   330.0,
+   350.0,
+   375.0,
+   400.0,
+   425.0,
+   450.0,
+   475.0,
+   500.0
+  ],
+  "params": {
+   "f_anchor_GHz": 3.8,
+   "T_anchor_K": 330.0,
+   "logic_depth_ref": 20.0,
+   "logic_depth": 20.0,
+   "wire_fraction": 0.3,
+   "overhead_fraction": 0.08,
+   "D_ins_ps": 150.0,
+   "alpha_R_per_K": 0.004,
+   "w_wire": 0.5,
+   "w_cell": 0.5,
+   "dT_anchor_K": 24.0,
+   "budget_ref": "qual",
+   "overdrive_qual": 0.1,
+   "T_qual_K": 373.15,
+   "T_native_K": 351.73,
+   "V_native_V": 0.7,
+   "f_native_GHz": 3.8,
+   "em_n": 2.0,
+   "em_Ea_eV": 0.9,
+   "tddb_n": 40.0,
+   "tddb_Ea_eV": 0.6,
+   "mechanisms": [
+    "em",
+    "tddb"
+   ]
+  },
+  "anchor": {
+   "f_GHz": 3.8,
+   "T_K": 330.0,
+   "period_ps": 263.15789473684214,
+   "gate_ps": 163.6291411186831,
+   "wire_ps": 70.1267747651499,
+   "skew_ps": 8.349347274061762,
+   "overhead_ps": 21.05263157894737,
+   "FO4_ref_ps": 8.181457055934155,
+   "wire_per_stage_ref_ps": 3.506338738257495,
+   "alpha_cell_per_K": 0.0006385262633676447
+  },
+  "budget_reference": {
+   "ref": "qual",
+   "V_q_V": 0.77,
+   "T_q_K": 373.15,
+   "f_q_GHz": 3.7826877927077653
+  },
+  "source_tag": "fmax:asap7:N20:w0.30:qual"
+ },
+ "source": {
+  "path": "docs/evidence/device_vt_vf_asap7_v100.json",
+  "toolchain": {
+   "ngspice": "spice_toolchain/install/bin/ngspice",
+   "osdi": "spice_toolchain/osdi/bsimcmg_vacode110.osdi",
+   "verilog_a": "spice_toolchain/src/VA-Models/code/bsimcmg/vacode110/bsimcmg.va",
+   "module": "bsimcmg",
+   "model_version": "110.0.0"
+  },
+  "v_sweep_end_V": 1.0000000000000007
+ },
+ "tables": {
+  "ceiling_vs_T_qual": [
+   {
+    "T_C": 27.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 4.392633466630931,
+    "v_ceiling_V": 0.8625079964998701,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.8625079964998701,
+    "v_max_over_vdd": 1.2321542807141002,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 1.0000000000000007,
+     "tddb": 0.8625079964998701
+    },
+    "sweep_limited": {
+     "em": true,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9500000000000006,
+    "f_device_peak_GHz": 4.446664530727025,
+    "period_ps": 227.6538681400571,
+    "fractions": {
+     "gate": 0.5986746556940024,
+     "wire": 0.27126109634209666,
+     "skew": 0.03758775392956562,
+     "overhead": 0.0924764940343354
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.9743521961088093,
+    "f_at_0.77V_GHz": 4.214412326487807,
+    "logic_depth_for_10GHz": 7.108550211334723,
+    "logic_depth_for_10GHz_at_vdd": 6.341369070075943
+   },
+   {
+    "T_C": 40.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 4.2767301467333585,
+    "v_ceiling_V": 0.8419908615746654,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.8419908615746654,
+    "v_max_over_vdd": 1.2028440879638078,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 1.0000000000000007,
+     "tddb": 0.8419908615746654
+    },
+    "sweep_limited": {
+     "em": true,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9500000000000006,
+    "f_device_peak_GHz": 4.361035633476617,
+    "period_ps": 233.823497319282,
+    "fractions": {
+     "gate": 0.5940257384388219,
+     "wire": 0.2796991358686073,
+     "skew": 0.03623870155081586,
+     "overhead": 0.09003642414175492
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.8962500444324886,
+    "f_at_0.77V_GHz": 4.1288415008611885,
+    "logic_depth_for_10GHz": 6.89914864149135,
+    "logic_depth_for_10GHz_at_vdd": 6.205575174575484
+   },
+   {
+    "T_C": 50.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 4.188294253702809,
+    "v_ceiling_V": 0.8276313615153974,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.8276313615153974,
+    "v_max_over_vdd": 1.1823305164505677,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 1.0000000000000007,
+     "tddb": 0.8276313615153974
+    },
+    "sweep_limited": {
+     "em": true,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9750000000000005,
+    "f_device_peak_GHz": 4.297107627875923,
+    "period_ps": 238.76068380723603,
+    "fractions": {
+     "gate": 0.5907914691041862,
+     "wire": 0.2856638708224278,
+     "skew": 0.03537004420595844,
+     "overhead": 0.08817461586742756
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.8375651981526717,
+    "f_at_0.77V_GHz": 4.064613550312789,
+    "logic_depth_for_10GHz": 6.738158850663611,
+    "logic_depth_for_10GHz_at_vdd": 6.101876866216533
+   },
+   {
+    "T_C": 60.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 4.102292539541595,
+    "v_ceiling_V": 0.8143572612964345,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.8143572612964345,
+    "v_max_over_vdd": 1.1633675161377637,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 1.0000000000000007,
+     "tddb": 0.8143572612964345
+    },
+    "sweep_limited": {
+     "em": true,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9750000000000005,
+    "f_device_peak_GHz": 4.238746711627186,
+    "period_ps": 243.76613573047223,
+    "fractions": {
+     "gate": 0.5881662246027144,
+     "wire": 0.29130531980744717,
+     "skew": 0.034164402125804974,
+     "overhead": 0.08636405346403359
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.7830059962692846,
+    "f_at_0.77V_GHz": 4.004828015833946,
+    "logic_depth_for_10GHz": 6.588065303661772,
+    "logic_depth_for_10GHz_at_vdd": 6.011189634758999
+   },
+   {
+    "T_C": 70.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 4.018885158717485,
+    "v_ceiling_V": 0.8020515313381869,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.8020515313381869,
+    "v_max_over_vdd": 1.1457879019116957,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 1.0000000000000007,
+     "tddb": 0.8020515313381869
+    },
+    "sweep_limited": {
+     "em": true,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9750000000000005,
+    "f_device_peak_GHz": 4.181106744792895,
+    "period_ps": 248.82522403778316,
+    "fractions": {
+     "gate": 0.5853164200422766,
+     "wire": 0.2966557888302683,
+     "skew": 0.03341968252287653,
+     "overhead": 0.08460810860457864
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.7292283719454,
+    "f_at_0.77V_GHz": 3.945817454377898,
+    "logic_depth_for_10GHz": 6.436953951353234,
+    "logic_depth_for_10GHz_at_vdd": 5.915957380369811
+   },
+   {
+    "T_C": 78.60000000000002,
+    "dT_K": 24.0,
+    "f_max_GHz": 3.948314578149254,
+    "v_ceiling_V": 0.792165757345239,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.792165757345239,
+    "v_max_over_vdd": 1.1316653676360557,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 1.0000000000000007,
+     "tddb": 0.792165757345239
+    },
+    "sweep_limited": {
+     "em": true,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9750000000000005,
+    "f_device_peak_GHz": 4.13414633439167,
+    "period_ps": 253.2726256246642,
+    "fractions": {
+     "gate": 0.5833622658753174,
+     "wire": 0.30097135046360385,
+     "skew": 0.03254397148951561,
+     "overhead": 0.08312241217156326
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.6852039780165726,
+    "f_at_0.77V_GHz": 3.8975510087241263,
+    "logic_depth_for_10GHz": 6.313569200491784,
+    "logic_depth_for_10GHz_at_vdd": 5.841922831299959
+   },
+   {
+    "T_C": 85.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 3.897683208615121,
+    "v_ceiling_V": 0.7851915228669573,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.7851915228669573,
+    "v_max_over_vdd": 1.1217021755242247,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 1.0000000000000007,
+     "tddb": 0.7851915228669573
+    },
+    "sweep_limited": {
+     "em": true,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9750000000000005,
+    "f_device_peak_GHz": 4.100476921028785,
+    "period_ps": 256.56266722489954,
+    "fractions": {
+     "gate": 0.5818450405240823,
+     "wire": 0.3041091303253087,
+     "skew": 0.03198934054818556,
+     "overhead": 0.08205648860242361
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.6534965793081735,
+    "f_at_0.77V_GHz": 3.8627325656017897,
+    "logic_depth_for_10GHz": 6.224305969383485,
+    "logic_depth_for_10GHz_at_vdd": 5.787682929697976
+   },
+   {
+    "T_C": 92.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 3.84372325492332,
+    "v_ceiling_V": 0.7779097998341118,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.7779097998341118,
+    "v_max_over_vdd": 1.1112997140487313,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 0.9740001695707556,
+     "tddb": 0.7779097998341118
+    },
+    "sweep_limited": {
+     "em": false,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9750000000000005,
+    "f_device_peak_GHz": 4.063629983097994,
+    "period_ps": 260.16441186787506,
+    "fractions": {
+     "gate": 0.5800866820118113,
+     "wire": 0.30744635180061175,
+     "skew": 0.03154647661024397,
+     "overhead": 0.08092048957733307
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.618898845010708,
+    "f_at_0.77V_GHz": 3.8247577065785046,
+    "logic_depth_for_10GHz": 6.1272166543881275,
+    "logic_depth_for_10GHz_at_vdd": 5.726384116637385
+   },
+   {
+    "T_C": 100.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 3.7826877927077653,
+    "v_ceiling_V": 0.77,
+    "limiter": "reliability:em+tddb",
+    "v_max_reliability_V": 0.77,
+    "v_max_over_vdd": 1.1,
+    "reliability_binding": "em+tddb",
+    "v_max_per_mechanism_V": {
+     "em": 0.77,
+     "tddb": 0.77
+    },
+    "sweep_limited": {
+     "em": false,
+     "tddb": false
+    },
+    "v_device_peak_V": 1.0000000000000007,
+    "f_device_peak_GHz": 4.023909535601725,
+    "period_ps": 264.3622880872674,
+    "fractions": {
+     "gate": 0.5783898565989625,
+     "wire": 0.31105289897653626,
+     "skew": 0.030921711946443137,
+     "overhead": 0.07963553247805823
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.580531740172013,
+    "f_at_0.77V_GHz": 3.7826877927077653,
+    "logic_depth_for_10GHz": 6.019758622308571,
+    "logic_depth_for_10GHz_at_vdd": 5.660446469668758
+   }
+  ],
+  "ceiling_vs_T_native": [
+   {
+    "T_C": 27.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 4.191647371774906,
+    "v_ceiling_V": 0.7621367160353654,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.7621367160353654,
+    "v_max_over_vdd": 1.0887667371933791,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 1.0000000000000007,
+     "tddb": 0.7621367160353654
+    },
+    "sweep_limited": {
+     "em": true,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9500000000000006,
+    "f_device_peak_GHz": 4.446664530727025,
+    "period_ps": 238.56968664245278,
+    "fractions": {
+     "gate": 0.6170374019444146,
+     "wire": 0.2588494738258256,
+     "skew": 0.035867916402919704,
+     "overhead": 0.08824520782684013
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.9743521961088093,
+    "f_at_0.77V_GHz": 4.214412326487807,
+    "logic_depth_for_10GHz": 6.7372082196863,
+    "logic_depth_for_10GHz_at_vdd": 6.341369070075943
+   },
+   {
+    "T_C": 40.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 4.053170305226498,
+    "v_ceiling_V": 0.7440071892393176,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.7440071892393176,
+    "v_max_over_vdd": 1.0628674131990252,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 1.0000000000000007,
+     "tddb": 0.7440071892393176
+    },
+    "sweep_limited": {
+     "em": true,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9500000000000006,
+    "f_device_peak_GHz": 4.361035633476617,
+    "period_ps": 246.7204495973229,
+    "fractions": {
+     "gate": 0.6152474518639267,
+     "wire": 0.26507827078266005,
+     "skew": 0.03434437619075009,
+     "overhead": 0.08532990116266312
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.8962500444324886,
+    "f_at_0.77V_GHz": 4.1288415008611885,
+    "logic_depth_for_10GHz": 6.489478742265717,
+    "logic_depth_for_10GHz_at_vdd": 6.205575174575484
+   },
+   {
+    "T_C": 50.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 3.9499568730604357,
+    "v_ceiling_V": 0.7313187245949415,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.7313187245949415,
+    "v_max_over_vdd": 1.0447410351356308,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 1.0000000000000007,
+     "tddb": 0.7313187245949415
+    },
+    "sweep_limited": {
+     "em": true,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9750000000000005,
+    "f_device_peak_GHz": 4.297107627875923,
+    "period_ps": 253.16732109664724,
+    "fractions": {
+     "gate": 0.6140777244345029,
+     "wire": 0.26940799800360987,
+     "skew": 0.033357290760614854,
+     "overhead": 0.08315698680127233
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.8375651981526717,
+    "f_at_0.77V_GHz": 4.064613550312789,
+    "logic_depth_for_10GHz": 6.304151899040196,
+    "logic_depth_for_10GHz_at_vdd": 6.101876866216533
+   },
+   {
+    "T_C": 60.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 3.8533495247373475,
+    "v_ceiling_V": 0.719589350269997,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.719589350269997,
+    "v_max_over_vdd": 1.0279847860999958,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 1.0000000000000007,
+     "tddb": 0.719589350269997
+    },
+    "sweep_limited": {
+     "em": true,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9750000000000005,
+    "f_device_peak_GHz": 4.238746711627186,
+    "period_ps": 259.51448047479215,
+    "fractions": {
+     "gate": 0.6131578946646138,
+     "wire": 0.27362778368773283,
+     "skew": 0.03209117375844605,
+     "overhead": 0.08112314788920733
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.7830059962692846,
+    "f_at_0.77V_GHz": 4.004828015833946,
+    "logic_depth_for_10GHz": 6.13723557943974,
+    "logic_depth_for_10GHz_at_vdd": 6.011189634758999
+   },
+   {
+    "T_C": 70.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 3.759447981102704,
+    "v_ceiling_V": 0.7087156555832739,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.7087156555832739,
+    "v_max_over_vdd": 1.0124509365475343,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 0.9248376685528921,
+     "tddb": 0.7087156555832739
+    },
+    "sweep_limited": {
+     "em": false,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9750000000000005,
+    "f_device_peak_GHz": 4.181106744792895,
+    "period_ps": 265.99649869518464,
+    "fractions": {
+     "gate": 0.6120861169454241,
+     "wire": 0.27750531860340266,
+     "skew": 0.031262291164800504,
+     "overhead": 0.07914627328637272
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.7292283719454,
+    "f_at_0.77V_GHz": 3.945817454377898,
+    "logic_depth_for_10GHz": 5.969846899330289,
+    "logic_depth_for_10GHz_at_vdd": 5.915957380369811
+   },
+   {
+    "T_C": 78.60000000000002,
+    "dT_K": 24.0,
+    "f_max_GHz": 3.6851251877286657,
+    "v_ceiling_V": 0.699980303149409,
+    "limiter": "reliability:tddb",
+    "v_max_reliability_V": 0.699980303149409,
+    "v_max_over_vdd": 0.9999718616420129,
+    "reliability_binding": "tddb",
+    "v_max_per_mechanism_V": {
+     "em": 0.712780407627952,
+     "tddb": 0.699980303149409
+    },
+    "sweep_limited": {
+     "em": false,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9750000000000005,
+    "f_device_peak_GHz": 4.13414633439167,
+    "period_ps": 271.3612018744883,
+    "fractions": {
+     "gate": 0.6111347822490988,
+     "wire": 0.28090900115107575,
+     "skew": 0.030374633700274527,
+     "overhead": 0.07758158289955086
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.6852039780165726,
+    "f_at_0.77V_GHz": 3.8975510087241263,
+    "logic_depth_for_10GHz": 5.841782814289386,
+    "logic_depth_for_10GHz_at_vdd": 5.841922831299959
+   },
+   {
+    "T_C": 85.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 3.292047311531934,
+    "v_ceiling_V": 0.6192058599279404,
+    "limiter": "reliability:em",
+    "v_max_reliability_V": 0.6192058599279404,
+    "v_max_over_vdd": 0.8845797998970578,
+    "reliability_binding": "em",
+    "v_max_per_mechanism_V": {
+     "em": 0.6192058599279404,
+     "tddb": 0.6938176702419947
+    },
+    "sweep_limited": {
+     "em": false,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9750000000000005,
+    "f_device_peak_GHz": 4.100476921028785,
+    "period_ps": 303.7623415972889,
+    "fractions": {
+     "gate": 0.6468194472286135,
+     "wire": 0.2568555706854023,
+     "skew": 0.027018722895838274,
+     "overhead": 0.06930625919014599
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.6534965793081735,
+    "f_at_0.77V_GHz": 3.8627325656017897,
+    "logic_depth_for_10GHz": 5.154059688510003,
+    "logic_depth_for_10GHz_at_vdd": 5.787682929697976
+   },
+   {
+    "T_C": 92.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 2.8169921689431594,
+    "v_ceiling_V": 0.5471730495805018,
+    "limiter": "reliability:em",
+    "v_max_reliability_V": 0.5471730495805018,
+    "v_max_over_vdd": 0.7816757851150027,
+    "reliability_binding": "em",
+    "v_max_per_mechanism_V": {
+     "em": 0.5471730495805018,
+     "tddb": 0.6873833316597984
+    },
+    "sweep_limited": {
+     "em": false,
+     "tddb": false
+    },
+    "v_device_peak_V": 0.9750000000000005,
+    "f_device_peak_GHz": 4.063629983097994,
+    "period_ps": 354.9885622774615,
+    "fractions": {
+     "gate": 0.6922534610439158,
+     "wire": 0.22532162384040955,
+     "skew": 0.02311981682213451,
+     "overhead": 0.0593050982935402
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.618898845010708,
+    "f_at_0.77V_GHz": 3.8247577065785046,
+    "logic_depth_for_10GHz": 4.343498533501765,
+    "logic_depth_for_10GHz_at_vdd": 5.726384116637385
+   },
+   {
+    "T_C": 100.0,
+    "dT_K": 24.0,
+    "f_max_GHz": 2.3227241915527634,
+    "v_ceiling_V": 0.4883792142482841,
+    "limiter": "reliability:em",
+    "v_max_reliability_V": 0.4883792142482841,
+    "v_max_over_vdd": 0.697684591783263,
+    "reliability_binding": "em",
+    "v_max_per_mechanism_V": {
+     "em": 0.4883792142482841,
+     "tddb": 0.6803940064656777
+    },
+    "sweep_limited": {
+     "em": false,
+     "tddb": false
+    },
+    "v_device_peak_V": 1.0000000000000007,
+    "f_device_peak_GHz": 4.023909535601725,
+    "period_ps": 430.52894684473506,
+    "fractions": {
+     "gate": 0.7411142200608054,
+     "wire": 0.1909991341866038,
+     "skew": 0.018987189088321962,
+     "overhead": 0.04889945666426871
+    },
+    "dominant_term": "gate",
+    "f_at_vdd_GHz": 3.580531740172013,
+    "f_at_0.77V_GHz": 3.7826877927077653,
+    "logic_depth_for_10GHz": 3.527162713711171,
+    "logic_depth_for_10GHz_at_vdd": 5.660446469668758
+   }
+  ],
+  "f_of_V": {
+   "300K": {
+    "V": [
+     0.3,
+     0.325,
+     0.35,
+     0.375,
+     0.4,
+     0.425,
+     0.45,
+     0.475,
+     0.5,
+     0.525,
+     0.55,
+     0.575,
+     0.6,
+     0.625,
+     0.65,
+     0.675,
+     0.7,
+     0.725,
+     0.75,
+     0.775,
+     0.8,
+     0.825,
+     0.85,
+     0.875,
+     0.9,
+     0.925,
+     0.95,
+     0.975,
+     1.0
+    ],
+    "f_GHz": [
+     0.19092986869557807,
+     0.3577178748780177,
+     0.597713745447832,
+     0.897133381703586,
+     1.2312631255116302,
+     1.5753076375728923,
+     1.9107491682549853,
+     2.2264445066390848,
+     2.5169716052133664,
+     2.780599492841586,
+     3.017670035288095,
+     3.2295551511728697,
+     3.4180371510551946,
+     3.5850664238766385,
+     3.7324817331255797,
+     3.8620237403444873,
+     3.975244801836545,
+     4.073528517662793,
+     4.158103633993972,
+     4.230035454579171,
+     4.290287230481622,
+     4.339686058449865,
+     4.378984087041687,
+     4.408851661433297,
+     4.429888466806655,
+     4.442647848302299,
+     4.4476395176426164,
+     4.445328443360972,
+     4.436160856819619
+    ],
+    "peak": {
+     "V_V": 0.9500000000000006,
+     "f_GHz": 4.447639517642615,
+     "at_sweep_end": false
+    }
+   },
+   "330K": {
+    "V": [
+     0.3,
+     0.325,
+     0.35,
+     0.375,
+     0.4,
+     0.425,
+     0.45,
+     0.475,
+     0.5,
+     0.525,
+     0.55,
+     0.575,
+     0.6,
+     0.625,
+     0.65,
+     0.675,
+     0.7,
+     0.725,
+     0.75,
+     0.775,
+     0.8,
+     0.825,
+     0.85,
+     0.875,
+     0.9,
+     0.925,
+     0.95,
+     0.975,
+     1.0
+    ],
+    "f_GHz": [
+     0.26673534367421065,
+     0.45345700464652255,
+     0.7008336081447061,
+     0.9926241841052003,
+     1.3069426333475322,
+     1.623898312869692,
+     1.9293412823260183,
+     2.2150429933767155,
+     2.477261142337154,
+     2.715028362113737,
+     2.928963316586708,
+     3.12045747574825,
+     3.2911973776092283,
+     3.4429240229535383,
+     3.577305972178752,
+     3.695872134966029,
+     3.8000000000000003,
+     3.890909607719066,
+     3.969672203925299,
+     4.03723260495384,
+     4.094428680953887,
+     4.141982544096849,
+     4.180550832134132,
+     4.210702527761709,
+     4.232967625502956,
+     4.2478057102172535,
+     4.255654960634986,
+     4.2569145844972835,
+     4.251955614487119
+    ],
+    "peak": {
+     "V_V": 0.9750000000000005,
+     "f_GHz": 4.256914584497283,
+     "at_sweep_end": false
+    }
+   },
+   "365K": {
+    "V": [
+     0.3,
+     0.325,
+     0.35,
+     0.375,
+     0.4,
+     0.425,
+     0.45,
+     0.475,
+     0.5,
+     0.525,
+     0.55,
+     0.575,
+     0.6,
+     0.625,
+     0.65,
+     0.675,
+     0.7,
+     0.725,
+     0.75,
+     0.775,
+     0.8,
+     0.825,
+     0.85,
+     0.875,
+     0.9,
+     0.925,
+     0.95,
+     0.975,
+     1.0
+    ],
+    "f_GHz": [
+     0.3661995323561133,
+     0.5694184606587551,
+     0.8191904608600342,
+     1.0988559998462624,
+     1.3900768322536718,
+     1.6776825344340371,
+     1.9514926821623289,
+     2.205920726197761,
+     2.438684619793607,
+     2.6495519359742157,
+     2.83939692428093,
+     3.009608767153492,
+     3.161765918475402,
+     3.2974400452920904,
+     3.4181035829986954,
+     3.525103311211831,
+     3.6196337050922027,
+     3.7027512799914906,
+     3.775394956939838,
+     3.838373992593064,
+     3.892397830225012,
+     3.938092644289275,
+     3.976014780455064,
+     4.006647677047502,
+     4.030430258774942,
+     4.047752348758661,
+     4.058970614155849,
+     4.06441269369041,
+     4.064379208039274
+    ],
+    "peak": {
+     "V_V": 0.9750000000000005,
+     "f_GHz": 4.064412693690409,
+     "at_sweep_end": false
+    }
+   },
+   "373K": {
+    "V": [
+     0.3,
+     0.325,
+     0.35,
+     0.375,
+     0.4,
+     0.425,
+     0.45,
+     0.475,
+     0.5,
+     0.525,
+     0.55,
+     0.575,
+     0.6,
+     0.625,
+     0.65,
+     0.675,
+     0.7,
+     0.725,
+     0.75,
+     0.775,
+     0.8,
+     0.825,
+     0.85,
+     0.875,
+     0.9,
+     0.925,
+     0.95,
+     0.975,
+     1.0
+    ],
+    "f_GHz": [
+     0.3919468210208026,
+     0.597988627429374,
+     0.84728276134474,
+     1.1234145993835642,
+     1.4089589475260065,
+     1.6897670904371869,
+     1.956460893943115,
+     2.2039685361627144,
+     2.430273501033893,
+     2.635283120832941,
+     2.819899269537366,
+     2.9855056213109896,
+     3.133648943397124,
+     3.265856181534929,
+     3.383561532369976,
+     3.4880686489378436,
+     3.580531740172013,
+     3.6619741953535216,
+     3.7333023173631763,
+     3.7952959236168313,
+     3.8486443152505583,
+     3.893945404819643,
+     3.9317405168932575,
+     3.962488881387039,
+     3.9866168258280243,
+     4.004495280068677,
+     4.0164681077296,
+     4.022842629018405,
+     4.023909535601727
+    ],
+    "peak": {
+     "V_V": 1.0000000000000007,
+     "f_GHz": 4.023909535601725,
+     "at_sweep_end": true
+    }
+   }
+  },
+  "sensitivity": {
+   "tddb_n_30": {
+    "params": {
+     "tddb_n": 30.0
+    },
+    "at_92C": {
+     "T_C": 92.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.849372077324925,
+     "v_ceiling_V": 0.7805644149938247,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.7805644149938247,
+     "v_max_over_vdd": 1.1150920214197495,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.9740001695707556,
+      "tddb": 0.7805644149938247
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.063629983097994,
+     "period_ps": 259.7826294554872,
+     "fractions": {
+      "gate": 0.5794695679273502,
+      "wire": 0.30789818189454954,
+      "skew": 0.03159283802389137,
+      "overhead": 0.08103941215420894
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.618898845010708,
+     "f_at_0.77V_GHz": 3.8247577065785046,
+     "logic_depth_for_10GHz": 6.1373643026590825,
+     "logic_depth_for_10GHz_at_vdd": 5.726384116637385
+    },
+    "at_60C": {
+     "T_C": 60.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 4.129831918528407,
+     "v_ceiling_V": 0.8297037554440339,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.8297037554440339,
+     "v_max_over_vdd": 1.1852910792057627,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 1.0000000000000007,
+      "tddb": 0.8297037554440339
+     },
+     "sweep_limited": {
+      "em": true,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.238746711627186,
+     "period_ps": 242.1406051693097,
+     "fractions": {
+      "gate": 0.5854015152820321,
+      "wire": 0.29326090135745253,
+      "skew": 0.03439375349675951,
+      "overhead": 0.08694382986375596
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.7830059962692846,
+     "f_at_0.77V_GHz": 4.004828015833946,
+     "logic_depth_for_10GHz": 6.638399525673296,
+     "logic_depth_for_10GHz_at_vdd": 6.011189634758999
+    },
+    "at_100C": {
+     "T_C": 100.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.7826877927077653,
+     "v_ceiling_V": 0.77,
+     "limiter": "reliability:em+tddb",
+     "v_max_reliability_V": 0.77,
+     "v_max_over_vdd": 1.1,
+     "reliability_binding": "em+tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.77,
+      "tddb": 0.77
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 1.0000000000000007,
+     "f_device_peak_GHz": 4.023909535601725,
+     "period_ps": 264.3622880872674,
+     "fractions": {
+      "gate": 0.5783898565989625,
+      "wire": 0.31105289897653626,
+      "skew": 0.030921711946443137,
+      "overhead": 0.07963553247805823
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.580531740172013,
+     "f_at_0.77V_GHz": 3.7826877927077653,
+     "logic_depth_for_10GHz": 6.019758622308571,
+     "logic_depth_for_10GHz_at_vdd": 5.660446469668758
+    }
+   },
+   "tddb_n_50": {
+    "params": {
+     "tddb_n": 50.0
+    },
+    "at_92C": {
+     "T_C": 92.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.8403566839370677,
+     "v_ceiling_V": 0.7763213661740014,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.7763213661740014,
+     "v_max_over_vdd": 1.1090305231057163,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.9740001695707556,
+      "tddb": 0.7763213661740014
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.063629983097994,
+     "period_ps": 260.39247973571486,
+     "fractions": {
+      "gate": 0.5804544681138074,
+      "wire": 0.30717707123612903,
+      "skew": 0.031518846251388524,
+      "overhead": 0.08084961439867512
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.618898845010708,
+     "f_at_0.77V_GHz": 3.8247577065785046,
+     "logic_depth_for_10GHz": 6.121170681758349,
+     "logic_depth_for_10GHz_at_vdd": 5.726384116637385
+    },
+    "at_60C": {
+     "T_C": 60.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 4.085195258914033,
+     "v_ceiling_V": 0.8052859530281995,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.8052859530281995,
+     "v_max_over_vdd": 1.1504085043259993,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 1.0000000000000007,
+      "tddb": 0.8052859530281995
+     },
+     "sweep_limited": {
+      "em": true,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.238746711627186,
+     "period_ps": 244.78634107340804,
+     "fractions": {
+      "gate": 0.589882639890509,
+      "wire": 0.29009123554772104,
+      "skew": 0.03402201384779031,
+      "overhead": 0.08600411071397965
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.7830059962692846,
+     "f_at_0.77V_GHz": 4.004828015833946,
+     "logic_depth_for_10GHz": 6.556862865638203,
+     "logic_depth_for_10GHz_at_vdd": 6.011189634758999
+    },
+    "at_100C": {
+     "T_C": 100.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.7826877927077653,
+     "v_ceiling_V": 0.77,
+     "limiter": "reliability:em+tddb",
+     "v_max_reliability_V": 0.77,
+     "v_max_over_vdd": 1.1,
+     "reliability_binding": "em+tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.77,
+      "tddb": 0.77
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 1.0000000000000007,
+     "f_device_peak_GHz": 4.023909535601725,
+     "period_ps": 264.3622880872674,
+     "fractions": {
+      "gate": 0.5783898565989625,
+      "wire": 0.31105289897653626,
+      "skew": 0.030921711946443137,
+      "overhead": 0.07963553247805823
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.580531740172013,
+     "f_at_0.77V_GHz": 3.7826877927077653,
+     "logic_depth_for_10GHz": 6.019758622308571,
+     "logic_depth_for_10GHz_at_vdd": 5.660446469668758
+    }
+   },
+   "tddb_Ea_0.4": {
+    "params": {
+     "tddb_Ea_eV": 0.4
+    },
+    "at_92C": {
+     "T_C": 92.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.8381217454417036,
+     "v_ceiling_V": 0.7752642127334686,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.7752642127334686,
+     "v_max_over_vdd": 1.1075203039049553,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.9740001695707556,
+      "tddb": 0.7752642127334686
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.063629983097994,
+     "period_ps": 260.5441062904368,
+     "fractions": {
+      "gate": 0.5806986273252922,
+      "wire": 0.3069983061062466,
+      "skew": 0.03150050350653065,
+      "overhead": 0.08080256306193061
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.618898845010708,
+     "f_at_0.77V_GHz": 3.8247577065785046,
+     "logic_depth_for_10GHz": 6.117157731437596,
+     "logic_depth_for_10GHz_at_vdd": 5.726384116637385
+    },
+    "at_60C": {
+     "T_C": 60.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 4.07374129754137,
+     "v_ceiling_V": 0.7992946213330263,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.7992946213330263,
+     "v_max_over_vdd": 1.1418494590471806,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 1.0000000000000007,
+      "tddb": 0.7992946213330263
+     },
+     "sweep_limited": {
+      "em": true,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.238746711627186,
+     "period_ps": 245.4745961908605,
+     "fractions": {
+      "gate": 0.5910325159926862,
+      "wire": 0.2892778854883178,
+      "skew": 0.03392662383391459,
+      "overhead": 0.0857629746850815
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.7830059962692846,
+     "f_at_0.77V_GHz": 4.004828015833946,
+     "logic_depth_for_10GHz": 6.535979371620519,
+     "logic_depth_for_10GHz_at_vdd": 6.011189634758999
+    },
+    "at_100C": {
+     "T_C": 100.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.7826877927077653,
+     "v_ceiling_V": 0.77,
+     "limiter": "reliability:em+tddb",
+     "v_max_reliability_V": 0.77,
+     "v_max_over_vdd": 1.1,
+     "reliability_binding": "em+tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.77,
+      "tddb": 0.77
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 1.0000000000000007,
+     "f_device_peak_GHz": 4.023909535601725,
+     "period_ps": 264.3622880872674,
+     "fractions": {
+      "gate": 0.5783898565989625,
+      "wire": 0.31105289897653626,
+      "skew": 0.030921711946443137,
+      "overhead": 0.07963553247805823
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.580531740172013,
+     "f_at_0.77V_GHz": 3.7826877927077653,
+     "logic_depth_for_10GHz": 6.019758622308571,
+     "logic_depth_for_10GHz_at_vdd": 5.660446469668758
+    }
+   },
+   "tddb_Ea_0.8": {
+    "params": {
+     "tddb_Ea_eV": 0.8
+    },
+    "at_92C": {
+     "T_C": 92.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.849372077324925,
+     "v_ceiling_V": 0.7805644149938247,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.7805644149938247,
+     "v_max_over_vdd": 1.1150920214197495,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.9740001695707556,
+      "tddb": 0.7805644149938247
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.063629983097994,
+     "period_ps": 259.7826294554872,
+     "fractions": {
+      "gate": 0.5794695679273502,
+      "wire": 0.30789818189454954,
+      "skew": 0.03159283802389137,
+      "overhead": 0.08103941215420894
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.618898845010708,
+     "f_at_0.77V_GHz": 3.8247577065785046,
+     "logic_depth_for_10GHz": 6.1373643026590825,
+     "logic_depth_for_10GHz_at_vdd": 5.726384116637385
+    },
+    "at_60C": {
+     "T_C": 60.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 4.129831918528407,
+     "v_ceiling_V": 0.8297037554440339,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.8297037554440339,
+     "v_max_over_vdd": 1.1852910792057627,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 1.0000000000000007,
+      "tddb": 0.8297037554440339
+     },
+     "sweep_limited": {
+      "em": true,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.238746711627186,
+     "period_ps": 242.1406051693097,
+     "fractions": {
+      "gate": 0.5854015152820321,
+      "wire": 0.29326090135745253,
+      "skew": 0.03439375349675951,
+      "overhead": 0.08694382986375596
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.7830059962692846,
+     "f_at_0.77V_GHz": 4.004828015833946,
+     "logic_depth_for_10GHz": 6.638399525673296,
+     "logic_depth_for_10GHz_at_vdd": 6.011189634758999
+    },
+    "at_100C": {
+     "T_C": 100.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.7826877927077653,
+     "v_ceiling_V": 0.77,
+     "limiter": "reliability:em+tddb",
+     "v_max_reliability_V": 0.77,
+     "v_max_over_vdd": 1.1,
+     "reliability_binding": "em+tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.77,
+      "tddb": 0.77
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 1.0000000000000007,
+     "f_device_peak_GHz": 4.023909535601725,
+     "period_ps": 264.3622880872674,
+     "fractions": {
+      "gate": 0.5783898565989625,
+      "wire": 0.31105289897653626,
+      "skew": 0.030921711946443137,
+      "overhead": 0.07963553247805823
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.580531740172013,
+     "f_at_0.77V_GHz": 3.7826877927077653,
+     "logic_depth_for_10GHz": 6.019758622308571,
+     "logic_depth_for_10GHz_at_vdd": 5.660446469668758
+    }
+   },
+   "em_only": {
+    "params": {
+     "mechanisms": [
+      "em"
+     ]
+    },
+    "at_92C": {
+     "T_C": 92.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 4.063382574270057,
+     "v_ceiling_V": 0.9740001695707556,
+     "limiter": "reliability:em",
+     "v_max_reliability_V": 0.9740001695707556,
+     "v_max_over_vdd": 1.3914288136725081,
+     "reliability_binding": "em",
+     "v_max_per_mechanism_V": {
+      "em": 0.9740001695707556
+     },
+     "sweep_limited": {
+      "em": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.063629983097994,
+     "period_ps": 246.10038107958349,
+     "fractions": {
+      "gate": 0.5560896698711035,
+      "wire": 0.3250161537590795,
+      "skew": 0.03334928006939472,
+      "overhead": 0.08554489630042227
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.618898845010708,
+     "f_at_0.77V_GHz": 3.8247577065785046,
+     "logic_depth_for_10GHz": 6.524621069303804,
+     "logic_depth_for_10GHz_at_vdd": 5.726384116637385
+    },
+    "at_60C": {
+     "T_C": 60.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 4.238746711627186,
+     "v_ceiling_V": 0.9750000000000005,
+     "limiter": "device",
+     "v_max_reliability_V": 1.0000000000000007,
+     "v_max_over_vdd": 1.4285714285714297,
+     "reliability_binding": "em",
+     "v_max_per_mechanism_V": {
+      "em": 1.0000000000000007
+     },
+     "sweep_limited": {
+      "em": true
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.238746711627186,
+     "period_ps": 235.91879110325897,
+     "fractions": {
+      "gate": 0.5744674363478426,
+      "wire": 0.30099498134555275,
+      "skew": 0.035300809430242816,
+      "overhead": 0.08923677287636182
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.7830059962692846,
+     "f_at_0.77V_GHz": 4.004828015833946,
+     "logic_depth_for_10GHz": 6.838376675146959,
+     "logic_depth_for_10GHz_at_vdd": 6.011189634758999
+    },
+    "at_100C": {
+     "T_C": 100.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.7826877927077653,
+     "v_ceiling_V": 0.77,
+     "limiter": "reliability:em",
+     "v_max_reliability_V": 0.77,
+     "v_max_over_vdd": 1.1,
+     "reliability_binding": "em",
+     "v_max_per_mechanism_V": {
+      "em": 0.77
+     },
+     "sweep_limited": {
+      "em": false
+     },
+     "v_device_peak_V": 1.0000000000000007,
+     "f_device_peak_GHz": 4.023909535601725,
+     "period_ps": 264.3622880872674,
+     "fractions": {
+      "gate": 0.5783898565989625,
+      "wire": 0.31105289897653626,
+      "skew": 0.030921711946443137,
+      "overhead": 0.07963553247805823
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.580531740172013,
+     "f_at_0.77V_GHz": 3.7826877927077653,
+     "logic_depth_for_10GHz": 6.019758622308571,
+     "logic_depth_for_10GHz_at_vdd": 5.660446469668758
+    }
+   },
+   "tddb_only": {
+    "params": {
+     "mechanisms": [
+      "tddb"
+     ]
+    },
+    "at_92C": {
+     "T_C": 92.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.84372325492332,
+     "v_ceiling_V": 0.7779097998341118,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.7779097998341118,
+     "v_max_over_vdd": 1.1112997140487313,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "tddb": 0.7779097998341118
+     },
+     "sweep_limited": {
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.063629983097994,
+     "period_ps": 260.16441186787506,
+     "fractions": {
+      "gate": 0.5800866820118113,
+      "wire": 0.30744635180061175,
+      "skew": 0.03154647661024397,
+      "overhead": 0.08092048957733307
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.618898845010708,
+     "f_at_0.77V_GHz": 3.8247577065785046,
+     "logic_depth_for_10GHz": 6.1272166543881275,
+     "logic_depth_for_10GHz_at_vdd": 5.726384116637385
+    },
+    "at_60C": {
+     "T_C": 60.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 4.102292539541595,
+     "v_ceiling_V": 0.8143572612964345,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.8143572612964345,
+     "v_max_over_vdd": 1.1633675161377637,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "tddb": 0.8143572612964345
+     },
+     "sweep_limited": {
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.238746711627186,
+     "period_ps": 243.76613573047223,
+     "fractions": {
+      "gate": 0.5881662246027144,
+      "wire": 0.29130531980744717,
+      "skew": 0.034164402125804974,
+      "overhead": 0.08636405346403359
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.7830059962692846,
+     "f_at_0.77V_GHz": 4.004828015833946,
+     "logic_depth_for_10GHz": 6.588065303661772,
+     "logic_depth_for_10GHz_at_vdd": 6.011189634758999
+    },
+    "at_100C": {
+     "T_C": 100.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.7826877927077653,
+     "v_ceiling_V": 0.77,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.77,
+     "v_max_over_vdd": 1.1,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "tddb": 0.77
+     },
+     "sweep_limited": {
+      "tddb": false
+     },
+     "v_device_peak_V": 1.0000000000000007,
+     "f_device_peak_GHz": 4.023909535601725,
+     "period_ps": 264.3622880872674,
+     "fractions": {
+      "gate": 0.5783898565989625,
+      "wire": 0.31105289897653626,
+      "skew": 0.030921711946443137,
+      "overhead": 0.07963553247805823
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.580531740172013,
+     "f_at_0.77V_GHz": 3.7826877927077653,
+     "logic_depth_for_10GHz": 6.019758622308571,
+     "logic_depth_for_10GHz_at_vdd": 5.660446469668758
+    }
+   },
+   "wire_0.15": {
+    "params": {
+     "wire_fraction": 0.15
+    },
+    "at_92C": {
+     "T_C": 92.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.9602287774154163,
+     "v_ceiling_V": 0.7779097998341118,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.7779097998341118,
+     "v_max_over_vdd": 1.1112997140487313,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.9629466067491685,
+      "tddb": 0.7779097998341118
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.247822762381804,
+     "period_ps": 252.510664460308,
+     "fractions": {
+      "gate": 0.7257414774566641,
+      "wire": 0.1583826161720449,
+      "skew": 0.03250266895201923,
+      "overhead": 0.08337323741927194
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.6746218597364724,
+     "f_at_0.77V_GHz": 3.935812194078098,
+     "logic_depth_for_10GHz": 6.33727716254047,
+     "logic_depth_for_10GHz_at_vdd": 5.825180192473775
+    },
+    "at_60C": {
+     "T_C": 60.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 4.184377644618981,
+     "v_ceiling_V": 0.8143572612964345,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.8143572612964345,
+     "v_max_over_vdd": 1.1633675161377637,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 1.0000000000000007,
+      "tddb": 0.8143572612964345
+     },
+     "sweep_limited": {
+      "em": true,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.358148320800158,
+     "period_ps": 238.98416561085932,
+     "fractions": {
+      "gate": 0.7284927151452089,
+      "wire": 0.14856710683254598,
+      "skew": 0.034848017082898246,
+      "overhead": 0.08809216093934698
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.7883555229228034,
+     "f_at_0.77V_GHz": 4.061938258379903,
+     "logic_depth_for_10GHz": 6.738367874914413,
+     "logic_depth_for_10GHz_at_vdd": 6.02075465504314
+    },
+    "at_100C": {
+     "T_C": 100.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.9060638099208322,
+     "v_ceiling_V": 0.77,
+     "limiter": "reliability:em+tddb",
+     "v_max_reliability_V": 0.77,
+     "v_max_over_vdd": 1.1,
+     "reliability_binding": "em+tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.77,
+      "tddb": 0.77
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 1.0000000000000007,
+     "f_device_peak_GHz": 4.223534795703882,
+     "period_ps": 256.01220273466754,
+     "fractions": {
+      "gate": 0.7252377293187263,
+      "wire": 0.16059909490884516,
+      "skew": 0.03193025345830578,
+      "overhead": 0.08223292231412278
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.6478186550553966,
+     "f_at_0.77V_GHz": 3.9060638099208322,
+     "logic_depth_for_10GHz": 6.241402426698766,
+     "logic_depth_for_10GHz_at_vdd": 5.779514539893806
+    }
+   },
+   "wire_0.45": {
+    "params": {
+     "wire_fraction": 0.45
+    },
+    "at_92C": {
+     "T_C": 92.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.733876756921223,
+     "v_ceiling_V": 0.7779097998341118,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.7779097998341118,
+     "v_max_over_vdd": 1.1112997140487313,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.9850915805289697,
+      "tddb": 0.7779097998341118
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 3.8947471591251883,
+     "period_ps": 267.81815927544227,
+     "fractions": {
+      "gate": 0.4427569756203057,
+      "wire": 0.4479901559710876,
+      "skew": 0.03064493668394938,
+      "overhead": 0.07860793172465734
+     },
+     "dominant_term": "wire",
+     "f_at_vdd_GHz": 3.5648405848717832,
+     "f_at_0.77V_GHz": 3.719798353989056,
+     "logic_depth_for_10GHz": 5.9306350346953565,
+     "logic_depth_for_10GHz_at_vdd": 5.630883349275771
+    },
+    "at_60C": {
+     "T_C": 60.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 4.023366006269876,
+     "v_ceiling_V": 0.8143572612964345,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.8143572612964345,
+     "v_max_over_vdd": 1.1633675161377637,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 1.0000000000000007,
+      "tddb": 0.8143572612964345
+     },
+     "sweep_limited": {
+      "em": true,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.125713203087848,
+     "period_ps": 248.54810585008528,
+     "fractions": {
+      "gate": 0.45323938965179467,
+      "wire": 0.4285510759636701,
+      "skew": 0.033507092147274764,
+      "overhead": 0.08470244223726055
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.7776715564161583,
+     "f_at_0.77V_GHz": 3.9493014301946388,
+     "logic_depth_for_10GHz": 6.444321578009798,
+     "logic_depth_for_10GHz_at_vdd": 6.001654957679848
+    },
+    "at_100C": {
+     "T_C": 100.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.666866990252271,
+     "v_ceiling_V": 0.77,
+     "limiter": "reliability:em+tddb",
+     "v_max_reliability_V": 0.77,
+     "v_max_over_vdd": 1.1,
+     "reliability_binding": "em+tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.77,
+      "tddb": 0.77
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 1.0000000000000007,
+     "f_device_peak_GHz": 3.8423031778083554,
+     "period_ps": 272.7123734398674,
+     "fractions": {
+      "gate": 0.4405345518040869,
+      "wire": 0.452293317602693,
+      "skew": 0.029974930798435405,
+      "overhead": 0.07719719979478466
+     },
+     "dominant_term": "wire",
+     "f_at_vdd_GHz": 3.5156821874735193,
+     "f_at_0.77V_GHz": 3.666866990252271,
+     "logic_depth_for_10GHz": 5.813316929822898,
+     "logic_depth_for_10GHz_at_vdd": 5.546185386574074
+    }
+   },
+   "overhead_0.04": {
+    "params": {
+     "overhead_fraction": 0.04
+    },
+    "at_92C": {
+     "T_C": 92.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.8456212342648843,
+     "v_ceiling_V": 0.7779097998341118,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.7779097998341118,
+     "v_max_over_vdd": 1.1112997140487313,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.9709431789279555,
+      "tddb": 0.7779097998341118
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.076258647310614,
+     "period_ps": 260.0360095502636,
+     "fractions": {
+      "gate": 0.6065080350439879,
+      "wire": 0.3214496875972666,
+      "skew": 0.03156205384016777,
+      "overhead": 0.04048022351857773
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.611065503266093,
+     "f_at_0.77V_GHz": 3.82578652347151,
+     "logic_depth_for_10GHz": 6.735648369372149,
+     "logic_depth_for_10GHz_at_vdd": 6.295013219420577
+    },
+    "at_60C": {
+     "T_C": 60.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 4.117024668743278,
+     "v_ceiling_V": 0.8143572612964345,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.8143572612964345,
+     "v_max_over_vdd": 1.1633675161377637,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 1.0000000000000007,
+      "tddb": 0.8143572612964345
+     },
+     "sweep_limited": {
+      "em": true,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.260883018461789,
+     "period_ps": 242.89385671940846,
+     "fractions": {
+      "gate": 0.6168594065330925,
+      "wire": 0.3055163985618723,
+      "skew": 0.034287093128790316,
+      "overhead": 0.04333710177624504
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.78223063958852,
+     "f_at_0.77V_GHz": 4.0145570972047695,
+     "logic_depth_for_10GHz": 7.243864596706262,
+     "logic_depth_for_10GHz_at_vdd": 6.6095646858745685
+    },
+    "at_100C": {
+     "T_C": 100.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.781799324418263,
+     "v_ceiling_V": 0.77,
+     "limiter": "reliability:em+tddb",
+     "v_max_reliability_V": 0.77,
+     "v_max_over_vdd": 1.1,
+     "reliability_binding": "em+tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.77,
+      "tddb": 0.77
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 1.0000000000000007,
+     "f_device_peak_GHz": 4.03448684646617,
+     "period_ps": 264.4243954308246,
+     "fractions": {
+      "gate": 0.6042934934245893,
+      "wire": 0.3249836435024267,
+      "skew": 0.03091444913173913,
+      "overhead": 0.039808413941244875
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.571143362021998,
+     "f_at_0.77V_GHz": 3.781799324418263,
+     "logic_depth_for_10GHz": 6.617123291885949,
+     "logic_depth_for_10GHz_at_vdd": 6.222155160526096
+    }
+   },
+   "overhead_0.12": {
+    "params": {
+     "overhead_fraction": 0.12
+    },
+    "at_92C": {
+     "T_C": 92.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.8418271481263124,
+     "v_ceiling_V": 0.7779097998341118,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.7779097998341118,
+     "v_max_over_vdd": 1.1112997140487313,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.9772014766514299,
+      "tddb": 0.7779097998341118
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.051079326982758,
+     "period_ps": 260.2928141854866,
+     "fractions": {
+      "gate": 0.5536913962606266,
+      "wire": 0.29345683168132164,
+      "skew": 0.03153091474879993,
+      "overhead": 0.12132085730925198
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.6267662457557637,
+     "f_at_0.77V_GHz": 3.823729442868293,
+     "logic_depth_for_10GHz": 5.461404158669421,
+     "logic_depth_for_10GHz_at_vdd": 5.104127990372982
+    },
+    "at_60C": {
+     "T_C": 60.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 4.087665467651572,
+     "v_ceiling_V": 0.8143572612964345,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.8143572612964345,
+     "v_max_over_vdd": 1.1633675161377637,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 1.0000000000000007,
+      "tddb": 0.8143572612964345
+     },
+     "sweep_limited": {
+      "em": true,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.216839222849687,
+     "period_ps": 244.638414741536,
+     "fractions": {
+      "gate": 0.5596776586185681,
+      "wire": 0.2771955826655824,
+      "skew": 0.034042586053168275,
+      "overhead": 0.12908417266268124
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.783781670911225,
+     "f_at_0.77V_GHz": 3.9951459763583177,
+     "logic_depth_for_10GHz": 5.870418025850191,
+     "logic_depth_for_10GHz_at_vdd": 5.3563822400301975
+    },
+    "at_100C": {
+     "T_C": 100.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.7835766785558564,
+     "v_ceiling_V": 0.77,
+     "limiter": "reliability:em+tddb",
+     "v_max_reliability_V": 0.77,
+     "v_max_over_vdd": 1.1,
+     "reliability_binding": "em+tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.77,
+      "tddb": 0.77
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 1.0000000000000007,
+     "f_device_peak_GHz": 4.013387541291369,
+     "period_ps": 264.3001807437103,
+     "fractions": {
+      "gate": 0.5524740456910692,
+      "wire": 0.29711560733793585,
+      "skew": 0.03092897817449424,
+      "overhead": 0.11948136879650074
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.5899696117008193,
+     "f_at_0.77V_GHz": 3.7835766785558564,
+     "logic_depth_for_10GHz": 5.3660568975128164,
+     "logic_depth_for_10GHz_at_vdd": 5.045763414666553
+    }
+   },
+   "logic_depth_10": {
+    "params": {
+     "logic_depth": 10.0
+    },
+    "at_92C": {
+     "T_C": 92.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 6.910269467318666,
+     "v_ceiling_V": 0.7779097998341118,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.7779097998341118,
+     "v_max_over_vdd": 1.1112997140487313,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.9812888211306987,
+      "tddb": 0.7779097998341118
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 7.263606832029521,
+     "period_ps": 144.71215699031512,
+     "fractions": {
+      "gate": 0.5214417143546902,
+      "wire": 0.27636447745880494,
+      "skew": 0.0567144509797962,
+      "overhead": 0.14547935720670876
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 6.544779935440641,
+     "f_at_0.77V_GHz": 6.879604829165223,
+     "logic_depth_for_10GHz": 6.1272166543881275,
+     "logic_depth_for_10GHz_at_vdd": 5.726384116637385
+    },
+    "at_60C": {
+     "T_C": 60.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 7.322067581732543,
+     "v_ceiling_V": 0.8143572612964345,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.8143572612964345,
+     "v_max_over_vdd": 1.1633675161377637,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 1.0000000000000007,
+      "tddb": 0.8143572612964345
+     },
+     "sweep_limited": {
+      "em": true,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 7.538648380133006,
+     "period_ps": 136.5734457975845,
+     "fractions": {
+      "gate": 0.5249007480966716,
+      "wire": 0.2599713718596339,
+      "skew": 0.060979088849325236,
+      "overhead": 0.15414879119436933
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 6.809187329034728,
+     "f_at_0.77V_GHz": 7.16642011077391,
+     "logic_depth_for_10GHz": 6.588065303661772,
+     "logic_depth_for_10GHz_at_vdd": 6.011189634758999
+    },
+    "at_100C": {
+     "T_C": 100.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 6.8122337892955365,
+     "v_ceiling_V": 0.77,
+     "limiter": "reliability:em+tddb",
+     "v_max_reliability_V": 0.77,
+     "v_max_over_vdd": 1.1,
+     "reliability_binding": "em+tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.77,
+      "tddb": 0.77
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 1.0000000000000007,
+     "f_device_peak_GHz": 7.200935274823174,
+     "period_ps": 146.79472709397595,
+     "fractions": {
+      "gate": 0.520810484558757,
+      "wire": 0.28008722696480726,
+      "skew": 0.0556868402807403,
+      "overhead": 0.14341544819569552
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 6.482660830239298,
+     "f_at_0.77V_GHz": 6.8122337892955365,
+     "logic_depth_for_10GHz": 6.019758622308571,
+     "logic_depth_for_10GHz_at_vdd": 5.660446469668758
+    }
+   },
+   "logic_depth_8": {
+    "params": {
+     "logic_depth": 8.0
+    },
+    "at_92C": {
+     "T_C": 92.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 8.222216516830354,
+     "v_ceiling_V": 0.7779097998341118,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.7779097998341118,
+     "v_max_over_vdd": 1.1112997140487313,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.9844330172494522,
+      "tddb": 0.7779097998341118
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 8.621425427031514,
+     "period_ps": 121.62170601480314,
+     "fractions": {
+      "gate": 0.49635189442128386,
+      "wire": 0.2630668551463813,
+      "skew": 0.06748195534116956,
+      "overhead": 0.17309929509116537
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 7.807205688156376,
+     "f_at_0.77V_GHz": 8.187478227933756,
+     "logic_depth_for_10GHz": 6.1272166543881275,
+     "logic_depth_for_10GHz_at_vdd": 5.726384116637385
+    },
+    "at_60C": {
+     "T_C": 60.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 8.685463158067508,
+     "v_ceiling_V": 0.8143572612964345,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.8143572612964345,
+     "v_max_over_vdd": 1.1633675161377637,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 1.0000000000000007,
+      "tddb": 0.8143572612964345
+     },
+     "sweep_limited": {
+      "em": true,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 8.928892712443755,
+     "period_ps": 115.13490781100697,
+     "fractions": {
+      "gate": 0.4981113390004485,
+      "wire": 0.24670318838055177,
+      "skew": 0.07233361665968377,
+      "overhead": 0.18285185595931597
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 8.106061384680554,
+     "f_at_0.77V_GHz": 8.510066230709707,
+     "logic_depth_for_10GHz": 6.588065303661772,
+     "logic_depth_for_10GHz_at_vdd": 6.011189634758999
+    },
+    "at_100C": {
+     "T_C": 100.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 8.111535896601398,
+     "v_ceiling_V": 0.77,
+     "limiter": "reliability:em+tddb",
+     "v_max_reliability_V": 0.77,
+     "v_max_over_vdd": 1.1,
+     "reliability_binding": "em+tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.7700000000000002,
+      "tddb": 0.77
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 1.0000000000000007,
+     "f_device_peak_GHz": 8.551239367521818,
+     "period_ps": 123.28121489531766,
+     "fractions": {
+      "gate": 0.49611602554956874,
+      "wire": 0.2668067674687978,
+      "skew": 0.06630803021107781,
+      "overhead": 0.17076917677055573
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 7.736851119823538,
+     "f_at_0.77V_GHz": 8.111535896601398,
+     "logic_depth_for_10GHz": 6.019758622308571,
+     "logic_depth_for_10GHz_at_vdd": 5.660446469668758
+    }
+   },
+   "D_ins_300": {
+    "params": {
+     "D_ins_ps": 300.0
+    },
+    "at_92C": {
+     "T_C": 92.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.844317706807574,
+     "v_ceiling_V": 0.7779097998341118,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.7779097998341118,
+     "v_max_over_vdd": 1.1112997140487313,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.9766100399479773,
+      "tddb": 0.7779097998341118
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.0560045734953745,
+     "period_ps": 260.12418230397174,
+     "fractions": {
+      "gate": 0.5594535222429232,
+      "wire": 0.2965107625278784,
+      "skew": 0.06310271087535475,
+      "overhead": 0.08093300435384368
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.6270044481688055,
+     "f_at_0.77V_GHz": 3.8260207059185567,
+     "logic_depth_for_10GHz": 5.6169646264137985,
+     "logic_depth_for_10GHz_at_vdd": 5.249511945586989
+    },
+    "at_60C": {
+     "T_C": 60.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 4.091037129572554,
+     "v_ceiling_V": 0.8143572612964345,
+     "limiter": "reliability:tddb",
+     "v_max_reliability_V": 0.8143572612964345,
+     "v_max_over_vdd": 1.1633675161377637,
+     "reliability_binding": "tddb",
+     "v_max_per_mechanism_V": {
+      "em": 1.0000000000000007,
+      "tddb": 0.8143572612964345
+     },
+     "sweep_limited": {
+      "em": true,
+      "tddb": false
+     },
+     "v_device_peak_V": 0.9750000000000005,
+     "f_device_peak_GHz": 4.221729584437167,
+     "period_ps": 244.43679397856835,
+     "fractions": {
+      "gate": 0.5656018644556745,
+      "wire": 0.2801297067342486,
+      "skew": 0.06814133134539148,
+      "overhead": 0.08612709746468536
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.7839250742252446,
+     "f_at_0.77V_GHz": 3.9974836086681784,
+     "logic_depth_for_10GHz": 6.026386925313234,
+     "logic_depth_for_10GHz_at_vdd": 5.498693918585645
+    },
+    "at_100C": {
+     "T_C": 100.0,
+     "dT_K": 24.0,
+     "f_max_GHz": 3.785896748522023,
+     "v_ceiling_V": 0.77,
+     "limiter": "reliability:em+tddb",
+     "v_max_reliability_V": 0.77,
+     "v_max_over_vdd": 1.1,
+     "reliability_binding": "em+tddb",
+     "v_max_per_mechanism_V": {
+      "em": 0.77,
+      "tddb": 0.77
+     },
+     "sweep_limited": {
+      "em": false,
+      "tddb": false
+     },
+     "v_device_peak_V": 1.0000000000000007,
+     "f_device_peak_GHz": 4.01837988617245,
+     "period_ps": 264.1382125358781,
+     "fractions": {
+      "gate": 0.5582039334345988,
+      "wire": 0.3001970897897812,
+      "skew": 0.061895887333051035,
+      "overhead": 0.07970308944256892
+     },
+     "dominant_term": "gate",
+     "f_at_vdd_GHz": 3.5902655921284827,
+     "f_at_0.77V_GHz": 3.785896748522023,
+     "logic_depth_for_10GHz": 5.521677902628376,
+     "logic_depth_for_10GHz_at_vdd": 5.192095589140826
+    }
+   }
+  },
+  "gain_vs_qualification_corner": {
+   "92.0C": {
+    "f_max_GHz": 3.84372325492332,
+    "gain_vs_100C": 0.016135474445768017,
+    "v_ceiling_V": 0.7779097998341118,
+    "v_gain": 0.010272467317028244,
+    "gain_from_supply_at_T": 0.004958627395454274,
+    "gain_from_temperature_at_hot_supply": 0.011121698690502946,
+    "limiter": "reliability:tddb"
+   },
+   "78.6C": {
+    "f_max_GHz": 3.948314578149254,
+    "gain_vs_100C": 0.04378547596785087,
+    "v_ceiling_V": 0.792165757345239,
+    "v_gain": 0.028786697850959664,
+    "gain_from_supply_at_T": 0.013024478528055328,
+    "gain_from_temperature_at_hot_supply": 0.0303655026031473,
+    "limiter": "reliability:tddb"
+   },
+   "60.0C": {
+    "f_max_GHz": 4.102292539541595,
+    "gain_vs_100C": 0.08449144215654303,
+    "v_ceiling_V": 0.8143572612964345,
+    "v_gain": 0.057606832852512335,
+    "gain_from_supply_at_T": 0.02433675636564203,
+    "gain_from_temperature_at_hot_supply": 0.05872549766185342,
+    "limiter": "reliability:tddb"
+   },
+   "27.0C": {
+    "f_max_GHz": 4.392633466630931,
+    "gain_vs_100C": 0.16124663396725847,
+    "v_ceiling_V": 0.8625079964998701,
+    "v_gain": 0.12014025519463645,
+    "gain_from_supply_at_T": 0.04228849157046044,
+    "gain_from_temperature_at_hot_supply": 0.11413168557350062,
+    "limiter": "reliability:tddb"
+   }
+  }
+ },
+ "device_vf_model": {
+  "repr": "<DeviceVFModel ASAP7 nmos_rvt @ 300 K, Vdd 0.70 V, Vt 0.284 V, SS 61.0 mV/dec, anchor 3.80 GHz @ 0.70 V, alpha_fit 1.46, f_max 4.173 GHz @ 0.770 V UNCALIBRATED>",
+  "f_max_GHz": 4.173245518213478,
+  "v_max_V": 0.77
+ },
+ "scorecard_model_arithmetic": {
+  "P1_vmax_ladder": {
+   "measured": {
+    "92C": 0.010272467317028244,
+    "60C": 0.057606832852512335,
+    "27C": 0.12014025519463645,
+    "em_binds_at_C": []
+   },
+   "verdict": "confirmed"
+  },
+  "P3_device_peak_inside_sweep": {
+   "measured": {
+    "300K": {
+     "V_V": 0.9500000000000006,
+     "f_GHz": 4.447639517642615,
+     "at_sweep_end": false
+    },
+    "330K": {
+     "V_V": 0.9750000000000005,
+     "f_GHz": 4.256914584497283,
+     "at_sweep_end": false
+    },
+    "365K": {
+     "V_V": 0.9750000000000005,
+     "f_GHz": 4.064412693690409,
+     "at_sweep_end": false
+    },
+    "373K": {
+     "V_V": 1.0000000000000007,
+     "f_GHz": 4.023909535601725,
+     "at_sweep_end": true
+    }
+   },
+   "crossover_reliability_vs_device_C": [],
+   "verdict": "NOT as predicted"
+  },
+  "P2_60C_vs_92C_same_pipeline": {
+   "measured": 0.06727052585981075,
+   "verdict": "NOT as predicted"
+  }
+ }
+}

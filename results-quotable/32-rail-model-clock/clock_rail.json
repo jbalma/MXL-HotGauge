@@ -1,0 +1,963 @@
+{
+ "note": "\u00a7P0.39: the RAIL model (V_eff = V_dd - IR) in the generalized clock search.\n\n    python examples/clock_rail_report.py           # -> docs/evidence/clock_rail.json\n\nReads ``results/clock_rail/<member>/resize<k>/clock_headroom.json`` (``scripts/clock_rail.sh``): the\nlaser arm's sustainable clock, the limiter it names, the worst execution block's current density\nagainst the native die's, the IR drop and the effective supply, and what ideal rails would have\ngiven on the same solve. ``resizeoff`` is the rail-less twin. The reference die's rail-less twin is\n\u00a7P0.31's (``results/clock_fmax/qual_d1.00``). Every clock is UNCALIBRATED (the 3.8 GHz anchor) and\ncarries its V/F source and limiter; IPC(f) from ``docs/evidence/comet_ipc_vs_f.json`` (FFT).\nStatic IR only: no L di/dt, no decap; rails sized for the native die to a 5 % budget (STATED).",
+ "rail": {
+  "droop_native": 0.05,
+  "J_native_A_per_mm2": 44.45,
+  "sized_for": "native_d0.78_control worst execution block"
+ },
+ "ipc_benchmark": "fft_1to20",
+ "rows": [
+  {
+   "member": "finger_x0.03125",
+   "resize": "off",
+   "source": "results/clock_rail/finger_x0.03125/resizeoff/clock_headroom.json",
+   "vf_source": "fmax",
+   "f_GHz": 3.7279502287557325,
+   "limited_by": "reliability:tddb",
+   "bracket_GHz": [
+    3.7279502287557325,
+    3.7632145191385025
+   ],
+   "V_V": 0.7736141228008844,
+   "V_eff_V": null,
+   "ir_drop_V": null,
+   "J_exec_max_A_per_mm2": null,
+   "J_over_native": null,
+   "ideal_rails": null,
+   "v_max_reliability_V": 0.7766490971166664,
+   "T_eval_K": 366.3966369628906,
+   "peak_C": 93.24663696289065,
+   "peak_block": "cALU_32",
+   "p_chip_W": 116.18254860238908,
+   "heat_removed_W": 32.84482461738892,
+   "IPC_f": 2.5101345658719874,
+   "f_x_IPC": 9.357656729050147,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.256914584497283,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.9748002614351226,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.8337430999040425,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.7632145191385025,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    }
+   ]
+  },
+  {
+   "member": "finger_x0.03125",
+   "resize": "1",
+   "source": "results/clock_rail/finger_x0.03125/resize1/clock_headroom.json",
+   "vf_source": "fmax:rail=0.05,resize=1",
+   "f_GHz": null,
+   "limited_by": "rail:ir+reliability:tddb",
+   "bracket_GHz": [
+    null,
+    2.0
+   ],
+   "V_V": null,
+   "V_eff_V": null,
+   "ir_drop_V": null,
+   "J_exec_max_A_per_mm2": null,
+   "J_over_native": null,
+   "ideal_rails": null,
+   "v_max_reliability_V": null,
+   "T_eval_K": null,
+   "peak_C": null,
+   "peak_block": null,
+   "p_chip_W": null,
+   "heat_removed_W": null,
+   "IPC_f": null,
+   "f_x_IPC": null,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 2.0,
+     "reason": "rail:ir+reliability:tddb",
+     "J_over_native": 14.090543985879128,
+     "ir_drop_V": 0.4931690395057694
+    }
+   ]
+  },
+  {
+   "member": "finger_x0.03125",
+   "resize": "32",
+   "source": "results/clock_rail/finger_x0.03125/resize32/clock_headroom.json",
+   "vf_source": "fmax:rail=0.05,resize=32",
+   "f_GHz": 3.737107481285208,
+   "limited_by": "reliability:tddb",
+   "bracket_GHz": [
+    3.737107481285208,
+    3.774870687400104
+   ],
+   "V_V": 0.76975413477928,
+   "V_eff_V": 0.725454812444192,
+   "ir_drop_V": 0.044299322335088,
+   "J_exec_max_A_per_mm2": 1800.3244596979766,
+   "J_over_native": 40.502237563509034,
+   "ideal_rails": {
+    "V_needed_V": 0.7758846696268549,
+    "f_max_GHz": 3.740528537246626
+   },
+   "v_max_reliability_V": 0.7775890069017546,
+   "T_eval_K": 365.4662170410156,
+   "peak_C": 92.31621704101565,
+   "peak_block": "cALU_32",
+   "p_chip_W": 112.20932345623055,
+   "heat_removed_W": 29.38450428152044,
+   "IPC_f": 2.509266818309583,
+   "f_x_IPC": 9.377399799245474,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.4168451913533335,
+     "reason": "device",
+     "J_over_native": 58.53387883957714,
+     "ir_drop_V": 0.06402142998078748
+    },
+    {
+     "f_GHz": 3.812633893515,
+     "reason": "reliability:tddb",
+     "J_over_native": 42.664531853670375,
+     "ir_drop_V": 0.04666433171495197
+    },
+    {
+     "f_GHz": 3.774870687400104,
+     "reason": "reliability:tddb",
+     "J_over_native": 41.608700558248906,
+     "ir_drop_V": 0.04550951623558473
+    }
+   ]
+  },
+  {
+   "member": "finger_x0.0625",
+   "resize": "off",
+   "source": "results/clock_rail/finger_x0.0625/resizeoff/clock_headroom.json",
+   "vf_source": "fmax",
+   "f_GHz": 3.7279502287557325,
+   "limited_by": "reliability:tddb",
+   "bracket_GHz": [
+    3.7279502287557325,
+    3.7632145191385025
+   ],
+   "V_V": 0.7653960346493383,
+   "V_eff_V": null,
+   "ir_drop_V": null,
+   "J_exec_max_A_per_mm2": null,
+   "J_over_native": null,
+   "ideal_rails": null,
+   "v_max_reliability_V": 0.7767206275567533,
+   "T_eval_K": 366.32562255859375,
+   "peak_C": 93.17562255859377,
+   "peak_block": "cALU_16",
+   "p_chip_W": 114.44828962568822,
+   "heat_removed_W": 25.849155999196118,
+   "IPC_f": 2.5101345658719874,
+   "f_x_IPC": 9.357656729050147,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.256914584497283,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.9748002614351226,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.8337430999040425,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.7632145191385025,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    }
+   ]
+  },
+  {
+   "member": "finger_x0.0625",
+   "resize": "1",
+   "source": "results/clock_rail/finger_x0.0625/resize1/clock_headroom.json",
+   "vf_source": "fmax:rail=0.05,resize=1",
+   "f_GHz": 2.0377535475931774,
+   "limited_by": "rail:ir+device",
+   "bracket_GHz": [
+    2.0377535475931774,
+    2.0755070951863543
+   ],
+   "V_V": 0.6629233095404334,
+   "V_eff_V": 0.4408104682174164,
+   "ir_drop_V": 0.22211284132301706,
+   "J_exec_max_A_per_mm2": 282.0833084802317,
+   "J_over_native": 6.346081180657631,
+   "ideal_rails": {
+    "V_needed_V": 0.4593014191027478,
+    "f_max_GHz": 4.2379876455370145
+   },
+   "v_max_reliability_V": 0.8296085753785123,
+   "T_eval_K": 321.7248229980469,
+   "peak_C": 48.5748229980469,
+   "peak_block": "cALU_0",
+   "p_chip_W": 31.065424194770884,
+   "heat_removed_W": 0.0,
+   "IPC_f": 2.733166165504144,
+   "f_x_IPC": 5.5695190499177105,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.41622704596334,
+     "reason": "device",
+     "J_over_native": 51.89307194693213,
+     "ir_drop_V": 1.8162575181426246
+    },
+    {
+     "f_GHz": 3.20811352298167,
+     "reason": "rail:ir+device",
+     "J_over_native": 42.61057939572707,
+     "ir_drop_V": 1.4913702788504473
+    },
+    {
+     "f_GHz": 2.6040567614908348,
+     "reason": "rail:ir+device",
+     "J_over_native": 34.9675915527993,
+     "ir_drop_V": 1.2238657043479755
+    },
+    {
+     "f_GHz": 2.3020283807454174,
+     "reason": "rail:ir+device",
+     "J_over_native": 30.003637023712734,
+     "ir_drop_V": 1.0501272958299455
+    },
+    {
+     "f_GHz": 2.1510141903727087,
+     "reason": "rail:ir+device",
+     "J_over_native": 27.6831429011036,
+     "ir_drop_V": 0.9689100015386259
+    },
+    {
+     "f_GHz": 2.0755070951863543,
+     "reason": "rail:ir+device",
+     "J_over_native": 26.60601154834776,
+     "ir_drop_V": 0.9312104041921715
+    }
+   ]
+  },
+  {
+   "member": "finger_x0.0625",
+   "resize": "16",
+   "source": "results/clock_rail/finger_x0.0625/resize16/clock_headroom.json",
+   "vf_source": "fmax:rail=0.05,resize=16",
+   "f_GHz": 3.737120303366466,
+   "limited_by": "reliability:tddb",
+   "bracket_GHz": [
+    3.737120303366466,
+    3.774883788222259
+   ],
+   "V_V": 0.7654359250584037,
+   "V_eff_V": 0.7213341412921744,
+   "ir_drop_V": 0.044101783766229294,
+   "J_exec_max_A_per_mm2": 896.1482461297794,
+   "J_over_native": 20.160815435990536,
+   "ideal_rails": {
+    "V_needed_V": 0.772520337035568,
+    "f_max_GHz": 3.747507641447947
+   },
+   "v_max_reliability_V": 0.7771488360539196,
+   "T_eval_K": 365.9012145996094,
+   "peak_C": 92.7512145996094,
+   "peak_block": "cALU_16",
+   "p_chip_W": 111.71464091646857,
+   "heat_removed_W": 23.60110777270586,
+   "IPC_f": 2.509265604981719,
+   "f_x_IPC": 9.377427438916321,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.4168630307707355,
+     "reason": "device",
+     "J_over_native": 29.429163921454727,
+     "ir_drop_V": 0.06437629607818221
+    },
+    {
+     "f_GHz": 3.812647273078052,
+     "reason": "reliability:tddb",
+     "J_over_native": 20.967559167351606,
+     "ir_drop_V": 0.045866535678581635
+    },
+    {
+     "f_GHz": 3.774883788222259,
+     "reason": "reliability:tddb",
+     "J_over_native": 20.713130931003814,
+     "ir_drop_V": 0.045309973911570836
+    }
+   ]
+  },
+  {
+   "member": "ref_d1.00",
+   "resize": "off",
+   "source": "results/clock_fmax/qual_d1.00/clock_headroom.json",
+   "vf_source": "fmax",
+   "f_GHz": 3.7632145191385025,
+   "limited_by": "reliability:tddb",
+   "bracket_GHz": [
+    3.7632145191385025,
+    3.7984788095212725
+   ],
+   "V_V": 0.7586602751667915,
+   "V_eff_V": null,
+   "ir_drop_V": null,
+   "J_exec_max_A_per_mm2": null,
+   "J_over_native": null,
+   "ideal_rails": null,
+   "v_max_reliability_V": 0.7741255730818377,
+   "T_eval_K": 368.9239501953125,
+   "peak_C": 95.77395019531252,
+   "peak_block": "cALU_0",
+   "p_chip_W": 117.28984576597549,
+   "heat_removed_W": 1.8136304029626296,
+   "IPC_f": 2.506806153284568,
+   "f_x_IPC": 9.433649312706224,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.256914584497283,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.9748002614351226,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.8337430999040425,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.7984788095212725,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    }
+   ]
+  },
+  {
+   "member": "ref_d1.00",
+   "resize": "1",
+   "source": "results/clock_rail/ref_d1.00/resize1/clock_headroom.json",
+   "vf_source": "fmax:rail=0.05,resize=1",
+   "f_GHz": 3.7744167368793278,
+   "limited_by": "reliability:tddb",
+   "bracket_GHz": [
+    3.7744167368793278,
+    3.812170284472505
+   ],
+   "V_V": 0.7636130961795866,
+   "V_eff_V": 0.7142255307402563,
+   "ir_drop_V": 0.04938756543933026,
+   "J_exec_max_A_per_mm2": 62.72220810794944,
+   "J_over_native": 1.411073298266579,
+   "ideal_rails": {
+    "V_needed_V": 0.770229917031291,
+    "f_max_GHz": 3.7871223506535188
+   },
+   "v_max_reliability_V": 0.7753807377151016,
+   "T_eval_K": 367.6615295410156,
+   "peak_C": 94.51152954101565,
+   "peak_block": "cALU_0",
+   "p_chip_W": 114.56587322762022,
+   "heat_removed_W": 1.3435419040086118,
+   "IPC_f": 2.505756276163892,
+   "f_x_IPC": 9.457768427293413,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.41622704596334,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.812170284472505,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    }
+   ]
+  },
+  {
+   "member": "ref_d1.00",
+   "resize": "2",
+   "source": "results/clock_rail/ref_d1.00/resize2/clock_headroom.json",
+   "vf_source": "fmax:rail=0.05,resize=2",
+   "f_GHz": 3.850466206498045,
+   "limited_by": "reliability:tddb",
+   "bracket_GHz": [
+    3.850466206498045,
+    3.8882308229571887
+   ],
+   "V_V": 0.7675792913499133,
+   "V_eff_V": 0.7429233379394429,
+   "ir_drop_V": 0.024655953410470468,
+   "J_exec_max_A_per_mm2": 62.626121662595,
+   "J_over_native": 1.4089116234554555,
+   "ideal_rails": {
+    "V_needed_V": 0.8022110931591768,
+    "f_max_GHz": 3.7971144188009704
+   },
+   "v_max_reliability_V": 0.7766305668934039,
+   "T_eval_K": 366.4150390625,
+   "peak_C": 93.26503906250002,
+   "peak_block": "cALU_16",
+   "p_chip_W": 123.0598861509274,
+   "heat_removed_W": 13.784180014358327,
+   "IPC_f": 2.498721583349334,
+   "f_x_IPC": 9.621243016133898,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.416935453385201,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 4.114818521712051,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.963760055875476,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.8882308229571887,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    }
+   ]
+  },
+  {
+   "member": "x0.0625",
+   "resize": "off",
+   "source": "results/clock_rail/x0.0625/resizeoff/clock_headroom.json",
+   "vf_source": "fmax",
+   "f_GHz": 3.692685938372962,
+   "limited_by": "reliability:tddb",
+   "bracket_GHz": [
+    3.692685938372962,
+    3.7279502287557325
+   ],
+   "V_V": 0.763367212208165,
+   "V_eff_V": null,
+   "ir_drop_V": null,
+   "J_exec_max_A_per_mm2": null,
+   "J_over_native": null,
+   "ideal_rails": null,
+   "v_max_reliability_V": 0.7786809870539093,
+   "T_eval_K": 364.392578125,
+   "peak_C": 91.24257812500002,
+   "peak_block": "RBB_24",
+   "p_chip_W": 110.8906732922865,
+   "heat_removed_W": 43.635850360205886,
+   "IPC_f": 2.5134990959713543,
+   "f_x_IPC": 9.281562767806573,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.256914584497283,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.9748002614351226,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.8337430999040425,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.7632145191385025,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.7279502287557325,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    }
+   ]
+  },
+  {
+   "member": "x0.0625",
+   "resize": "1",
+   "source": "results/clock_rail/x0.0625/resize1/clock_headroom.json",
+   "vf_source": "fmax:rail=0.05,resize=1",
+   "f_GHz": 2.5663032138976574,
+   "limited_by": "rail:ir+reliability:tddb",
+   "bracket_GHz": [
+    2.5663032138976574,
+    2.6040567614908348
+   ],
+   "V_V": 0.7969384318058175,
+   "V_eff_V": 0.5026642754577524,
+   "ir_drop_V": 0.2942741563480651,
+   "J_exec_max_A_per_mm2": 373.72817856204273,
+   "J_over_native": 8.407833038516147,
+   "ideal_rails": {
+    "V_needed_V": 0.5149584111138035,
+    "f_max_GHz": 3.942534033113489
+   },
+   "v_max_reliability_V": 0.8003434115440975,
+   "T_eval_K": 344.5982971191406,
+   "peak_C": 71.44829711914065,
+   "peak_block": "RBB_0",
+   "p_chip_W": 46.449230767271644,
+   "heat_removed_W": 0.0,
+   "IPC_f": 2.645762270231694,
+   "f_x_IPC": 6.789828217304758,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.41622704596334,
+     "reason": "device",
+     "J_over_native": 19.78877555925415,
+     "ir_drop_V": 0.6926071445738953
+    },
+    {
+     "f_GHz": 3.20811352298167,
+     "reason": "rail:ir+device",
+     "J_over_native": 12.081813789952957,
+     "ir_drop_V": 0.42286348264835344
+    },
+    {
+     "f_GHz": 2.6040567614908348,
+     "reason": "rail:ir+reliability:tddb",
+     "J_over_native": 8.583278069229623,
+     "ir_drop_V": 0.30041473242303673
+    }
+   ]
+  },
+  {
+   "member": "x0.0625",
+   "resize": "8",
+   "source": "results/clock_rail/x0.0625/resize8/clock_headroom.json",
+   "vf_source": "fmax:rail=0.05,resize=8",
+   "f_GHz": 3.623781360756131,
+   "limited_by": "rail:ir+reliability:tddb",
+   "bracket_GHz": [
+    3.623781360756131,
+    3.661543717983018
+   ],
+   "V_V": 0.7685857953929918,
+   "V_eff_V": 0.6884475918857196,
+   "ir_drop_V": 0.08013820350727224,
+   "J_exec_max_A_per_mm2": 814.2041476338861,
+   "J_over_native": 18.317303658805088,
+   "ideal_rails": {
+    "V_needed_V": 0.7353393288509347,
+    "f_max_GHz": 3.7299126103642597
+   },
+   "v_max_reliability_V": 0.7781916369064681,
+   "T_eval_K": 364.87274169921875,
+   "peak_C": 91.72274169921877,
+   "peak_block": "RBB_24",
+   "p_chip_W": 98.89655750349077,
+   "heat_removed_W": 27.346910422876068,
+   "IPC_f": 2.520180288944466,
+   "f_x_IPC": 9.132582356821956,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.416790862520753,
+     "reason": "device",
+     "J_over_native": 25.075032022690532,
+     "ir_drop_V": 0.10970326509927107
+    },
+    {
+     "f_GHz": 3.812593146890565,
+     "reason": "reliability:tddb",
+     "J_over_native": 20.755341533471015,
+     "ir_drop_V": 0.09080461920893568
+    },
+    {
+     "f_GHz": 3.661543717983018,
+     "reason": "rail:ir+reliability:tddb",
+     "J_over_native": 18.782755924873655,
+     "ir_drop_V": 0.08217455717132223
+    }
+   ]
+  },
+  {
+   "member": "x0.0625",
+   "resize": "16",
+   "source": "results/clock_rail/x0.0625/resize16/clock_headroom.json",
+   "vf_source": "fmax:rail=0.05,resize=16",
+   "f_GHz": 3.6993568185106733,
+   "limited_by": "reliability:tddb",
+   "bracket_GHz": [
+    3.6993568185106733,
+    3.737120303366466
+   ],
+   "V_V": 0.7620674970126076,
+   "V_eff_V": 0.7177112305787996,
+   "ir_drop_V": 0.04435626643380793,
+   "J_exec_max_A_per_mm2": 901.3193339349773,
+   "J_over_native": 20.27715036974077,
+   "ideal_rails": {
+    "V_needed_V": 0.7627193816910325,
+    "f_max_GHz": 3.7375627168312224
+   },
+   "v_max_reliability_V": 0.7793631469773197,
+   "T_eval_K": 363.725830078125,
+   "peak_C": 90.57583007812502,
+   "peak_block": "RBB_24",
+   "p_chip_W": 107.77189347324345,
+   "heat_removed_W": 40.718226919150766,
+   "IPC_f": 2.5128598300963283,
+   "f_x_IPC": 9.295965146428424,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.4168630307707355,
+     "reason": "device",
+     "J_over_native": 30.597977268647686,
+     "ir_drop_V": 0.0669330752751668
+    },
+    {
+     "f_GHz": 3.812647273078052,
+     "reason": "reliability:tddb",
+     "J_over_native": 22.25235940663768,
+     "ir_drop_V": 0.04867703620201992
+    },
+    {
+     "f_GHz": 3.737120303366466,
+     "reason": "reliability:tddb",
+     "J_over_native": 20.94835033982163,
+     "ir_drop_V": 0.04582451636835981
+    }
+   ]
+  },
+  {
+   "member": "x0.125",
+   "resize": "off",
+   "source": "results/clock_rail/x0.125/resizeoff/clock_headroom.json",
+   "vf_source": "fmax",
+   "f_GHz": 3.7279502287557325,
+   "limited_by": "reliability:tddb",
+   "bracket_GHz": [
+    3.7279502287557325,
+    3.7632145191385025
+   ],
+   "V_V": 0.771015206611384,
+   "V_eff_V": null,
+   "ir_drop_V": null,
+   "J_exec_max_A_per_mm2": null,
+   "J_over_native": null,
+   "ideal_rails": null,
+   "v_max_reliability_V": 0.7798087113522398,
+   "T_eval_K": 363.2919616699219,
+   "peak_C": 90.1419616699219,
+   "peak_block": "cALU_16",
+   "p_chip_W": 113.74659167486011,
+   "heat_removed_W": 45.283276781751105,
+   "IPC_f": 2.5101345658719874,
+   "f_x_IPC": 9.357656729050147,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.256914584497283,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.9748002614351226,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.8337430999040425,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.7632145191385025,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    }
+   ]
+  },
+  {
+   "member": "x0.125",
+   "resize": "1",
+   "source": "results/clock_rail/x0.125/resize1/clock_headroom.json",
+   "vf_source": "fmax:rail=0.05,resize=1",
+   "f_GHz": 3.0193457850157834,
+   "limited_by": "rail:ir+reliability:tddb",
+   "bracket_GHz": [
+    3.0193457850157834,
+    3.057099332608961
+   ],
+   "V_V": 0.7800865780903365,
+   "V_eff_V": 0.5666155342000695,
+   "ir_drop_V": 0.21347104389026703,
+   "J_exec_max_A_per_mm2": 271.10822574063917,
+   "J_over_native": 6.099172682579058,
+   "ideal_rails": {
+    "V_needed_V": 0.5873952142264607,
+    "f_max_GHz": 3.7523124594419257
+   },
+   "v_max_reliability_V": 0.7813307320128817,
+   "T_eval_K": 361.81951904296875,
+   "peak_C": 88.66951904296877,
+   "peak_block": "cALU_0",
+   "p_chip_W": 62.33745166561721,
+   "heat_removed_W": 0.0,
+   "IPC_f": 2.585832204018309,
+   "f_x_IPC": 7.807521565960754,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.41622704596334,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.20811352298167,
+     "reason": "rail:ir+reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.057099332608961,
+     "reason": "rail:ir+reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    }
+   ]
+  },
+  {
+   "member": "x0.125",
+   "resize": "4",
+   "source": "results/clock_rail/x0.125/resize4/clock_headroom.json",
+   "vf_source": "fmax:rail=0.05,resize=4",
+   "f_GHz": 3.66157237914923,
+   "limited_by": "rail:ir+reliability:tddb",
+   "bracket_GHz": [
+    3.66157237914923,
+    3.699335387766258
+   ],
+   "V_V": 0.7767429354989901,
+   "V_eff_V": 0.694943905385536,
+   "ir_drop_V": 0.08179903011345417,
+   "J_exec_max_A_per_mm2": 415.53907297634726,
+   "J_over_native": 9.348460584394763,
+   "ideal_rails": {
+    "V_needed_V": 0.7423432169953357,
+    "f_max_GHz": 3.7502106077823822
+   },
+   "v_max_reliability_V": 0.7786178859242483,
+   "T_eval_K": 364.45440673828125,
+   "peak_C": 91.30440673828127,
+   "peak_block": "cALU_16",
+   "p_chip_W": 102.31529256292121,
+   "heat_removed_W": 29.18088329830228,
+   "IPC_f": 2.5164981918252374,
+   "f_x_IPC": 9.21434027136627,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.416832551489789,
+     "reason": "device",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.8126244136173417,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.737098396383286,
+     "reason": "reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    },
+    {
+     "f_GHz": 3.699335387766258,
+     "reason": "rail:ir+reliability:tddb",
+     "J_over_native": null,
+     "ir_drop_V": null
+    }
+   ]
+  },
+  {
+   "member": "x0.125",
+   "resize": "8",
+   "source": "results/clock_rail/x0.125/resize8/clock_headroom.json",
+   "vf_source": "fmax:rail=0.05,resize=8",
+   "f_GHz": 3.774830789663678,
+   "limited_by": "reliability:tddb",
+   "bracket_GHz": [
+    3.774830789663678,
+    3.812593146890565
+   ],
+   "V_V": 0.7789663408781415,
+   "V_eff_V": 0.7331106952606484,
+   "ir_drop_V": 0.04585564561749313,
+   "J_exec_max_A_per_mm2": 465.8933594737303,
+   "J_over_native": 10.481290426855574,
+   "ideal_rails": {
+    "V_needed_V": 0.7885171859525555,
+    "f_max_GHz": 3.7569666829027972
+   },
+   "v_max_reliability_V": 0.7797709265636565,
+   "T_eval_K": 363.3287048339844,
+   "peak_C": 90.1787048339844,
+   "peak_block": "cALU_16",
+   "p_chip_W": 113.87058849788222,
+   "heat_removed_W": 45.3747902398975,
+   "IPC_f": 2.505717539095409,
+   "f_x_IPC": 9.458659716777651,
+   "mr_envelope_shape": "power",
+   "failed_candidates": [
+    {
+     "f_GHz": 4.416790862520753,
+     "reason": "device",
+     "J_over_native": 15.814558326455916,
+     "ir_drop_V": 0.06918869267824462
+    },
+    {
+     "f_GHz": 3.812593146890565,
+     "reason": "reliability:tddb",
+     "J_over_native": 11.106149833761533,
+     "ir_drop_V": 0.048589405522706706
+    }
+   ]
+  }
+ ],
+ "scorecard": {
+  "P1_reference_barely_notices": {
+   "measured": {
+    "f_off": 3.7632145191385025,
+    "f_resize1": 3.7744167368793278,
+    "f_resize2": 3.850466206498045,
+    "loss": -0.002976768314390421,
+    "J_over_native": 1.411073298266579,
+    "ir_drop_V": 0.04938756543933026,
+    "limited_by": "reliability:tddb"
+   },
+   "verdict": "NOT as predicted"
+  },
+  "P2_dense_cluster_on_native_rails_has_no_clock": {
+   "measured": {
+    "x0.125": {
+     "f_GHz": 3.0193457850157834,
+     "limited_by": "rail:ir+reliability:tddb",
+     "J_over_native": 6.099172682579058,
+     "ir_drop_V": 0.21347104389026703,
+     "first_failure": {
+      "f_GHz": 4.41622704596334,
+      "reason": "device",
+      "J_over_native": null,
+      "ir_drop_V": null
+     }
+    },
+    "x0.0625": {
+     "f_GHz": 2.5663032138976574,
+     "limited_by": "rail:ir+reliability:tddb",
+     "J_over_native": 8.407833038516147,
+     "ir_drop_V": 0.2942741563480651,
+     "first_failure": {
+      "f_GHz": 4.41622704596334,
+      "reason": "device",
+      "J_over_native": 19.78877555925415,
+      "ir_drop_V": 0.6926071445738953
+     }
+    }
+   },
+   "verdict": "FALSIFIED"
+  },
+  "P3_resizing_by_J_restores_it": {
+   "measured": {
+    "x0.125": {
+     "f_off": 3.7279502287557325,
+     "f_at_Jx": 3.774830789663678,
+     "loss_at_Jx": -0.012575425644454796,
+     "loss_at_half": 0.017805454883623062,
+     "J_over_native_at_Jx": 10.481290426855574
+    },
+    "x0.0625": {
+     "f_off": 3.692685938372962,
+     "f_at_Jx": 3.6993568185106733,
+     "loss_at_Jx": -0.0018065116419434535,
+     "loss_at_half": 0.018659744902971953,
+     "J_over_native_at_Jx": 20.27715036974077
+    }
+   },
+   "verdict": "confirmed"
+  },
+  "P4_rail_off_cluster_clock_is_the_references": {
+   "measured": {
+    "x0.125": {
+     "f_off": 3.7279502287557325,
+     "limited_by": "reliability:tddb",
+     "peak_C": 90.1419616699219
+    },
+    "x0.0625": {
+     "f_off": 3.692685938372962,
+     "limited_by": "reliability:tddb",
+     "peak_C": 91.24257812500002
+    }
+   },
+   "verdict": "NOT as predicted"
+  }
+ },
+ "complete": true
+}

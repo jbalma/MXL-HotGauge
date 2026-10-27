@@ -176,8 +176,115 @@ def apply_floorplan_overheads(stats, utilisation=1.0, overhead=0.0, halo_um=0.0,
     return report
 
 
+def add_pipeline_compact(flp, pipeline_stats):
+    """``floorplans.add_pipeline`` with the FPU/AVX area folded INTO the execution column (§P0.36).
+
+    The shipped tiler gives the FPU/AVX pair its own full-height column beside the execution
+    column, so each dense unit becomes a strip of that column's width. Here the execution column
+    takes both areas; ``add_level2_compact`` then places the four execution units as one block.
+    Areas, names and totals are unchanged -- only the shape moves.
+    """
+    total_area = sum(pipeline_stats.values())
+    EX_area = pipeline_stats['Execution Unit'] + pipeline_stats['AVX_FPU']
+    not_EX_area = total_area - EX_area
+    flp = fp.replace(flp, 'Core', [('Execution Unit', EX_area), ('not_EX', not_EX_area)], vertical=False)
+    cols = [['Renaming Unit', 'Instruction Fetch Unit'], ['Load Store Unit', 'Memory Management Unit']]
+    col_sizes = [sum(pipeline_stats[el] for el in col_els) for col_els in cols]
+    flp = fp.replace(flp, 'not_EX', [('not_EX{}'.format(i), col_sizes[i]) for i in range(len(cols))], extra='none')
+    for col_idx, col_els in enumerate(cols):
+        flp = fp.replace(flp, 'not_EX{}'.format(col_idx), [(el, pipeline_stats[el]) for el in col_els],
+                         extra='none', vertical=False)
+    return flp
+
+
+def add_level2_compact(flp, s2):
+    """``floorplans.add_level2`` with the four execution units in ONE near-square block (§P0.36).
+
+    The execution column keeps the scheduler, register-file and bus strips; at its end sits the
+    cluster block: the vector unit across it, and under that the FPU beside a stacked
+    integer-ALU / complex-ALU pair -- so a 16x-dense complex ALU is ~35 x 29 um, not 117 x 9.
+    """
+    a_c, a_i = s2['Execution Unit/Complex ALUs'], s2['Execution Unit/Integer ALUs']
+    a_f, a_v = s2['AVX_FPU/Floating Point Units'], s2['AVX_FPU/AVX512 Accelerator']
+    ordering = {
+        'Renaming Unit': ['Int Front End RAT', 'FP Front End RAT', 'Free List'],
+        'Load Store Unit': ['LoadQ', 'StoreQ', 'Data Cache'],
+        'Memory Management Unit': ['Itlb', 'Dtlb'],
+        'Instruction Fetch Unit': ['Branch Target Buffer', 'Branch Predictor', 'Instruction Decoder',
+                                   'Instruction Buffer', 'Instruction Cache'],
+    }
+    for el, sub_els in ordering.items():
+        kwargs = {'extra': 'NONE'} if el in fp.MISSING_POWER_INFO else {}
+        if el == 'Instruction Fetch Unit':
+            kwargs['vertical'] = False
+        flp = fp.replace(flp, el, [(sub, s2['{}/{}'.format(el, sub)]) for sub in sub_els], **kwargs)
+    kwargs = {'extra': 'NONE'} if 'Execution Unit' in fp.MISSING_POWER_INFO else {}
+    ex = [(sub, s2['Execution Unit/{}'.format(sub)]) for sub in ('Instruction Scheduler', 'Register Files', 'Results Broadcast Bus')]
+    flp = fp.replace(flp, 'Execution Unit', ex + [('CLUSTER', a_c + a_i + a_f + a_v)], **kwargs)
+    flp = fp.replace(flp, 'CLUSTER', [('AVX512 Accelerator', a_v), ('CL_ROW2', a_f + a_i + a_c)], extra='none')
+    flp = fp.replace(flp, 'CL_ROW2', [('Floating Point Units', a_f), ('ALU_COL', a_i + a_c)], extra='none', vertical=False)
+    flp = fp.replace(flp, 'ALU_COL', [('Integer ALUs', a_i), ('Complex ALUs', a_c)], extra='none')
+    return flp
+
+
+#: §P0.38: the DESIGNED finger order of the execution column, at the scheduler's and register
+#: file's SUB-BLOCK level (a first build at unit level left the vector and FP units 12 um apart --
+#: there are four hot units and only two large logic units). Every execution unit is a full-width
+#: strip with logic on both sides: the FP register file and FP window flank the vector / FP units,
+#: the ROB (the largest strip) separates them from the complex ALU, the integer window separates
+#: the two ALUs, the integer register file and the bus close the column.
+FINGER_ORDER = (('Register Files', 'Floating Point RF'), 'AVX512 Accelerator',
+                ('Instruction Scheduler', 'FP Instruction Window'), 'Floating Point Units',
+                ('Instruction Scheduler', 'ROB'), 'Complex ALUs',
+                ('Instruction Scheduler', 'Instruction Window'), 'Integer ALUs',
+                ('Register Files', 'Integer RF'), 'Results Broadcast Bus')
+
+
+def add_level2_finger(flp, s2, s3):
+    """``floorplans.add_level2`` with the execution units INTERDIGITATED with logic (§P0.38).
+
+    §P0.36 found the strip ("finger") 16x cluster holding 202 W where the compact one has no steady
+    state above 121 W -- but the strips were the slicing tiler's accident (hot units adjacent at
+    the column's end, the FPU/AVX pair in a column of its own). Here it is a design: one execution
+    column (``add_pipeline_compact``), hot strips alternating with the scheduler, register-file and
+    bus strips in ``FINGER_ORDER``. Same areas, powers, names and die area as the strip and compact
+    members; only the arrangement changes. The spacing of the hot strips against the tile pitch
+    is whatever the areas give at the column's width -- it is REPORTED, not tuned.
+    """
+    ordering = {
+        'Renaming Unit': ['Int Front End RAT', 'FP Front End RAT', 'Free List'],
+        'Load Store Unit': ['LoadQ', 'StoreQ', 'Data Cache'],
+        'Memory Management Unit': ['Itlb', 'Dtlb'],
+        'Instruction Fetch Unit': ['Branch Target Buffer', 'Branch Predictor', 'Instruction Decoder',
+                                   'Instruction Buffer', 'Instruction Cache'],
+    }
+    for el, sub_els in ordering.items():
+        kwargs = {'extra': 'NONE'} if el in fp.MISSING_POWER_INFO else {}
+        if el == 'Instruction Fetch Unit':
+            kwargs['vertical'] = False
+        flp = fp.replace(flp, el, [(sub, s2['{}/{}'.format(el, sub)]) for sub in sub_els], **kwargs)
+    area = {'Floating Point Units': s2['AVX_FPU/Floating Point Units'],
+            'AVX512 Accelerator': s2['AVX_FPU/AVX512 Accelerator']}
+    els = []
+    for u in FINGER_ORDER:
+        if isinstance(u, tuple):
+            els.append((u[1], s3['Execution Unit/{}/{}'.format(*u)]))
+        else:
+            els.append((u, area.get(u, s2.get('Execution Unit/{}'.format(u)))))
+    # extra='NONE': the execution unit's float residue is dropped exactly as the stock tiler
+    # drops it, so the member keeps the strip and compact members' 1126 blocks.
+    return fp.replace(flp, 'Execution Unit', els, extra='NONE')
+
+
+def add_level3_finger(flp, s3):
+    """``floorplans.add_level3`` less the two parents ``add_level2_finger`` already expanded."""
+    bp_order = ['Global Predictor', 'L2_Local Predictor', 'L1_Local Predictor', 'Chooser', 'RAS']
+    return fp.replace(flp, 'Branch Predictor',
+                      [(sub, s3['Instruction Fetch Unit/Branch Predictor/{}'.format(sub)]) for sub in bp_order])
+
+
 def family_member(factor, cores, area_json, out_root, nodes=('7nm',), detail=3, force=False,
-                  utilisation=1.0, overhead=0.0, halo_um=0.0, tag=None):
+                  utilisation=1.0, overhead=0.0, halo_um=0.0, tag=None, compact=False, finger=False):
     out_dir = os.path.join(out_root, 'd1_exec{:g}{}'.format(factor, '_' + tag if tag else ''))
     os.makedirs(out_dir, exist_ok=True)
     dst_json = os.path.join(out_dir, 'area-{:g}.json'.format(factor))
@@ -196,11 +303,16 @@ def family_member(factor, cores, area_json, out_root, nodes=('7nm',), detail=3, 
     split = fp.split_levels(raw)
     base = fp.get_base_floorplan(split)
     if detail >= 1:
-        base = fp.add_pipeline(base, split[1])
+        base = (add_pipeline_compact if (compact or finger) else fp.add_pipeline)(base, split[1])
     if detail >= 2:
-        base = fp.add_level2(base, split[2])
+        if finger:
+            if detail < 3:
+                raise ValueError('the finger layout interleaves level-3 sub-blocks; use detail 3')
+            base = add_level2_finger(base, split[2], split[3])
+        else:
+            base = (add_level2_compact if compact else fp.add_level2)(base, split[2])
     if detail >= 3:
-        base = fp.add_level3(base, split[3])
+        base = add_level3_finger(base, split[3]) if finger else fp.add_level3(base, split[3])
     frmt = 'skylake{{node}}_{{suffix}}_{}_{{frmt}}.flp'.format(detail)
     written = generate(out_dir, frmt, base, cores, nodes=nodes, force=force)
     tmpl = os.path.join(out_dir, frmt.format(node=nodes[0], suffix='{}core'.format(cores),
@@ -237,7 +349,21 @@ def main():
     ap.add_argument('--cache-halo-um', type=float, default=0.0,
                     help='keep-out ring around each SRAM macro, physical um at 7 nm (halo + channel)')
     ap.add_argument('--tag', default=None, help='suffix for the member directory (e.g. u70)')
+    ap.add_argument('--compact-cluster', action='store_true',
+                    help='P0.36: place the four execution units as ONE near-square block inside the '
+                         'execution column instead of as strips of two columns (same areas, names and '
+                         'powers; tag defaults to "compact")')
+    ap.add_argument('--finger-cluster', action='store_true',
+                    help='P0.38: the DESIGNED finger layout -- one execution column with the four '
+                         'execution units interdigitated with the scheduler / register-file / bus '
+                         'strips (same areas, names and powers; tag defaults to "finger")')
     args = ap.parse_args()
+    if args.compact_cluster and args.finger_cluster:
+        ap.error('--compact-cluster and --finger-cluster are two shapes of the same units')
+    if args.compact_cluster and not args.tag:
+        args.tag = 'compact'
+    if args.finger_cluster and not args.tag:
+        args.tag = 'finger'
 
     ref = unit_areas(args.reference)
     ref_area = sum(a for _n, a in ref.values())
@@ -247,13 +373,23 @@ def main():
         out_dir, tmpl, v, delta = family_member(f, args.cores, args.area_json, args.out_root,
                                                 force=args.force, utilisation=args.utilisation,
                                                 overhead=args.overhead, halo_um=args.cache_halo_um,
-                                                tag=args.tag)
+                                                tag=args.tag, compact=args.compact_cluster,
+                                                finger=args.finger_cluster)
         ua = unit_areas(tmpl)
         area = sum(a for _n, a in ua.values())
         status = 'OK' if (not v['missing'] and v['max_core_idx'] == args.cores - 1) else 'PROBLEM'
         print('  factor {:g}: {}  {} blocks  {:.2f} mm^2 ({:.3f}x)  [{}]'.format(
             f, os.path.relpath(out_dir, _REPO), v['blocks'], area, area / ref_area, status))
         rows = {}
+        shapes, centres = {}, {}
+        _f = Floorplan.from_file(tmpl)
+        for e in _f.elements:
+            if e.name in ('cALU_16', 'iALU_16', 'FPUs_16', 'AVXs_16') or (args.finger_cluster and e.name in ('ROB_16', 'iWin_16', 'fpiWin_16', 'IRF_16', 'fpRF_16', 'RBB_16')):
+                shapes[e.name[:-3]] = [round(e.width, 1), round(e.height, 1)]
+                centres[e.name[:-3]] = [round(e.minx + e.width / 2.0, 1), round(e.miny + e.height / 2.0, 1)]
+        if args.finger_cluster:
+            print('     centres (um, core 16): ' + ', '.join('%s (%g, %g)' % (k, c[0], c[1]) for k, c in sorted(centres.items())))
+        print('     shapes (um, core 16): ' + ', '.join('%s %gx%g' % (k, v[0], v[1]) for k, v in sorted(shapes.items())))
         for fam in ('cALU', 'iALU', 'FPUs', 'AVXs', 'L2', 'L3', 'core_other', 'DCache'):
             if fam in ua and fam in ref:
                 rows[fam] = {'ref_mm2': ref[fam][1], 'mm2': ua[fam][1],
@@ -266,7 +402,9 @@ def main():
         members.append({'factor': f, 'dir': os.path.relpath(out_dir, _REPO),
                         'template': os.path.relpath(tmpl, _REPO), 'blocks': v['blocks'],
                         'die_mm2': area, 'die_area_ratio': area / ref_area,
-                        'delta_mm2_per_core_14nm': delta, 'units': rows, 'status': status})
+                        'delta_mm2_per_core_14nm': delta, 'units': rows, 'status': status,
+                        'compact_cluster': bool(args.compact_cluster), 'unit_shapes_um_core16': shapes,
+                        'finger_cluster': bool(args.finger_cluster), 'unit_centres_um_core16': centres})
     out = {'note': __doc__.strip(), 'reference': os.path.relpath(args.reference, _REPO),
            'reference_mm2': ref_area, 'scaled_units': list(EXEC_UNITS),
            'avx_follows_fpu': True, 'members': members,

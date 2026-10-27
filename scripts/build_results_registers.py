@@ -529,6 +529,185 @@ QUOTABLE = [
                   'nothing there says whether the device switches at 20 GHz (21-generalized-fmax does). '
                   'x264 rows read IPC 0 (outside the ROI); -test inputs are too short to quote.',
     },
+    {
+        'slug': '28-cluster-cold-end',
+        'claim': 'The 8x cluster\'s lost top rung was the DYE\'S temperature dependence, not the film concept: '
+                 'with a hot-zone material whose capability rises on cooling it holds 243 W; a dual-material '
+                 'layout over the execution column suffices; plain GaAs fails; finer pitch makes the dye worse '
+                 '(section P0.35).',
+        'figure': 'retuned-enhanced GaAs: 8x holds 243 W at s 0.88 (20 um) / 0.91 (5 um), tile 235-242 K at '
+                  '215 W/mm^2, 0 capped; 202 W plan 173.8 -> 142.9 W; dual = whole array on the 8x; 16x at '
+                  '243 W no steady state with 0 capped; plain GaAs 5954 tiles capped; dye at 50 um pitch: all '
+                  'four rows lost, 59-87 capped; eta_ASF at the coldest tile 0.010-0.016 (dye ~0.10)',
+        'register': '§1.3, §2',
+        'files': ['cluster_coldend.json'],
+        'raw': ['results/cluster_coldend'],
+        'driver': 'scripts/cluster_coldend_ladder.sh (write elsewhere, mv into results/campaign_queue/); '
+                  'python examples/cluster_coldend_report.py',
+        'caveat': 'The retuned-enhanced GaAs is v100 Table 1.1\'s CEILING design point: an upper bound on what a '
+                  'cold-tolerant hot-zone material buys, at 6-10x the pump power per watt lifted at the coldest '
+                  'tile. A dual-material array is a per-architecture layout: measured, never the default. 50 um '
+                  'cells, per-block shape, matched die watts.',
+    },
+    {
+        'slug': '29-compact-cluster-shape',
+        'claim': 'The shape of a densified execution cluster is a design variable: compact helps to ~8x and '
+                 'breaks at 16x -- past ~8x the units want perimeter (fingers), not compaction (section P0.36).',
+        'figure': '8x compact 0.94 / 0.85 of the strip plan at 162 / 202 W and gains 243 W at 200 um pitch '
+                  '(s 0.98); 4x compact gains 243 W at the D1 geometry (s 0.93), 3-8 % cheaper; 2x compact '
+                  '+3-4 %; 16x compact holds only 111 / 121 W (1.5-1.6x the strip plan), no steady state at '
+                  '162 / 202 W with 0 capped, unchanged without the 45 K lift and under either material',
+        'register': '§1.3, §4',
+        'files': ['compact_cluster.json', 'd1_exec_density_family_compact.json'],
+        'raw': ['results/compact_cluster', 'results/compact_cluster_nolift'],
+        'driver': 'python examples/generate_exec_density_family.py --factors 0.5 0.25 0.125 0.0625 '
+                  '--compact-cluster --json-out docs/evidence/d1_exec_density_family_compact.json; '
+                  'scripts/compact_cluster_ladder.sh; python examples/compact_cluster_report.py',
+        'caveat': 'Same areas, powers, block names and die area as the strip members; only the shape differs. '
+                  '50 um cells: the 16x units are sub-cell in both shapes (holds are lower bounds, losses firm). '
+                  'Quote a dense-cluster row with its unit shape.',
+    },
+    {
+        'slug': '30-two-sink-gen3-stack',
+        'claim': 'Off the compute die\'s heat path the cache prize costs a ninth of the sink-side stack\'s, and '
+                 'the storage die reaches its 280 K knee (section P0.37, the two-sink gen-3 stack, thermal side).',
+        'figure': '1.00 W/mm^2, caches at 280 K on the dye storage array, 100 um isolation, 3 K/W far-face sink: '
+                  '10.9 / 13.7 / 26.2 / 75.1 W at k = 0.025 / 0.1 / 0.5 / 5 W/mK, all on the storage array '
+                  '(s 0.11-0.81), compute array 0 W, zone 280 K mean / 282 K max, cache leakage 3.5-4.0x down '
+                  '(sink-side stack and monolithic die: 99.4 W, s 1.08, 286-287 K); no unpowered steady state with '
+                  'the far face adiabatic or at 10-30 K/W; 13.7 / 20.1 / 39.8 W at 3 / 1 / 0.3 K/W; Cr:LiSAF capped '
+                  'at every isolation (1.7 W short at k = 0.025, zone 290 K, 2.9x); laser 7.0 W net for 2.78 W saved',
+        'register': '§1.2, §2, §3, §4',
+        'files': ['two_sink.json', 'gen3_stack.json'],
+        'raw': ['results/two_sink_v3', 'results/two_sink_v2', 'results/two_sink', 'results/anchor_2026-09-19'],
+        'driver': 'scripts/two_sink_ladder.sh; python examples/two_sink_report.py',
+        'caveat': 'Thermal side only: the isolation carries no via copper; the interface\'s construction is ARGUED. '
+                  '100 um cells, seed shape, curve only, 12 planner iterations; held = converged descent with the '
+                  'worst cache block inside the 2 K tolerance. Cr:LiSAF is a ceiling at eta_EQE = 1. The 2.00 W/mm^2 '
+                  'rows are planner-limited (one envelope scalar over two dies). Pass the cache-only zone pattern. '
+                  'THE LEAKAGE SAVED IS AN UPPER BOUND: the McPAT input gives the caches HP devices (item 33).',
+    },
+    {
+        'slug': '33-cache-leakage-is-a-device-input',
+        'claim': 'The caches\' share of on-die leakage (54 %) and the cold-cache prize in watts are a McPAT input: '
+                 'the L2 / L3 bitcells are modelled as HP logic devices (section P0.40).',
+        'figure': 'steady slice, 8 cores, 330 K: caches 1.652 W = 53.8 % of processor leakage with HP cells (as '
+                  'recorded; static fraction 29.4 %) against 0.0054 W = 0.4 % with LSTP cells (306x; static 16.1 %); '
+                  'LOP at this fork\'s 7 nm table is not credible (23x MORE leakage). CoMeT record: 2.5D x 111, '
+                  '3Dmem x 40, 3D x 8, DDR x 0; the IPC(f) sweep is 2.5D; FFT t = 0.328/f + 0.0191 ns per instruction',
+        'register': '§1.2 (head note), §2, §3, §4',
+        'files': ['mcpat_cache_device.json', 'mcpat_cache_surface.json', 'comet_ipc_vs_f.json'],
+        'raw': ['results/mcpat_cache_device'],
+        'driver': 'bash spice_toolchain/tmp/mcpat_cache_device_ab.sh; python examples/mcpat_cache_device_report.py',
+        'caveat': 'McPAT-native scope (not the floorplan ledger). A production cache array sits between the HP and LSTP '
+                  'columns, far nearer LSTP. Ratios (2.23x, the 280 K knee) and every thermal-geometry result stand. '
+                  'This is NOT a finding that a cold memory zone has no benefit (two points, one die): the McPAT surface '
+                  '(section P0.42) puts the pay-off at ~2.5-3x the recorded leakage density -- fast cells beside a hot die. '
+                  'The near-memory gains (3D +3 / +9 %, DDR -14 / -29 % at 4 / 16 GHz) are ARGUED from one recorded '
+                  'sweep; the matched CoMeT sweep is written and not run.',
+    },
+    {
+        'slug': '31-designed-finger-cluster',
+        'claim': 'A DESIGNED finger layout -- every execution unit a full-width strip interdigitated with scheduler / '
+                 'register-file logic at the tile pitch -- holds every rung to 243 W at 16x and at 32x (section P0.38).',
+        'figure': '20 um burial, 100 um pitch, plan W (s) at 162 / 202 / 243 W: 16x finger 76.8 / 132.1 (0.70) / '
+                  '170.5 (0.76); 16x strip 103.3 / 163.9 (0.88) / none; 16x compact none; 32x finger 87.7 / 145.0 / '
+                  '190.0 (0.85); 32x strip 108.6 / none / none; 32x compact holds 111 W only; 0 tiles capped; the '
+                  'compact 16x: nothing at 5 um burial (lift removed, either film); 162 W held at 50 um pitch under the '
+                  'cold-tolerant film (117.0 W, s 0.78), 202 W lost',
+        'register': '§1.3, §2, §3, §4',
+        'files': ['finger_cluster.json', 'd1_exec_density_family_finger.json', 'd1_exec_density_family_x32.json',
+                  'd1_exec_density_family_compact_x32.json', 'compact_cluster.json', 'cluster_transport.json'],
+        'raw': ['results/finger_cluster'],
+        'driver': 'python examples/generate_exec_density_family.py --factors 0.0625 0.03125 --finger-cluster '
+                  '--json-out docs/evidence/d1_exec_density_family_finger.json; scripts/finger_cluster_ladder.sh; '
+                  'python examples/finger_cluster_report.py',
+        'caveat': 'Same areas, powers, names and die area in every shape of one factor. 50 um cells: a strip is one '
+                  'cell tall in the tiler\'s and the designed layout alike (like for like); finger-vs-compact keeps '
+                  'the sub-cell caveat. The cropped die on a 25 um grid is not built. Quote rows with the unit shape.',
+    },
+    {
+        'slug': '32-rail-model-clock',
+        'claim': 'With a static rail model (V_eff = V_dd - IR, rails sized for the native die to a 5 % budget) a dense '
+                 'cluster on native rails loses a fifth of its clock, and re-sizing the rails ~J x restores it '
+                 '(section P0.39).',
+        'figure': 'laser arm, 92 C target, 101 W, per-block shape, fmax source, 20 FO4: 8x strip cluster 3.728 GHz '
+                  'rail-off -> 3.019 on native rails (-19.0 % clock, -16.6 % f x IPC(f); 213 mV at 6.1x J_native; '
+                  'rail:ir+reliability:tddb; die 62 W, array plan 0 W) -> 3.662 at 4x -> 3.775 at 8x; 16x: 3.693 -> '
+                  '2.566 (-30.5 %, -26.8 %; 294 mV; 46 W, plan 0 W) -> 3.624 at 8x -> 3.699 at 16x; reference die at '
+                  '1.00 W/mm^2: J 1.4x native, 49 mV, +0.3 % (inside the 0.05 GHz tolerance); designed fingers (P0.41): '
+                  '3.728 GHz rail-off at 16x and 32x, 3.737 GHz widened by the density ratio (J 20x / 40x native), '
+                  '2.04 GHz (16x) and no clock above 2 GHz (32x) on native rails -- the 16x native-rail clock is '
+                  'path-dependent, quote 2.0-2.6 GHz',
+        'register': '§1.3, §3, §4',
+        'files': ['clock_rail.json', 'clock_fmax.json', 'pdn_em_skew.json'],
+        'raw': ['results/clock_rail'],
+        'driver': 'scripts/clock_rail.sh; python examples/clock_rail_report.py',
+        'caveat': 'Static IR only (no L di/dt, no decap, no rail self-heating); the 5 % native budget and J_native are '
+                  'STATED; TDDB / EM see the pin voltage. Clocks UNCALIBRATED (3.8 GHz anchor), bisection tolerance '
+                  '0.05 GHz; quote with V/F source, limiter and IPC(f). Whether 8-16x the rail cross-section exists '
+                  'over a 0.035 mm^2 unit is a BEOL question the model does not hold.',
+    },
+    {
+        'slug': '34-memory-arrangement-sweep',
+        'claim': 'Near memory and the cooler are complements: a clock gain keeps 0.78 / 0.47 of itself (4 / 16 GHz) on '
+                 'interposer-class memory and 0.51 / 0.21 on off-package DDR; stacking under the cores adds 1-6 % '
+                 '(section P0.43, the matched CoMeT sweep).',
+        'figure': 'FFT vs 2.5D at 2 / 4 / 8 / 16 GHz: DDR -19 / -31 / -43 / -54 %, 3Dmem -1 to -4 %, 3D +1 / +2 / +2 / -1 %; '
+                  'lu.cont: DDR -9 / -19 / -33 / -47 %, 3D +2 to +6 %; floor b = 0.20-0.24 (FFT) / 0.31-0.34 (lu.cont) of '
+                  'the measured DRAM latency in every arrangement',
+        'register': '§1.3, §3, §4',
+        'files': ['comet_mem_arrangement.json', 'comet_ipc_vs_f.json'],
+        'raw': [],
+        'driver': 'ssh node-06: bash CoMeT/test/mem_arrangement_sweep/run_all_on_node.sh; '
+                  'python examples/comet_mem_arrangement_report.py',
+        'caveat': 'One workload class (SPLASH-2 small, 4 cores); CoMeT constant-latency DRAM model with a queue, '
+                  '7.6 GB/s per controller in all four arrangements (no HBM bandwidth model); the 2.5D / 3D rows hold '
+                  'no thermal samples. Name the memory arrangement with every throughput figure.',
+    },
+    {
+        'slug': '35-memory-die-placement',
+        'claim': 'A DRAM / HBM die beside, under or on top of the 2.00 W/mm^2 compute die sits at the '
+                 'die\'s area-average temperature (27-70 C), never near the 85 C breakpoint; what the '
+                 'array pays is the HEAT PATH the memory adds or removes -- 2.5D nothing, the far face '
+                 '-6 to +16 W by its own sink, memory-on-logic 0 W for one hybrid-bonded die and +40 W '
+                 'or no hold for an 8-high stack (section P0.44, the re-aimed gen 3).',
+        'figure': 'reference 126.1 W; beside 123 W (-2.5 %), banks 27-30 C at 0.5-2 mm; far face through a '
+                  '10,000-via field (k_eff 0.85): 120.0 / 132.4 / 141.6 W at 1 / 3 / 10 K/W, banks 47 / 59 / '
+                  '67 C; aerogel 0.1 at 10 K/W: refresh runaway; memory-on-logic one die 126.1 / 133.6 W '
+                  '(50 / 5 W/mK), 8-high 166.5 W (hybrid) / no hold (microbumps), 35 W at 1.00 W/mm^2',
+        'register': '§1.2, §3, §4',
+        'files': ['memory_die.json'],
+        'raw': ['results/memory_die', 'results/memory_die_twins', 'results/anchor_2026-10-27'],
+        'driver': 'scripts/memory_die_ladder.sh; python examples/memory_die_report.py',
+        'caveat': '100 um cells, dye, --mr-dt-max 45 beside the curve (curve-only the envelope is '
+                  'area-weighted and the banks starve the compute die), seed shape (per-block twins: '
+                  'reference 99.2 W, far face 111.9 W). 8 x 3 W lumped into one 435 um die element; '
+                  'power/dram.py is UNCALIBRATED (JEDEC conventions) -- quote placements and heat '
+                  'paths, never memory watts. The storage array\'s 1.9-5.9 W on far-face rows is the '
+                  'one-scalar envelope\'s share (banks 10-37 K under target), not a need. beside: one '
+                  'slab (coupling an upper bound), shared-base warming ~1.8 K omitted. Quote placement, '
+                  'k_eff with the via count, far-face R, dies, W per die, envelope shape.',
+    },
+    {
+        'slug': '36-cache-latency-not-a-lever',
+        'claim': 'Cache hit latency is not a throughput lever on CoMeT\'s SPLASH-2 kernels: L2 + L3 '
+                 'access times at 50 / 75 / 150 % of the recorded move instructions per second by '
+                 'under 0.5 % at 4 and 16 GHz (section P0.45). A cold / low-V_t cache\'s benefit, where '
+                 'it exists, is a leakage benefit, not a throughput one, on this workload class.',
+        'figure': 'FFT 4 GHz +0.1 / -0.4 / -0.2 %, 16 GHz -0.3 / +0.2 / +0.3 %; lu.cont +0.4 / +0.3 / -0.3 % '
+                  'and +0.3 / +0.4 / +0.1 %; fitted a and b within 2 %; elasticity 0.77-0.78 / 0.45-0.47 '
+                  'at every scaling',
+        'register': '§1.3, §4',
+        'files': ['comet_cache_latency.json'],
+        'raw': ['/mnt/nfs01/scratch/jbalma/CoMeT/test/mem_arrangement_sweep/cachelat'],
+        'driver': 'CoMeT/test/mem_arrangement_sweep/runit_cachelat.sh (docker, node-06, through the '
+                  'campaign server); python examples/comet_cache_latency_report.py',
+        'caveat': 'One workload class (SPLASH-2 small, 4 cores), 2.5D memory, CoMeT\'s constant-latency '
+                  'DRAM; the kernels are DRAM-latency- and clock-bound. A cache-hit-bound kernel, larger '
+                  'inputs or more cores are unmeasured. Says nothing about the LEAKAGE side of a cold '
+                  'cache (section P0.45 stack rows are planner-limited above 1.00 W/mm^2).',
+    },
 ]
 
 HISTORICAL = [

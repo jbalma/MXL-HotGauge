@@ -136,6 +136,13 @@ DEFAULT_STORAGE_SOURCE_UM = 10.0
 DEFAULT_BOND_UM = 5.0
 DEFAULT_BOND_K_SI = 50.0
 
+#: §P0.37: the TWO-SINK gen-3 stack. The storage die sits on the processor die's FAR face (below
+#: it in 3D-ICE's top-down listing), behind an isolation layer of stated thickness and
+#: conductivity, with a second pixel array on its own far face. 100 um at 0.1 W/(m K) is an
+#: aerogel-class spacer (k A / t ~ 0.1 W/K over 100 mm^2); a gas gap is ~0.025, underfill 0.5-5.
+DEFAULT_ISO_UM = 100.0
+DEFAULT_ISO_K_SI = 0.1
+
 
 #: 3D-ICE's comment scanner (flex/stack_description_scanner.l:244-247) leaves a block comment
 #: only on ``"*/"``, and skips ``"*"[^/]`` -- **two characters at a time**. A run of ``*``
@@ -260,7 +267,9 @@ class StackSpec(object):
                  sink_in_stack=True, package_in_boundary=False,
                  cell_um=50.0, htc_3dice=1.0e-7, ambient_K=303.15, name=None,
                  storage_um=None, storage_source_um=DEFAULT_STORAGE_SOURCE_UM,
-                 bond_um=DEFAULT_BOND_UM, bond_k_si=DEFAULT_BOND_K_SI):
+                 bond_um=DEFAULT_BOND_UM, bond_k_si=DEFAULT_BOND_K_SI,
+                 two_sink=False, iso_um=DEFAULT_ISO_UM, iso_k_si=DEFAULT_ISO_K_SI,
+                 bottom_htc_3dice=None, bottom_ambient_K=303.15, storage_k_si=None):
         if package not in ('direct_die', 'lidded'):
             raise ValueError('package must be direct_die or lidded, got {!r}'.format(package))
         if mr_material not in MR_PIXEL_MATERIALS:
@@ -334,8 +343,33 @@ class StackSpec(object):
         # cools it first and the processor die's heat crosses the bond and the storage die on
         # its way to the sink. That is the book's geometry (SoC Physical Design pp. 122-128) and
         # the thermally hostile one; the bond's conductivity is the design variable.
+        # §P0.37: the two-sink arrangement moves the storage die to the processor die's FAR face
+        # (X4 measured the sink-side position and it fails): processor die, isolation layer,
+        # storage die, then a SECOND pixel array (``{mr2_flp_file}``) on the storage die's own far
+        # face, and optionally 3D-ICE's ``bottom heat sink`` under that. The bond is not used.
+        self.two_sink = bool(two_sink)
+        self.iso_um = float(iso_um)
+        self.iso_k_si = float(iso_k_si)
+        self.bottom_htc_3dice = None if bottom_htc_3dice is None else float(bottom_htc_3dice)
+        self.bottom_ambient_K = float(bottom_ambient_K)
+        if self.two_sink:
+            if not (mr_layer and mr_powered):
+                raise ValueError('the two-sink stack needs the powered array (mr=..., mr_powered): '
+                                 'its storage die is held by a second array of the same kind')
+            if storage_um is None:
+                storage_um = 50.0
+            if self.iso_um <= 0 or self.iso_k_si <= 0:
+                raise ValueError('the isolation layer needs positive thickness and conductivity')
+        elif self.bottom_htc_3dice is not None:
+            raise ValueError('a bottom heat sink is only built for the two-sink stack')
         self.storage_um = None if storage_um is None else float(storage_um)
         self.storage_source_um = float(storage_source_um)
+        # §P0.44: a memory STACK lumped into the one storage-die element carries a stated
+        # series-equivalent conductivity (memory_die.lumped_stack: n dies and n-1 bonds). None
+        # keeps bulk silicon and every recorded filename; set, the die renders as STORAGE_SI.
+        self.storage_k_si = None if storage_k_si is None else float(storage_k_si)
+        if self.storage_k_si is not None and self.storage_k_si <= 0:
+            raise ValueError('storage_k_si must be > 0 W/(m K)')
         self.bond_um = float(bond_um)
         self.bond_k_si = float(bond_k_si)
         if self.storage_um is not None:
@@ -350,27 +384,42 @@ class StackSpec(object):
                                      '_mrp' if self.mr_powered else
                                      '_mr' if self.mr_layer else '',
                                      '' if self.sink_in_stack else '_extsink',
-                                     '' if self.storage_um is None else '_st{:.0f}'.format(self.storage_um)))
+                                     '' if self.storage_um is None else '_st{:.0f}'.format(self.storage_um))
+                             + ('_2s' if self.two_sink else ''))
 
     @property
     def storage_die(self):
         return self.storage_um is not None
+
+    @property
+    def storage_material(self):
+        """``SILICON``, or ``STORAGE_SI`` when the storage die's conductivity is stated (§P0.44)."""
+        return 'SILICON' if self.storage_k_si is None else 'STORAGE_SI'
 
     def storage_layers(self):
         """The storage die's sub-layers top-down: silicon / source / silicon (like stack_models)."""
         if not self.storage_die:
             return []
         rest = self.storage_um - self.storage_source_um
-        return [{'kind': 'layer', 'height_um': rest * 0.5, 'material': 'SILICON'},
-                {'kind': 'source', 'height_um': self.storage_source_um, 'material': 'SILICON'},
-                {'kind': 'layer', 'height_um': rest * 0.5, 'material': 'SILICON'}]
+        m = self.storage_material
+        return [{'kind': 'layer', 'height_um': rest * 0.5, 'material': m},
+                {'kind': 'source', 'height_um': self.storage_source_um, 'material': m},
+                {'kind': 'layer', 'height_um': rest * 0.5, 'material': m}]
 
     def material_table(self):
         """MATERIALS plus the stack's own bond material (its conductivity is a parameter)."""
         mats = dict(MATERIALS)
-        if self.storage_die:
+        if self.storage_die and not self.two_sink:
             mats['BOND'] = (self.bond_k_si, 1.628e6,
                             'die-to-die bond, k stated (microbump/underfill ~5-50, hybrid ~120)')
+        if self.two_sink:
+            mats['ISOLATION'] = (self.iso_k_si, 1.0e6,
+                                 'isolating interface, k stated (gas gap ~0.025, aerogel ~0.1, '
+                                 'underfill 0.5-5); via copper only if folded into k')
+        if self.storage_k_si is not None:
+            mats['STORAGE_SI'] = (self.storage_k_si, MATERIALS['SILICON'][1],
+                                  'memory stack lumped into one die: series-equivalent k of '
+                                  'n dies and n-1 bonds (memory_die.lumped_stack)')
         return mats
 
     def die_layers(self):
@@ -396,13 +445,30 @@ class StackSpec(object):
             out.append(('MR_PIXELS', 'MR_LAYER', self.mr_um, self.mr_material))
         else:
             out.append(('TIM', 'TIM_LAYER', self.grease_um, 'THERMAL_GREASE'))
-        if self.storage_die:
+        if self.storage_die and not self.two_sink:
             # Listed top-down: the storage die under the pixels, the bond under it, then the
             # processor die. The die is emitted as a die element (its own floorplan); the bond
             # is a plain layer. Both count in the budget the processor die's heat crosses.
-            out.append(('STORAGE', 'STORAGE_DIE', self.storage_um, 'SILICON'))
+            out.append(('STORAGE', 'STORAGE_DIE', self.storage_um, self.storage_material))
             out.append(('BOND', 'BOND_LAYER', self.bond_um, 'BOND'))
         return out
+
+    def below_layers(self):
+        """§P0.37: what sits BELOW the processor die in the two-sink stack, top-down.
+
+        Isolation, the storage die, the storage die's own pixel array. None of it is on the
+        processor die's path to the top sink, so none of it is in ``package_layers`` or the
+        resistance budget.
+        """
+        if not self.two_sink:
+            return []
+        return [('ISOLATION', 'ISO_LAYER', self.iso_um, 'ISOLATION'),
+                ('STORAGE', 'STORAGE_DIE', self.storage_um, self.storage_material),
+                ('MR_STORAGE_PIXELS', 'MR_LAYER', self.mr_um, self.mr_material)]
+
+    def mr2_flp_placeholder(self):
+        """``{mr2_flp_file}`` when the stack carries the storage die's own array (§P0.37)."""
+        return '{mr2_flp_file}' if self.two_sink else None
 
     def boundary_base(self):
         """``(thickness_mm, k_W_mK)`` of the layer the heat spreads into, or None.
@@ -434,6 +500,10 @@ class StackSpec(object):
         used = {'SILICON'}
         for _, _, _, mat in self.package_layers():
             used.add(mat)
+        if self.two_sink:
+            used.add('ISOLATION')
+        if self.storage_die and self.storage_k_si is not None:
+            used.add('STORAGE_SI')
         return sorted(used)
 
     def storage_flp_placeholder(self):
@@ -517,6 +587,12 @@ def render_stack_text(spec):
     A('top heat sink :')
     A('   heat transfer coefficient {:.6e} ;'.format(spec.htc_3dice))
     A('   temperature {:.6f} ;'.format(spec.ambient_K))
+    if spec.two_sink and spec.bottom_htc_3dice is not None:
+        # ONE LINE, deliberately: render_stack_with_sink substitutes the line-anchored
+        # "heat transfer coefficient" / "temperature" it finds exactly once (the top sink's);
+        # the far-face sink carries its own final values and must not be rewritten.
+        A('bottom heat sink : heat transfer coefficient {:.6e} ; temperature {:.6f} ;'
+          .format(spec.bottom_htc_3dice, spec.bottom_ambient_K))
     A('')
 
     A('// ---------------------------- Dimensions ---------------------------')
@@ -539,6 +615,11 @@ def render_stack_text(spec):
         A('   height {} ;'.format(_fmt(h)))
         A('   material {} ;'.format(mat))
         A('')
+    if spec.two_sink:
+        A('layer ISO_LAYER :')
+        A('   height {} ;'.format(_fmt(spec.iso_um)))
+        A('   material ISOLATION ;')
+        A('')
 
     A('// ---------------------------- Die ----------------------------------')
     if spec.mr_powered:
@@ -551,7 +632,9 @@ def render_stack_text(spec):
           .format(_fmt(spec.mr_um), spec.mr_material))
         A('')
     if spec.storage_die:
-        A('// X4: the storage (cache) die, face-to-back above the processor die on the bond.')
+        A('// §P0.37: the storage (cache) die on the processor die\'s FAR face, behind the isolation.'
+          if spec.two_sink else
+          '// X4: the storage (cache) die, face-to-back above the processor die on the bond.')
         A('die STORAGE :')
         for dl in spec.storage_layers():
             A('   {:<7s}{:<6s} {} ;'.format(dl['kind'], _fmt(dl['height_um']), dl['material']))
@@ -582,6 +665,10 @@ def render_stack_text(spec):
         else:
             A('   layer {} {} ;'.format(inst, typ))
     A('   die PROCESSOR_DIE IC floorplan "{flp_file}";')
+    if spec.two_sink:
+        A('   layer ISOLATION ISO_LAYER ;')
+        A('   die STORAGE_DIE STORAGE floorplan "{storage_flp_file}";')
+        A('   die MR_STORAGE MR_DIE floorplan "{mr2_flp_file}";')
     A('')
 
     A('// ---------------------------- Analysis -----------------------------')
@@ -665,6 +752,13 @@ _SPEC_KEYS = {
     'package_in_boundary': ('package_in_boundary', lambda v: bool(int(v))),
     # X4: the storage die above the processor die, on a bond of stated conductivity [W/(m K)].
     'storage': ('storage_um', float), 'bond': ('bond_um', float), 'bondk': ('bond_k_si', float),
+    # §P0.37: the two-sink stack -- storage die on the far face behind an isolation layer [um,
+    # W/(m K)], with an optional bottom heat sink [3D-ICE units W/(um^2 K), K].
+    'twosink': ('two_sink', lambda v: bool(int(v))), 'iso': ('iso_um', float),
+    'isok': ('iso_k_si', float), 'bhtc': ('bottom_htc_3dice', float),
+    'bamb': ('bottom_ambient_K', float),
+    # §P0.44: the storage die's stated conductivity [W/(m K)] -- a lumped memory stack.
+    'storagek': ('storage_k_si', float),
 }
 
 SPEC_PREFIX = 'spec:'
@@ -746,9 +840,20 @@ _SPEC_IDENTITY_FIELDS = (
 )
 
 
+#: §P0.37: appended ONLY for a two-sink spec, so every other spec keeps its recorded filename.
+_TWO_SINK_IDENTITY_FIELDS = ('two_sink', 'iso_um', 'iso_k_si', 'bottom_htc_3dice',
+                             'bottom_ambient_K')
+
+
 def spec_identity(spec):
     """A complete, stable string identifying everything that changes the rendered stack."""
-    return ';'.join('{}={!r}'.format(f, getattr(spec, f)) for f in _SPEC_IDENTITY_FIELDS)
+    fields = _SPEC_IDENTITY_FIELDS + (_TWO_SINK_IDENTITY_FIELDS
+                                      if getattr(spec, 'two_sink', False) else ())
+    # §P0.44: appended ONLY when the storage die's conductivity is stated, so every recorded
+    # spec keeps its filename.
+    if getattr(spec, 'storage_k_si', None) is not None:
+        fields = fields + ('storage_k_si',)
+    return ';'.join('{}={!r}'.format(f, getattr(spec, f)) for f in fields)
 
 
 def spec_string_filename(spec):

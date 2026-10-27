@@ -1,0 +1,450 @@
+{
+ "note": "\u00a7P0.43: the MATCHED CoMeT memory-arrangement sweep -- what near memory buys, measured.\n\n    python examples/comet_mem_arrangement_report.py     # -> docs/evidence/comet_mem_arrangement.json\n\nReads ``CoMeT/test/mem_arrangement_sweep/<bench>/<arrangement>/run_<f>/sim.out``: same binary, same\ncores, same clocks; the arrangement (DDR 45 ns / 1 controller, 3Dmem 29 ns / 4, 2.5D 20 ns / 4, 3D\n15 ns / 4) the only variable. Throughput is total instructions / wall time of the region; per\narrangement a two-parameter fit  t_per_instruction = a / f + b  (b = the memory floor the clock does\nnot touch) and the elasticity of throughput to clock, (a/f) / (a/f + b). Memory-bank temperatures\nare CoMeT's own thermal model's (final sample). One workload class (SPLASH-2 small inputs, 4 cores).",
+ "base": "/mnt/nfs01/scratch/jbalma/CoMeT/test/mem_arrangement_sweep",
+ "benchmarks": {
+  "splash2-fft-small-4": {
+   "gainestown_DDR": {
+    "runs": {
+     "2": {
+      "instructions": 197316915.0,
+      "time_ns": 28562100.0,
+      "GIPS": 6.9083476004915605,
+      "dram_latency_ns": 219.97,
+      "dram_queue_ns": 41.635,
+      "dram_accesses": 1203591.0,
+      "L2_misses": 744626.0,
+      "mem_max_C": 69.45,
+      "core_max_C": 69.4
+     },
+     "4": {
+      "instructions": 197315949.0,
+      "time_ns": 18777800.0,
+      "GIPS": 10.507937511316555,
+      "dram_latency_ns": 232.98,
+      "dram_queue_ns": 44.8875,
+      "dram_accesses": 1203585.0,
+      "L2_misses": 744580.0,
+      "mem_max_C": 69.52,
+      "core_max_C": 69.47
+     },
+     "8": {
+      "instructions": 197314353.0,
+      "time_ns": 13795900.0,
+      "GIPS": 14.302390782768793,
+      "dram_latency_ns": 235.51,
+      "dram_queue_ns": 45.52,
+      "dram_accesses": 1203521.0,
+      "L2_misses": 744507.0,
+      "mem_max_C": 69.61,
+      "core_max_C": 69.56
+     },
+     "16": {
+      "instructions": 197316012.0,
+      "time_ns": 11893600.0,
+      "GIPS": 16.590099885652787,
+      "dram_latency_ns": 310.26,
+      "dram_queue_ns": 64.2075,
+      "dram_accesses": 1203424.0,
+      "L2_misses": 744482.0,
+      "mem_max_C": 69.64,
+      "core_max_C": 69.59
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.19526713193470296,
+     "b_ns": 0.046762731507122485,
+     "max_rel_err": 0.021732786922021255,
+     "elasticity": {
+      "2": 0.6761500653062861,
+      "4": 0.510745249583534,
+      "8": 0.34295358093751616,
+      "16": 0.20696679163131163
+     }
+    }
+   },
+   "gainestown_3Dmem": {
+    "runs": {
+     "2": {
+      "instructions": 197315253.0,
+      "time_ns": 23489100.0,
+      "GIPS": 8.40029004942718,
+      "dram_latency_ns": 64.9075,
+      "dram_queue_ns": 27.477500000000003,
+      "dram_accesses": 1203424.0,
+      "L2_misses": 744558.0,
+      "mem_max_C": 71.34,
+      "core_max_C": 71.22
+     },
+     "4": {
+      "instructions": 197313337.0,
+      "time_ns": 13303600.0,
+      "GIPS": 14.83157468655101,
+      "dram_latency_ns": 73.88250000000001,
+      "dram_queue_ns": 36.4525,
+      "dram_accesses": 1203444.0,
+      "L2_misses": 744518.0,
+      "mem_max_C": 71.23,
+      "core_max_C": 71.1
+     },
+     "8": {
+      "instructions": 197316176.0,
+      "time_ns": 8241100.0,
+      "GIPS": 23.94294159760226,
+      "dram_latency_ns": 76.87750000000001,
+      "dram_queue_ns": 39.4475,
+      "dram_accesses": 1203564.0,
+      "L2_misses": 744613.0,
+      "mem_max_C": 71.1,
+      "core_max_C": 70.95
+     },
+     "16": {
+      "instructions": 197315410.0,
+      "time_ns": 5722900.0,
+      "GIPS": 34.478220832095616,
+      "dram_latency_ns": 79.72749999999999,
+      "dram_queue_ns": 42.3,
+      "dram_accesses": 1203432.0,
+      "L2_misses": 744510.0,
+      "mem_max_C": 70.83,
+      "core_max_C": 70.67
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.20587960305828515,
+     "b_ns": 0.01605622100347623,
+     "max_rel_err": 0.0027624153214808036,
+     "elasticity": {
+      "2": 0.8650692631421781,
+      "4": 0.7622220766856802,
+      "8": 0.6157987328168902,
+      "16": 0.4448765850865451
+     }
+    }
+   },
+   "gainestown_2_5D": {
+    "runs": {
+     "2": {
+      "instructions": 197315965.0,
+      "time_ns": 23179100.0,
+      "GIPS": 8.512667230392896,
+      "dram_latency_ns": 58.965,
+      "dram_queue_ns": 30.5375,
+      "dram_accesses": 1203409.0,
+      "L2_misses": 744562.0
+     },
+     "4": {
+      "instructions": 197314365.0,
+      "time_ns": 13016100.0,
+      "GIPS": 15.159253923986448,
+      "dram_latency_ns": 67.86500000000001,
+      "dram_queue_ns": 39.4375,
+      "dram_accesses": 1203441.0,
+      "L2_misses": 744490.0
+     },
+     "8": {
+      "instructions": 197316341.0,
+      "time_ns": 7930100.0,
+      "GIPS": 24.881948651341094,
+      "dram_latency_ns": 71.01249999999999,
+      "dram_queue_ns": 42.585,
+      "dram_accesses": 1203619.0,
+      "L2_misses": 744653.0
+     },
+     "16": {
+      "instructions": 197317045.0,
+      "time_ns": 5466300.0,
+      "GIPS": 36.09700254285348,
+      "dram_latency_ns": 72.455,
+      "dram_queue_ns": 44.025,
+      "dram_accesses": 1203849.0,
+      "L2_misses": 744784.0
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.20548554092001178,
+     "b_ns": 0.014672129201107803,
+     "max_rel_err": 0.006791859099206273,
+     "elasticity": {
+      "2": 0.8750403122307737,
+      "4": 0.7778414833388048,
+      "8": 0.6364489325523693,
+      "16": 0.46675841319512085
+     }
+    }
+   },
+   "gainestown_3D": {
+    "runs": {
+     "2": {
+      "instructions": 197315948.0,
+      "time_ns": 23018100.0,
+      "GIPS": 8.572208305637737,
+      "dram_latency_ns": 57.6325,
+      "dram_queue_ns": 34.2025,
+      "dram_accesses": 1203481.0,
+      "L2_misses": 744571.0
+     },
+     "4": {
+      "instructions": 197315275.0,
+      "time_ns": 12748600.0,
+      "GIPS": 15.477407323157053,
+      "dram_latency_ns": 61.11,
+      "dram_queue_ns": 37.68,
+      "dram_accesses": 1203591.0,
+      "L2_misses": 744661.0
+     },
+     "8": {
+      "instructions": 197312824.0,
+      "time_ns": 7765900.0,
+      "GIPS": 25.40759268082257,
+      "dram_latency_ns": 65.445,
+      "dram_queue_ns": 42.015,
+      "dram_accesses": 1203304.0,
+      "L2_misses": 744396.0
+     },
+     "16": {
+      "instructions": 197315365.0,
+      "time_ns": 5523700.0,
+      "GIPS": 35.72159331607437,
+      "dram_latency_ns": 73.57249999999999,
+      "dram_queue_ns": 50.1425,
+      "dram_accesses": 1203879.0,
+      "L2_misses": 744799.0
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.2037312062927306,
+     "b_ns": 0.014405234693207036,
+     "max_rel_err": 0.030571858605267108,
+     "elasticity": {
+      "2": 0.8761062106296763,
+      "4": 0.7795275842929308,
+      "8": 0.6387097113057805,
+      "16": 0.46919434936867527
+     }
+    }
+   }
+  },
+  "splash2-lu.cont-small-4": {
+   "gainestown_DDR": {
+    "runs": {
+     "2": {
+      "instructions": 288509005.0,
+      "time_ns": 25434500.0,
+      "GIPS": 11.343215121193655,
+      "dram_latency_ns": 71.24,
+      "dram_queue_ns": 4.4525,
+      "dram_accesses": 855824.0,
+      "L2_misses": 542670.0,
+      "mem_max_C": 69.38,
+      "core_max_C": 69.33
+     },
+     "4": {
+      "instructions": 288508047.0,
+      "time_ns": 15992300.0,
+      "GIPS": 18.040434896794082,
+      "dram_latency_ns": 85.77,
+      "dram_queue_ns": 8.085,
+      "dram_accesses": 856741.0,
+      "L2_misses": 542417.0,
+      "mem_max_C": 69.54,
+      "core_max_C": 69.49
+     },
+     "8": {
+      "instructions": 288507686.0,
+      "time_ns": 11898200.0,
+      "GIPS": 24.248011127733605,
+      "dram_latency_ns": 102.4,
+      "dram_queue_ns": 12.2425,
+      "dram_accesses": 857879.0,
+      "L2_misses": 543781.0,
+      "mem_max_C": 69.65,
+      "core_max_C": 69.59
+     },
+     "16": {
+      "instructions": 288508274.0,
+      "time_ns": 10349500.0,
+      "GIPS": 27.8765422484178,
+      "dram_latency_ns": 131.58,
+      "dram_queue_ns": 19.5375,
+      "dram_accesses": 859780.0,
+      "L2_misses": 544868.0,
+      "mem_max_C": 69.69,
+      "core_max_C": 69.63
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.12116087923704051,
+     "b_ns": 0.026778522305488797,
+     "max_rel_err": 0.042410743544167684,
+     "elasticity": {
+      "2": 0.6934656534863288,
+      "4": 0.530767258692248,
+      "8": 0.36125471735663633,
+      "16": 0.2204459235872933
+     }
+    }
+   },
+   "gainestown_3Dmem": {
+    "runs": {
+     "2": {
+      "instructions": 288507958.0,
+      "time_ns": 23789300.0,
+      "GIPS": 12.127635449550848,
+      "dram_latency_ns": 38.89,
+      "dram_queue_ns": 1.46,
+      "dram_accesses": 855764.0,
+      "L2_misses": 542766.0,
+      "mem_max_C": 71.19,
+      "core_max_C": 71.08
+     },
+     "4": {
+      "instructions": 288508546.0,
+      "time_ns": 13643200.0,
+      "GIPS": 21.14669183182831,
+      "dram_latency_ns": 40.277499999999996,
+      "dram_queue_ns": 2.85,
+      "dram_accesses": 856352.0,
+      "L2_misses": 543510.0,
+      "mem_max_C": 71.09,
+      "core_max_C": 70.97
+     },
+     "8": {
+      "instructions": 288507912.0,
+      "time_ns": 8588300.0,
+      "GIPS": 33.59313391474448,
+      "dram_latency_ns": 41.975,
+      "dram_queue_ns": 4.545,
+      "dram_accesses": 857844.0,
+      "L2_misses": 544151.0,
+      "mem_max_C": 70.92,
+      "core_max_C": 70.79
+     },
+     "16": {
+      "instructions": 288508477.0,
+      "time_ns": 6144700.0,
+      "GIPS": 46.952410532654156,
+      "dram_latency_ns": 44.055,
+      "dram_queue_ns": 6.625,
+      "dram_accesses": 859155.0,
+      "L2_misses": 544916.0,
+      "mem_max_C": 70.85,
+      "core_max_C": 70.7
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.14001950736341526,
+     "b_ns": 0.012385721388470638,
+     "max_rel_err": 0.007569687606259769,
+     "elasticity": {
+      "2": 0.8496795925028479,
+      "4": 0.7386460215476542,
+      "8": 0.5855977260673146,
+      "16": 0.41402487599166893
+     }
+    }
+   },
+   "gainestown_2_5D": {
+    "runs": {
+     "2": {
+      "instructions": 288506300.0,
+      "time_ns": 23137000.0,
+      "GIPS": 12.469477460344901,
+      "dram_latency_ns": 29.9375,
+      "dram_queue_ns": 1.51,
+      "dram_accesses": 855974.0,
+      "L2_misses": 543106.0
+     },
+     "4": {
+      "instructions": 288508576.0,
+      "time_ns": 12998000.0,
+      "GIPS": 22.1963822126481,
+      "dram_latency_ns": 31.6125,
+      "dram_queue_ns": 3.1825,
+      "dram_accesses": 857135.0,
+      "L2_misses": 544234.0
+     },
+     "8": {
+      "instructions": 288508800.0,
+      "time_ns": 7924700.0,
+      "GIPS": 36.40627405453834,
+      "dram_latency_ns": 33.2875,
+      "dram_queue_ns": 4.86,
+      "dram_accesses": 855610.0,
+      "L2_misses": 542374.0
+     },
+     "16": {
+      "instructions": 288508808.0,
+      "time_ns": 5521000.0,
+      "GIPS": 52.25662162651694,
+      "dram_latency_ns": 36.0225,
+      "dram_queue_ns": 7.592499999999999,
+      "dram_accesses": 858981.0,
+      "L2_misses": 544651.0
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.13991056384840134,
+     "b_ns": 0.010171544897569872,
+     "max_rel_err": 0.011516089644402856,
+     "elasticity": {
+      "2": 0.8730569360971343,
+      "4": 0.7747125512033725,
+      "8": 0.6322700456649816,
+      "16": 0.46227696020036874
+     }
+    }
+   },
+   "gainestown_3D": {
+    "runs": {
+     "2": {
+      "instructions": 288505477.0,
+      "time_ns": 22763500.0,
+      "GIPS": 12.674038570518594,
+      "dram_latency_ns": 24.822499999999998,
+      "dram_queue_ns": 1.395,
+      "dram_accesses": 856555.0,
+      "L2_misses": 543374.0
+     },
+     "4": {
+      "instructions": 288508168.0,
+      "time_ns": 12603200.0,
+      "GIPS": 22.891659895899455,
+      "dram_latency_ns": 26.2975,
+      "dram_queue_ns": 2.8675,
+      "dram_accesses": 857166.0,
+      "L2_misses": 543471.0
+     },
+     "8": {
+      "instructions": 288507737.0,
+      "time_ns": 7579300.0,
+      "GIPS": 38.065221986199255,
+      "dram_latency_ns": 28.5625,
+      "dram_queue_ns": 5.1325,
+      "dram_accesses": 857339.0,
+      "L2_misses": 543438.0
+     },
+     "16": {
+      "instructions": 288508698.0,
+      "time_ns": 5195500.0,
+      "GIPS": 55.53049716100472,
+      "dram_latency_ns": 31.994999999999997,
+      "dram_queue_ns": 8.567499999999999,
+      "dram_accesses": 858192.0,
+      "L2_misses": 544649.0
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.139551222378938,
+     "b_ns": 0.009008757778805113,
+     "max_rel_err": 0.015404904356861449,
+     "elasticity": {
+      "2": 0.8856529804480268,
+      "4": 0.7947730508617561,
+      "8": 0.6594384994710177,
+      "16": 0.4919121571153617
+     }
+    }
+   }
+  }
+ }
+}

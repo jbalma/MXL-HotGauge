@@ -696,3 +696,66 @@ def test_tile_power_schedule_switches_the_plan_on_and_off_per_slot():
     steady = project_plan_to_tiles(plan, blocks, tiles)
     tot = -sum(v[1] for v in sched.values())
     assert abs(tot - sum(steady.values())) < 1e-9 and abs(tot - 3.0) < 1e-9
+
+
+class TestTwoSinkWiring:
+    """§P0.37: two arrays in one (x, y) frame; a block's removal lands on ITS die's array."""
+
+    TILES = None
+
+    def _tiles(self):
+        from HotGauge.thermal.mr_array import tile_grid
+        storage = frozenset(['L2_0'])
+        top = tile_grid(1000, 1000, pitch_um=500, cell_um=50)
+        bot = tile_grid(1000, 1000, pitch_um=500, cell_um=50, name_prefix='MRS')
+        for t in top:
+            t['excludes'] = storage
+        for t in bot:
+            t['serves'] = storage
+        return top + bot
+
+    BLOCKS = {'cALU_0': (0.0, 0.0, 400.0, 400.0), 'L2_0': (100.0, 100.0, 300.0, 300.0)}
+
+    def test_each_block_lands_on_its_own_array_and_watts_are_conserved(self):
+        plan = project_plan_to_tiles({'cALU_0': 3.0, 'L2_0': 2.0}, self.BLOCKS, self._tiles())
+        assert abs(sum(v for k, v in plan.items() if k.startswith('MR_')) - 3.0) < 1e-12
+        assert abs(sum(v for k, v in plan.items() if k.startswith('MRS_')) - 2.0) < 1e-12
+
+    def test_plain_tiles_serve_everything(self):
+        from HotGauge.thermal.mr_array import tile_serves, tile_grid
+        t = tile_grid(1000, 1000, pitch_um=500, cell_um=50)[0]
+        assert tile_serves(t, 'L2_0') and tile_serves(t, 'cALU_0')
+
+    def test_a_blocks_extractor_temperature_is_its_own_arrays(self):
+        from HotGauge.thermal.mr_array import block_tile_temps
+        tiles = self._tiles()
+        temps = {t['name']: (280.0 if t['name'].startswith('MRS_') else 360.0) for t in tiles}
+        bt = block_tile_temps(temps, self.BLOCKS, tiles)
+        assert bt['L2_0'] == 280.0 and bt['cALU_0'] == 360.0
+
+    def test_capped_delivery_respects_the_split(self):
+        from HotGauge.thermal.mr_array import deliver_capped
+        tiles = self._tiles()
+        caps = {t['name']: (0.5 if t['name'].startswith('MRS_') else 1e9) for t in tiles}
+        tile_plan, delivered, short, n = deliver_capped({'cALU_0': 3.0, 'L2_0': 2.0},
+                                                        self.BLOCKS, tiles, caps)
+        assert n == 1 and abs(short - 1.5) < 1e-12
+        assert abs(delivered['cALU_0'] - 3.0) < 1e-12 and abs(delivered['L2_0'] - 0.5) < 1e-12
+
+    def test_wiring_writes_two_floorplans_and_one_power_dict(self, tmp_path):
+        from HotGauge.thermal.mr_array import TwoSinkWiring
+        flp = tmp_path / 'ref.flp'
+        flp.write_text(''.join('{} :\n\tposition {:.3f}, {:.3f} ;\n\tdimension {:.3f}, {:.3f} ;\n'
+                               '\tpower values 0.0;\n'.format(n, x, y, w, h)
+                               for n, (x, y, w, h) in
+                               {'cALU_0': (0, 0, 1000, 1000), 'L2_0': (1000, 0, 1000, 1000),
+                                'cALU_1': (0, 1000, 2000, 1000)}.items()))
+        w = TwoSinkWiring(str(flp), str(tmp_path / 'run'), ['L2_0'], pitch_um=500, cell_um=50)
+        assert len(w.tiles) == 2 * len(w.compute_tiles) == 32
+        kw = w.solver_kwargs()
+        assert os.path.isfile(kw['mr_flp_template']) and os.path.isfile(kw['mr2_flp_template'])
+        assert 'MRS_r00_c00' in open(kw['mr2_flp_template']).read()
+        assert 'MRS_' not in open(kw['mr_flp_template']).read()
+        assert set(kw['mr_powers']) == set(t['name'] for t in w.tiles)
+        with pytest.raises(ValueError):
+            TwoSinkWiring(str(flp), str(tmp_path / 'run2'), ['not_a_block'], pitch_um=500, cell_um=50)

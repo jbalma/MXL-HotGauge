@@ -88,6 +88,7 @@ from HotGauge.power.clock_search import (scale_trace_for_clock, find_max_sustain
 from HotGauge.power.performance_model import FMaxModel, performance_summary
 # §P0.31: the generalized f_max(V, T | logic depth, wire, skew) with a reliability-budgeted V_max
 from HotGauge.power.fmax_model import (GeneralizedFmaxModel, load_fmax_model, parse_fmax_spec,
+                                       worst_current_density,
                                        core_gradient_K)
 from HotGauge.thermal.extractor import make_extractor, EXTRACTORS
 from HotGauge.thermal.utils import K_to_C
@@ -342,7 +343,20 @@ def _evaluate_clock_once(args, flp, base_trace, leak_ref_base, geom, name_map, l
                                          num_cores=n_cores)
     out['p_injected_W'] = die_power_of_trace(trace, flp, args.tech_node, num_cores=n_cores)
     out['temps'] = {k: float(np.ravel(v)[-1]) for k, v in temps.items()}
+    if getattr(getattr(args, '_vf_model', None), 'has_rail', False):
+        # §P0.39: the converged per-block powers, so the rail model can read the worst
+        # execution block's current density off THIS solve (X1's arithmetic, P / (V A)).
+        from HotGauge.thermal.leakage_feedback import prepare_dice_trace
+        dice = prepare_dice_trace(last['power_trace'], flp, args.tech_node, num_cores=n_cores)
+        out['block_power_W'] = {k: float(np.ravel(v)[-1]) for k, v in dice.powers.items()}
     return out
+
+
+def _block_areas_mm2(args, flp):
+    cache = args.__dict__.setdefault('_block_areas', {})
+    if flp not in cache:
+        cache[flp] = {e.name: e.width * e.height / 1.0e6 for e in Floorplan.from_file(flp).elements}
+    return cache[flp]
 
 
 def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_model, t_ref,
@@ -363,7 +377,8 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
         return _evaluate_clock_once(args, flp, base_trace, leak_ref_base, geom, name_map,
                                     leak_model, t_ref, n_cores, sink, stack, use_mr, f_GHz, tag,
                                     wiring=wiring)
-    ctx = args._fmax_ctx.setdefault(tag, {'T_K': model.T_anchor, 'dT_K': model.p['dT_anchor_K']})
+    ctx = args._fmax_ctx.setdefault(tag, {'T_K': model.T_anchor, 'dT_K': model.p['dT_anchor_K'],
+                                          'J': model.p['J_native_A_per_mm2']})
     # The first pass is only as good as its starting context. The bisection's candidates are
     # far apart early on, so inherit the LAST solve's (T, dT) only as a fallback and prefer a
     # linear estimate from the two converged evaluations nearest in clock -- measured on the
@@ -375,12 +390,16 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
         w = (f_GHz - f0) / (f1 - f0)
         w = max(-1.0, min(2.0, w))                   # a bounded extrapolation
         ctx.update({'T_K': T0 + w * (T1 - T0), 'dT_K': max(0.0, d0 + w * (d1 - d0))})
+        if done[0].get('J') and done[1].get('J'):
+            ctx['J'] = max(0.0, done[0]['J'] + w * (done[1]['J'] - done[0]['J']))
     elif len(done) == 1:
         ctx.update({'T_K': done[0]['T_K'], 'dT_K': done[0]['dT_K']})
+        if done[0].get('J'):
+            ctx['J'] = done[0]['J']
     passes = []
     out = None
     for i in range(max(1, int(args.fmax_max_passes))):
-        model.set_context(ctx['T_K'], ctx['dT_K'])
+        model.set_context(ctx['T_K'], ctx['dT_K'], ctx.get('J'))
         v_used, v_clamped = model.voltage(f_GHz)
         v_pk, f_pk, at_end = model.device_peak()
         out = _evaluate_clock_once(args, flp, base_trace, leak_ref_base, geom, name_map,
@@ -395,9 +414,13 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
             break
         dT, dT_mean, core = core_gradient_K(out['temps'])
         ctx.update({'T_K': float(out['peak_K']), 'dT_K': dT})
-        model.set_context(ctx['T_K'], ctx['dT_K'])
+        if model.has_rail and out.get('block_power_W'):
+            J, J_blk = worst_current_density(out['block_power_W'], _block_areas_mm2(args, flp), v_used)
+            ctx['J'] = J
+            rec.update({'J_exec_max_A_per_mm2': J, 'J_block': J_blk, 'ir_drop_V': model.ir_drop_V(J)})
+        model.set_context(ctx['T_K'], ctx['dT_K'], ctx.get('J'))
         if not out.get('diverged') and not out.get('unconverged'):
-            hist.append({'f': float(f_GHz), 'T_K': ctx['T_K'], 'dT_K': dT})
+            hist.append({'f': float(f_GHz), 'T_K': ctx['T_K'], 'dT_K': dT, 'J': ctx.get('J')})
         v_new, _ = model.voltage(f_GHz)
         rec.update({'dT_K': dT, 'dT_mean_K': dT_mean, 'dT_core': core, 'V_implied_V': v_new,
                     'dV_V': v_new - v_used})
@@ -418,7 +441,27 @@ def evaluate_clock(args, flp, base_trace, leak_ref_base, geom, name_map, leak_mo
     if reason is not None:
         out['unsustainable_reason'] = reason
     terms = model.period_terms(v_used, T_eval, dT_eval)
+    out.pop('block_power_W', None)            # 1126 floats per candidate; the J is what is kept
+    norail = None
+    if model.has_rail:
+        # what the SAME solve's (T, dT) would allow with ideal rails -- the clock the rails cost
+        rho, model.rail_ohm_mm2 = model.rail_ohm_mm2, 0.0
+        gn, v0 = model._gate_norm, model.vdd
+        model._gate_norm = v0 / model._ion(v0, model.T_anchor)
+        try:
+            norail = {'V_needed_V': model.voltage(f_GHz)[0],
+                      'f_max_GHz': model.f_max_at(T_eval, dT_eval)['f_max_GHz']}
+        finally:
+            model.rail_ohm_mm2, model._gate_norm = rho, gn
+        if reason is not None and norail['V_needed_V'] <= rel['v_max_V'] + 1e-6:
+            reason = 'rail:ir+' + reason       # ideal rails would have passed this candidate
+            out['unsustainable_reason'] = reason
     out['fmax'] = {
+        'rail': (None if not model.has_rail else
+                 {'J_exec_max_A_per_mm2': ctx.get('J'), 'J_over_native': ctx.get('J') / model.p['J_native_A_per_mm2'],
+                  'ir_drop_V': model.ir_drop_V(), 'V_eff_V': model.v_eff(v_used),
+                  'rail_resize': model.p['rail_resize'], 'droop_native': model.p['rail_droop_native'],
+                  'ideal_rails': norail}),
         'V_used_V': v_used, 'v_clamped': last['v_clamped'], 'T_eval_K': T_eval, 'dT_eval_K': dT_eval,
         'v_max_reliability_V': rel['v_max_V'], 'reliability_binding': rel['binding'],
         'v_max_per_mechanism': {k: v['v_max_V'] for k, v in rel['per_mechanism'].items()},
@@ -986,7 +1029,7 @@ def main():
                      **{k: v for k, v in ((seen.get(round(e['f_GHz'], 6)) or {}).get('fmax') or {}).items()
                         if k in ('V_used_V', 'T_eval_K', 'dT_eval_K', 'v_max_reliability_V',
                                  'reliability_binding', 'period_dominated_by', 'n_passes',
-                                 'unsustainable_reason')}}
+                                 'unsustainable_reason', 'rail')}}
                     for e in search['evaluations']]
                 row['mr_envelope_shape'] = args.mr_envelope_shape if use_mr else None
                 row['mr_extractor'] = args.mr_extractor if use_mr else None

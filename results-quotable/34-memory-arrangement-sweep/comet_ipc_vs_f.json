@@ -1,0 +1,8042 @@
+{
+ "note": "\u00a7P0.33: IPC(f) per benchmark from CoMeT's frequency sweeps, so the memory wall can enter the\nthroughput claims.\n\n    python examples/comet_ipc_reader.py            # -> docs/evidence/comet_ipc_vs_f.json\n\nWhat it reads\n-------------\nCoMeT (Sniper + HotSpot) was run at 1-20 GHz with ONLY the core frequency changed between\nconfigs (``gen_configs_core.sh``: ``sed 's/frequency =.*/frequency = N/'``), so the memory\nsystem's latency stays fixed in nanoseconds and IPC falls with f. Per run directory:\n\n* ``sim.out``       -- Instructions / Cycles / IPC / Time (ns) / Idle time per core;\n* ``sim.cfg``       -- the frequency the run was configured at (``[perf_model/core] frequency``);\n* ``PeriodicVdd.log`` / ``PeriodicFrequency.log`` -- the DVFS voltage and clock CoMeT assigned\n  per core over the run (a two-level table, not a device curve -- see \u00a7P0.33 P4).\n\nTwo sweeps: ``thermal_example_test_1to20ghz/run_<f>`` (the FFT-style ``test`` kernel, one active\ncore of four, the densest sweep: 1-20 GHz in 2 GHz steps) and ``benchmarks_sweep/<bench>/run_<f>``\n(SPLASH-2 / PARSEC on 4-16 cores, mostly 8 and 16 GHz, a few at 1-20).\n\nWhat it writes\n--------------\nPer benchmark: the rows (f, per-core IPC, aggregate IPC over the ACTIVE cores, instructions,\ncycles, wall time, Vdd), the speed-up against the lowest frequency, the elasticity\n``d ln(throughput) / d ln f`` between adjacent points, and an ``IPC0 / (1 + f / f_k)`` fit where\nthree or more points exist. ``ipc_at(f)`` interpolates log-linearly between measured points --\nthe reports use it at the clock-search clocks (3.3-4.9 GHz), which FFT brackets with its 2, 4\nand 6 GHz points.\n\n`[!]` Only the frequency setting differs between CoMeT's configs. Nothing here says whether the\ndevice can switch at 20 GHz; \u00a7P0.31's f_max model does.",
+ "comet_test": "/mnt/nfs01/scratch/jbalma/CoMeT/test",
+ "benchmarks": {
+  "fft_1to20": {
+   "benchmark": "fft_1to20",
+   "n_runs": 11,
+   "f_GHz": [
+    1.0,
+    2.0,
+    4.0,
+    6.0,
+    8.0,
+    10.0,
+    12.0,
+    14.0,
+    16.0,
+    18.0,
+    20.0
+   ],
+   "ipc_active_mean": [
+    2.883592688655931,
+    2.7403790390043796,
+    2.4853405983495485,
+    2.2687198717094055,
+    2.091636551121309,
+    1.9455996569849614,
+    1.7998260350926676,
+    1.7022307499930531,
+    1.5805131016760239,
+    1.4834066704443087,
+    1.4306641599327385
+   ],
+   "GIPS": [
+    2.883592688655931,
+    5.480758078008759,
+    9.941362393398194,
+    13.612319230256434,
+    16.73309240897047,
+    19.455996569849614,
+    21.597912421112014,
+    23.83123049990274,
+    25.288209626816382,
+    26.70132006799756,
+    28.61328319865477
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.9006705764989555,
+    3.447561242788403,
+    4.720612417225901,
+    5.802862684039444,
+    6.747137571262963,
+    7.4899340690336,
+    8.264423263956429,
+    8.769691215323647,
+    9.259741957980996,
+    9.922789481059368
+   ],
+   "n_active_cores": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 1.0,
+     "to_GHz": 2.0,
+     "elasticity": 0.9265080588273147,
+     "ipc_ratio": 0.9503349934909481
+    },
+    {
+     "from_GHz": 2.0,
+     "to_GHz": 4.0,
+     "elasticity": 0.8590681213042093,
+     "ipc_ratio": 0.9069331515732618
+    },
+    {
+     "from_GHz": 4.0,
+     "to_GHz": 6.0,
+     "elasticity": 0.7750879896015302,
+     "ipc_ratio": 0.9128406276451625
+    },
+    {
+     "from_GHz": 6.0,
+     "to_GHz": 8.0,
+     "elasticity": 0.7175043262615594,
+     "ipc_ratio": 0.9219457092097183
+    },
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 10.0,
+     "elasticity": 0.6756502194986234,
+     "ipc_ratio": 0.930180559305077
+    },
+    {
+     "from_GHz": 10.0,
+     "to_GHz": 12.0,
+     "elasticity": 0.5728413864192196,
+     "ipc_ratio": 0.9250752222488593
+    },
+    {
+     "from_GHz": 12.0,
+     "to_GHz": 14.0,
+     "elasticity": 0.6383381742299424,
+     "ipc_ratio": 0.9457751564891717
+    },
+    {
+     "from_GHz": 14.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.444399904197619,
+     "ipc_ratio": 0.9284952123456083
+    },
+    {
+     "from_GHz": 16.0,
+     "to_GHz": 18.0,
+     "elasticity": 0.46165171558291374,
+     "ipc_ratio": 0.9385601858480385
+    },
+    {
+     "from_GHz": 18.0,
+     "to_GHz": 20.0,
+     "elasticity": 0.6563944011097866,
+     "ipc_ratio": 0.964445009205889
+    }
+   ],
+   "knee_fit": {
+    "IPC0": 3.0558253606025416,
+    "f_k_GHz": 17.32926155828577,
+    "max_abs_rel_residual": 0.010447607645653223,
+    "rms_rel_residual": 0.005129162450197383,
+    "n_points": 11
+   },
+   "vdd_V_by_f": {
+    "1": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "2": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "4": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "6": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "10": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "12": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "14": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "18": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "20": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "thermal_example_test_1to20ghz/run_1",
+     "f_GHz": 1.0,
+     "f_dir_GHz": 1.0,
+     "f_cfg_GHz": 1.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      122516356,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      42487400,
+      42487400,
+      42487400,
+      42487400
+     ],
+     "ipc_per_core": [
+      2.883592688655931,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 2.883592688655931,
+     "ipc_sum": 2.883592688655931,
+     "instructions_total": 122516356,
+     "time_ns": 42487400.0,
+     "idle_ns": [
+      -89.0,
+      42487400.0,
+      42487400.0,
+      42487400.0
+     ],
+     "GIPS": 2.883592688655931,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "run": "thermal_example_test_1to20ghz/run_2",
+     "f_GHz": 2.0,
+     "f_dir_GHz": 2.0,
+     "f_cfg_GHz": 2.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      122516318,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      44707800,
+      44707800,
+      44707800,
+      44707800
+     ],
+     "ipc_per_core": [
+      2.7403790390043796,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 2.7403790390043796,
+     "ipc_sum": 2.7403790390043796,
+     "instructions_total": 122516318,
+     "time_ns": 22353900.0,
+     "idle_ns": [
+      -75.0,
+      22353900.0,
+      22353900.0,
+      22353900.0
+     ],
+     "GIPS": 5.480758078008759,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      2.0,
+      2.0,
+      2.0,
+      2.0
+     ]
+    },
+    {
+     "run": "thermal_example_test_1to20ghz/run_4",
+     "f_GHz": 4.0,
+     "f_dir_GHz": 4.0,
+     "f_cfg_GHz": 4.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      122516356,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      49295600,
+      49295600,
+      49295600,
+      49295600
+     ],
+     "ipc_per_core": [
+      2.4853405983495485,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 2.4853405983495485,
+     "ipc_sum": 2.4853405983495485,
+     "instructions_total": 122516356,
+     "time_ns": 12323900.0,
+     "idle_ns": [
+      -30.0,
+      12323900.0,
+      12323900.0,
+      12323900.0
+     ],
+     "GIPS": 9.941362393398194,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      4.0,
+      4.0,
+      4.0,
+      4.0
+     ]
+    },
+    {
+     "run": "thermal_example_test_1to20ghz/run_6",
+     "f_GHz": 6.0,
+     "f_dir_GHz": 6.0,
+     "f_cfg_GHz": 6.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      122516318,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      54002400,
+      54002400,
+      54002400,
+      54002400
+     ],
+     "ipc_per_core": [
+      2.2687198717094055,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 2.2687198717094055,
+     "ipc_sum": 2.2687198717094055,
+     "instructions_total": 122516318,
+     "time_ns": 9000400.0,
+     "idle_ns": [
+      -22.0,
+      9000400.0,
+      9000400.0,
+      9000400.0
+     ],
+     "GIPS": 13.612319230256434,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      6.0,
+      6.0,
+      6.0,
+      6.0
+     ]
+    },
+    {
+     "run": "thermal_example_test_1to20ghz/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      122516356,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      58574400,
+      58574400,
+      58574400,
+      58574400
+     ],
+     "ipc_per_core": [
+      2.091636551121309,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 2.091636551121309,
+     "ipc_sum": 2.091636551121309,
+     "instructions_total": 122516356,
+     "time_ns": 7321800.0,
+     "idle_ns": [
+      -60.0,
+      7321800.0,
+      7321800.0,
+      7321800.0
+     ],
+     "GIPS": 16.73309240897047,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "thermal_example_test_1to20ghz/run_10",
+     "f_GHz": 10.0,
+     "f_dir_GHz": 10.0,
+     "f_cfg_GHz": 10.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      122516356,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      62971000,
+      62971000,
+      62971000,
+      62971000
+     ],
+     "ipc_per_core": [
+      1.9455996569849614,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 1.9455996569849614,
+     "ipc_sum": 1.9455996569849614,
+     "instructions_total": 122516356,
+     "time_ns": 6297100.0,
+     "idle_ns": [
+      -8.0,
+      6297100.0,
+      6297100.0,
+      6297100.0
+     ],
+     "GIPS": 19.455996569849614,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      10.0,
+      10.0,
+      10.0,
+      10.0
+     ]
+    },
+    {
+     "run": "thermal_example_test_1to20ghz/run_12",
+     "f_GHz": 12.0,
+     "f_dir_GHz": 12.0,
+     "f_cfg_GHz": 12.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      122516318,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      68071200,
+      68071200,
+      68071200,
+      68071200
+     ],
+     "ipc_per_core": [
+      1.7998260350926676,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 1.7998260350926676,
+     "ipc_sum": 1.7998260350926676,
+     "instructions_total": 122516318,
+     "time_ns": 5672600.0,
+     "idle_ns": [
+      -93.0,
+      5672600.0,
+      5672600.0,
+      5672600.0
+     ],
+     "GIPS": 21.597912421112014,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      12.0,
+      12.0,
+      12.0,
+      12.0
+     ]
+    },
+    {
+     "run": "thermal_example_test_1to20ghz/run_14",
+     "f_GHz": 14.0,
+     "f_dir_GHz": 14.0,
+     "f_cfg_GHz": 14.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      122516356,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      71974000,
+      71974000,
+      71974000,
+      71974000
+     ],
+     "ipc_per_core": [
+      1.7022307499930531,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 1.7022307499930531,
+     "ipc_sum": 1.7022307499930531,
+     "instructions_total": 122516356,
+     "time_ns": 5141000.0,
+     "idle_ns": [
+      -67.0,
+      5141000.0,
+      5141000.0,
+      5141000.0
+     ],
+     "GIPS": 23.83123049990274,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      14.0,
+      14.0,
+      14.0,
+      14.0
+     ]
+    },
+    {
+     "run": "thermal_example_test_1to20ghz/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      122516318,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      77516800,
+      77516800,
+      77516800,
+      77516800
+     ],
+     "ipc_per_core": [
+      1.5805131016760239,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 1.5805131016760239,
+     "ipc_sum": 1.5805131016760239,
+     "instructions_total": 122516318,
+     "time_ns": 4844800.0,
+     "idle_ns": [
+      -94.0,
+      4844800.0,
+      4844800.0,
+      4844800.0
+     ],
+     "GIPS": 25.288209626816382,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    },
+    {
+     "run": "thermal_example_test_1to20ghz/run_18",
+     "f_GHz": 18.0,
+     "f_dir_GHz": 18.0,
+     "f_cfg_GHz": 18.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      122516337,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      82591200,
+      82591200,
+      82591200,
+      82591200
+     ],
+     "ipc_per_core": [
+      1.4834066704443087,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 1.4834066704443087,
+     "ipc_sum": 1.4834066704443087,
+     "instructions_total": 122516337,
+     "time_ns": 4588400.0,
+     "idle_ns": [
+      -17.0,
+      4588400.0,
+      4588400.0,
+      4588400.0
+     ],
+     "GIPS": 26.70132006799756,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      18.0,
+      18.0,
+      18.0,
+      18.0
+     ]
+    },
+    {
+     "run": "thermal_example_test_1to20ghz/run_20",
+     "f_GHz": 20.0,
+     "f_dir_GHz": 20.0,
+     "f_cfg_GHz": 20.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      122516356,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      85636000,
+      85636000,
+      85636000,
+      85636000
+     ],
+     "ipc_per_core": [
+      1.4306641599327385,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 1.4306641599327385,
+     "ipc_sum": 1.4306641599327385,
+     "instructions_total": 122516356,
+     "time_ns": 4281800.0,
+     "idle_ns": [
+      -54.0,
+      4281800.0,
+      4281800.0,
+      4281800.0
+     ],
+     "GIPS": 28.61328319865477,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      20.0,
+      20.0,
+      20.0,
+      20.0
+     ]
+    }
+   ]
+  },
+  "blackscholes": {
+   "benchmark": "blackscholes",
+   "n_runs": 2,
+   "f_GHz": [
+    2.0,
+    4.0
+   ],
+   "ipc_active_mean": [
+    0.7014312856238125,
+    0.5400097513408093
+   ],
+   "GIPS": [
+    5.6113081365893205,
+    8.639987518527187
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.539745689991419
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 2.0,
+     "to_GHz": 4.0,
+     "elasticity": 0.6226920898259218,
+     "ipc_ratio": 0.7698683568990736
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "2": null,
+    "4": null
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/blackscholes/run_2",
+     "f_GHz": 2.0,
+     "f_dir_GHz": 2.0,
+     "f_cfg_GHz": 2.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      7535,
+      36254,
+      34725,
+      32242
+     ],
+     "cycles": [
+      39475,
+      39475,
+      39475,
+      39475
+     ],
+     "ipc_per_core": [
+      0.190880303989867,
+      0.9184040531982267,
+      0.8796706776440786,
+      0.8167701076630779
+     ],
+     "ipc_active_mean": 0.7014312856238125,
+     "ipc_sum": 2.80572514249525,
+     "instructions_total": 110756,
+     "time_ns": 19738.0,
+     "idle_ns": [
+      12424.0,
+      8368.0,
+      9117.0,
+      10043.0
+     ],
+     "GIPS": 5.6113081365893205,
+     "vdd_V": null,
+     "vdd_instant_V": null,
+     "dvfs_f_GHz": null
+    },
+    {
+     "run": "benchmarks_sweep/blackscholes/run_4",
+     "f_GHz": 4.0,
+     "f_dir_GHz": 4.0,
+     "f_cfg_GHz": 4.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      7535,
+      36254,
+      34725,
+      32242
+     ],
+     "cycles": [
+      51275,
+      51275,
+      51275,
+      51275
+     ],
+     "ipc_per_core": [
+      0.1469527059970746,
+      0.7070502194051682,
+      0.6772306192101414,
+      0.6288054607508532
+     ],
+     "ipc_active_mean": 0.5400097513408093,
+     "ipc_sum": 2.1600390053632372,
+     "instructions_total": 110756,
+     "time_ns": 12819.0,
+     "idle_ns": [
+      7557.0,
+      6058.0,
+      6372.0,
+      7074.0
+     ],
+     "GIPS": 8.639987518527187,
+     "vdd_V": null,
+     "vdd_instant_V": null,
+     "dvfs_f_GHz": null
+    }
+   ]
+  },
+  "bodytrack": {
+   "benchmark": "bodytrack",
+   "n_runs": 2,
+   "f_GHz": [
+    2.0,
+    4.0
+   ],
+   "ipc_active_mean": [
+    0.6863792453635712,
+    0.5760205704315416
+   ],
+   "GIPS": [
+    4.118275472181426,
+    6.912247027725314
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.6784363606746935
+   ],
+   "n_active_cores": [
+    3,
+    3
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 2.0,
+     "to_GHz": 4.0,
+     "elasticity": 0.7471144416808252,
+     "ipc_ratio": 0.8392161830686282
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "2": null,
+    "4": null
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/bodytrack/run_2",
+     "f_GHz": 2.0,
+     "f_dir_GHz": 2.0,
+     "f_cfg_GHz": 2.0,
+     "n_cores": 4,
+     "n_active_cores": 3,
+     "instructions": [
+      64820645,
+      119440,
+      494185,
+      0
+     ],
+     "cycles": [
+      31777510,
+      31777510,
+      31777510,
+      31777510
+     ],
+     "ipc_per_core": [
+      2.039827695750863,
+      0.003758633070998955,
+      0.015551407268851462,
+      0.0
+     ],
+     "ipc_active_mean": 0.6863792453635712,
+     "ipc_sum": 2.0591377360907135,
+     "instructions_total": 65434270,
+     "time_ns": 15888755.0,
+     "idle_ns": [
+      298911.0,
+      15820685.0,
+      15603446.0,
+      15888755.0
+     ],
+     "GIPS": 4.118275472181426,
+     "vdd_V": null,
+     "vdd_instant_V": null,
+     "dvfs_f_GHz": null
+    },
+    {
+     "run": "benchmarks_sweep/bodytrack/run_4",
+     "f_GHz": 4.0,
+     "f_dir_GHz": 4.0,
+     "f_cfg_GHz": 4.0,
+     "n_cores": 4,
+     "n_active_cores": 3,
+     "instructions": [
+      64820645,
+      467314,
+      146157,
+      0
+     ],
+     "cycles": [
+      37865613,
+      37865613,
+      37865613,
+      37865613
+     ],
+     "ipc_per_core": [
+      1.7118604418209207,
+      0.012341382140043527,
+      0.0038598873336607546,
+      0.0
+     ],
+     "ipc_active_mean": 0.5760205704315416,
+     "ipc_sum": 1.728061711294625,
+     "instructions_total": 65434116,
+     "time_ns": 9466403.0,
+     "idle_ns": [
+      226771.0,
+      9277287.0,
+      9411836.0,
+      9466403.0
+     ],
+     "GIPS": 6.912247027725314,
+     "vdd_V": null,
+     "vdd_instant_V": null,
+     "dvfs_f_GHz": null
+    }
+   ]
+  },
+  "freqmine": {
+   "benchmark": "freqmine",
+   "n_runs": 4,
+   "f_GHz": [
+    2.0,
+    4.0,
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    1.2146427870729266,
+    1.129462208694902,
+    0.993688130517024,
+    0.7720717215864148
+   ],
+   "GIPS": [
+    2.4292854571275337,
+    4.517848632417072,
+    7.949505044136192,
+    12.353149814794584
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.8597438267955237,
+    3.272363493064313,
+    5.085096022186438
+   ],
+   "n_active_cores": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 2.0,
+     "to_GHz": 4.0,
+     "elasticity": 0.8951039088254029,
+     "ipc_ratio": 0.9298719102565992
+    },
+    {
+     "from_GHz": 4.0,
+     "to_GHz": 8.0,
+     "elasticity": 0.8152291024477115,
+     "ipc_ratio": 0.8797887373896596
+    },
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.6359420055676234,
+     "ipc_ratio": 0.7769758920081894
+    }
+   ],
+   "knee_fit": {
+    "IPC0": 1.334848841161508,
+    "f_k_GHz": 22.17205289601523,
+    "max_abs_rel_residual": 0.012850267578705998,
+    "rms_rel_residual": 0.00789158485572973,
+    "n_points": 4
+   },
+   "vdd_V_by_f": {
+    "2": null,
+    "4": null,
+    "8": null,
+    "16": null
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/freqmine/run_2",
+     "f_GHz": 2.0,
+     "f_dir_GHz": 2.0,
+     "f_cfg_GHz": 2.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      25215830,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      20759873,
+      20759873,
+      20759873,
+      20759873
+     ],
+     "ipc_per_core": [
+      1.2146427870729266,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 1.2146427870729266,
+     "ipc_sum": 1.2146427870729266,
+     "instructions_total": 25215830,
+     "time_ns": 10379937.0,
+     "idle_ns": [
+      20653.0,
+      10379937.0,
+      10379937.0,
+      10379937.0
+     ],
+     "GIPS": 2.4292854571275337,
+     "vdd_V": null,
+     "vdd_instant_V": null,
+     "dvfs_f_GHz": null
+    },
+    {
+     "run": "benchmarks_sweep/freqmine/run_4",
+     "f_GHz": 4.0,
+     "f_dir_GHz": 4.0,
+     "f_cfg_GHz": 4.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      25215830,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      22325519,
+      22325519,
+      22325519,
+      22325519
+     ],
+     "ipc_per_core": [
+      1.129462208694902,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 1.129462208694902,
+     "ipc_sum": 1.129462208694902,
+     "instructions_total": 25215830,
+     "time_ns": 5581380.0,
+     "idle_ns": [
+      12205.0,
+      5581380.0,
+      5581380.0,
+      5581380.0
+     ],
+     "GIPS": 4.517848632417072,
+     "vdd_V": null,
+     "vdd_instant_V": null,
+     "dvfs_f_GHz": null
+    },
+    {
+     "run": "benchmarks_sweep/freqmine/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      25215830,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      25376000,
+      25376000,
+      25376000,
+      25376000
+     ],
+     "ipc_per_core": [
+      0.993688130517024,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 0.993688130517024,
+     "ipc_sum": 0.993688130517024,
+     "instructions_total": 25215830,
+     "time_ns": 3172000.0,
+     "idle_ns": [
+      91.0,
+      3172000.0,
+      3172000.0,
+      3172000.0
+     ],
+     "GIPS": 7.949505044136192,
+     "vdd_V": null,
+     "vdd_instant_V": null,
+     "dvfs_f_GHz": null
+    },
+    {
+     "run": "benchmarks_sweep/freqmine/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      25215830,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      32659958,
+      32659958,
+      32659958,
+      32659958
+     ],
+     "ipc_per_core": [
+      0.7720717215864148,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 0.7720717215864148,
+     "ipc_sum": 0.7720717215864148,
+     "instructions_total": 25215830,
+     "time_ns": 2041247.0,
+     "idle_ns": [
+      21108.0,
+      2041247.0,
+      2041247.0,
+      2041247.0
+     ],
+     "GIPS": 12.353149814794584,
+     "vdd_V": null,
+     "vdd_instant_V": null,
+     "dvfs_f_GHz": null
+    }
+   ]
+  },
+  "parsec_blackscholes-small-4": {
+   "benchmark": "parsec_blackscholes-small-4",
+   "n_runs": 1,
+   "f_GHz": [
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.46010011896396164
+   ],
+   "GIPS": [
+    29.446407613693545
+   ],
+   "speedup_vs_lowest_f": [
+    1.0
+   ],
+   "n_active_cores": [
+    4
+   ],
+   "elasticity_adjacent": [],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "16": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/parsec_blackscholes-small-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      71327869,
+      32790145,
+      32794268,
+      32796199
+     ],
+     "cycles": [
+      92212800,
+      92212800,
+      92212800,
+      92212800
+     ],
+     "ipc_per_core": [
+      0.7735137529713879,
+      0.3555921195322124,
+      0.35563683132927315,
+      0.35565777202297294
+     ],
+     "ipc_active_mean": 0.46010011896396164,
+     "ipc_sum": 1.8404004758558465,
+     "instructions_total": 169708481,
+     "time_ns": 5763300.0,
+     "idle_ns": [
+      25977.0,
+      4242636.0,
+      4286135.0,
+      4244387.0
+     ],
+     "GIPS": 29.446407613693545,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "parsec_swaptions-small-4": {
+   "benchmark": "parsec_swaptions-small-4",
+   "n_runs": 11,
+   "f_GHz": [
+    1.0,
+    2.0,
+    4.0,
+    6.0,
+    8.0,
+    10.0,
+    12.0,
+    14.0,
+    16.0,
+    18.0,
+    20.0
+   ],
+   "ipc_active_mean": [
+    1.6058547359774553,
+    1.5380745715147017,
+    1.4985914648846694,
+    1.4890503980424308,
+    1.4332743133813108,
+    1.3827853461375776,
+    1.3576123020890052,
+    1.3308867487055616,
+    1.284120146761016,
+    1.2640788143336283,
+    1.2199203510469214
+   ],
+   "GIPS": [
+    6.42341894390982,
+    12.304596572117614,
+    23.977463438154707,
+    35.73720955301834,
+    45.86477802820195,
+    55.31141384550311,
+    65.16539050027224,
+    74.52965792751145,
+    82.183689392705,
+    91.01367463202124,
+    97.59362808375371
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.9155836914208844,
+    3.7328192433981546,
+    5.563580509332362,
+    7.140243308370302,
+    8.610898751429511,
+    10.144969130960401,
+    11.602801173664323,
+    12.79438327785666,
+    14.169038228546388,
+    15.193407504664501
+   ],
+   "n_active_cores": [
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 1.0,
+     "to_GHz": 2.0,
+     "elasticity": 0.9377840581607796,
+     "ipc_ratio": 0.9577918457104422
+    },
+    {
+     "from_GHz": 2.0,
+     "to_GHz": 4.0,
+     "elasticity": 0.9624816876869757,
+     "ipc_ratio": 0.9743295238337182
+    },
+    {
+     "from_GHz": 4.0,
+     "to_GHz": 6.0,
+     "elasticity": 0.9842476124902704,
+     "ipc_ratio": 0.9936333103011681
+    },
+    {
+     "from_GHz": 6.0,
+     "to_GHz": 8.0,
+     "elasticity": 0.8672943251680638,
+     "ipc_ratio": 0.9625425138501386
+    },
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 10.0,
+     "elasticity": 0.8392885454598146,
+     "ipc_ratio": 0.9647736886286463
+    },
+    {
+     "from_GHz": 10.0,
+     "to_GHz": 12.0,
+     "elasticity": 0.8992311411148038,
+     "ipc_ratio": 0.981795407277864
+    },
+    {
+     "from_GHz": 12.0,
+     "to_GHz": 14.0,
+     "elasticity": 0.8710219887138013,
+     "ipc_ratio": 0.9803142963994065
+    },
+    {
+     "from_GHz": 14.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.732110370587158,
+     "ipc_ratio": 0.9648605698493644
+    },
+    {
+     "from_GHz": 16.0,
+     "to_GHz": 18.0,
+     "elasticity": 0.8664482864324065,
+     "ipc_ratio": 0.9843929460355103
+    },
+    {
+     "from_GHz": 18.0,
+     "to_GHz": 20.0,
+     "elasticity": 0.6625104187844643,
+     "ipc_ratio": 0.9650666850943266
+    }
+   ],
+   "knee_fit": {
+    "IPC0": 1.6087320570720227,
+    "f_k_GHz": 64.33600150806951,
+    "max_abs_rel_residual": 0.014404342148345517,
+    "rms_rel_residual": 0.00866527746510419,
+    "n_points": 11
+   },
+   "vdd_V_by_f": {
+    "1": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "2": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "4": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "6": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "8": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "10": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "12": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "14": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "16": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "18": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "20": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-small-4/run_1",
+     "f_GHz": 1.0,
+     "f_dir_GHz": 1.0,
+     "f_cfg_GHz": 1.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      178088089,
+      176018906,
+      176016180,
+      176015474
+     ],
+     "cycles": [
+      109931900,
+      109931900,
+      109931900,
+      109931900
+     ],
+     "ipc_per_core": [
+      1.619985545596865,
+      1.6011631382701472,
+      1.6011383411002629,
+      1.6011319189425453
+     ],
+     "ipc_active_mean": 1.6058547359774553,
+     "ipc_sum": 6.423418943909821,
+     "instructions_total": 706138649,
+     "time_ns": 109931900.0,
+     "idle_ns": [
+      238.0,
+      2123798.0,
+      2101481.0,
+      1928782.0
+     ],
+     "GIPS": 6.42341894390982,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-small-4/run_2",
+     "f_GHz": 2.0,
+     "f_dir_GHz": 2.0,
+     "f_cfg_GHz": 2.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      178088073,
+      176018906,
+      176016196,
+      176015474
+     ],
+     "cycles": [
+      114776400,
+      114776400,
+      114776400,
+      114776400
+     ],
+     "ipc_per_core": [
+      1.5516088063399793,
+      1.5335809974872883,
+      1.5335573863616563,
+      1.5335510958698826
+     ],
+     "ipc_active_mean": 1.5380745715147017,
+     "ipc_sum": 6.152298286058807,
+     "instructions_total": 706138649,
+     "time_ns": 57388200.0,
+     "idle_ns": [
+      262.0,
+      1332725.0,
+      1290833.0,
+      1272285.0
+     ],
+     "GIPS": 12.304596572117614,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      2.0,
+      2.0,
+      2.0,
+      2.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-small-4/run_4",
+     "f_GHz": 4.0,
+     "f_dir_GHz": 4.0,
+     "f_cfg_GHz": 4.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      178088127,
+      176018906,
+      176016180,
+      176015483
+     ],
+     "cycles": [
+      117800400,
+      117800400,
+      117800400,
+      117800400
+     ],
+     "ipc_per_core": [
+      1.5117786272372589,
+      1.4942131435886465,
+      1.4941900027504151,
+      1.4941840859623567
+     ],
+     "ipc_active_mean": 1.4985914648846694,
+     "ipc_sum": 5.994365859538678,
+     "instructions_total": 706138696,
+     "time_ns": 29450100.0,
+     "idle_ns": [
+      1300.0,
+      1598844.0,
+      1487342.0,
+      1530667.0
+     ],
+     "GIPS": 23.977463438154707,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      4.0,
+      4.0,
+      4.0,
+      4.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-small-4/run_6",
+     "f_GHz": 6.0,
+     "f_dir_GHz": 6.0,
+     "f_cfg_GHz": 6.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      178088089,
+      176018919,
+      176016180,
+      176015483
+     ],
+     "cycles": [
+      118555200,
+      118555200,
+      118555200,
+      118555200
+     ],
+     "ipc_per_core": [
+      1.5021533344804783,
+      1.4847001143771004,
+      1.484677011215029,
+      1.484671132097116
+     ],
+     "ipc_active_mean": 1.4890503980424308,
+     "ipc_sum": 5.956201592169723,
+     "instructions_total": 706138671,
+     "time_ns": 19759200.0,
+     "idle_ns": [
+      202.0,
+      754864.0,
+      707366.0,
+      614974.0
+     ],
+     "GIPS": 35.73720955301834,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      6.0,
+      6.0,
+      6.0,
+      6.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-small-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      178088127,
+      176016304,
+      176016180,
+      176018098
+     ],
+     "cycles": [
+      123168800,
+      123168800,
+      123168800,
+      123168800
+     ],
+     "ipc_per_core": [
+      1.4458866774702686,
+      1.429065672475497,
+      1.4290646657270347,
+      1.4290802378524432
+     ],
+     "ipc_active_mean": 1.4332743133813108,
+     "ipc_sum": 5.733097253525243,
+     "instructions_total": 706138709,
+     "time_ns": 15396100.0,
+     "idle_ns": [
+      153640.0,
+      640797.0,
+      522685.0,
+      717237.0
+     ],
+     "GIPS": 45.86477802820195,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-small-4/run_10",
+     "f_GHz": 10.0,
+     "f_dir_GHz": 10.0,
+     "f_cfg_GHz": 10.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      178088127,
+      176016291,
+      176016180,
+      176018098
+     ],
+     "cycles": [
+      127666000,
+      127666000,
+      127666000,
+      127666000
+     ],
+     "ipc_per_core": [
+      1.3949534488430748,
+      1.3787248836808548,
+      1.3787240142246173,
+      1.3787390378017639
+     ],
+     "ipc_active_mean": 1.3827853461375776,
+     "ipc_sum": 5.531141384550311,
+     "instructions_total": 706138696,
+     "time_ns": 12766600.0,
+     "idle_ns": [
+      172777.0,
+      589611.0,
+      483826.0,
+      674421.0
+     ],
+     "GIPS": 55.31141384550311,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      10.0,
+      10.0,
+      10.0,
+      10.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-small-4/run_12",
+     "f_GHz": 12.0,
+     "f_dir_GHz": 12.0,
+     "f_cfg_GHz": 12.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      178088128,
+      176018881,
+      176016196,
+      176015483
+     ],
+     "cycles": [
+      130033200,
+      130033200,
+      130033200,
+      130033200
+     ],
+     "ipc_per_core": [
+      1.369558912646924,
+      1.353645692023268,
+      1.353625043450442,
+      1.353619560235386
+     ],
+     "ipc_active_mean": 1.3576123020890052,
+     "ipc_sum": 5.430449208356021,
+     "instructions_total": 706138688,
+     "time_ns": 10836100.0,
+     "idle_ns": [
+      205443.0,
+      665197.0,
+      457882.0,
+      660042.0
+     ],
+     "GIPS": 65.16539050027224,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      12.0,
+      12.0,
+      12.0,
+      12.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-small-4/run_14",
+     "f_GHz": 14.0,
+     "f_dir_GHz": 14.0,
+     "f_cfg_GHz": 14.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      178088128,
+      176018906,
+      176016180,
+      176015483
+     ],
+     "cycles": [
+      132644400,
+      132644400,
+      132644400,
+      132644400
+     ],
+     "ipc_per_core": [
+      1.3425981647170933,
+      1.3269983957106368,
+      1.3269778445226486,
+      1.3269725898718678
+     ],
+     "ipc_active_mean": 1.3308867487055616,
+     "ipc_sum": 5.323546994822246,
+     "instructions_total": 706138697,
+     "time_ns": 9474600.0,
+     "idle_ns": [
+      227.0,
+      618645.0,
+      574734.0,
+      472221.0
+     ],
+     "GIPS": 74.52965792751145,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      14.0,
+      14.0,
+      14.0,
+      14.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-small-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      178088127,
+      176018906,
+      176016180,
+      176015483
+     ],
+     "cycles": [
+      137475200,
+      137475200,
+      137475200,
+      137475200
+     ],
+     "ipc_per_core": [
+      1.295420024848118,
+      1.280368430087754,
+      1.2803486010567724,
+      1.2803435310514186
+     ],
+     "ipc_active_mean": 1.284120146761016,
+     "ipc_sum": 5.136480587044064,
+     "instructions_total": 706138696,
+     "time_ns": 8592200.0,
+     "idle_ns": [
+      186.0,
+      621708.0,
+      588665.0,
+      466584.0
+     ],
+     "GIPS": 82.183689392705,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-small-4/run_18",
+     "f_GHz": 18.0,
+     "f_dir_GHz": 18.0,
+     "f_cfg_GHz": 18.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      178088127,
+      176016291,
+      176016180,
+      176018098
+     ],
+     "cycles": [
+      139654800,
+      139654800,
+      139654800,
+      139654800
+     ],
+     "ipc_per_core": [
+      1.275202334613633,
+      1.260366926163655,
+      1.2603661313467207,
+      1.2603798652105047
+     ],
+     "ipc_active_mean": 1.2640788143336283,
+     "ipc_sum": 5.056315257334513,
+     "instructions_total": 706138696,
+     "time_ns": 7758600.0,
+     "idle_ns": [
+      36365.0,
+      484755.0,
+      414731.0,
+      493850.0
+     ],
+     "GIPS": 91.01367463202124,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      18.0,
+      18.0,
+      18.0,
+      18.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-small-4/run_20",
+     "f_GHz": 20.0,
+     "f_dir_GHz": 20.0,
+     "f_cfg_GHz": 20.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      178088136,
+      176016282,
+      176016180,
+      176018098
+     ],
+     "cycles": [
+      144710000,
+      144710000,
+      144710000,
+      144710000
+     ],
+     "ipc_per_core": [
+      1.2306553520834773,
+      1.216338069241932,
+      1.2163373643839404,
+      1.216350618478336
+     ],
+     "ipc_active_mean": 1.2199203510469214,
+     "ipc_sum": 4.879681404187686,
+     "instructions_total": 706138696,
+     "time_ns": 7235500.0,
+     "idle_ns": [
+      224542.0,
+      558087.0,
+      405653.0,
+      631158.0
+     ],
+     "GIPS": 97.59362808375371,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      20.0,
+      20.0,
+      20.0,
+      20.0
+     ]
+    }
+   ]
+  },
+  "parsec_swaptions-test-4": {
+   "benchmark": "parsec_swaptions-test-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.15118644739224915,
+    0.09312966833890747
+   ],
+   "GIPS": [
+    4.837966316551974,
+    5.960298773690078
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.2312151616499443
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.30098392605376745,
+     "ipc_ratio": 0.6159921735397689
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      2212395,
+      154766,
+      152066,
+      152298
+     ],
+     "cycles": [
+      4417600,
+      4417600,
+      4417600,
+      4417600
+     ],
+     "ipc_per_core": [
+      0.5008137902933719,
+      0.03503395508873597,
+      0.03442276349148859,
+      0.03447528069540022
+     ],
+     "ipc_active_mean": 0.15118644739224915,
+     "ipc_sum": 0.6047457895689966,
+     "instructions_total": 2671525,
+     "time_ns": 552200.0,
+     "idle_ns": [
+      268.0,
+      526585.0,
+      522902.0,
+      527474.0
+     ],
+     "GIPS": 4.837966316551974,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      2212411,
+      154750,
+      152066,
+      153967
+     ],
+     "cycles": [
+      7176000,
+      7176000,
+      7176000,
+      7176000
+     ],
+     "ipc_per_core": [
+      0.3083069955406912,
+      0.0215649386845039,
+      0.021190914158305464,
+      0.02145582497212932
+     ],
+     "ipc_active_mean": 0.09312966833890747,
+     "ipc_sum": 0.3725186733556299,
+     "instructions_total": 2673194,
+     "time_ns": 448500.0,
+     "idle_ns": [
+      217.0,
+      429865.0,
+      425564.0,
+      430112.0
+     ],
+     "GIPS": 5.960298773690078,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "parsec_swaptions-test-8": {
+   "benchmark": "parsec_swaptions-test-8",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.17601393884892086,
+    0.10874718915343916
+   ],
+   "GIPS": [
+    5.6324460431654675,
+    6.959820105820106
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.2355555555555555
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.30528842842791815,
+     "ipc_ratio": 0.6178328254262909
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-test-8/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      2374883,
+      305711,
+      303499,
+      304129
+     ],
+     "cycles": [
+      4670400,
+      4670400,
+      4670400,
+      4670400
+     ],
+     "ipc_per_core": [
+      0.5084967026378897,
+      0.06545713429256594,
+      0.06498351318944844,
+      0.06511840527577938
+     ],
+     "ipc_active_mean": 0.17601393884892086,
+     "ipc_sum": 0.7040557553956834,
+     "instructions_total": 3288222,
+     "time_ns": 583800.0,
+     "idle_ns": [
+      350.0,
+      533795.0,
+      527942.0,
+      535304.0
+     ],
+     "GIPS": 5.6324460431654675,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_swaptions-test-8/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      2374930,
+      305704,
+      302985,
+      304896
+     ],
+     "cycles": [
+      7560000,
+      7560000,
+      7560000,
+      7560000
+     ],
+     "ipc_per_core": [
+      0.3141441798941799,
+      0.040437037037037035,
+      0.040077380952380955,
+      0.04033015873015873
+     ],
+     "ipc_active_mean": 0.10874718915343916,
+     "ipc_sum": 0.43498875661375663,
+     "instructions_total": 3288515,
+     "time_ns": 472500.0,
+     "idle_ns": [
+      2874.0,
+      432570.0,
+      423597.0,
+      433761.0
+     ],
+     "GIPS": 6.959820105820106,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "parsec_vips-test-4": {
+   "benchmark": "parsec_vips-test-4",
+   "n_runs": 5,
+   "f_GHz": [
+    1.0,
+    2.0,
+    4.0,
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.4640450599138795,
+    0.3961782277967957,
+    0.28771901019405227,
+    0.17318335981040975,
+    0.09493227986403367
+   ],
+   "GIPS": [
+    1.856180239655518,
+    3.1694258223743654,
+    4.603504163104836,
+    5.541867513933112,
+    6.075665911298155
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.7002844942868798,
+    2.4802087766007523,
+    2.99152884960415,
+    3.2801852728042435
+   ],
+   "n_active_cores": [
+    4,
+    4,
+    4,
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 1.0,
+     "to_GHz": 2.0,
+     "elasticity": 0.7718846968840987,
+     "ipc_ratio": 0.8537494782733406
+    },
+    {
+     "from_GHz": 2.0,
+     "to_GHz": 4.0,
+     "elasticity": 0.5385109478244295,
+     "ipc_ratio": 0.7262362997434241
+    },
+    {
+     "from_GHz": 4.0,
+     "to_GHz": 8.0,
+     "elasticity": 0.26763977039171377,
+     "ipc_ratio": 0.6019183775642983
+    },
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.13267031951388294,
+     "ipc_ratio": 0.5481605159292415
+    }
+   ],
+   "knee_fit": {
+    "IPC0": 0.7218147322940892,
+    "f_k_GHz": 2.449127410215833,
+    "max_abs_rel_residual": 0.1045051102739245,
+    "rms_rel_residual": 0.05250909160218331,
+    "n_points": 5
+   },
+   "vdd_V_by_f": {
+    "1": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "2": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "4": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "8": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "16": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/parsec_vips-test-4/run_1",
+     "f_GHz": 1.0,
+     "f_dir_GHz": 1.0,
+     "f_cfg_GHz": 1.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      76691275,
+      16741097,
+      13697999,
+      15119887
+     ],
+     "cycles": [
+      65861200,
+      65861200,
+      65861200,
+      65861200
+     ],
+     "ipc_per_core": [
+      1.1644378632639552,
+      0.25418754896661466,
+      0.20798283359550085,
+      0.22957199382944737
+     ],
+     "ipc_active_mean": 0.4640450599138795,
+     "ipc_sum": 1.856180239655518,
+     "instructions_total": 122250258,
+     "time_ns": 65861200.0,
+     "idle_ns": [
+      7341226.0,
+      58773013.0,
+      60060051.0,
+      59522277.0
+     ],
+     "GIPS": 1.856180239655518,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_vips-test-4/run_2",
+     "f_GHz": 2.0,
+     "f_dir_GHz": 2.0,
+     "f_cfg_GHz": 2.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      76689661,
+      16268818,
+      15516730,
+      14293768
+     ],
+     "cycles": [
+      77470800,
+      77470800,
+      77470800,
+      77470800
+     ],
+     "ipc_per_core": [
+      0.9899169880780888,
+      0.20999935459553792,
+      0.20029133557417764,
+      0.18450523293937846
+     ],
+     "ipc_active_mean": 0.3961782277967957,
+     "ipc_sum": 1.5847129111871827,
+     "instructions_total": 122768977,
+     "time_ns": 38735400.0,
+     "idle_ns": [
+      4116804.0,
+      34964560.0,
+      35206250.0,
+      35491057.0
+     ],
+     "GIPS": 3.1694258223743654,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      2.0,
+      2.0,
+      2.0,
+      2.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_vips-test-4/run_4",
+     "f_GHz": 4.0,
+     "f_dir_GHz": 4.0,
+     "f_cfg_GHz": 4.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      76689033,
+      19123385,
+      12038408,
+      14393846
+     ],
+     "cycles": [
+      106218800,
+      106218800,
+      106218800,
+      106218800
+     ],
+     "ipc_per_core": [
+      0.721991144693783,
+      0.1800376675315481,
+      0.11333594429611331,
+      0.1355112842547647
+     ],
+     "ipc_active_mean": 0.28771901019405227,
+     "ipc_sum": 1.150876040776209,
+     "instructions_total": 122244672,
+     "time_ns": 26554700.0,
+     "idle_ns": [
+      2593871.0,
+      24018361.0,
+      24971045.0,
+      24671119.0
+     ],
+     "GIPS": 4.603504163104836,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      4.0,
+      4.0,
+      4.0,
+      4.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_vips-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      76690953,
+      17108653,
+      15130108,
+      13079487
+     ],
+     "cycles": [
+      176127200,
+      176127200,
+      176127200,
+      176127200
+     ],
+     "ipc_per_core": [
+      0.4354293544665446,
+      0.09713805136287865,
+      0.08590443724762557,
+      0.07426159616459013
+     ],
+     "ipc_active_mean": 0.17318335981040975,
+     "ipc_sum": 0.692733439241639,
+     "instructions_total": 122009201,
+     "time_ns": 22015900.0,
+     "idle_ns": [
+      1524825.0,
+      20534800.0,
+      20720257.0,
+      20916586.0
+     ],
+     "GIPS": 5.541867513933112,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_vips-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      76690692,
+      19673741,
+      11070470,
+      14555355
+     ],
+     "cycles": [
+      321256000,
+      321256000,
+      321256000,
+      321256000
+     ],
+     "ipc_per_core": [
+      0.23872143088378117,
+      0.06124007333715168,
+      0.03445996339367981,
+      0.04530765184152202
+     ],
+     "ipc_active_mean": 0.09493227986403367,
+     "ipc_sum": 0.3797291194561347,
+     "instructions_total": 121990258,
+     "time_ns": 20078500.0,
+     "idle_ns": [
+      1262836.0,
+      18878088.0,
+      19379628.0,
+      19191209.0
+     ],
+     "GIPS": 6.075665911298155,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "parsec_x264-large-16": {
+   "benchmark": "parsec_x264-large-16",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    4.618937644341802e-05,
+    4.587155963302752e-05
+   ],
+   "GIPS": [
+    0.00036951501154734414,
+    0.0007339449541284404
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.9862385321100917
+   ],
+   "n_active_cores": [
+    1,
+    1
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.9900388899497984,
+     "ipc_ratio": 0.9931192660550457
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "16": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/parsec_x264-large-16/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      16,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      346400,
+      346400,
+      346400,
+      346400
+     ],
+     "ipc_per_core": [
+      4.618937644341802e-05,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 4.618937644341802e-05,
+     "ipc_sum": 4.618937644341802e-05,
+     "instructions_total": 16,
+     "time_ns": 43300.0,
+     "idle_ns": [
+      375.0,
+      43300.0,
+      43300.0,
+      43300.0
+     ],
+     "GIPS": 0.00036951501154734414,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_x264-large-16/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      16,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      348800,
+      348800,
+      348800,
+      348800
+     ],
+     "ipc_per_core": [
+      4.587155963302752e-05,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 4.587155963302752e-05,
+     "ipc_sum": 4.587155963302752e-05,
+     "instructions_total": 16,
+     "time_ns": 21800.0,
+     "idle_ns": [
+      337.0,
+      21800.0,
+      21800.0,
+      21800.0
+     ],
+     "GIPS": 0.0007339449541284404,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "parsec_x264-large-4": {
+   "benchmark": "parsec_x264-large-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    4.618937644341802e-05,
+    4.587155963302752e-05
+   ],
+   "GIPS": [
+    0.00036951501154734414,
+    0.0007339449541284404
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.9862385321100917
+   ],
+   "n_active_cores": [
+    1,
+    1
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.9900388899497984,
+     "ipc_ratio": 0.9931192660550457
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "16": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/parsec_x264-large-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      16,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      346400,
+      346400,
+      346400,
+      346400
+     ],
+     "ipc_per_core": [
+      4.618937644341802e-05,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 4.618937644341802e-05,
+     "ipc_sum": 4.618937644341802e-05,
+     "instructions_total": 16,
+     "time_ns": 43300.0,
+     "idle_ns": [
+      372.0,
+      43300.0,
+      43300.0,
+      43300.0
+     ],
+     "GIPS": 0.00036951501154734414,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_x264-large-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      16,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      348800,
+      348800,
+      348800,
+      348800
+     ],
+     "ipc_per_core": [
+      4.587155963302752e-05,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 4.587155963302752e-05,
+     "ipc_sum": 4.587155963302752e-05,
+     "instructions_total": 16,
+     "time_ns": 21800.0,
+     "idle_ns": [
+      340.0,
+      21800.0,
+      21800.0,
+      21800.0
+     ],
+     "GIPS": 0.0007339449541284404,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "parsec_x264-test-4": {
+   "benchmark": "parsec_x264-test-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    4.640371229698376e-05,
+    4.6296296296296294e-05
+   ],
+   "GIPS": [
+    0.0003712296983758701,
+    0.0007407407407407407
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.9953703703703705
+   ],
+   "n_active_cores": [
+    1,
+    1
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.9966565569256296,
+     "ipc_ratio": 0.9976851851851851
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/parsec_x264-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      16,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      344800,
+      344800,
+      344800,
+      344800
+     ],
+     "ipc_per_core": [
+      4.640371229698376e-05,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 4.640371229698376e-05,
+     "ipc_sum": 4.640371229698376e-05,
+     "instructions_total": 16,
+     "time_ns": 43100.0,
+     "idle_ns": [
+      218.0,
+      43100.0,
+      43100.0,
+      43100.0
+     ],
+     "GIPS": 0.0003712296983758701,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/parsec_x264-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      16,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      345600,
+      345600,
+      345600,
+      345600
+     ],
+     "ipc_per_core": [
+      4.6296296296296294e-05,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 4.6296296296296294e-05,
+     "ipc_sum": 4.6296296296296294e-05,
+     "instructions_total": 16,
+     "time_ns": 21600.0,
+     "idle_ns": [
+      159.0,
+      21600.0,
+      21600.0,
+      21600.0
+     ],
+     "GIPS": 0.0007407407407407407,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_barnes": {
+   "benchmark": "splash2_barnes",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.6122636371112975,
+    0.5291519586264872
+   ],
+   "GIPS": [
+    19.59243785108163,
+    33.86571770326283
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.7277721248840383
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.7895286498976782,
+     "ipc_ratio": 0.8642550799244963
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_barnes/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      16537558,
+      15852784,
+      16479020,
+      16702609
+     ],
+     "cycles": [
+      26774402,
+      26774402,
+      26774402,
+      26774402
+     ],
+     "ipc_per_core": [
+      0.6176630200741738,
+      0.5920873228093012,
+      0.6154766780598872,
+      0.623827527501828
+     ],
+     "ipc_active_mean": 0.6122636371112975,
+     "ipc_sum": 2.44905454844519,
+     "instructions_total": 65571971,
+     "time_ns": 3346800.0,
+     "idle_ns": [
+      240949.0,
+      370548.0,
+      248789.0,
+      84314.0
+     ],
+     "GIPS": 19.59243785108163,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_barnes/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      16575693,
+      16658768,
+      16534016,
+      15831484
+     ],
+     "cycles": [
+      30992969,
+      30992969,
+      30992969,
+      30992969
+     ],
+     "ipc_per_core": [
+      0.5348210750638314,
+      0.5375015217161028,
+      0.5334763507168352,
+      0.5108088870091794
+     ],
+     "ipc_active_mean": 0.5291519586264872,
+     "ipc_sum": 2.116607834505949,
+     "instructions_total": 65599961,
+     "time_ns": 1937061.0,
+     "idle_ns": [
+      272770.0,
+      136812.0,
+      267557.0,
+      312475.0
+     ],
+     "GIPS": 33.86571770326283,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_barnes-small-4": {
+   "benchmark": "splash2_barnes-small-4",
+   "n_runs": 1,
+   "f_GHz": [
+    8.0
+   ],
+   "ipc_active_mean": [
+    0.56309187892909
+   ],
+   "GIPS": [
+    18.01894012573088
+   ],
+   "speedup_vs_lowest_f": [
+    1.0
+   ],
+   "n_active_cores": [
+    4
+   ],
+   "elasticity_adjacent": [],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_barnes-small-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      466007574,
+      462190556,
+      470767348,
+      478728810
+     ],
+     "cycles": [
+      833653600,
+      833653600,
+      833653600,
+      833653600
+     ],
+     "ipc_per_core": [
+      0.5589942561274851,
+      0.5544155941988375,
+      0.5647037906391815,
+      0.5742538747508558
+     ],
+     "ipc_active_mean": 0.56309187892909,
+     "ipc_sum": 2.25236751571636,
+     "instructions_total": 1877694288,
+     "time_ns": 104206700.0,
+     "idle_ns": [
+      9376830.0,
+      7880978.0,
+      4301143.0,
+      2874734.0
+     ],
+     "GIPS": 18.01894012573088,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    }
+   ]
+  },
+  "splash2_barnes-test-4": {
+   "benchmark": "splash2_barnes-test-4",
+   "n_runs": 4,
+   "f_GHz": [
+    2.0,
+    4.0,
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.6354720414076129,
+    0.6148509361765362,
+    0.5809295074036682,
+    0.5162148039937138
+   ],
+   "GIPS": [
+    5.0837763312609034,
+    9.837614978824579,
+    18.589744236917383,
+    33.03774745559768
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.9335909057136489,
+    3.649139043131976,
+    6.491768110157653
+   ],
+   "n_active_cores": [
+    4,
+    4,
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 2.0,
+     "to_GHz": 4.0,
+     "elasticity": 0.952408034365473,
+     "ipc_ratio": 0.9675499410085775
+    },
+    {
+     "from_GHz": 4.0,
+     "to_GHz": 8.0,
+     "elasticity": 0.9181264237991046,
+     "ipc_ratio": 0.9448298330912381
+    },
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.8296084044405343,
+     "ipc_ratio": 0.8886014523531744
+    }
+   ],
+   "knee_fit": {
+    "IPC0": 0.6577436240492007,
+    "f_k_GHz": 58.68531105411601,
+    "max_abs_rel_residual": 0.0036029338787508802,
+    "rms_rel_residual": 0.002094040739464633,
+    "n_points": 4
+   },
+   "vdd_V_by_f": {
+    "2": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "4": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "8": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "16": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_barnes-test-4/run_2",
+     "f_GHz": 2.0,
+     "f_dir_GHz": 2.0,
+     "f_cfg_GHz": 2.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      17184297,
+      15829618,
+      16483041,
+      16653650
+     ],
+     "cycles": [
+      26024200,
+      26024200,
+      26024200,
+      26024200
+     ],
+     "ipc_per_core": [
+      0.6603198945596791,
+      0.6082653069066484,
+      0.6333735907347776,
+      0.6399293734293465
+     ],
+     "ipc_active_mean": 0.6354720414076129,
+     "ipc_sum": 2.5418881656304517,
+     "instructions_total": 66150606,
+     "time_ns": 13012100.0,
+     "idle_ns": [
+      605539.0,
+      1822856.0,
+      1310446.0,
+      975781.0
+     ],
+     "GIPS": 5.0837763312609034,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      2.0,
+      2.0,
+      2.0,
+      2.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_barnes-test-4/run_4",
+     "f_GHz": 4.0,
+     "f_dir_GHz": 4.0,
+     "f_cfg_GHz": 4.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      17188822,
+      15831668,
+      16504293,
+      16677447
+     ],
+     "cycles": [
+      26918000,
+      26918000,
+      26918000,
+      26918000
+     ],
+     "ipc_per_core": [
+      0.638562374619214,
+      0.5881442900661268,
+      0.6131322163607995,
+      0.6195648636600044
+     ],
+     "ipc_active_mean": 0.6148509361765362,
+     "ipc_sum": 2.4594037447061448,
+     "instructions_total": 66202230,
+     "time_ns": 6729500.0,
+     "idle_ns": [
+      345675.0,
+      1028590.0,
+      767793.0,
+      533444.0
+     ],
+     "GIPS": 9.837614978824579,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      4.0,
+      4.0,
+      4.0,
+      4.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_barnes-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      17193956,
+      16693310,
+      16555746,
+      15844298
+     ],
+     "cycles": [
+      28526400,
+      28526400,
+      28526400,
+      28526400
+     ],
+     "ipc_per_core": [
+      0.6027383756800718,
+      0.5851881064557743,
+      0.5803657664479219,
+      0.5554257810309047
+     ],
+     "ipc_active_mean": 0.5809295074036682,
+     "ipc_sum": 2.323718029614673,
+     "instructions_total": 66287310,
+     "time_ns": 3565800.0,
+     "idle_ns": [
+      219654.0,
+      318215.0,
+      429768.0,
+      602541.0
+     ],
+     "GIPS": 18.589744236917383,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_barnes-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      17212072,
+      16667437,
+      16518641,
+      15822711
+     ],
+     "cycles": [
+      32070400,
+      32070400,
+      32070400,
+      32070400
+     ],
+     "ipc_per_core": [
+      0.5366965176611455,
+      0.5197140353721812,
+      0.5150743676411894,
+      0.49337429530033927
+     ],
+     "ipc_active_mean": 0.5162148039937138,
+     "ipc_sum": 2.064859215974855,
+     "instructions_total": 66220861,
+     "time_ns": 2004400.0,
+     "idle_ns": [
+      160121.0,
+      235715.0,
+      352156.0,
+      386623.0
+     ],
+     "GIPS": 33.03774745559768,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_cholesky": {
+   "benchmark": "splash2_cholesky",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    1.297025958407048,
+    0.861863721270189
+   ],
+   "GIPS": [
+    41.50484183344093,
+    55.15926006603085
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.2195762057979078
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.4103234570866686,
+     "ipc_ratio": 0.6644922683958409
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_cholesky/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      10669358,
+      9182309,
+      9121778,
+      9601155
+     ],
+     "cycles": [
+      7435202,
+      7435202,
+      7435202,
+      7435202
+     ],
+     "ipc_per_core": [
+      1.4349789017164565,
+      1.2349777450565567,
+      1.2268366078016442,
+      1.2913105790535349
+     ],
+     "ipc_active_mean": 1.297025958407048,
+     "ipc_sum": 5.188103833628192,
+     "instructions_total": 38574600,
+     "time_ns": 929400.0,
+     "idle_ns": [
+      32515.0,
+      60586.0,
+      28665.0,
+      26997.0
+     ],
+     "GIPS": 41.50484183344093,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_cholesky/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      11980713,
+      9523405,
+      10256166,
+      10274823
+     ],
+     "cycles": [
+      12193084,
+      12193084,
+      12193084,
+      12193084
+     ],
+     "ipc_per_core": [
+      0.982582667354707,
+      0.7810497327829449,
+      0.8411461776200344,
+      0.8426763073230694
+     ],
+     "ipc_active_mean": 0.861863721270189,
+     "ipc_sum": 3.447454885080756,
+     "instructions_total": 42035107,
+     "time_ns": 762068.0,
+     "idle_ns": [
+      33010.0,
+      25193.0,
+      17041.0,
+      32248.0
+     ],
+     "GIPS": 55.15926006603085,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_fft-large-4": {
+   "benchmark": "splash2_fft-large-4",
+   "n_runs": 1,
+   "f_GHz": [
+    8.0
+   ],
+   "ipc_active_mean": [
+    0.770881597573135
+   ],
+   "GIPS": [
+    24.668211122340324
+   ],
+   "speedup_vs_lowest_f": [
+    1.0
+   ],
+   "n_active_cores": [
+    4
+   ],
+   "elasticity_adjacent": [],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_fft-large-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      1851886734,
+      535612481,
+      535611677,
+      535611589
+     ],
+     "cycles": [
+      1121677600,
+      1121677600,
+      1121677600,
+      1121677600
+     ],
+     "ipc_per_core": [
+      1.6509973400556452,
+      0.4775101874192727,
+      0.47750947063576915,
+      0.47750939218185334
+     ],
+     "ipc_active_mean": 0.770881597573135,
+     "ipc_sum": 3.08352639029254,
+     "instructions_total": 3458722481,
+     "time_ns": 140209700.0,
+     "idle_ns": [
+      364932.0,
+      63771816.0,
+      64741964.0,
+      63804612.0
+     ],
+     "GIPS": 24.668211122340324,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    }
+   ]
+  },
+  "splash2_fft-small-4": {
+   "benchmark": "splash2_fft-small-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.7488705587031504,
+    0.5390791301297407
+   ],
+   "GIPS": [
+    23.963857878500814,
+    34.50106432830341
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.439702051022014
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.5257806859775154,
+     "ipc_ratio": 0.7198562206308203
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "16": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_fft-small-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      110968462,
+      28782982,
+      28780691,
+      28781478
+     ],
+     "cycles": [
+      65870400,
+      65870400,
+      65870400,
+      65870400
+     ],
+     "ipc_per_core": [
+      1.684648370132867,
+      0.4369638259369914,
+      0.43692904551968714,
+      0.4369409932230562
+     ],
+     "ipc_active_mean": 0.7488705587031504,
+     "ipc_sum": 2.995482234812602,
+     "instructions_total": 197313613,
+     "time_ns": 8233800.0,
+     "idle_ns": [
+      64962.0,
+      4274258.0,
+      4264292.0,
+      4290868.0
+     ],
+     "GIPS": 23.963857878500814,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_fft-small-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      110968195,
+      28782125,
+      28783314,
+      28781403
+     ],
+     "cycles": [
+      91505600,
+      91505600,
+      91505600,
+      91505600
+     ],
+     "ipc_per_core": [
+      1.212692939011383,
+      0.3145394926649298,
+      0.3145524864052036,
+      0.31453160243744643
+     ],
+     "ipc_active_mean": 0.5390791301297407,
+     "ipc_sum": 2.156316520518963,
+     "instructions_total": 197315037,
+     "time_ns": 5719100.0,
+     "idle_ns": [
+      26858.0,
+      2355773.0,
+      2351360.0,
+      2343568.0
+     ],
+     "GIPS": 34.50106432830341,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_fft-test-4": {
+   "benchmark": "splash2_fft-test-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.16489775878003696,
+    0.12345625
+   ],
+   "GIPS": [
+    5.276728280961183,
+    7.9012
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.4924137931034482
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.5824280846721442,
+     "ipc_ratio": 0.748683614097404
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_fft-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      316418,
+      86076,
+      84892,
+      83556
+     ],
+     "cycles": [
+      865600,
+      865600,
+      865600,
+      865600
+     ],
+     "ipc_per_core": [
+      0.3655475970425139,
+      0.09944085027726432,
+      0.09807301293900185,
+      0.09652957486136783
+     ],
+     "ipc_active_mean": 0.16489775878003696,
+     "ipc_sum": 0.6595910351201478,
+     "instructions_total": 570942,
+     "time_ns": 108200.0,
+     "idle_ns": [
+      24298.0,
+      92939.0,
+      92992.0,
+      95642.0
+     ],
+     "GIPS": 5.276728280961183,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_fft-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      316384,
+      86868,
+      85221,
+      84364
+     ],
+     "cycles": [
+      1160000,
+      1160000,
+      1160000,
+      1160000
+     ],
+     "ipc_per_core": [
+      0.2727448275862069,
+      0.07488620689655172,
+      0.07346637931034483,
+      0.07272758620689655
+     ],
+     "ipc_active_mean": 0.12345625,
+     "ipc_sum": 0.493825,
+     "instructions_total": 572837,
+     "time_ns": 72500.0,
+     "idle_ns": [
+      23901.0,
+      60915.0,
+      59840.0,
+      61301.0
+     ],
+     "GIPS": 7.9012,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_fft_rep2": {
+   "benchmark": "splash2_fft_rep2",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.3748950857491663,
+    0.16205771096023278
+   ],
+   "GIPS": [
+    11.996696588868941,
+    10.371613023371303
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    0.8643967845060369
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": -0.20999691619888655,
+     "ipc_ratio": 0.43227483400159017
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_fft_rep2/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      169734,
+      166583,
+      166313,
+      165586
+     ],
+     "cycles": [
+      445602,
+      445602,
+      445602,
+      445602
+     ],
+     "ipc_per_core": [
+      0.3809094214119326,
+      0.37383808869798607,
+      0.3732321668215134,
+      0.3716006660652331
+     ],
+     "ipc_active_mean": 0.3748950857491663,
+     "ipc_sum": 1.4995803429966652,
+     "instructions_total": 668216,
+     "time_ns": 55700.0,
+     "idle_ns": [
+      30012.0,
+      33362.0,
+      32684.0,
+      31863.0
+     ],
+     "GIPS": 11.996696588868941,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_fft_rep2/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      169731,
+      166705,
+      166177,
+      165713
+     ],
+     "cycles": [
+      1031000,
+      1031000,
+      1031000,
+      1031000
+     ],
+     "ipc_per_core": [
+      0.164627546071775,
+      0.1616925315227934,
+      0.161180407371484,
+      0.16073035887487877
+     ],
+     "ipc_active_mean": 0.16205771096023278,
+     "ipc_sum": 0.6482308438409311,
+     "instructions_total": 668326,
+     "time_ns": 64438.0,
+     "idle_ns": [
+      45910.0,
+      49645.0,
+      47223.0,
+      49057.0
+     ],
+     "GIPS": 10.371613023371303,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_fft_rep2-test-4": {
+   "benchmark": "splash2_fft_rep2-test-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.23169934809602652,
+    0.16384158851113717
+   ],
+   "GIPS": [
+    7.414379139072848,
+    10.485861664712779
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.4161781946072685
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.5000476229614291,
+     "ipc_ratio": 0.7071301229696767
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_fft_rep2-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      396884,
+      166967,
+      166240,
+      165566
+     ],
+     "cycles": [
+      966400,
+      966400,
+      966400,
+      966400
+     ],
+     "ipc_per_core": [
+      0.4106829470198676,
+      0.1727721440397351,
+      0.1720198675496689,
+      0.17132243377483444
+     ],
+     "ipc_active_mean": 0.23169934809602652,
+     "ipc_sum": 0.9267973923841061,
+     "instructions_total": 895657,
+     "time_ns": 120800.0,
+     "idle_ns": [
+      29098.0,
+      98668.0,
+      97859.0,
+      98684.0
+     ],
+     "GIPS": 7.414379139072848,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_fft_rep2-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      396810,
+      166607,
+      166910,
+      164117
+     ],
+     "cycles": [
+      1364800,
+      1364800,
+      1364800,
+      1364800
+     ],
+     "ipc_per_core": [
+      0.29074589683470103,
+      0.12207429660023447,
+      0.12229630715123095,
+      0.12024985345838218
+     ],
+     "ipc_active_mean": 0.16384158851113717,
+     "ipc_sum": 0.6553663540445487,
+     "instructions_total": 894444,
+     "time_ns": 85300.0,
+     "idle_ns": [
+      31873.0,
+      70539.0,
+      69589.0,
+      70966.0
+     ],
+     "GIPS": 10.485861664712779,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_fft_rep2-test-8": {
+   "benchmark": "splash2_fft_rep2-test-8",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.23968400559105432,
+    0.16902980877390328
+   ],
+   "GIPS": [
+    7.669888178913738,
+    10.817907761529808
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.4083239595050618
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.49614405196615036,
+     "ipc_ratio": 0.7052193923289971
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_fft_rep2-test-8/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      419160,
+      181385,
+      180670,
+      179055
+     ],
+     "cycles": [
+      1001600,
+      1001600,
+      1001600,
+      1001600
+     ],
+     "ipc_per_core": [
+      0.4184904153354633,
+      0.18109524760383386,
+      0.18038138977635781,
+      0.1787689696485623
+     ],
+     "ipc_active_mean": 0.23968400559105432,
+     "ipc_sum": 0.9587360223642173,
+     "instructions_total": 960270,
+     "time_ns": 125200.0,
+     "idle_ns": [
+      24873.0,
+      97684.0,
+      98500.0,
+      97695.0
+     ],
+     "GIPS": 7.669888178913738,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_fft_rep2-test-8/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      420323,
+      181590,
+      179189,
+      180610
+     ],
+     "cycles": [
+      1422400,
+      1422400,
+      1422400,
+      1422400
+     ],
+     "ipc_per_core": [
+      0.29550267154105736,
+      0.12766451068616422,
+      0.12597651856017997,
+      0.12697553430821149
+     ],
+     "ipc_active_mean": 0.16902980877390328,
+     "ipc_sum": 0.6761192350956131,
+     "instructions_total": 961712,
+     "time_ns": 88900.0,
+     "idle_ns": [
+      27857.0,
+      69814.0,
+      69290.0,
+      68850.0
+     ],
+     "GIPS": 10.817907761529808,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_fmm-large-4": {
+   "benchmark": "splash2_fmm-large-4",
+   "n_runs": 1,
+   "f_GHz": [
+    8.0
+   ],
+   "ipc_active_mean": [
+    0.9970908408408409
+   ],
+   "GIPS": [
+    7.976726726726727
+   ],
+   "speedup_vs_lowest_f": [
+    1.0
+   ],
+   "n_active_cores": [
+    1
+   ],
+   "elasticity_adjacent": [],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_fmm-large-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      265625,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      266400,
+      266400,
+      266400,
+      266400
+     ],
+     "ipc_per_core": [
+      0.9970908408408409,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 0.9970908408408409,
+     "ipc_sum": 0.9970908408408409,
+     "instructions_total": 265625,
+     "time_ns": 33300.0,
+     "idle_ns": [
+      97.0,
+      33300.0,
+      33300.0,
+      33300.0
+     ],
+     "GIPS": 7.976726726726727,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    }
+   ]
+  },
+  "splash2_fmm-test-4": {
+   "benchmark": "splash2_fmm-test-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.9970908408408409,
+    0.9941055389221557
+   ],
+   "GIPS": [
+    7.976726726726727,
+    15.905688622754491
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.9940119760479043
+   ],
+   "n_active_cores": [
+    1,
+    1
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.9956740745972099,
+     "ipc_ratio": 0.997005988023952
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_fmm-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      265625,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      266400,
+      266400,
+      266400,
+      266400
+     ],
+     "ipc_per_core": [
+      0.9970908408408409,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 0.9970908408408409,
+     "ipc_sum": 0.9970908408408409,
+     "instructions_total": 265625,
+     "time_ns": 33300.0,
+     "idle_ns": [
+      97.0,
+      33300.0,
+      33300.0,
+      33300.0
+     ],
+     "GIPS": 7.976726726726727,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_fmm-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      265625,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      267200,
+      267200,
+      267200,
+      267200
+     ],
+     "ipc_per_core": [
+      0.9941055389221557,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 0.9941055389221557,
+     "ipc_sum": 0.9941055389221557,
+     "instructions_total": 265625,
+     "time_ns": 16700.0,
+     "idle_ns": [
+      98.0,
+      16700.0,
+      16700.0,
+      16700.0
+     ],
+     "GIPS": 15.905688622754491,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_fmm-test-8": {
+   "benchmark": "splash2_fmm-test-8",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.9970908408408409,
+    0.9941055389221557
+   ],
+   "GIPS": [
+    7.976726726726727,
+    15.905688622754491
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.9940119760479043
+   ],
+   "n_active_cores": [
+    1,
+    1
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.9956740745972099,
+     "ipc_ratio": 0.997005988023952
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_fmm-test-8/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      265625,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      266400,
+      266400,
+      266400,
+      266400
+     ],
+     "ipc_per_core": [
+      0.9970908408408409,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 0.9970908408408409,
+     "ipc_sum": 0.9970908408408409,
+     "instructions_total": 265625,
+     "time_ns": 33300.0,
+     "idle_ns": [
+      97.0,
+      33300.0,
+      33300.0,
+      33300.0
+     ],
+     "GIPS": 7.976726726726727,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_fmm-test-8/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      265625,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      267200,
+      267200,
+      267200,
+      267200
+     ],
+     "ipc_per_core": [
+      0.9941055389221557,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 0.9941055389221557,
+     "ipc_sum": 0.9941055389221557,
+     "instructions_total": 265625,
+     "time_ns": 16700.0,
+     "idle_ns": [
+      98.0,
+      16700.0,
+      16700.0,
+      16700.0
+     ],
+     "GIPS": 15.905688622754491,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_lu.cont-large-4": {
+   "benchmark": "splash2_lu.cont-large-4",
+   "n_runs": 8,
+   "f_GHz": [
+    1.0,
+    2.0,
+    4.0,
+    6.0,
+    8.0,
+    10.0,
+    16.0,
+    20.0
+   ],
+   "ipc_active_mean": [
+    1.9658193984310215,
+    1.8413502989464852,
+    1.6272524047373715,
+    1.4505217862837376,
+    1.3063533319852807,
+    1.1822772645183013,
+    0.9040199107950108,
+    0.7807903127409559
+   ],
+   "GIPS": [
+    7.863277593724086,
+    14.730802391571881,
+    26.036038475797948,
+    34.8125228708097,
+    41.80330662352898,
+    47.29109058073205,
+    57.85727429088069,
+    62.46322501927648
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.8733664186967036,
+    3.3110889358608304,
+    4.427227047106465,
+    5.316269595081685,
+    6.01417011572662,
+    7.357900621649672,
+    7.943660710933732
+   ],
+   "n_active_cores": [
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 1.0,
+     "to_GHz": 2.0,
+     "elasticity": 0.9056333253715743,
+     "ipc_ratio": 0.9366833496587332
+    },
+    {
+     "from_GHz": 2.0,
+     "to_GHz": 4.0,
+     "elasticity": 0.8216739347616634,
+     "ipc_ratio": 0.8837277761153822
+    },
+    {
+     "from_GHz": 4.0,
+     "to_GHz": 6.0,
+     "elasticity": 0.7164500603088372,
+     "ipc_ratio": 0.8913932356534713
+    },
+    {
+     "from_GHz": 6.0,
+     "to_GHz": 8.0,
+     "elasticity": 0.6361128658799323,
+     "ipc_ratio": 0.9006092458164182
+    },
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 10.0,
+     "elasticity": 0.5527673777084081,
+     "ipc_ratio": 0.9050210502556613
+    },
+    {
+     "from_GHz": 10.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.42905471203688594,
+     "ipc_ratio": 0.7646428954745554
+    },
+    {
+     "from_GHz": 16.0,
+     "to_GHz": 20.0,
+     "elasticity": 0.3432713770204725,
+     "ipc_ratio": 0.8636870752706269
+    }
+   ],
+   "knee_fit": {
+    "IPC0": 2.207575544473387,
+    "f_k_GHz": 11.116956147919506,
+    "max_abs_rel_residual": 0.03030145795050343,
+    "rms_rel_residual": 0.01584323731820905,
+    "n_points": 8
+   },
+   "vdd_V_by_f": {
+    "1": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "2": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "4": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "6": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "8": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "10": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "20": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_lu.cont-large-4/run_1",
+     "f_GHz": 1.0,
+     "f_dir_GHz": 1.0,
+     "f_cfg_GHz": 1.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      656526357,
+      506061508,
+      494437313,
+      505932094
+     ],
+     "cycles": [
+      275070700,
+      275070700,
+      275070700,
+      275070700
+     ],
+     "ipc_per_core": [
+      2.3867549579071854,
+      1.8397506822791376,
+      1.7974917466673113,
+      1.839280206870452
+     ],
+     "ipc_active_mean": 1.9658193984310215,
+     "ipc_sum": 7.863277593724086,
+     "instructions_total": 2162957272,
+     "time_ns": 275070700.0,
+     "idle_ns": [
+      9235347.0,
+      72523224.0,
+      76297511.0,
+      71815242.0
+     ],
+     "GIPS": 7.863277593724086,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_lu.cont-large-4/run_2",
+     "f_GHz": 2.0,
+     "f_dir_GHz": 2.0,
+     "f_cfg_GHz": 2.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      656526349,
+      506062159,
+      494436210,
+      505932878
+     ],
+     "cycles": [
+      293664600,
+      293664600,
+      293664600,
+      293664600
+     ],
+     "ipc_per_core": [
+      2.2356332666586303,
+      1.7232657902927353,
+      1.6836765820599418,
+      1.7228255567746333
+     ],
+     "ipc_active_mean": 1.8413502989464852,
+     "ipc_sum": 7.365401195785941,
+     "instructions_total": 2162957596,
+     "time_ns": 146832300.0,
+     "idle_ns": [
+      5036568.0,
+      39144089.0,
+      40829090.0,
+      38435100.0
+     ],
+     "GIPS": 14.730802391571881,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      2.0,
+      2.0,
+      2.0,
+      2.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_lu.cont-large-4/run_4",
+     "f_GHz": 4.0,
+     "f_dir_GHz": 4.0,
+     "f_cfg_GHz": 4.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      656526483,
+      506061908,
+      494438108,
+      505933019
+     ],
+     "cycles": [
+      332302400,
+      332302400,
+      332302400,
+      332302400
+     ],
+     "ipc_per_core": [
+      1.9756898626070711,
+      1.5228957359320907,
+      1.4879161510720356,
+      1.5225078693382894
+     ],
+     "ipc_active_mean": 1.6272524047373715,
+     "ipc_sum": 6.509009618949486,
+     "instructions_total": 2162959518,
+     "time_ns": 83075600.0,
+     "idle_ns": [
+      2800765.0,
+      22288341.0,
+      23099213.0,
+      21729731.0
+     ],
+     "GIPS": 26.036038475797948,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      4.0,
+      4.0,
+      4.0,
+      4.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_lu.cont-large-4/run_6",
+     "f_GHz": 6.0,
+     "f_dir_GHz": 6.0,
+     "f_cfg_GHz": 6.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      656526480,
+      506061860,
+      494436184,
+      505933222
+     ],
+     "cycles": [
+      372789600,
+      372789600,
+      372789600,
+      372789600
+     ],
+     "ipc_per_core": [
+      1.7611180140218503,
+      1.3574999409854782,
+      1.3263143177813974,
+      1.3571548723462243
+     ],
+     "ipc_active_mean": 1.4505217862837376,
+     "ipc_sum": 5.8020871451349505,
+     "instructions_total": 2162957746,
+     "time_ns": 62131600.0,
+     "idle_ns": [
+      2089596.0,
+      16716950.0,
+      17271429.0,
+      16229056.0
+     ],
+     "GIPS": 34.8125228708097,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      6.0,
+      6.0,
+      6.0,
+      6.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_lu.cont-large-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      656526349,
+      506062482,
+      494437163,
+      505931435
+     ],
+     "cycles": [
+      413930400,
+      413930400,
+      413930400,
+      413930400
+     ],
+     "ipc_per_core": [
+      1.586079082377134,
+      1.2225786798940113,
+      1.1944934776474498,
+      1.2222620880225274
+     ],
+     "ipc_active_mean": 1.3063533319852807,
+     "ipc_sum": 5.225413327941123,
+     "instructions_total": 2162957429,
+     "time_ns": 51741300.0,
+     "idle_ns": [
+      1774371.0,
+      13957036.0,
+      14286876.0,
+      13417621.0
+     ],
+     "GIPS": 41.80330662352898,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_lu.cont-large-4/run_10",
+     "f_GHz": 10.0,
+     "f_dir_GHz": 10.0,
+     "f_cfg_GHz": 10.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      656526424,
+      506061229,
+      494438230,
+      505931456
+     ],
+     "cycles": [
+      457371000,
+      457371000,
+      457371000,
+      457371000
+     ],
+     "ipc_per_core": [
+      1.4354351806301668,
+      1.106456747367017,
+      1.08104411954409,
+      1.1061730105319314
+     ],
+     "ipc_active_mean": 1.1822772645183013,
+     "ipc_sum": 4.729109058073205,
+     "instructions_total": 2162957339,
+     "time_ns": 45737100.0,
+     "idle_ns": [
+      1579549.0,
+      12314283.0,
+      12536524.0,
+      11781890.0
+     ],
+     "GIPS": 47.29109058073205,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      10.0,
+      10.0,
+      10.0,
+      10.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_lu.cont-large-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      656526225,
+      505933711,
+      494438830,
+      506060719
+     ],
+     "cycles": [
+      598150400,
+      598150400,
+      598150400,
+      598150400
+     ],
+     "ipc_per_core": [
+      1.097593891101636,
+      0.8458302644284782,
+      0.8266128886647907,
+      0.8460425989851382
+     ],
+     "ipc_active_mean": 0.9040199107950108,
+     "ipc_sum": 3.616079643180043,
+     "instructions_total": 2162959485,
+     "time_ns": 37384400.0,
+     "idle_ns": [
+      1248065.0,
+      9748716.0,
+      10333092.0,
+      9785971.0
+     ],
+     "GIPS": 57.85727429088069,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_lu.cont-large-4/run_20",
+     "f_GHz": 20.0,
+     "f_dir_GHz": 20.0,
+     "f_cfg_GHz": 20.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      656526178,
+      505933521,
+      494438722,
+      506059396
+     ],
+     "cycles": [
+      692554000,
+      692554000,
+      692554000,
+      692554000
+     ],
+     "ipc_per_core": [
+      0.9479783208240802,
+      0.7305329562748898,
+      0.7139352628098314,
+      0.7307147110550224
+     ],
+     "ipc_active_mean": 0.7807903127409559,
+     "ipc_sum": 3.1231612509638236,
+     "instructions_total": 2162957817,
+     "time_ns": 34627700.0,
+     "idle_ns": [
+      1143174.0,
+      8903043.0,
+      9451707.0,
+      8951555.0
+     ],
+     "GIPS": 62.46322501927648,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      20.0,
+      20.0,
+      20.0,
+      20.0
+     ]
+    }
+   ]
+  },
+  "splash2_lu.cont-small-4": {
+   "benchmark": "splash2_lu.cont-small-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    1.1353849816769093,
+    0.8196896876988817
+   ],
+   "GIPS": [
+    36.33231941366109,
+    52.46014001272843
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.4439130830075462
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.5299681893755636,
+     "ipc_ratio": 0.7219486790183179
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_lu.cont-small-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      101017380,
+      60608431,
+      63472612,
+      63409259
+     ],
+     "cycles": [
+      63526400,
+      63526400,
+      63526400,
+      63526400
+     ],
+     "ipc_per_core": [
+      1.590163774430788,
+      0.954066828908926,
+      0.9991532968970381,
+      0.9981560264708845
+     ],
+     "ipc_active_mean": 1.1353849816769093,
+     "ipc_sum": 4.541539926707637,
+     "instructions_total": 288507682,
+     "time_ns": 7940800.0,
+     "idle_ns": [
+      469706.0,
+      3672931.0,
+      3470171.0,
+      3493205.0
+     ],
+     "GIPS": 36.33231941366109,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_lu.cont-small-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      101017750,
+      60607899,
+      63471061,
+      63407830
+     ],
+     "cycles": [
+      87992000,
+      87992000,
+      87992000,
+      87992000
+     ],
+     "ipc_per_core": [
+      1.1480333439403583,
+      0.688788742158378,
+      0.7213276320574598,
+      0.7206090326393308
+     ],
+     "ipc_active_mean": 0.8196896876988817,
+     "ipc_sum": 3.278758750795527,
+     "instructions_total": 288504540,
+     "time_ns": 5499500.0,
+     "idle_ns": [
+      334466.0,
+      2555929.0,
+      2427287.0,
+      2442659.0
+     ],
+     "GIPS": 52.46014001272843,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_lu.cont-test-4": {
+   "benchmark": "splash2_lu.cont-test-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.013574723247232471,
+    0.010273543360433604
+   ],
+   "GIPS": [
+    0.4343911439114391,
+    0.6575067750677507
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.4688346883468835
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.5980110695708545,
+     "ipc_ratio": 0.7568142033781875
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_lu.cont-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      2808,
+      12657,
+      3248,
+      4831
+     ],
+     "cycles": [
+      433600,
+      433600,
+      433600,
+      433600
+     ],
+     "ipc_per_core": [
+      0.0064760147601476015,
+      0.02919049815498155,
+      0.007490774907749078,
+      0.011141605166051661
+     ],
+     "ipc_active_mean": 0.013574723247232471,
+     "ipc_sum": 0.054298892988929884,
+     "instructions_total": 23544,
+     "time_ns": 54200.0,
+     "idle_ns": [
+      12586.0,
+      49265.0,
+      50492.0,
+      49640.0
+     ],
+     "GIPS": 0.4343911439114391,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_lu.cont-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      2780,
+      13475,
+      4673,
+      3334
+     ],
+     "cycles": [
+      590400,
+      590400,
+      590400,
+      590400
+     ],
+     "ipc_per_core": [
+      0.004708672086720867,
+      0.022823509485094852,
+      0.007914972899728997,
+      0.005647018970189702
+     ],
+     "ipc_active_mean": 0.010273543360433604,
+     "ipc_sum": 0.04109417344173442,
+     "instructions_total": 24262,
+     "time_ns": 36900.0,
+     "idle_ns": [
+      14920.0,
+      32068.0,
+      32959.0,
+      33077.0
+     ],
+     "GIPS": 0.6575067750677507,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_lu.ncont-test-4": {
+   "benchmark": "splash2_lu.ncont-test-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.014082720588235294,
+    0.011018350290697674
+   ],
+   "GIPS": [
+    0.4506470588235294,
+    0.7051744186046511
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.4825581395348837
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.6459821645197397,
+     "ipc_ratio": 0.7824021091423489
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_lu.ncont-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      2635,
+      12427,
+      2931,
+      4990
+     ],
+     "cycles": [
+      408000,
+      408000,
+      408000,
+      408000
+     ],
+     "ipc_per_core": [
+      0.006458333333333333,
+      0.030458333333333334,
+      0.007183823529411765,
+      0.012230392156862745
+     ],
+     "ipc_active_mean": 0.014082720588235294,
+     "ipc_sum": 0.056330882352941175,
+     "instructions_total": 22983,
+     "time_ns": 51000.0,
+     "idle_ns": [
+      11326.0,
+      45902.0,
+      47730.0,
+      46778.0
+     ],
+     "GIPS": 0.4506470588235294,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_lu.ncont-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      2776,
+      12625,
+      4022,
+      4835
+     ],
+     "cycles": [
+      550400,
+      550400,
+      550400,
+      550400
+     ],
+     "ipc_per_core": [
+      0.0050436046511627905,
+      0.022937863372093022,
+      0.007307412790697674,
+      0.00878452034883721
+     ],
+     "ipc_active_mean": 0.011018350290697674,
+     "ipc_sum": 0.044073401162790696,
+     "instructions_total": 24258,
+     "time_ns": 34400.0,
+     "idle_ns": [
+      13512.0,
+      29433.0,
+      30731.0,
+      30587.0
+     ],
+     "GIPS": 0.7051744186046511,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_ocean.ncont-test-4": {
+   "benchmark": "splash2_ocean.ncont-test-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.054388666579200565,
+    0.028053201838484098
+   ],
+   "GIPS": [
+    1.7404373305344178,
+    1.7954049176629823
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.0316264380780509
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.044859385149262195,
+     "ipc_ratio": 0.5157913146782728
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_ocean.ncont-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      1002952,
+      999199,
+      984534,
+      992999
+     ],
+     "cycles": [
+      18292800,
+      18292800,
+      18292800,
+      18292800
+     ],
+     "ipc_per_core": [
+      0.05482769176943934,
+      0.05462252908248054,
+      0.0538208475465757,
+      0.054283597918306656
+     ],
+     "ipc_active_mean": 0.054388666579200565,
+     "ipc_sum": 0.21755466631680226,
+     "instructions_total": 3979684,
+     "time_ns": 2286600.0,
+     "idle_ns": [
+      1754146.0,
+      1778486.0,
+      1759262.0,
+      1787048.0
+     ],
+     "GIPS": 1.7404373305344178,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_ocean.ncont-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      990026,
+      997920,
+      992525,
+      999044
+     ],
+     "cycles": [
+      35464000,
+      35464000,
+      35464000,
+      35464000
+     ],
+     "ipc_per_core": [
+      0.027916365892172345,
+      0.02813895781637717,
+      0.027986831716670428,
+      0.028170651928716445
+     ],
+     "ipc_active_mean": 0.028053201838484098,
+     "ipc_sum": 0.11221280735393639,
+     "instructions_total": 3979515,
+     "time_ns": 2216500.0,
+     "idle_ns": [
+      1759253.0,
+      1785832.0,
+      1811336.0,
+      1807490.0
+     ],
+     "GIPS": 1.7954049176629823,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_radiosity": {
+   "benchmark": "splash2_radiosity",
+   "n_runs": 4,
+   "f_GHz": [
+    2.0,
+    4.0,
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    1.1244847600782593,
+    1.0513632927717291,
+    0.9290465054503148,
+    0.7459088903076179
+   ],
+   "GIPS": [
+    8.995877978000154,
+    16.821812684347663,
+    29.72948761088531,
+    47.73816616565446
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.8824427879598882,
+    3.323089756539464,
+    5.167136633325325
+   ],
+   "n_active_cores": [
+    4,
+    4,
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 2.0,
+     "to_GHz": 4.0,
+     "elasticity": 0.9029971785162988,
+     "ipc_ratio": 0.9349733585527285
+    },
+    {
+     "from_GHz": 4.0,
+     "to_GHz": 8.0,
+     "elasticity": 0.8215614226876841,
+     "ipc_ratio": 0.8836588758972664
+    },
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.6832485486363339,
+     "ipc_ratio": 0.8028757289669488
+    }
+   ],
+   "knee_fit": {
+    "IPC0": 1.216281867052418,
+    "f_k_GHz": 25.46100404174269,
+    "max_abs_rel_residual": 0.003830282638450311,
+    "rms_rel_residual": 0.002484891455887014,
+    "n_points": 4
+   },
+   "vdd_V_by_f": {
+    "2": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "4": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_radiosity/run_2",
+     "f_GHz": 2.0,
+     "f_dir_GHz": 2.0,
+     "f_cfg_GHz": 2.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      101930367,
+      102825200,
+      94696235,
+      94823946
+     ],
+     "cycles": [
+      87656979,
+      87656979,
+      87656979,
+      87656979
+     ],
+     "ipc_per_core": [
+      1.1628323056855518,
+      1.1730406542986156,
+      1.0803045699304787,
+      1.0817615103983906
+     ],
+     "ipc_active_mean": 1.1244847600782593,
+     "ipc_sum": 4.497939040313037,
+     "instructions_total": 394275748,
+     "time_ns": 43828490.0,
+     "idle_ns": [
+      188339.0,
+      209137.0,
+      537020.0,
+      545248.0
+     ],
+     "GIPS": 8.995877978000154,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      2.0,
+      2.0,
+      2.0,
+      2.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_radiosity/run_4",
+     "f_GHz": 4.0,
+     "f_dir_GHz": 4.0,
+     "f_cfg_GHz": 4.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      103202145,
+      94267168,
+      92605831,
+      101583319
+     ],
+     "cycles": [
+      93131096,
+      93131096,
+      93131096,
+      93131096
+     ],
+     "ipc_per_core": [
+      1.1081384138333346,
+      1.0121986323450978,
+      0.994359939670419,
+      1.090756185238065
+     ],
+     "ipc_active_mean": 1.0513632927717291,
+     "ipc_sum": 4.2054531710869165,
+     "instructions_total": 391658463,
+     "time_ns": 23282774.0,
+     "idle_ns": [
+      211730.0,
+      550120.0,
+      547610.0,
+      185995.0
+     ],
+     "GIPS": 16.821812684347663,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      4.0,
+      4.0,
+      4.0,
+      4.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_radiosity/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      104587431,
+      102246096,
+      91933010,
+      93337994
+     ],
+     "cycles": [
+      105512622,
+      105512622,
+      105512622,
+      105512622
+     ],
+     "ipc_per_core": [
+      0.9912314661273416,
+      0.9690413721308149,
+      0.871298696377766,
+      0.8846144871653365
+     ],
+     "ipc_active_mean": 0.9290465054503148,
+     "ipc_sum": 3.716186021801259,
+     "instructions_total": 392104531,
+     "time_ns": 13189078.0,
+     "idle_ns": [
+      217316.0,
+      176938.0,
+      507278.0,
+      515010.0
+     ],
+     "GIPS": 29.72948761088531,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_radiosity/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      106711322,
+      93652572,
+      109504661,
+      95054304
+     ],
+     "cycles": [
+      135714584,
+      135714584,
+      135714584,
+      135714584
+     ],
+     "ipc_per_core": [
+      0.7862922233914079,
+      0.6900700664565276,
+      0.8068746760480804,
+      0.7003985953344557
+     ],
+     "ipc_active_mean": 0.7459088903076179,
+     "ipc_sum": 2.9836355612304715,
+     "instructions_total": 404922859,
+     "time_ns": 8482162.0,
+     "idle_ns": [
+      267844.0,
+      680259.0,
+      300130.0,
+      657457.0
+     ],
+     "GIPS": 47.73816616565446,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_radix-small-4": {
+   "benchmark": "splash2_radix-small-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.33005951674018774,
+    0.2586589700407729
+   ],
+   "GIPS": [
+    10.561904535686008,
+    16.554174082609467
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.5672753057968445
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.648325027183174,
+     "ipc_ratio": 0.7836737222286516
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ],
+    "16": [
+     0.888,
+     0.888,
+     0.888,
+     0.888
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_radix-small-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      11660146,
+      11667689,
+      11674708,
+      11686356
+     ],
+     "cycles": [
+      35364000,
+      35364000,
+      35364000,
+      35364000
+     ],
+     "ipc_per_core": [
+      0.3297179617690307,
+      0.32993125777626964,
+      0.33012973645515215,
+      0.3304591109602986
+     ],
+     "ipc_active_mean": 0.33005951674018774,
+     "ipc_sum": 1.320238066960751,
+     "instructions_total": 46688899,
+     "time_ns": 4420500.0,
+     "idle_ns": [
+      37694.0,
+      73723.0,
+      73248.0,
+      61055.0
+     ],
+     "GIPS": 10.561904535686008,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_radix-small-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      11672504,
+      11656885,
+      11674909,
+      11686750
+     ],
+     "cycles": [
+      45128000,
+      45128000,
+      45128000,
+      45128000
+     ],
+     "ipc_per_core": [
+      0.25865325296933167,
+      0.2583071485552207,
+      0.2587065458252083,
+      0.25896893281333094
+     ],
+     "ipc_active_mean": 0.2586589700407729,
+     "ipc_sum": 1.0346358801630915,
+     "instructions_total": 46691048,
+     "time_ns": 2820500.0,
+     "idle_ns": [
+      42574.0,
+      56920.0,
+      58861.0,
+      45182.0
+     ],
+     "GIPS": 16.554174082609467,
+     "vdd_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "vdd_instant_V": [
+      0.888,
+      0.888,
+      0.888,
+      0.888
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_radix-test-4": {
+   "benchmark": "splash2_radix-test-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.3263240346858639,
+    0.26079138336820085
+   ],
+   "GIPS": [
+    10.442369109947643,
+    16.690648535564854
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.598326359832636
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.6765909533415239,
+     "ipc_ratio": 0.7991792073153664
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_radix-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      803682,
+      812661,
+      781044,
+      793801
+     ],
+     "cycles": [
+      2444800,
+      2444800,
+      2444800,
+      2444800
+     ],
+     "ipc_per_core": [
+      0.3287311845549738,
+      0.33240387761780105,
+      0.31947153141361256,
+      0.32468954515706805
+     ],
+     "ipc_active_mean": 0.3263240346858639,
+     "ipc_sum": 1.3052961387434556,
+     "instructions_total": 3191188,
+     "time_ns": 305600.0,
+     "idle_ns": [
+      35687.0,
+      59607.0,
+      74642.0,
+      67718.0
+     ],
+     "GIPS": 10.442369109947643,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_radix-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      803989,
+      811443,
+      781820,
+      794000
+     ],
+     "cycles": [
+      3059200,
+      3059200,
+      3059200,
+      3059200
+     ],
+     "ipc_per_core": [
+      0.2628102118200837,
+      0.26524679654811717,
+      0.2555635460251046,
+      0.2595449790794979
+     ],
+     "ipc_active_mean": 0.26079138336820085,
+     "ipc_sum": 1.0431655334728034,
+     "instructions_total": 3191252,
+     "time_ns": 191200.0,
+     "idle_ns": [
+      37026.0,
+      50773.0,
+      60578.0,
+      52076.0
+     ],
+     "GIPS": 16.690648535564854,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_raytrace-test-4": {
+   "benchmark": "splash2_raytrace-test-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.284013739401244,
+    0.21241883016266536
+   ],
+   "GIPS": [
+    9.088439660839809,
+    13.594805130410585
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.5007462875357334
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.5809509385269304,
+     "ipc_ratio": 0.7479174444535162
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_raytrace-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      109008758,
+      50023826,
+      51852356,
+      58691813
+     ],
+     "cycles": [
+      237292000,
+      237292000,
+      237292000,
+      237292000
+     ],
+     "ipc_per_core": [
+      0.4593865701330007,
+      0.21081126207373194,
+      0.21851708443605347,
+      0.24734004096219003
+     ],
+     "ipc_active_mean": 0.284013739401244,
+     "ipc_sum": 1.136054957604976,
+     "instructions_total": 269576753,
+     "time_ns": 29661500.0,
+     "idle_ns": [
+      466607.0,
+      12355660.0,
+      12363788.0,
+      12553369.0
+     ],
+     "GIPS": 9.088439660839809,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_raytrace-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      107414314,
+      46779846,
+      56997186,
+      57503180
+     ],
+     "cycles": [
+      316232000,
+      316232000,
+      316232000,
+      316232000
+     ],
+     "ipc_per_core": [
+      0.33966933770143437,
+      0.14792888132763288,
+      0.18023851476131447,
+      0.1818385868602798
+     ],
+     "ipc_active_mean": 0.21241883016266536,
+     "ipc_sum": 0.8496753206506614,
+     "instructions_total": 268694526,
+     "time_ns": 19764500.0,
+     "idle_ns": [
+      517995.0,
+      7170509.0,
+      7477721.0,
+      7487701.0
+     ],
+     "GIPS": 13.594805130410585,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_volrend-test-4": {
+   "benchmark": "splash2_volrend-test-4",
+   "n_runs": 1,
+   "f_GHz": [
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.34047678571428575
+   ],
+   "GIPS": [
+    21.790514285714284
+   ],
+   "speedup_vs_lowest_f": [
+    1.0
+   ],
+   "n_active_cores": [
+    4
+   ],
+   "elasticity_adjacent": [],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_volrend-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      1002492,
+      300242,
+      304217,
+      299719
+     ],
+     "cycles": [
+      1400000,
+      1400000,
+      1400000,
+      1400000
+     ],
+     "ipc_per_core": [
+      0.7160657142857143,
+      0.21445857142857142,
+      0.21729785714285715,
+      0.214085
+     ],
+     "ipc_active_mean": 0.34047678571428575,
+     "ipc_sum": 1.361907142857143,
+     "instructions_total": 1906670,
+     "time_ns": 87500.0,
+     "idle_ns": [
+      12736.0,
+      73433.0,
+      70651.0,
+      74551.0
+     ],
+     "GIPS": 21.790514285714284,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_water.nsq-test-4": {
+   "benchmark": "splash2_water.nsq-test-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.21828177747561892,
+    0.16131376490158025
+   ],
+   "GIPS": [
+    6.985016879219805,
+    10.324080953701136
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.4782367618519545
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.5636778521125747,
+     "ipc_ratio": 0.7390161779289994
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_water.nsq-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      1161292,
+      699032,
+      740025,
+      1124062
+     ],
+     "cycles": [
+      4265600,
+      4265600,
+      4265600,
+      4265600
+     ],
+     "ipc_per_core": [
+      0.27224587396849215,
+      0.16387659414853714,
+      0.17348673105776444,
+      0.26351791072768194
+     ],
+     "ipc_active_mean": 0.21828177747561892,
+     "ipc_sum": 0.8731271099024757,
+     "instructions_total": 3724411,
+     "time_ns": 533200.0,
+     "idle_ns": [
+      132087.0,
+      317587.0,
+      301652.0,
+      220544.0
+     ],
+     "GIPS": 6.985016879219805,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_water.nsq-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      1161785,
+      1126754,
+      738763,
+      696594
+     ],
+     "cycles": [
+      5771200,
+      5771200,
+      5771200,
+      5771200
+     ],
+     "ipc_per_core": [
+      0.20130735375658443,
+      0.1952373856390352,
+      0.12800855974494038,
+      0.12070176046576102
+     ],
+     "ipc_active_mean": 0.16131376490158025,
+     "ipc_sum": 0.645255059606321,
+     "instructions_total": 3723896,
+     "time_ns": 360700.0,
+     "idle_ns": [
+      93082.0,
+      132762.0,
+      175623.0,
+      194041.0
+     ],
+     "GIPS": 10.324080953701136,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "splash2_water.sp-test-4": {
+   "benchmark": "splash2_water.sp-test-4",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.9941076487252125,
+    0.9857303370786517
+   ],
+   "GIPS": [
+    7.9528611898017,
+    15.771685393258426
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.9831460674157304
+   ],
+   "n_active_cores": [
+    1,
+    1
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.9877909423047824,
+     "ipc_ratio": 0.9915730337078651
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/splash2_water.sp-test-4/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      280736,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      282400,
+      282400,
+      282400,
+      282400
+     ],
+     "ipc_per_core": [
+      0.9941076487252125,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 0.9941076487252125,
+     "ipc_sum": 0.9941076487252125,
+     "instructions_total": 280736,
+     "time_ns": 35300.0,
+     "idle_ns": [
+      208.0,
+      35300.0,
+      35300.0,
+      35300.0
+     ],
+     "GIPS": 7.9528611898017,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/splash2_water.sp-test-4/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 1,
+     "instructions": [
+      280736,
+      0,
+      0,
+      0
+     ],
+     "cycles": [
+      284800,
+      284800,
+      284800,
+      284800
+     ],
+     "ipc_per_core": [
+      0.9857303370786517,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "ipc_active_mean": 0.9857303370786517,
+     "ipc_sum": 0.9857303370786517,
+     "instructions_total": 280736,
+     "time_ns": 17800.0,
+     "idle_ns": [
+      254.0,
+      17800.0,
+      17800.0,
+      17800.0
+     ],
+     "GIPS": 15.771685393258426,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  },
+  "benchmarks_sweep_toplevel(lu.cont)": {
+   "benchmark": "benchmarks_sweep_toplevel(lu.cont)",
+   "n_runs": 2,
+   "f_GHz": [
+    8.0,
+    16.0
+   ],
+   "ipc_active_mean": [
+    0.011658653846153846,
+    0.008860694822888282
+   ],
+   "GIPS": [
+    0.3730769230769231,
+    0.5670844686648502
+   ],
+   "speedup_vs_lowest_f": [
+    1.0,
+    1.5940054495912805
+   ],
+   "n_active_cores": [
+    4,
+    4
+   ],
+   "elasticity_adjacent": [
+    {
+     "from_GHz": 8.0,
+     "to_GHz": 16.0,
+     "elasticity": 0.6040905202000819,
+     "ipc_ratio": 0.7600101126436135
+    }
+   ],
+   "knee_fit": null,
+   "vdd_V_by_f": {
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "runs": [
+    {
+     "run": "benchmarks_sweep/run_8",
+     "f_GHz": 8.0,
+     "f_dir_GHz": 8.0,
+     "f_cfg_GHz": 8.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      2789,
+      11126,
+      3236,
+      4674
+     ],
+     "cycles": [
+      468000,
+      468000,
+      468000,
+      468000
+     ],
+     "ipc_per_core": [
+      0.00595940170940171,
+      0.023773504273504272,
+      0.0069145299145299145,
+      0.009987179487179487
+     ],
+     "ipc_active_mean": 0.011658653846153846,
+     "ipc_sum": 0.046634615384615385,
+     "instructions_total": 21825,
+     "time_ns": 58500.0,
+     "idle_ns": [
+      16730.0,
+      54203.0,
+      55526.0,
+      54281.0
+     ],
+     "GIPS": 0.3730769230769231,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      8.0,
+      8.0,
+      8.0,
+      8.0
+     ]
+    },
+    {
+     "run": "benchmarks_sweep/run_16",
+     "f_GHz": 16.0,
+     "f_dir_GHz": 16.0,
+     "f_cfg_GHz": 16.0,
+     "n_cores": 4,
+     "n_active_cores": 4,
+     "instructions": [
+      2771,
+      13303,
+      2486,
+      2252
+     ],
+     "cycles": [
+      587200,
+      587200,
+      587200,
+      587200
+     ],
+     "ipc_per_core": [
+      0.004719005449591281,
+      0.022654972752043596,
+      0.004233651226158038,
+      0.003835149863760218
+     ],
+     "ipc_active_mean": 0.008860694822888282,
+     "ipc_sum": 0.03544277929155313,
+     "instructions_total": 20812,
+     "time_ns": 36700.0,
+     "idle_ns": [
+      14881.0,
+      30698.0,
+      34797.0,
+      34195.0
+     ],
+     "GIPS": 0.5670844686648502,
+     "vdd_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "vdd_instant_V": [
+      1.2,
+      1.2,
+      1.2,
+      1.2
+     ],
+     "dvfs_f_GHz": [
+      16.0,
+      16.0,
+      16.0,
+      16.0
+     ]
+    }
+   ]
+  }
+ },
+ "scorecard": {
+  "P1_fft_knee_fit": {
+   "measured": {
+    "IPC0": 3.0558253606025416,
+    "f_k_GHz": 17.32926155828577,
+    "max_abs_rel_residual": 0.010447607645653223,
+    "rms_rel_residual": 0.005129162450197383,
+    "n_points": 11
+   },
+   "verdict": "NOT as predicted"
+  },
+  "P2_f1c_elasticity": {
+   "measured": {
+    "3.66->4.17": 0.8317326657120069,
+    "3.32->4.17": 0.8434359640312069,
+    "ipc_at_3.66": 2.5162631447302455,
+    "ipc_at_4.17": 2.4617851273659315
+   },
+   "verdict": "confirmed"
+  },
+  "P3_multicore_elasticity_8_to_16": {
+   "measured": {
+    "lu.cont-large-4": 0.4688812948099563,
+    "swaptions-small-4": 0.8414654399225905,
+    "fft_1to20": 0.5957608080674341
+   },
+   "verdict": "NOT as predicted"
+  },
+  "P4_comet_vdd_is_a_table": {
+   "measured": {
+    "1": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "2": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "4": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "6": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "8": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "10": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "12": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "14": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "16": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "18": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ],
+    "20": [
+     1.2,
+     1.2,
+     1.2,
+     1.2
+    ]
+   },
+   "verdict": "confirmed"
+  }
+ },
+ "default_benchmark_for_reports": "fft_1to20"
+}

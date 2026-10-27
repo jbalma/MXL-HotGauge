@@ -32,6 +32,7 @@ Usage
     python examples/mr_comparison.py --cores 34 70 128 --density 0.575 --cfm 88
 """
 import os
+import re
 import sys
 import math
 import json
@@ -136,8 +137,68 @@ def arm_stack_spec(args, arm):
     # the design, the arms differ by the 30 um layer above it exactly as before.
     gen3 = (',storage={:g},bond={:g},bondk={:g}'.format(args.storage_um, args.bond_um, args.bond_k)
             if getattr(args, 'gen3_split', None) else '')
+    # §P0.44: a memory STACK lumped into the storage-die element states its conductivity.
+    storagek = (',storagek={:g}'.format(args.storage_k)
+                if (getattr(args, 'gen3_split', None) and getattr(args, 'storage_k', None) is not None)
+                else '')
+    gen3 += storagek
+    # §P0.37: the two-sink stack -- the storage die on the FAR face behind the isolation layer,
+    # with its own array; optionally a sink on that face, stated as K/W over the die footprint.
+    if getattr(args, 'two_sink', False):
+        if mr == 'none':
+            raise ValueError('--two-sink has no control arm: the storage die is held by its own '
+                             'array, so the stack exists only with the arrays in it. Use '
+                             '--arms array_idle array_on.')
+        gen3 = ',twosink=1,storage={:g},iso={:g},isok={:g}'.format(
+            args.storage_um, args.iso_um, args.iso_k) + storagek
+        if args.bottom_sink_r_th is not None:
+            from HotGauge.thermal.sink_models import thermal_resistance_to_htc_si, htc_si_to_3dice
+            bhtc = htc_si_to_3dice(thermal_resistance_to_htc_si(args.bottom_sink_r_th,
+                                                                args._die_area_m2))
+            gen3 += ',bhtc={:.6e},bamb={:g}'.format(
+                bhtc, args.ambient_K if args.bottom_ambient_K is None else args.bottom_ambient_K)
     return 'spec:package=direct_die,mr={},src={:.0f},cell={:.0f}{}{}'.format(
         mr, args.burial_um, args.cell_um, sink_term, gen3)
+
+
+def setup_memory_die(args, flp_ref, n):
+    """§P0.44: build the memory die's floorplans for this core count and return the floorplan
+    every ledger must use. Sets ``args.memdie`` / ``args.mem_meta`` and, for the stacked forms,
+    the storage-die spec terms (``gen3_split``, ``storage_um``, ``storage_k``) -- and for the
+    far face folds a via field into ``iso_k``."""
+    from HotGauge.thermal.memory_die import (build_memory_split, build_memory_beside, MemoryDie,
+                                             lumped_stack, via_field_effective_k)
+    out = os.path.join(args.out_dir, 'mem_flp_{}c'.format(n))
+    t_um, k_eff = lumped_stack(args.mem_dies, args.mem_die_um, bond_um=args.mem_bond_um,
+                               k_bond=args.mem_bond_k)
+    if args.memory_die == 'beside':
+        meta = build_memory_beside(flp_ref, out, gap_um=args.mem_gap_um,
+                                   n_x=args.mem_banks, n_y=args.mem_banks)
+        flp = meta['floorplan']
+        mw, mh = meta['memory_footprint_um']
+        mem_area_mm2 = mw * mh * 1e-6
+    else:
+        meta = build_memory_split(flp_ref, out, n_x=args.mem_banks, n_y=args.mem_banks)
+        flp = meta['union_reference']
+        mem_area_mm2 = meta['footprint_mm2']
+        args.gen3_split = out
+        args.storage_um = t_um
+        # one die IS silicon; a stack states its series-equivalent k (keeps recorded filenames)
+        args.storage_k = (k_eff if args.mem_dies > 1 else None)
+        if args.memory_die == 'far-face':
+            args.iso_k_stated = args.iso_k
+            args.iso_fill = 0.0
+            if args.iso_vias:
+                nv, _, d = str(args.iso_vias).partition(':')
+                k_eff_iso, fill = via_field_effective_k(args.iso_k, int(nv), float(d or 5.0),
+                                                        mem_area_mm2)
+                args.iso_k, args.iso_fill = k_eff_iso, fill
+    args.memdie = MemoryDie(meta['bank_names'], mem_area_mm2, n_dies=args.mem_dies,
+                            w_per_die=args.mem_W_per_die,
+                            break_K=args.mem_break_C + 273.15, limit_K=args.mem_limit_C + 273.15,
+                            target_K=args.mem_target_K)
+    args.mem_meta = meta
+    return flp
 
 
 def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax,
@@ -152,12 +213,16 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
     if target_C is None:
         target_C = args.mr_target_C
     use_mr = (arm == 'array_on')
+    # §P0.44: under --memory-die beside the footprint the cold plate (and the far-face sink)
+    # covers is the wide one; --density stays the COMPUTE die's. Absent, both are the die's.
+    sink_area_m2 = getattr(args, '_sink_area_m2', None) or area_m2
+    args._die_area_m2 = sink_area_m2     # §P0.37: the far-face sink is stated in K/W over it
     stack_spec = arm_stack_spec(args, arm)
-    sink = make_sink(args, area_m2)
+    sink = make_sink(args, sink_area_m2)
     if args.spreading:
         # Identical in every arm: the base is above the 30 um layer, so it cannot be part of
         # what separates them.
-        sink = spreading_sink_for_stack(stack_spec, sink, area_m2 * 1e6,
+        sink = spreading_sink_for_stack(stack_spec, sink, sink_area_m2 * 1e6,
                                         base_area_mm2=args.base_mm2)
     stack = render_stack_with_sink(get_stack_template(stack_spec), sink,
                                    os.path.join(args.out_dir, 'stacks', tag + '.stk'))
@@ -174,10 +239,20 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
     # not work. That is now an error naming the fix.
     wiring = None
     if arm != 'control' and not args.no_array:
-        wiring = wiring_for_stack(stack, flp, os.path.join(args.out_dir, tag),
-                                  want_array=True,
-                                  pitch_um=args.pitch_um, cell_um=args.cell_um,
-                                  coverage=args.array_coverage)
+        if getattr(args, 'two_sink', False):
+            # §P0.37: two arrays, one planner interface; the storage die's block names decide
+            # which array a block's removal lands on.
+            from HotGauge.thermal.mr_array import TwoSinkWiring
+            from HotGauge.thermal.ice_server import flp_element_names
+            wiring = TwoSinkWiring(
+                flp, os.path.join(args.out_dir, tag),
+                flp_element_names(os.path.join(args.gen3_split, 'storage_template.flp')),
+                pitch_um=args.pitch_um, cell_um=args.cell_um, coverage=args.array_coverage)
+        else:
+            wiring = wiring_for_stack(stack, flp, os.path.join(args.out_dir, tag),
+                                      want_array=True,
+                                      pitch_um=args.pitch_um, cell_um=args.cell_um,
+                                      coverage=args.array_coverage)
 
     # X4: with --gen3-split the SOLVER sees the compute-die template (caches dark) plus the
     # storage-die template (caches only); the accounting, the name map and the tile wiring keep
@@ -209,11 +284,21 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
     def solve_with_leakage(tr):
         counter['n'] += 1
         solver = solver_factory('it{:02d}'.format(counter['n']))
-        r = run_leakage_feedback(tr, leak_ref, solver,
-                                 model=leak_model, T_ref=t_ref, num_cores=n_cores,
-                                 tol_K=args.tol, max_iter=args.max_iter, relax=args.relax,
-                                 t_floor_K=T_FLOOR_K, bridge_aggregates=True,
-                                 verify=not args.no_verify, verify_tol_K=args.verify_tol)
+
+        def _leakage_solve(trace_in):
+            return run_leakage_feedback(trace_in, leak_ref, solver,
+                                        model=leak_model, T_ref=t_ref, num_cores=n_cores,
+                                        tol_K=args.tol, max_iter=args.max_iter, relax=args.relax,
+                                        t_floor_K=T_FLOOR_K, bridge_aggregates=True,
+                                        verify=not args.no_verify, verify_tol_K=args.verify_tol)
+        if getattr(args, 'memdie', None) is not None:
+            # §P0.44: the memory die's refresh loop OUTSIDE the leakage loop -- solve, re-price
+            # the banks from their solved temperatures, re-solve. A refresh runaway is the
+            # memory's own divergence (diverged_reason names it), not the compute die's.
+            from HotGauge.thermal.memory_die import refresh_fixed_point
+            r = refresh_fixed_point(_leakage_solve, tr, args.memdie, max_iter=args.mem_iter)
+        else:
+            r = _leakage_solve(tr)
         solve_with_leakage.last = r
         # the array die's tile temperatures from the solve that produced this field (§P0.19)
         solve_with_leakage.last_mr_temps = getattr(solver, 'last_mr_temps', None)
@@ -241,7 +326,9 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
         # §P0.21: the flagged dual-material arrangement -- cold-zone tiles (majority under the
         # blocks matching --mr-cold-zone-pattern) get the storage-zone material's curve.
         from HotGauge.thermal.mr_array import tiles_over_blocks
-        cold_tiles = tiles_over_blocks(wiring.tiles, wiring.blocks, args.mr_cold_zone_pattern)
+        cold_tiles = (wiring.storage_tile_names if getattr(args, 'two_sink', False)
+                      else tiles_over_blocks(wiring.tiles, wiring.blocks,
+                                             args.mr_cold_zone_pattern))
         extractor = DualZoneExtractor(make_extractor(args.mr_cold_extractor), extractor, cold_tiles)
     dt_max = (args.mr_dt_max if args.mr_dt_max is not None
               else (None if extractor is not None else DEFAULT_DT_MAX_K))
@@ -249,12 +336,20 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
     # dual-material arrangement uses) against --mr-cold-target-K and everything else against
     # the hot-spot target. Default 'peak' passes no zones, so the recorded rows are untouched.
     zone_targets = ([(args.mr_cold_zone_pattern, args.mr_cold_target_K)]
-                    if args.mr_objective == 'cache-leakage' else None)
+                    if args.mr_objective == 'cache-leakage' else [])
+    # §P0.44: extra zone targets (--mr-zone PATTERN:T_K; the memory die adds its own). The
+    # cache-leakage objective and its ledger are untouched; with none the recorded path is
+    # bit-identical (zone_targets None, objective as named).
+    extra_zones = list(getattr(args, '_extra_zones', None) or [])
+    zone_targets = (zone_targets + extra_zones) or None
+    objective = args.mr_objective
+    if extra_zones and objective == 'peak':
+        objective = 'zoned'
     mr = MRParams(target_K=target_C + 273.15, h_max=args.mr_h_max,
                   dt_max_K=dt_max, eta_asf=args.eta_asf,
                   laser_wallplug=args.eta_laser, lpc_efficiency=args.eta_lpc,
                   spot_min_um=args.spot_min_um, spot_policy=args.spot_policy,
-                  extractor=extractor, zone_targets=zone_targets, objective=args.mr_objective,
+                  extractor=extractor, zone_targets=zone_targets, objective=objective,
                   envelope_shape=args.mr_envelope_shape)
 
     def last_status():
@@ -354,6 +449,10 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
            'tile_flux': flux,
            'mr_extractor': args.mr_extractor if use_mr else None,
            'mr_zone_mode': args.mr_zone_mode if use_mr else None,
+           # §P0.37: what the storage die's OWN array removes (the rest is the compute array's).
+           'two_sink': bool(getattr(args, 'two_sink', False)),
+           'storage_array_plan_W': (wiring.storage_plan_W()
+                                    if (use_mr and hasattr(wiring, 'storage_plan_W')) else None),
            'n_cold_zone_tiles': (len(cold_tiles) if use_mr else None),
            'mr_energy_cap': args.mr_energy_cap if use_mr else None,
            # §P0.22 (D3): the objective the plan was built against and where each zone landed.
@@ -384,7 +483,27 @@ def evaluate(args, flp, trace, leak_ref, geom, name_map, leak_model, t_ref, fmax
            # final solve's, kept because it is what the reported temperatures came from.
            'worst_peak_spread_K': ver['worst_spread_K'],
            'peak_spread_K': (last or {}).get('peak_spread_K'),
-           'relax_final': (last or {}).get('relax_final')}
+           'relax_final': (last or {}).get('relax_final'),
+           'diverged_reason': (last or {}).get('diverged_reason'),
+           # §P0.44: the extra planner zones this row was built against (pattern, K)
+           'mr_extra_zones': [list(z) for z in (getattr(args, '_extra_zones', None) or [])] or None}
+    if getattr(args, 'memdie', None) is not None:
+        # §P0.44: the memory die -- placement, the conductivities it brought, and where the
+        # banks landed on the REPORTED field (mem_* from the solve that produced it).
+        meta = getattr(args, 'mem_meta', None) or {}
+        row.update({'memory_die': args.memory_die, 'mem_gap_um': meta.get('gap_um'),
+                    'mem_footprint_mm2': meta.get('footprint_mm2'),
+                    'iso_k_stated_W_per_mK': getattr(args, 'iso_k_stated', None),
+                    'iso_vias': getattr(args, 'iso_vias', None),
+                    'iso_via_fill': getattr(args, 'iso_fill', None),
+                    'iso_k_effective_W_per_mK': (args.iso_k if args.memory_die == 'far-face' else None),
+                    'storage_k_W_per_mK': getattr(args, 'storage_k', None),
+                    'storage_um': (args.storage_um if args.memory_die != 'beside' else None),
+                    'mem_iterations': (last or {}).get('mem_iterations'),
+                    'mem_converged': (last or {}).get('mem_converged'),
+                    'mem_diverged': bool((last or {}).get('mem_diverged')),
+                    'mem_history': (last or {}).get('mem_history')})
+        row.update((last or {}).get('mem') or {})
     if last is None or mr_field_diverged:
         row['diverged'] = True
         return row
@@ -485,6 +604,51 @@ def main():
     ap.add_argument('--bond-um', type=float, default=5.0, help='X4: die-to-die bond thickness')
     ap.add_argument('--bond-k', type=float, default=50.0,
                     help='X4: bond conductivity W/(m K) -- hybrid ~120, microbump ~50, underfill ~5')
+    ap.add_argument('--two-sink', action='store_true',
+                    help='§P0.37: with --gen3-split, put the storage die on the processor die\'s '
+                         'FAR face behind an isolation layer, with its own array (and optionally '
+                         'its own sink) -- the storage die off the heat path. No control arm.')
+    ap.add_argument('--iso-um', type=float, default=100.0, help='§P0.37: isolation thickness')
+    ap.add_argument('--iso-k', type=float, default=0.1,
+                    help='§P0.37: isolation conductivity W/(m K) -- gas gap ~0.025, aerogel ~0.1, '
+                         'underfill 0.5-5; no via copper is modelled in it')
+    ap.add_argument('--bottom-sink-r-th', type=float, default=None,
+                    help='§P0.37: a sink on the storage die\'s far face, K/W over the die '
+                         'footprint (default: none, the far face is adiabatic)')
+    ap.add_argument('--storage-k', type=float, default=None,
+                    help='§P0.44: the storage die\'s stated conductivity [W/(m K)] (a lumped '
+                         'memory stack); None = bulk silicon, the recorded stacks')
+    # §P0.44: a DRAM / HBM die beside (2.5D), under (far-face, §P0.37 geometry) or on top of
+    # (sink-side, X4 geometry) the compute die. Its banks enter the solve through the trace by
+    # name; its refresh loop wraps the leakage loop; the planner holds them at --mem-target-K.
+    ap.add_argument('--memory-die', default='none',
+                    choices=('none', 'far-face', 'sink-side', 'beside'),
+                    help='§P0.44: place a DRAM / HBM die (power/dram.py, UNCALIBRATED). '
+                         'far-face implies --two-sink (give --iso-k / --bottom-sink-r-th); '
+                         'sink-side uses --bond-um / --bond-k; beside uses --mem-gap-um')
+    ap.add_argument('--mem-dies', type=int, default=1, help='dies in the stack, LUMPED into one '
+                    'die element (thickness and series-equivalent k stated on the spec)')
+    ap.add_argument('--mem-W-per-die', type=float, default=3.0,
+                    help='per-die power at the breakpoint refresh rate [W] (HBM3E-class ~3, HBM2E ~1)')
+    ap.add_argument('--mem-die-um', type=float, default=50.0)
+    ap.add_argument('--mem-bond-um', type=float, default=5.0, help='bond WITHIN the stack')
+    ap.add_argument('--mem-bond-k', type=float, default=5.0, help='bond WITHIN the stack [W/(m K)]')
+    ap.add_argument('--mem-banks', type=int, default=4, help='banks per side (n x n)')
+    ap.add_argument('--mem-break-C', type=float, default=85.0, help='JEDEC refresh breakpoint')
+    ap.add_argument('--mem-limit-C', type=float, default=95.0, help='DRAM hard limit')
+    ap.add_argument('--mem-target-K', type=float, default=353.15,
+                    help='the PLANNING target for the banks -- below the breakpoint on purpose: '
+                         'the breakpoint is a x2 step and a hold within 2 K of it is ambiguous')
+    ap.add_argument('--mem-iter', type=int, default=8, help='refresh fixed-point passes')
+    ap.add_argument('--mem-gap-um', type=float, default=1000.0, help='beside: the bare gap')
+    ap.add_argument('--iso-vias', default=None, metavar='N[:D_UM]',
+                    help='far-face: a via field through the isolation (N vias of D um, default '
+                         '5), folded into --iso-k as a parallel copper path; reported both ways')
+    ap.add_argument('--mr-zone', action='append', default=None, metavar='PATTERN:T_K',
+                    help='an extra planner zone target (§P0.22\'s general form; repeatable). '
+                         '--memory-die adds ^MEM_:--mem-target-K unless one names the banks')
+    ap.add_argument('--bottom-ambient-K', type=float, default=None,
+                    help='§P0.37: the far-face sink\'s ambient (default: --ambient-K)')
     ap.add_argument('--arms', nargs='+', default=list(ARMS), choices=list(ARMS),
                     help='control = grease, no cooling; array_idle = pixels at 0 W (the passive '
                          'term); array_on = pixels under the planner (the laser term, measured '
@@ -714,6 +878,25 @@ def main():
                     help='sink temperature for the Carnot factor, with --recovery-at-junction')
     ap.add_argument('--out-dir', default=None)
     args = ap.parse_args()
+    # §P0.44: the memory die's placement sets the stack family; the floorplans are built per
+    # core count in the loop below (setup_memory_die), so --gen3-split is not required here.
+    if args.memory_die == 'far-face':
+        args.two_sink = True
+    if args.memory_die in ('far-face', 'sink-side') and args.gen3_split:
+        ap.error('--memory-die {} builds its own compute / storage templates; drop --gen3-split'
+                 .format(args.memory_die))
+    args._extra_zones = []
+    for z in (args.mr_zone or []):
+        if ':' not in z:
+            ap.error('--mr-zone wants PATTERN:T_K, got {!r}'.format(z))
+        pat, tk = z.rsplit(':', 1)
+        args._extra_zones.append((pat, float(tk)))
+    if args.memory_die != 'none' and not any(re.search(pat, 'MEM_r0c0') for pat, _ in args._extra_zones):
+        args._extra_zones.append(('^MEM_', float(args.mem_target_K)))
+    if args.two_sink and not args.gen3_split and args.memory_die != 'far-face':
+        ap.error('--two-sink needs --gen3-split (the compute / storage floorplan templates)')
+    if args.two_sink and ('control' in args.arms or args.no_array):
+        ap.error('--two-sink has no control arm and needs the array: --arms array_idle array_on')
     # §P0.16: under a non-stock core_other policy, solve against a corrected copy of
     # the trace. Returns args.trace_dir unchanged under the default, so the recorded
     # path is byte-identical.
@@ -822,7 +1005,28 @@ def main():
         if not os.path.isfile(flp):
             print('  skip {}-core: no floorplan'.format(n))
             continue
-        area_m2 = chip_area_m2_from_floorplan(flp)
+        # §P0.44: the memory die. --density is the COMPUTE die's (the reference footprint);
+        # everything else -- the ledger, the planner's geometry, the wiring, the sink's footprint
+        # -- sees the union (stacked) or the wide (beside) floorplan.
+        args.memdie = None
+        args._sink_area_m2 = None
+        flp_ref = flp
+        if args.memory_die != 'none':
+            flp = setup_memory_die(args, flp_ref, n)
+            # The cold plate's coefficient stays referenced to the COMPUTE die's footprint in
+            # every placement. For the stacked forms the footprint is the same. For `beside`
+            # the smoke point showed why it must not move: referencing R_total to the doubled
+            # footprint lowers h over the compute region by ~40 % (the base's convective term
+            # does not scale with the source) and the idle die ran away where the reference
+            # holds. So each die sees the plate as the reference die does; what this leaves
+            # OUT is the shared base's warming by the memory's own watts (~24 W x the base's
+            # convective resistance), which the report states beside every `beside` row.
+            args._sink_area_m2 = None
+            print('  memory   : {} -- {} x {:.1f} W banks x{} ({} W at the breakpoint rate; '
+                  'UNCALIBRATED), {} dies lumped, target {:.0f} K, zone {!r}'.format(
+                      args.memory_die, args.mem_meta['n_banks'], args.mem_W_per_die, args.mem_dies,
+                      args.memdie.floor_W, args.mem_dies, args.mem_target_K, args._extra_zones))
+        area_m2 = chip_area_m2_from_floorplan(flp_ref)
         power_W = args.density * area_m2 * 1e6
 
         base = replicate_trace_cores(base0, n, n_src=args.trace_cores) \
@@ -913,6 +1117,18 @@ def main():
         geom = {e.name: {'area_mm2': (e.width * e.height) / 1.0e6,
                          'min_dim_um': float(min(e.width, e.height))} for e in fp.elements}
         name_map = mcpat_flp_name_map(include_core_idx=(n > 1))
+        if args.memdie is not None:
+            # §P0.44: the banks go into the trace BY NAME at the breakpoint rate (the refresh
+            # loop re-prices them per solve), so p_injected_W, the planner's conservation cap
+            # and the ledger all carry the memory's watts. The McPAT name map returns None for
+            # a floorplan-named key; the banks are in the geometry, so pass them through --
+            # otherwise the per-block envelope shape would give them a 0 W cap.
+            trace = args.memdie.inject(trace)
+            _nm0, _geo = name_map, frozenset(geom)
+
+            def name_map(u, _f=_nm0, _g=_geo):
+                b = _f(u)
+                return b if b is not None else (u if u in _g else None)
 
         pair = {}
         # Derived targets need the control arm's peak, so control must be solved first. ARMS is
@@ -1050,7 +1266,17 @@ def main():
                    'mr_cold_zone_pattern': args.mr_cold_zone_pattern,
                    'pitch_um': args.pitch_um, 'burial_um': args.burial_um,
                    'mr_material': args.mr_material, 'cell_um': args.cell_um,
+                   'two_sink': args.two_sink, 'iso_um': args.iso_um if args.two_sink else None,
+                   'iso_k_W_per_mK': args.iso_k if args.two_sink else None,
+                   'bottom_sink_r_th': args.bottom_sink_r_th if args.two_sink else None,
                    'gen3_split': args.gen3_split, 'storage_um': args.storage_um if args.gen3_split else None,
+                   'storage_k_W_per_mK': getattr(args, 'storage_k', None),
+                   'memory_die': args.memory_die, 'mem_dies': args.mem_dies if args.memory_die != 'none' else None,
+                   'mem_W_per_die': args.mem_W_per_die if args.memory_die != 'none' else None,
+                   'mem_target_K': args.mem_target_K if args.memory_die != 'none' else None,
+                   'mem_gap_um': args.mem_gap_um if args.memory_die == 'beside' else None,
+                   'iso_vias': args.iso_vias if args.memory_die == 'far-face' else None,
+                   'mr_zones_extra': [list(z) for z in args._extra_zones] or None,
                    'bond_um': args.bond_um if args.gen3_split else None, 'bond_k_W_per_mK': args.bond_k if args.gen3_split else None,
                    'stack_specs': {a: arm_stack_spec(args, a) for a in args.arms},
                    'rows': rows}, f, indent=2)

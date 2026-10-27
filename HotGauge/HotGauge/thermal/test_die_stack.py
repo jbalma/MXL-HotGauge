@@ -594,3 +594,71 @@ class TestStorageDie(unittest.TestCase):
     def test_storage_die_is_refused_on_a_lidded_package(self):
         with self.assertRaises(ValueError):
             parse_spec_string('spec:package=lidded,storage=50')
+
+
+class TestTwoSinkStack(unittest.TestCase):
+    """§P0.37: the storage die on the processor die's FAR face, behind an isolation layer, with
+    its own array and (optionally) 3D-ICE's bottom heat sink."""
+
+    SPEC = 'spec:package=direct_die,mr=GAAS,src=200,cell=100,sink_in_stack=0,twosink=1,storage=50,iso=100,isok=0.1'
+
+    def _dies_and_layers(self, text):
+        stack = text[text.index('stack:'):text.index('// ---------------------------- Analysis')]
+        return [l.strip() for l in stack.splitlines() if l.strip().startswith(('die', 'layer'))]
+
+    def test_order_is_array_compute_isolation_storage_second_array(self):
+        lines = self._dies_and_layers(render_stack_text(parse_spec_string(self.SPEC)))
+        self.assertEqual(lines, ['die MR_ARRAY MR_DIE floorplan "{mr_flp_file}";',
+                                 'die PROCESSOR_DIE IC floorplan "{flp_file}";',
+                                 'layer ISOLATION ISO_LAYER ;',
+                                 'die STORAGE_DIE STORAGE floorplan "{storage_flp_file}";',
+                                 'die MR_STORAGE MR_DIE floorplan "{mr2_flp_file}";'])
+
+    def test_the_storage_die_is_not_on_the_compute_dies_path_to_its_sink(self):
+        a = parse_spec_string(self.SPEC)
+        ref = parse_spec_string('spec:package=direct_die,mr=GAAS,src=200,cell=100,sink_in_stack=0')
+        self.assertEqual(a.resistance_budget(101.1)['total_K_per_W'],
+                         ref.resistance_budget(101.1)['total_K_per_W'])
+        self.assertNotIn('BOND', render_stack_text(a))
+
+    def test_isolation_conductivity_is_the_stated_one(self):
+        text = render_stack_text(parse_spec_string(self.SPEC))
+        block = text[text.index('material ISOLATION :'):]
+        self.assertIn('thermal conductivity     1e-07', block)      # 0.1 W/(m K) in W/(um K)
+        self.assertIn('layer ISO_LAYER :\n   height 100 ;\n   material ISOLATION ;', text)
+
+    def test_far_face_is_adiabatic_unless_a_bottom_sink_is_stated(self):
+        self.assertNotIn('bottom heat sink', render_stack_text(parse_spec_string(self.SPEC)))
+        text = render_stack_text(parse_spec_string(self.SPEC + ',bhtc=3.3e-8,bamb=303.15'))
+        self.assertIn('bottom heat sink : heat transfer coefficient 3.300000e-08 ; '
+                      'temperature 303.150000 ;', text)
+        self.assertLess(text.index('top heat sink'), text.index('bottom heat sink'))
+
+    def test_the_sink_renderer_rewrites_only_the_top_sink(self):
+        import tempfile
+        from HotGauge.thermal.sink_models import render_stack_with_sink, ThermalResistanceSink
+        from HotGauge.thermal.die_stack import write_stack
+        with tempfile.TemporaryDirectory() as d:
+            base = write_stack(parse_spec_string(self.SPEC + ',bhtc=3.3e-8,bamb=290'),
+                               os.path.join(d, 'base.stk'))
+            out = render_stack_with_sink(base, ThermalResistanceSink(0.3, 101.1e-6, ambient_K=303.15),
+                                         os.path.join(d, 'out.stk'))
+            text = open(out).read()
+        self.assertIn('bottom heat sink : heat transfer coefficient 3.300000e-08 ; '
+                      'temperature 290.000000 ;', text)
+        self.assertNotIn('heat transfer coefficient 1.000000e-07', text)
+
+    def test_identity_moves_with_the_isolation_and_leaves_other_specs_alone(self):
+        from HotGauge.thermal.die_stack import spec_identity
+        a = parse_spec_string(self.SPEC)
+        b = parse_spec_string(self.SPEC.replace('isok=0.1', 'isok=0.5'))
+        self.assertNotEqual(spec_string_filename(a), spec_string_filename(b))
+        plain = parse_spec_string('spec:package=direct_die,mr=GAAS,src=200,cell=50')
+        self.assertNotIn('two_sink', spec_identity(plain))
+        self.assertNotIn('{mr2_flp_file}', render_stack_text(plain))
+
+    def test_two_sink_needs_the_powered_array(self):
+        with self.assertRaises(ValueError):
+            parse_spec_string('spec:package=direct_die,mr=none,twosink=1')
+        with self.assertRaises(ValueError):
+            parse_spec_string('spec:package=direct_die,mr=GAAS,bhtc=1e-8')

@@ -222,7 +222,8 @@ class ICESim(ExecutableJob):
     parallel_options = copy.deepcopy(ExecutableJob.parallel_options)
 
     def __init__(self, stack_template, flp_template, power_trace, sim_config, *args,
-                 mr_flp_template=None, mr_powers=None, storage_flp_template=None, **kwargs):
+                 mr_flp_template=None, mr_powers=None, storage_flp_template=None,
+                 mr2_flp_template=None, **kwargs):
         """``mr_flp_template`` / ``mr_powers`` add a SECOND powered die to the stack.
 
         The photonic cooling array is a 3D-ICE die element of its own, bonded above the silicon,
@@ -248,6 +249,13 @@ class ICESim(ExecutableJob):
         # L2/L3 blocks live there by name). A stack built with StackSpec(storage_um=...) contains
         # a ``{storage_flp_file}`` placeholder; the run directory then needs STORAGE.flp too.
         self.storage_flp_template = storage_flp_template
+        # §P0.37: the two-sink stack's SECOND array (the storage die's own, ``{mr2_flp_file}``).
+        # Its tiles live in the same ``mr_powers`` dict under their own names; each template
+        # picks out the names it declares, and the landing guard is taken over both files.
+        if mr2_flp_template is not None and mr_flp_template is None:
+            raise ValueError('mr2_flp_template needs mr_flp_template/mr_powers: the second '
+                             'array shares the first one\'s power dict')
+        self.mr2_flp_template = mr2_flp_template
         self._output_files_cache = None
         super().__init__(*args, **kwargs)
 
@@ -275,6 +283,15 @@ class ICESim(ExecutableJob):
         return self.mr_flp_template is not None
 
     @property
+    def mr2_flp_file(self):
+        """The storage die's own array floorplan, when the stack has one (§P0.37)."""
+        return os.path.join(self.run_path, 'MR2.flp')
+
+    @property
+    def has_mr2_array(self):
+        return self.mr2_flp_template is not None
+
+    @property
     def storage_flp_file(self):
         """The storage die's floorplan, when the stack has one (X4)."""
         return os.path.join(self.run_path, 'STORAGE.flp')
@@ -299,6 +316,8 @@ class ICESim(ExecutableJob):
         files = [self.stack_file, self.flp_file, self.__class__.EMULATOR_EXECUTABLE]
         if self.has_mr_array:
             files.append(self.mr_flp_file)
+        if self.has_mr2_array:
+            files.append(self.mr2_flp_file)
         if self.has_storage_die:
             files.append(self.storage_flp_file)
         initial_temp_file = self.sim_config.initial_temp_file
@@ -387,6 +406,11 @@ class ICESim(ExecutableJob):
                   for k, v in self.mr_powers.items()}
         contents = populate_template(self.mr_flp_template, powers=powers)
         written = sum(_flp_total_power(contents))
+        if self.has_mr2_array:
+            # §P0.37: the second array's tiles are in the same dict; the guard below is over both.
+            contents2 = populate_template(self.mr2_flp_template, powers=powers)
+            written += sum(_flp_total_power(contents2))
+            write_or_update_file(self.mr2_flp_file, contents2)
         expected = sum(float(np.sum(np.atleast_1d(v))) for v in self.mr_powers.values())
         if abs(written - expected) > 1e-3 * max(1.0, abs(expected)):
             raise ValueError(
@@ -424,6 +448,13 @@ class ICESim(ExecutableJob):
                         'Build the sim with mr_flp_template= and mr_powers=, or use a stack '
                         'built without mr_powered.'.format(self.stack_template))
 
+        if not self.has_mr2_array:
+            with open(self.stack_template) as f:
+                if '{mr2_flp_file}' in f.read():
+                    raise ValueError(
+                        '{} declares the two-sink stack\'s second array but no MR2 floorplan was '
+                        'supplied (mr2_flp_template=).'.format(self.stack_template))
+
         if not self.has_storage_die:
             with open(self.stack_template) as f:
                 if '{storage_flp_file}' in f.read():
@@ -439,6 +470,8 @@ class ICESim(ExecutableJob):
         extra = {'mr_flp_file': os.path.abspath(self.mr_flp_file)} if self.has_mr_array else {}
         if self.has_storage_die:
             extra['storage_flp_file'] = os.path.abspath(self.storage_flp_file)
+        if self.has_mr2_array:
+            extra['mr2_flp_file'] = os.path.abspath(self.mr2_flp_file)
         contents = populate_template(self.stack_template, flp_file=rel_flp_file,
                                      flp_width=stk_width,
                                      flp_height=stk_height,

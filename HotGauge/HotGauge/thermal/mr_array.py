@@ -282,6 +282,25 @@ def write_mr_floorplan(out_path, tiles):
     return out_path
 
 
+def tile_serves(tile, block_name):
+    """Whether ``tile`` may carry ``block_name``'s removal (§P0.37).
+
+    A plain tile serves every block beneath it -- the single-array stack, every recorded result.
+    In the two-sink stack two arrays share one (x, y) frame at different heights: a tile of the
+    storage die's array carries ``serves`` (the storage die's block names) and a tile of the
+    compute die's array carries ``excludes`` (the same set), so a block's removal lands only on
+    the array that is bonded to ITS die. Without this a cache block's plan would be split
+    between both arrays by overlap area and half of it would land on the wrong die.
+    """
+    serves = tile.get('serves')
+    if serves is not None and block_name not in serves:
+        return False
+    excludes = tile.get('excludes')
+    if excludes is not None and block_name in excludes:
+        return False
+    return True
+
+
 def _overlap(ax0, ay0, ax1, ay1, bx0, by0, bx1, by1):
     return (max(0.0, min(ax1, bx1) - max(ax0, bx0)) *
             max(0.0, min(ay1, by1) - max(ay0, by0)))
@@ -345,7 +364,7 @@ def block_tile_temps(tile_temps_K, blocks, tiles):
     for name, (bx, by, bw, bh) in blocks.items():
         hits = []
         for t in tiles:
-            if t['name'] not in tile_temps_K:
+            if t['name'] not in tile_temps_K or not tile_serves(t, name):
                 continue
             a = _overlap(bx, by, bx + bw, by + bh,
                          t['x'], t['y'], t['x'] + t['w'], t['y'] + t['h'])
@@ -374,6 +393,8 @@ def tiles_over_blocks(tiles, blocks, pattern, majority=0.5):
     for t in tiles:
         tot, match = 0.0, 0.0
         for name, (bx, by, bw, bh) in blocks.items():
+            if not tile_serves(t, name):
+                continue
             a = _overlap(bx, by, bx + bw, by + bh, t['x'], t['y'], t['x'] + t['w'], t['y'] + t['h'])
             if a <= 0:
                 continue
@@ -412,6 +433,8 @@ def project_plan_shares(plan_W, blocks, tiles, strict=True, gap_policy='nearest'
         bx, by, bw, bh = blocks[name]
         hits = []
         for t in tiles:
+            if not tile_serves(t, name):
+                continue
             a = _overlap(bx, by, bx + bw, by + bh,
                          t['x'], t['y'], t['x'] + t['w'], t['y'] + t['h'])
             if a > 0:
@@ -507,6 +530,8 @@ def project_plan_to_tiles(plan_W, blocks, tiles, strict=True, gap_policy='neares
         bx, by, bw, bh = blocks[name]
         hits = []
         for t in tiles:
+            if not tile_serves(t, name):
+                continue
             a = _overlap(bx, by, bx + bw, by + bh,
                          t['x'], t['y'], t['x'] + t['w'], t['y'] + t['h'])
             if a > 0:
@@ -833,6 +858,60 @@ class ArrayWiring(object):
         return ('<ArrayWiring {} tiles at {:.0f} um over {:.0f}x{:.0f} um, coverage {:.2f}>'
                 .format(len(self.tiles), self.pitch_um, self.chip_um[0], self.chip_um[1],
                         self.ledger['coverage_achieved']))
+
+
+class TwoSinkWiring(ArrayWiring):
+    """§P0.37: the two-sink stack's TWO arrays behind one planner interface.
+
+    The compute die's array (tiles ``MR_r.._c..``, floorplan ``MR.flp``) is the ordinary one.
+    The storage die's own array (tiles ``MRS_r.._c..``, ``MR2.flp``) has the same grid on the
+    storage die's far face. ``storage_blocks`` -- the names on the storage die's floorplan --
+    decide which array a block's removal lands on (:func:`tile_serves`). The planner sees one
+    tile list and one power dict; ``solver_kwargs`` hands the solver both floorplans.
+
+    The area ledger and the coverage are the COMPUTE array's (the storage array is a second
+    device, not a charge on the first).
+    """
+
+    STORAGE_PREFIX = 'MRS'
+
+    def __init__(self, flp_path, out_dir, storage_blocks, name2='MR2.flp', **kw):
+        import os
+        super(TwoSinkWiring, self).__init__(flp_path, out_dir, **kw)
+        storage_blocks = frozenset(storage_blocks)
+        missing = sorted(b for b in storage_blocks if b not in self.blocks)
+        if missing:
+            raise ValueError('{} storage-die blocks are not in the reference floorplan, e.g. {}'
+                             .format(len(missing), missing[:5]))
+        if not storage_blocks:
+            raise ValueError('the two-sink stack needs the storage die\'s block names')
+        self.storage_blocks = storage_blocks
+        self.compute_tiles = self.tiles
+        for t in self.compute_tiles:
+            t['excludes'] = storage_blocks
+        self.storage_tiles = tile_grid(self.chip_um[0], self.chip_um[1], pitch_um=self.pitch_um,
+                                       cell_um=self.cell_um, fill=fill_for_coverage(self.coverage),
+                                       name_prefix=self.STORAGE_PREFIX)
+        for t in self.storage_tiles:
+            t['serves'] = storage_blocks
+        self.tiles = self.compute_tiles + self.storage_tiles
+        self.mr2_flp_template = os.path.join(os.path.dirname(self.mr_flp_template), name2)
+        write_mr_floorplan(self.mr2_flp_template, self.storage_tiles)
+        self._powers = tile_powers_for_stack({t['name']: 0.0 for t in self.tiles}, self.tiles)
+
+    @property
+    def storage_tile_names(self):
+        return set(t['name'] for t in self.storage_tiles)
+
+    def storage_plan_W(self):
+        """Watts the CURRENT plan removes on the storage die's array (positive)."""
+        names = self.storage_tile_names
+        return -sum(v for k, v in self._powers.items() if k in names)
+
+    def solver_kwargs(self):
+        kw = super(TwoSinkWiring, self).solver_kwargs()
+        kw['mr2_flp_template'] = self.mr2_flp_template
+        return kw
 
 
 def stack_carries_an_array(stack_file):

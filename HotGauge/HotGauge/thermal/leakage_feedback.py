@@ -634,7 +634,8 @@ class ICEThermalSolver(object):
                  core_sources=None, single_thread=True, steps_per_slot=None,
                  mode='transient', steady_reduce='mean', session_cache=None,
                  extra_die_outputs=None, already_dice_named=False, mr_temps=False,
-                 mr_flp_template=None, mr_powers=None, storage_flp_template=None):
+                 mr_flp_template=None, mr_powers=None, storage_flp_template=None,
+                 mr2_flp_template=None):
         if mode not in self.SIM_MODES:
             raise ValueError('mode must be one of {}, got {!r}'.format(self.SIM_MODES, mode))
         if steady_reduce not in STEADY_REDUCERS:
@@ -711,6 +712,11 @@ class ICEThermalSolver(object):
         self.storage_flp_template = storage_flp_template
         if storage_flp_template is not None and STORAGE_DIE_TFLP_OUTPUT not in self.extra_die_outputs:
             self.extra_die_outputs.append(STORAGE_DIE_TFLP_OUTPUT)
+        # §P0.37: the two-sink stack's second array (die instance MR_STORAGE). Its tiles are in
+        # ``mr_powers`` under their own names, so session_powers / _split_mr_temps need nothing.
+        if mr2_flp_template is not None and mode != 'steady':
+            raise ValueError('the two-sink stack (mr2_flp_template) is wired for mode="steady"')
+        self.mr2_flp_template = mr2_flp_template
         self._iter = 0
 
     def set_mr_powers(self, mr_powers):
@@ -823,12 +829,16 @@ class ICEThermalSolver(object):
                                  'solver carries no array (mr_flp_template/mr_powers)')
             if MR_DIE_TFLP_OUTPUT not in outputs:
                 outputs = outputs + [MR_DIE_TFLP_OUTPUT]
+            if self.mr2_flp_template is not None and MR2_DIE_TFLP_OUTPUT not in outputs:
+                outputs = outputs + [MR2_DIE_TFLP_OUTPUT]
         config = ICESimConfig(initial_temp=self.initial_temp, plugin_args=self.plugin_args,
                               output_list=outputs)
         sim = ICESteadySim(self.stack_template, self.flp_template, steady_trace, config, run_dir,
                            mr_flp_template=self.mr_flp_template,
                            mr_powers=self.mr_powers,
-                           storage_flp_template=self.storage_flp_template)
+                           storage_flp_template=self.storage_flp_template,
+                           **({'mr2_flp_template': self.mr2_flp_template}
+                              if self.mr2_flp_template is not None else {}))
 
         if self.session_cache is not None:
             # Persistent path: render IC.stk/IC.flp but do not spawn the Emulator. The session
@@ -862,7 +872,9 @@ class ICEThermalSolver(object):
         # assumption a stacked run must not make silently.
         steady = {}
         for line in ([ICESteadySim.DIE_TFLP_OUTPUT] + self.extra_die_outputs
-                     + ([MR_DIE_TFLP_OUTPUT] if self.mr_temps else [])):
+                     + ([MR_DIE_TFLP_OUTPUT] if self.mr_temps else [])
+                     + ([MR2_DIE_TFLP_OUTPUT]
+                        if (self.mr_temps and self.mr2_flp_template is not None) else [])):
             tflp_file = os.path.join(sim.run_path, parse_file_name_from_output_line(line))
             if not os.path.isfile(tflp_file):
                 raise RuntimeError(
@@ -895,6 +907,8 @@ MR_DIE_TFLP_OUTPUT = 'Tflp (MR_ARRAY, "mr_elements.temps", average, final ) ;'
 #: ICEThermalSolver when a storage floorplan is given: a die without an output instruction
 #: reports nothing, and a storage die that is never read cannot be shown to reach its knee.
 STORAGE_DIE_TFLP_OUTPUT = 'Tflp (STORAGE_DIE, "storage_elements.temps", average, final ) ;'
+#: §P0.37: the storage die's own array (die instance MR_STORAGE, the two-sink stack).
+MR2_DIE_TFLP_OUTPUT = 'Tflp (MR_STORAGE, "mr2_elements.temps", average, final ) ;'
 
 
 def peak_temp_K(temps, t_floor_K=200.0):

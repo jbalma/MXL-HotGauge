@@ -481,6 +481,105 @@ plain `skylake` stack works without it, so this failure only appears on plugin s
   its three walls). (3) `recovery_at_temperature.json`'s "crossing at 408 K" was the
   *self-powering* temperature; the **export crossing is 614 K** (90 % laser preset), from the
   rows' own expression. Quote the export crossing.
+- **`[!]` §P0.40 (19 Sep, late) — the cache-leakage PRIZE is a McPAT input; gen 3 is re-aimed.** The
+  trace's XML gives `system.L2x` / `system.L30` `device_type = 0` (HP). Re-run with LSTP cells
+  (`spice_toolchain/tmp/mcpat_cache_device_ab.sh`, `examples/mcpat_cache_device_report.py` →
+  `mcpat_cache_device.json`) the caches' leakage falls **306×**, 53.8 % → 0.4 % of processor
+  leakage; static fraction 29.4 → 16.1 % (McPAT scope); LOP is a broken 7 nm table. The HP row
+  reproduces the project's 54 % and 29.36 % exactly. **Thermal geometry and ratios stand; a
+  cache-leakage saving in WATTS carries its cell class. `[!]` User, 20 Sep: do NOT claim a cold memory
+  zone has no benefit — two points on one die; §P0.42 designs the experiments (cell class per level,
+  capacity, neighbour temperature, low-V_t fast caches, DRAM).** A memory
+  die's motive is proximity: the CoMeT IPC(f) sweep is `2.5D` (HBM-class, 20 ns, 4 controllers —
+  no DDR run exists, no matched A/B across arrangements); FFT fits t = 0.328/f + 0.0191 ns per
+  instruction. `CoMeT/test/mem_arrangement_sweep/runit.sh` is written, NOT run (docker is
+  head-node only). Every recorded thermal result still carries HP caches (register §3).
+- **`[~]` §P0.45 (27 Oct) — WHERE a cold memory zone pays, the stack side and the performance side.**
+  Trace `mcpat_runs/7nm/linpack_3.8GHz_hpx4nolc/` (HP cells, `longer_channel_device = 0`, 4× L3;
+  5.6× the cache leakage; matched-activity densities 1.268 / 2.536 — `spice_toolchain/tmp/build_hpx4_trace.sh`),
+  `scripts/cold_zone_ledger_ladder.sh` (both shapes; `--mr-dt-max 80`), `examples/cold_zone_ledger_report.py`.
+  **On HP cells at 1.00 W/mm² the ledger is §P0.37's (red by 4.2 / 5.8 W, reproduced); at 2.00 and on the
+  hot-end trace it is PLANNER-LIMITED**: the seed envelope drives the storage die 40–60 K past its target
+  (one scalar, even under the peak objective), the per-block shape cannot remove a zone's inflow; the
+  hot-end cache die has NO unaided steady state (L3 runaway on the storage die — measured). Needs the
+  two-die planner (register §3, with the specifics). **CoMeT cache-latency sweep
+  (`CoMeT/test/mem_arrangement_sweep/runit_cachelat.sh`, docker through the campaign server — it works
+  in the step now): ±50 % L2 / L3 latency moves throughput < 0.5 % on FFT / lu.cont — hit latency is
+  not a lever on these kernels** (`comet_cache_latency.json`, register §1.3 / §4).
+- **`[+]` §P0.44 (27 Oct) — the RE-AIMED gen 3 built: a DRAM / HBM die beside (2.5D), under
+  (far-face) or on top of (sink-side) the compute die, held under the 85 °C refresh breakpoint.**
+  `thermal/memory_die.py` (bank floorplans in the `--gen3-split` layout plus a `union_reference.flp`
+  every ledger uses; `build_memory_beside` for ONE wide floorplan; `via_field_effective_k`,
+  `lumped_stack`; `MemoryDie.inject` puts the banks into the McPAT-named trace BY NAME — the
+  rename passes unknown keys through — and `refresh_fixed_point` wraps the leakage loop with
+  `power/dram.py`'s refresh multiplier; a refresh runaway is `mem_diverged`, its own divergence).
+  `mr_comparison.py --memory-die {beside,sink-side,far-face} --mem-dies --mem-W-per-die
+  --mem-target-K 353.15 [--iso-vias N:d] [--mem-gap-um]`, the general `--mr-zone PATTERN:T_K`
+  (the cache-leakage objective untouched), `--storage-k` / spec `storagek` (a lumped stack's
+  series-equivalent k; identity appended only when set). Rows carry `mem_*`. Both anchors
+  reproduce to five figures after the edits. `[!]` Three traps, measured on the smoke points
+  (METHODS §4.2c): the cold plate's coefficient stays referenced to the COMPUTE footprint (the
+  doubled `beside` footprint cut h 31 % and the idle die ran away); curve-only the envelope is
+  AREA-weighted and the sixteen 6.4 mm² banks took half of it — every 2.00 W/mm² row needs
+  `--mr-dt-max 45` beside the dye curve (as §P0.37's regression); the planning target is 80 °C
+  because 85 is a ×2 step. **Job 2748: every `srun` needs `--gres=gpu:0` and explicit `-c`/`--mem`**
+  (METHODS §2.2). **MEASURED (22 rows + 2 twins, `memory_die.json`): the banks sit at the die's
+  area-average temperature (27–70 °C) in every placement and the 85 °C line never binds; the cost
+  is the HEAT PATH — 2.5D −3 W; far face through a via field −6 / +6 / +16 W at 1 / 3 / 10 K/W
+  (aerogel at 10 K/W: refresh runaway); memory-on-logic +0 for one hybrid-bonded die, +40 W for
+  8-high hybrid, NO HOLD for 8-high microbumps (and 35 W at 1.00 W/mm²). The storage array's
+  1.9–5.9 W on far-face rows is the one-scalar envelope's share (banks 10–37 K under target).
+  The isolation's role REVERSES against the cache die: the DRAM die wants the via field.** Register
+  §1.2 / §3 / §4, START_HERE 26, ladder §4.3, memo §6.6c, FIG. 10.
+- **`[+]` §P0.43 (20 Sep) — the matched CoMeT memory-arrangement sweep, MEASURED on node-06.** CoMeT runs
+  in docker ON THE NODE (`CoMeT/test/mem_arrangement_sweep/{run_all_on_node,launch_on_node,runit}.sh`;
+  the launcher refuses phonon; the snap docker client cannot read `/mnt` itself — `docker load <
+  file`; containers write as root, so clean up through a container). FFT vs 2.5D: DDR −31 % at
+  4 GHz, −54 % at 16 GHz; 3D +1–2 % (lu.cont +2–6 %); elasticity @4 / @16 GHz: DDR 0.51 / 0.21,
+  2.5D 0.78 / 0.47; floor b ∝ measured DRAM latency. Near memory and the cooler are COMPLEMENTS;
+  off-package → in-package is the step, 2.5D → 3D is not. `comet_mem_arrangement.json`.
+- **`[+]` §P0.42 (20 Sep) — the LSTP-cache trace, and WHERE a cold memory zone pays.**
+  `mcpat_runs/7nm/linpack_3.8GHz_lstpcache/` (`--trace-dir`; the HP trace stays the default —
+  the user asked for the catalogue under realistic cells, in progress). `[!]` **Compare traces at
+  MATCHED ACTIVITY (LSTP at 1.899 W/mm² ≙ HP at 2.00), never at matched `--density`**: pinned
+  watts re-scale the removed cache leakage into the core (anchors +24 % / +13 %); at matched
+  activity the anchors are the recorded ones to ±3 % (142.6 / 109.9 W) — the array never paid
+  for cache leakage. McPAT surface (`mcpat_cache_surface.json`): zone leakage density = cell
+  class (HP 0.40, LSTP 0.0006 W/mm²) × neighbour T (3.2× at 360 K, 9.6× at 380 K) × channel
+  length (3.3×); capacity leaves it unchanged; pays at ~2.5–3× the recorded point — fast memory
+  beside a hot compute die. `DEFAULT_COLD_ZONE_PATTERN` stays (user). Density ceilings on the LSTP trace at pinned watts: flat 0.90–0.95 (one rung up), shaped
+  0.60–0.65 (unchanged).
+- **`[+]` §P0.37–§P0.39 (19 Sep, evening) — the two-sink gen-3 stack, the designed finger cluster, the
+  rail model.** (1) `StackSpec(two_sink=True)` / `mr_array.TwoSinkWiring` / `mr_comparison.py
+  --two-sink --iso-um --iso-k --bottom-sink-r-th`: the storage die on the compute die's FAR face
+  behind an isolating layer, with its own array (`MR_STORAGE`, `MR2.flp`) and 3D-ICE's bottom heat
+  sink. Off the heat path the caches are held at 280 K for **10.9–13.7 W** (s 0.11–0.14, compute
+  array 0 W; sink-side / monolithic 99.4 W); cost linear in the interface's k/t; **the UNPOWERED
+  storage die has no steady state without a far-face sink (nor behind ≥ 10 K/W), and a better
+  sink costs more**; Cr:LiSAF 1.7 W short (290 K); the laser draws 7 W to save 2.8 W; no control
+  arm; the 2.00 W/mm² rows are planner-limited (one envelope scalar over two dies). `[!]` **The
+  cache zone is `--mr-cold-zone-pattern '^(L2|L3)(_[0-9]+)?$'`**: the default `'^(L2|L3)'` also
+  matches the 34 `L2Pred_*` branch-predictor blocks, and `'^(L2|L3)_[0-9]'` starves the ledger
+  of the bridged `L3` aggregate; the default is unchanged (D3 / X4 reproduce; their plans did
+  not move under the fix, their zone max did). (2) `generate_exec_density_family.py
+  --finger-cluster`: one execution column, every execution unit a full-width strip between
+  scheduler / register-file SUB-blocks; **holds 243 W at 16× (s 0.76) and 32× (s 0.85)** for
+  0.74–0.79× the tiler's strips' plan; shapes are compact / strip / designed finger — name
+  which. (3) `fmax_model.py` rail model, OFF by default: `--vf-source fmax:rail=0.05[,resize=k]`,
+  `V_eff = V − ρ·J` with `J` read from each candidate's converged power map; native rails cost
+  the 8× / 16× clusters **19 % / 31 % of clock with the array's plan at 0 W**, ~J× re-sizing
+  restores it; limiter `rail:ir+…`. Static IR only. Suite **1116 passed, 1 skipped**; both
+  anchors reproduced after the stack / wiring / solver edits.
+- **`[+]` §P0.35–§P0.36 (19 Sep) — the cluster's cold end, its shape, and the patent drawings.** The 8×
+  cluster's lost 243 W rung was the dye's temperature dependence (a cold-tolerant hot-zone
+  material, or a dual layout over the execution column, holds it; 50 µm pitch loses every dye row);
+  `generate_exec_density_family.py --compact-cluster` builds the four execution units as one block:
+  compact is cheaper and a rung higher to ~8×, and a compact 16× has no steady state above 121 W
+  with nothing capped (transport) while the strip ("finger") 16× holds 202 W. Quote a dense-cluster
+  row with its unit shape. The memo's patent-style drawings come from
+  `docs/photonic_cooling/MXL-006-PRO/Update/make_patent_figures.py` (FIG. 1–9, 3B; real floorplans;
+  every caption MEASURED / ARGUED). `[!]` Write queue files elsewhere and `mv` them into
+  `results/campaign_queue/` — the server ran 5 of 34 jobs from a half-written file.
 - **`[+]` §P0.31–§P0.34 (13 Sep) — the generalized f_max, the cluster transport ladder, IPC(f),
   D1 per-block.** `power/fmax_model.py` (`clock_headroom.py --vf-source fmax[:N=..,w=..,ref=..]`):
   the period is `N·[FO4(V,T) + wire(T)] + skew(ΔT) + overhead`, anchored ONCE at the trace, with

@@ -86,6 +86,26 @@ scripts/build_joblist.sh > /tmp/jobs.tsv
 srun --jobid=<id> --overlap -n1 bash -c 'cat /tmp/jobs.tsv | PAR=14 scripts/campaign_inner.sh'
 ```
 
+`[!]` **State the step's GPUs, CPUs and memory, or it never starts (27 Oct).** Job 2748 carries
+`gres:gpu:8`, and a step that names no `--gres` takes ALL of the job's GPUs; while any other step
+holds one (the ollama server, step 2748.1: `-c 4 --mem=16G --gres=gpu:1`) every un-flagged
+`srun --overlap` sits PENDING with no message — measured: three steps waited 12 minutes, a 1-CPU
+`hostname` included. The restart line is therefore
+
+```bash
+nohup srun --jobid=2748 --overlap -n1 -c 80 --mem=160G --gres=gpu:0 --cpu-bind=none \
+     scripts/campaign_server.sh >> results/campaign_queue/server.log 2>&1 &
+```
+
+(`-c` / `--mem` sized to leave the other step its share; `scontrol show steps` shows a waiting step
+as `2748.TDB PENDING`). The same `--gres=gpu:0` goes on any direct `srun` (a test run, a probe).
+
+`[!]` **Write a queue file ELSEWHERE and `mv` it into `results/campaign_queue/`** (19 Sep). The server
+polls every 20 s and moves whatever `*.tsv` it finds; a ladder script that takes seconds per line
+(each `run` shells out to python) was picked up after five of its 34 lines, the five ran, and the
+campaign reported done. `script > results/campaign_queue/running/.x.tmp && mv … <name>.par<N>.tsv`
+is atomic. Re-queueing is safe: finished points carry `DONE` and are skipped.
+
 `[!]` **Feed the joblist as a file read on the node.** Piping it into `srun`'s stdin silently
 truncates — measured: 3 of 12 jobs ran and the campaign reported success.
 
@@ -298,6 +318,77 @@ preceded that one on 9 Sep — summing every key tripled the die total, a leaf r
 `core_other` slab — so `results/d3_objective/` (first pass) has valid cache figures and invalid
 die totals; `results/d3_objective_v2/` is the corrected pass.
 
+`[!]` **The cache zone's pattern (19 Sep, §P0.37).** The default `--mr-cold-zone-pattern '^(L2|L3)'`
+also matches the 34 `L2Pred_*` blocks (the L2 local branch predictor, in each core's front end);
+`'^(L2|L3)_[0-9]'` excludes them but also excludes the bridged `L3` AGGREGATE's temperature key,
+so `cache_leakage_W` reads a quarter of the truth. **Pass `'^(L2|L3)(_[0-9]+)?$'`** on any
+cache-objective run. The default is unchanged so D3 / X4 reproduce; re-run with the corrected
+pattern their plans did not move (99.4 W, s = 1.08), their zone MAX did (317–327 → 290–292 K).
+
+### 4.2b The two-sink gen-3 stack (§P0.37)
+
+```bash
+python examples/mr_comparison.py $ARM_ARGS --cell-um 100 --arms array_idle array_on \
+    --gen3-split examples/floorplans/outputs/gen3_stack --storage-um 50 \
+    --two-sink --iso-um 100 --iso-k 0.1 --bottom-sink-r-th 3 \
+    --mr-objective cache-leakage --mr-cold-target-K 280 \
+    --mr-cold-zone-pattern '^(L2|L3)(_[0-9]+)?$' --mr-iter 12 [--mr-zone-mode dual] ...
+```
+
+`StackSpec(two_sink=True)` (spec keys `twosink`, `iso`, `isok`, `bhtc`, `bamb`) renders, top-down:
+sink · `MR_ARRAY` · `PROCESSOR_DIE` · `ISOLATION` layer · `STORAGE_DIE` · `MR_STORAGE` (a second
+array die, `{mr2_flp_file}`) · optionally 3D-ICE's `bottom heat sink` (written on ONE line so
+`render_stack_with_sink` rewrites only the top sink). `mr_array.TwoSinkWiring` holds both tile
+sets in one list and one power dict; a tile carries `serves` / `excludes` (the storage die's
+block names) and `tile_serves()` routes each block's removal — and its extractor temperature —
+to ITS die's array. Under `--mr-zone-mode dual` the cold tiles ARE the storage array. Rows carry
+`storage_array_plan_W`. `[!]` Four traps, each measured: (1) **there is no control arm** (the
+storage die is held by its own array); (2) **the far face needs a sink for the unpowered die to
+exist** — adiabatic, or ≥ 10 K/W, and `array_idle` diverges, after which the planner sizes from
+a diverged field (a 101 kW "plan"); (3) above ~1.2 W/mm² the unpowered COMPUTE die diverges as
+it always has, the envelope descent then scales ONE scalar over both dies and over-drives the
+storage array, and under `dual` the Cr:LiSAF caps come from the diverged field — read those
+rows as planner-limited, never as the stack's verdict; (4) `mr_plan_holds_target` asks for the
+zone at or below target exactly — a converged descent with the worst cache block inside the
+planner's 2 K tolerance is the hold (`two_sink_report.held`).
+
+### 4.2c A DRAM / HBM die beside, under or on top of the compute die (§P0.44)
+
+```bash
+python examples/mr_comparison.py $ARM_ARGS --cell-um 100 --arms array_idle array_on --mr-extractor dye \
+    --memory-die {beside|sink-side|far-face} --mem-dies 8 --mem-W-per-die 3 --mem-target-K 353.15 \
+    [beside:    --mem-gap-um 1000] \
+    [sink-side: --bond-um 5 --bond-k 5 --mem-bond-k 5] \
+    [far-face:  --iso-um 100 --iso-k 0.1 --iso-vias 10000:5 --bottom-sink-r-th 3] ...
+```
+
+`thermal/memory_die.py` builds the floorplans per core count under `<out-dir>/mem_flp_<n>c/`:
+the stacked forms reuse the `--gen3-split` layout (`compute_template.flp` = the WHOLE reference
+die, caches on it; `storage_template.flp` = 4 × 4 banks `MEM_r<r>c<c>` over the same footprint;
+`union_reference.flp` = both, the floorplan every ledger, the planner's geometry and the wiring
+see), `beside` writes ONE wide floorplan (reference | bare gap | banks). The banks' power enters
+**through the trace by name** (`MemoryDie.inject`, at the breakpoint rate; `p_injected_W` carries
+it), the refresh loop (`refresh_fixed_point`, `power/dram.py`'s multiplier) wraps the leakage loop
+inside every planner solve, and the planner holds the banks with the general zone target
+`--mr-zone '^MEM_:353.15'` (added automatically). A memory stack is LUMPED into the one storage-die
+element — thickness n × 50 + (n − 1) × 5 µm, series-equivalent k on the spec (`storagek`) — and a
+via field through the isolation is folded into `--iso-k` as a parallel copper path (`isok` on the
+spec is the EFFECTIVE value; the row records the stated one and the fill). Rows carry `mem_*`
+(zone max / mean, refresh multiplier, banks over 85 / 95 °C, `mem_diverged` for a REFRESH runaway,
+which is the memory's own divergence and names itself in `diverged_reason`).
+
+`[!]` Traps, each measured on the smoke points: (1) **the cold plate's coefficient stays referenced
+to the COMPUTE die's footprint** in every placement — referencing it to the doubled `beside`
+footprint cut h over the compute region ~40 % and the idle die ran away where the reference holds;
+what that leaves out is the shared base's warming by the memory's own watts, stated with the rows;
+(2) the `beside` form shares one silicon slab (3D-ICE's one-footprint rule), so its lateral
+coupling is an UPPER bound on an interposer's (`memory_die.slab_coupling_W_per_K`); (3) the
+planning target sits BELOW the 85 °C breakpoint because the breakpoint is a ×2 step and a hold
+within 2 K of it is ambiguous; (4) every DRAM watt is `power/dram.py`'s convention
+(`mem_calibrated: false`) — quote which placement binds and what the array pays, never a memory
+power; (5) `die_power_of_trace` on the compute template alone warns "dropping 24 W" — that is the
+banks, and it is why the union floorplan is the one to account on.
+
 ### 4.3 Comparing MR costs
 
 `[!]` **Never compare MR cost in watts across leakage curves or accounting policies.** The
@@ -341,7 +432,8 @@ any register change; it is a build product, not a source.
 
 ## 6. Before you finish a session
 
-1. `python -m pytest HotGauge/HotGauge -q` — **1070 passed, 1 skipped** as of 9 Sep (§P0.22, on the **head node** in 6 min 06 s — it did not stall; 1054 after §P0.21.5, 1050 after §P0.21, 1042 after §P0.20, 1025 after §P0.19, 992 after §P0.18, 947 before). While a campaign step holds the node the suite cannot get a step of its own; the head node in the background works. Do not run it
+1. `python -m pytest HotGauge/HotGauge -q` — **1132 passed, 1 skipped** as of 27 Oct (§P0.44; through the
+   campaign server, `suite.par1.tsv` → `spice_toolchain/tmp/run_suite_node.sh`, 5 min); 1116 after §P0.39, 1070 as of 9 Sep (§P0.22, on the **head node** in 6 min 06 s — it did not stall; 1054 after §P0.21.5, 1050 after §P0.21, 1042 after §P0.20, 1025 after §P0.19, 992 after §P0.18, 947 before). While a campaign step holds the node the suite cannot get a step of its own; the head node in the background works. Do not run it
    with ~20 campaign workers active (it starves on NFS: 8 s of CPU in 17 min). At ~10 it is fine.
 2. Update `docs/RESULTS_REGISTER.md` if a number moved — **including moving a claim to §2**.
 3. Record any prediction you made, right or wrong, in `docs/PHASE0_CHECKLIST.md`. Four of five

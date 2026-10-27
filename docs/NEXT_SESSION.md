@@ -1,3 +1,335 @@
+# 27 October 2026 — §P0.44 (the DRAM die's three placements, MEASURED) and §P0.45 (where a cold memory zone pays: stack side PLANNER-LIMITED, performance side closed)
+
+Read `docs/START_HERE.md` (items 26–27 new), `docs/NEXT_SESSION_PROMPT.md` (rewritten tonight — the two-die
+planner is the brief), `docs/PHASE0_CHECKLIST.md` §P0.44 and §P0.45 (predictions, the three amendments,
+the RESULTs and scorecards: of 17 predictions, 4 confirmed, 5 falsified, 8 not as predicted or
+planner-limited), `docs/RESULTS_REGISTER.md` (§1.2 memory-die row; §1.3 cache-latency row; §3 the DRAM-die
+item closed, the interface item, the cold-zone item and the two-die planner item re-written with the
+specifics; §4 three new constraints), ladder §4.3 (27 Oct block), memo §6.6c / §8.2 / the 6.6b lead note
+and **FIG. 10** (new) / **FIG. 6** (its 19 Sep layout defects fixed — both VIEWED this time), `docs/METHODS.md`
+§2.2 (`--gres=gpu:0`) and §4.2c (the memory die, five traps), `CLAUDE.md`. Job **2748** (an `interact`
+job that also holds the user's ollama step 2748.1 — do not touch it); the campaign server was **stopped**
+at the end. Suite **1132 passed, 1 skipped** (node, through the server). **Both anchors reproduced to five
+figures** after the stack / solver / driver edits (`results/anchor_2026-10-27/`). Nothing since 19 Sep is
+committed. `results-quotable/` has **36 items** (35-memory-die-placement, 36-cache-latency-not-a-lever),
+verify OK.
+
+## What landed
+
+1. **§P0.44 — the re-aimed gen 3, built and measured.** `thermal/memory_die.py` (bank floorplans in the
+   `--gen3-split` layout + `union_reference.flp`; `build_memory_beside` for the 2.5D form as ONE wide
+   floorplan; `via_field_effective_k`, `lumped_stack`; `MemoryDie.inject` puts the banks into the trace BY
+   NAME; `refresh_fixed_point` wraps the leakage loop, a refresh runaway is `mem_diverged`); `StackSpec(storage_k_si)`
+   / spec `storagek`; `mr_comparison.py --memory-die {beside,sink-side,far-face} --mem-dies --mem-W-per-die
+   --mem-target-K --iso-vias --mem-gap-um`, the general `--mr-zone PATTERN:T_K`, `--storage-k`; 16 tests.
+   `scripts/memory_die_ladder.sh` (23 rows) → `examples/memory_die_report.py` → `memory_die.json`.
+   **MEASURED (2.00 W/mm², 8 × 3 W, reference 126.1 W): the banks sit at the die's area-average temperature
+   (27–70 °C) in every placement and the 85 °C line never binds; the cost is the HEAT PATH — 2.5D −3 W;
+   far face through a 10,000-via field −6 / +6 / +16 W with a 1 / 3 / 10 K/W far-face sink (aerogel 0.1 at
+   10 K/W: refresh runaway); memory-on-logic +0 for one hybrid-bonded die, +7.5 on microbumps, +40 W for
+   8-high hybrid, NO HOLD for 8-high microbumps (and 35 W at 1.00 W/mm²).** The storage array's 1.9–5.9 W
+   on far-face rows is the one-scalar envelope's share (banks 10–37 K under target). The isolation's role
+   REVERSES against the cache die: the DRAM die wants the via field.
+2. **§P0.45 — the cold-zone ledger and the performance side.** Trace `linpack_3.8GHz_hpx4nolc` (HP, no
+   long-channel, 4× L3; 5.6× the cache leakage; `spice_toolchain/tmp/build_hpx4_trace.sh`), matched-activity
+   densities 1.268 / 2.536; `scripts/cold_zone_ledger_ladder.sh` (16 rows × seed and per-block);
+   `examples/cold_zone_ledger_report.py` → `cold_zone_ledger.json`. **On HP cells at 1.00 W/mm² §P0.37's
+   ledger reproduces (red by 4.2 / 5.8 W); at 2.00 and on the hot-end trace the ledger is PLANNER-LIMITED**:
+   seed drives the storage die 40–60 K past its target (one scalar over two dies, even under the peak
+   objective) and is uniform per block; per-block cannot remove a zone's inflow. The hot-end cache die has
+   NO unaided steady state (L3 runaway on the storage die — the predicted half). **CoMeT cache-latency sweep
+   (`runit_cachelat.sh`, 12 runs, docker THROUGH the campaign server — it works in the step now):
+   ±50 % L2 / L3 latency moves throughput < 0.5 % — hit latency is not a lever on these kernels.**
+3. **Three traps, measured and recorded (METHODS §2.2, §4.2c):** job 2748's steps need `--gres=gpu:0`
+   and explicit `-c` / `--mem` or they pend silently (the ollama step holds a GPU); the cold plate's
+   coefficient stays referenced to the COMPUTE footprint (the doubled 2.5D footprint cut h 31 % and the
+   idle die ran away); curve-only the envelope is AREA-weighted and the banks starve the compute die
+   (`--mr-dt-max 45` beside the dye curve on every 2.00 row). And a process trap that cost half an hour:
+   killing a campaign's python processes lets its `xargs` launch the next lines — kill the `xargs` first.
+
+## Decisions waiting on the user
+
+- `DEFAULT_COLD_ZONE_PATTERN` (unchanged since 19 Sep) and the LSTP-cache catalogue as default (§P0.42).
+- Whether the two-die planner is the next build (recommended: §P0.45's stack side cannot be read without
+  it, and §P0.44's far-face rows carry its share).
+
+## Still open, in order
+
+1. **The two-die planner** (register §3, with the specifics): an envelope scalar per die, the storage
+   die's seeded from its HOT-state need (its leakage at the diverged field's temperature + inflows),
+   per-zone caps of own dissipation PLUS inflow — then `scripts/cold_zone_ledger_ladder.sh` again (both
+   shapes) and §P0.44's far-face rows (the storage array's true need).
+2. An 8-high stack resolved die by die (`StackSpec` with n die elements and n − 1 bonds); the 2.5D form
+   on a real interposer; CoMeT's bank temperatures for the 2.5D / 3D rows.
+3. The LSTP-cache catalogue (user's call); dynamic rails and the metal stack for 402; the 25 µm cropped
+   die; the f_max model's architecture inputs; D2; Phase 2; net export stays reserved.
+
+## Files to stage (never `git add .`) — in addition to the 19–20 Sep lists below
+
+New: `HotGauge/HotGauge/thermal/memory_die.py`, `HotGauge/HotGauge/thermal/test_memory_die.py`,
+`examples/memory_die_report.py`, `examples/cold_zone_ledger_report.py`, `examples/comet_cache_latency_report.py`,
+`scripts/memory_die_ladder.sh`, `scripts/cold_zone_ledger_ladder.sh`,
+`docs/evidence/{memory_die,cold_zone_ledger,comet_cache_latency}.json`,
+`docs/photonic_cooling/MXL-006-PRO/Update/figures/pat_fig10.png`,
+`results-quotable/{35-memory-die-placement,36-cache-latency-not-a-lever}/`; outside the repo:
+`CoMeT/test/mem_arrangement_sweep/{runit_cachelat,launch_cachelat_on_node}.sh`,
+`spice_toolchain/tmp/{build_hpx4_trace,run_tests_p044}.sh` (gitignored), `mcpat_runs/7nm/linpack_3.8GHz_hpx4nolc/` (untracked tree).
+Modified: `HotGauge/HotGauge/thermal/die_stack.py`, `examples/mr_comparison.py`,
+`scripts/build_results_registers.py`, `docs/{METHODS,PHASE0_CHECKLIST,RESULTS_REGISTER,START_HERE,NEXT_SESSION,NEXT_SESSION_PROMPT}.md`,
+`docs/designs/EVOLUTION_LADDER.md`, `CLAUDE.md`, the memo (`.md` / `.docx` / `.html`, `make_patent_figures.py`,
+`build_memo.sh`, `figures/pat_fig*.png`, `figures/patent_figure_legend.md`), `results-quotable/{MANIFEST.json,README.md}`.
+`results/` is gitignored (`memory_die/`, `memory_die_twins/`, `memory_die_v1_curveonly/`, `cold_zone_ledger[_power]/`,
+`anchor_2026-10-27/`, `suite_2026-10-27/`, `build_hpx4nolc/`, `reports/`).
+
+---
+
+# 20 September 2026, later — §P0.43 landed (the CoMeT sweep ran on node-06); §P0.42 closed
+
+Docker access on node-06 fixed by the user. **§P0.43:** 32 matched CoMeT runs (FFT, lu.cont × DDR /
+3Dmem / 2.5D / 3D × 2–16 GHz): DDR −31 % at 4 GHz and −54 % at 16 GHz against 2.5D (FFT);
+elasticity @4 / @16 GHz 0.51 / 0.21 (DDR) vs 0.78 / 0.47 (2.5D); 3D over 2.5D +1–6 %; the floor b
+∝ measured DRAM latency. **Near memory and the cooler are complements; off-package → in-package
+is the step, stacking under the cores is not.** Register §1.3 row, `results-quotable/34-…`,
+START_HERE item 25. **§P0.42 closed:** LSTP-trace density ceilings at pinned watts — flat
+0.90–0.95 (one rung up), shaped 0.60–0.65 (unchanged). How CoMeT is driven on the node (and its
+three traps: the snap client cannot read `/mnt`, containers write as root, a stale slurm step
+keeps old group credentials) is in `CLAUDE.md` §P0.43. The campaign server was stopped at the end.
+Open from it: no thermal samples in the 2.5D / 3D rows (lower `sampling_interval`); an HBM
+bandwidth model; larger inputs; what a faster cache does to `b` (the cold-zone lever, §P0.42 b).
+New files: `examples/comet_mem_arrangement_report.py`, `docs/evidence/comet_mem_arrangement.json`,
+`CoMeT/test/mem_arrangement_sweep/run_all_on_node.sh`.
+
+---
+
+# 20 September 2026 — §P0.42: the user's four answers acted on
+
+Read `PHASE0_CHECKLIST.md` §P0.42 (predictions, P3a's pre-run amendment, the result-so-far), the
+register's two re-written §3 rows and §1.2's head note, memo §6.6b's lead note and §8's new
+paragraph. **The campaign server was LEFT UP: the LSTP density ladder
+(`results/uniform_density_armD_lstpcache/`, 18 rungs) is still solving** — read it, score P2, then
+`touch results/campaign_queue/STOP`.
+
+1. **CoMeT on node-06: blocked on access, staged otherwise.** Docker is installed there but the
+   socket is `root:root` and `jbalma` has no docker group / passwordless sudo. Once fixed:
+   `bash CoMeT/test/mem_arrangement_sweep/launch_on_node.sh gen` through the queue (one line), then
+   `queue.sh > …/running/.c.tmp && mv … comet_mem.par8.tsv` (32 runs, one container each; the
+   launcher refuses the head node and loads `CoMeT/docker_images/comet-jbalma.tar` if needed).
+2. **"No cache-cooling benefit" was an overclaim and is withdrawn everywhere** (memo lead note,
+   register, ladder, trip list, CLAUDE.md): two points on one die. The experiment design is
+   §P0.42(b); its first sweep (McPAT surface, 15 variants) ran: cell class × neighbour
+   temperature × channel length set the zone's leakage density, capacity does not; it pays at
+   ~2.5–3× the recorded point — fast memory beside a hot compute die. ARGUED on the stack side.
+3. **The LSTP-cache trace exists** and the anchors are measured both ways: pinned watts +24 % /
+   +13 % (an artefact of `--density`), MATCHED ACTIVITY ±3 %. Compare traces at matched activity.
+4. **`DEFAULT_COLD_ZONE_PATTERN` unchanged**, reasoning recorded (§P0.42 d).
+
+New: `examples/mcpat_cache_surface_report.py`, `docs/evidence/mcpat_cache_surface.json`,
+`scripts/uniform_density_ladder_armD_lstpcache.sh`, `mcpat_runs/7nm/linpack_3.8GHz_lstpcache*/`
+(untracked tree, like the HP one), `CoMeT/test/mem_arrangement_sweep/{launch_on_node,queue}.sh`,
+`CoMeT/docker_images/comet-jbalma.tar` (1.4 GB, not for git). Modified: the checklist, register,
+START_HERE, CLAUDE.md, the memo (+ `.docx` / `.html`), `make_patent_figures.py`,
+`scripts/build_results_registers.py`, `NEXT_SESSION_PROMPT.md`, this file.
+
+---
+
+# 19 September 2026, late — §P0.40–§P0.41: the storage die's motive audited (it is a McPAT input), the CoMeT memory record read, the designed fingers with rails
+
+The user asked (i) whether the storage-die concept is physically beneficial or a modelling
+issue, (ii) whether any CoMeT run uses HBM / on-die memory, since off-die memory looked like the
+bottleneck, then (iii) to proceed. Read `PHASE0_CHECKLIST.md` **§P0.40 first**, then §P0.41;
+register §1.2's head note, two new §2 rows, three new §3 rows, two new §4 constraints; ladder
+§4.1's head note; memo §6.6b's head note; `START_HERE.md` item 24; the re-aimed
+`NEXT_SESSION_PROMPT.md`. The handoff below this one (evening) is otherwise still current.
+
+- **§P0.40 — the audit.** Gen 3's GEOMETRY is physics (none of it depends on McPAT). Its MOTIVE is
+  an input: the trace's McPAT XML gives `system.L2x` / `system.L30` `device_type = 0` (HP). Re-run
+  on the node with LSTP cells the caches' leakage falls **306×** (1.652 → 0.0054 W; 53.8 % → 0.4 %
+  of processor leakage; static 29.4 → 16.1 %); the HP row reproduces the project's 54 % and 29.36 %
+  exactly; LOP is a broken table. `examples/mcpat_cache_device_report.py` →
+  `mcpat_cache_device.json`; `results-quotable/33-…`. **A cache-leakage saving in watts carries its cell class
+  (and "no benefit" is not established — user, 20 Sep, §P0.42); the unpowered storage die's run-away in §P0.37 is the
+  same artefact.** Every recorded thermal result still carries HP caches (register §3 — the
+  user's call whether the catalogue is re-generated).
+- **The CoMeT record.** 159 runs: `2.5D` × 111, `3Dmem` × 40, `3D` × 8, **`DDR` × 0**, and no
+  benchmark at one clock under two arrangements. **The IPC(f) sweep of §P0.33 is `2.5D` — HBM-class
+  (20 ns, 4 controllers).** FFT fits t = 0.328/f + 0.0191 ns per instruction within 1 %: the memory
+  floor is 19 % of the run at 4 GHz, 48 % at 16 GHz, and IS the 0.78–0.84 elasticity. ARGUED from
+  it: 3D +3 % / +9 %, DDR −14 % / −29 % at 4 / 16 GHz. Banks sit at 57–65 °C in CoMeT's own model.
+  **The matched sweep is written — `CoMeT/test/mem_arrangement_sweep/runit.sh` — and NOT run:
+  CoMeT needs docker, docker is on the head node only. The user's call.**
+- **§P0.41 — the designed fingers with rails** (6 searches): rail-off 3.728 GHz at 16× and 32× for plans of
+  26 / 33 W; widened by the density ratio 3.737 GHz (J 20.2× / 40.5× native, 44 mV); on native rails 2.04 GHz
+  (16×) and no clock above the 2 GHz floor (32×). `[!]` The 16× native-rail clock is path-dependent (strip
+  2.57, finger 2.04 GHz): quote 2.0–2.6 GHz. Suite **1116 passed, 1 skipped** after everything; pack,
+  registers (33 items, verify OK) and the memo (`.docx` / `.html`) rebuilt; the campaign server stopped.
+- **Re-aimed gen 3 (next build, scoped not started):** a DRAM / HBM die on the two-sink stack under
+  the array, held under 85 °C, isolation swept against via conductance. Design notes and the
+  silent traps are in `NEXT_SESSION_PROMPT.md` item 1.
+
+New files (add to the evening's staging list): `examples/mcpat_cache_device_report.py`,
+`docs/evidence/mcpat_cache_device.json`, `results-quotable/33-cache-leakage-is-a-device-input/`,
+`…/Update/results/mcpat_cache_device.json`; outside the repo: `CoMeT/test/mem_arrangement_sweep/runit.sh`.
+Modified again: `scripts/clock_rail.sh`, `examples/clock_rail_report.py`, the checklist, register,
+ladder, START_HERE, CLAUDE.md, the memo (+ `.docx` / `.html`), `make_patent_figures.py` (FIG. 6's
+caption), `scripts/build_results_registers.py`, both NEXT_SESSION files.
+
+---
+
+# 19 September 2026, evening — §P0.37–§P0.39: the two-sink gen-3 stack, the designed finger cluster, the rail model
+
+Read `docs/START_HERE.md` (items 20–23 new), `docs/NEXT_SESSION_PROMPT.md` (rewritten tonight),
+`docs/PHASE0_CHECKLIST.md` §P0.37–§P0.39 (predictions, the two amendments, RESULTs),
+`docs/RESULTS_REGISTER.md` (one new §1.2 row, two new §1.3 rows, three §2 withdrawals, four new §3
+items and the rail item closed, three §4 constraints), ladder §2.3 / §2.4 (last paragraph) / §4.3
+(the 19 Sep block) / §7 / §8, memo §5 / §6.6 / §6.6a / §6.6b / §7A / §8, `METHODS.md` §4.2a (the
+pattern) and §4.2b (the two-sink stack). Job **1507** alive; the campaign server was **stopped**
+at the end. Suite **1116 passed, 1 skipped** (node, after every edit). **Both anchors reproduced
+after the stack / wiring / solver edits** (`results/anchor_2026-09-19/`: seed 138.72881 W /
+93.8752 °C; per-block 113.63869 W / 91.5424 °C). Nothing from 19 Sep is committed.
+
+## What landed (in the brief's order)
+
+1. **§P0.37 — the two-sink gen-3 stack** (`StackSpec(two_sink=True)`, `mr_array.TwoSinkWiring` +
+   `tile_serves`, `ICESim(mr2_flp_template=)`, `mr_comparison.py --two-sink --iso-um --iso-k
+   --bottom-sink-r-th`, `scripts/two_sink_ladder.sh`, `examples/two_sink_report.py` →
+   `two_sink.json`; 100 µm cells, three passes — read `results/two_sink_v3/`). Off the heat path
+   the caches are held at **280 K (282 K max) for 10.9 / 13.7 / 26.2 / 75.1 W at k = 0.025 / 0.1 /
+   0.5 / 5 W/mK**, all on the storage array (s 0.11–0.81), compute array 0 W, leakage 3.5–4.0×
+   down (sink-side / monolithic re-run: 99.4 W, s 1.08). **The unpowered storage die has no
+   steady state with the far face adiabatic or behind 10–30 K/W**; at 3 / 1 / 0.3 K/W the plan
+   is 13.7 / 20.1 / 39.8 W. **Cr:LiSAF is capped at every isolation (1.7 W short at the best,
+   290 K).** The laser draws 7.0 W to save 2.78 W. At 2.00 W/mm² the compute array's share is
+   108.6 W; the combined point is held at k = 0.5 (155.7 W, s 0.84) and lost at k ≤ 0.1 to the
+   one-scalar envelope (a planner limit). `[!]` **Found on the way: the default cache pattern
+   `'^(L2|L3)'` matches the 34 `L2Pred_*` blocks**; D3 / X4 re-run with
+   `'^(L2|L3)(_[0-9]+)?$'` did not move (99.4 W), their zone max did. Default unchanged — the
+   user's call (see below).
+2. **§P0.38 — the designed finger cluster** (`generate_exec_density_family.py --finger-cluster`;
+   members `d1_exec{0.0625,0.03125}_finger`, `d1_exec0.03125{,_compact}`;
+   `scripts/finger_cluster_ladder.sh`, `examples/finger_cluster_report.py` → `finger_cluster.json`;
+   46 points): **every rung to 243 W at 16× (s 0.76) and 32× (s 0.85)**, 0 capped, 0.74–0.79× the
+   strips' plan; the strips lose 243 W (16×) / 202 W (32×); the compact 16× gains one rung only
+   under a 50 µm tile of the cold-tolerant film (117 W, s 0.78) and nothing at 5 µm burial.
+   **The cropped die on a 25 µm grid was NOT built.**
+3. **§P0.39 — the rail model** (`fmax_model.py`: `rail_droop_native`, `rail_resize`,
+   `worst_current_density`, `set_context(..., J)`; `clock_headroom.py --vf-source
+   fmax:rail=0.05[,resize=k]`; `scripts/clock_rail.sh`, `examples/clock_rail_report.py` →
+   `clock_rail.json`; 10 searches): native rails cost the 8× / 16× strip clusters **19.0 % /
+   30.5 % of clock (−16.6 % / −26.8 % f × IPC(f)) with the array's plan at 0 W**; re-sized by the
+   cluster's current-density ratio +1.3 % / +0.2 %, by half of it −1.8 % / −1.9 %; the reference
+   die does not notice. Static IR only. The first 16× native-rail search crashed at
+   V_eff = 0.08 V; an eaten supply is now a verdict (`f = 0`), with a test.
+4. **The drawings and the memo:** `make_patent_figures.py` → eleven sheets (new **FIG. 3C**;
+   FIG. 9 has four panels; FIG. 6b / FIG. 7's storage die and FIG. 4's 402 re-captioned
+   MEASURED with their limits); memo §6.6b is new; `.docx` / `.html` rebuilt; the pack is
+   `proposal_pack_2026-09-19/` (rebuilt tonight, three new scorecard sections); `results-quotable/`
+   has 32 items (30-two-sink-gen3-stack, 31-designed-finger-cluster, 32-rail-model-clock).
+   `[!]` I could not LOOK at the regenerated PNGs this session (the image reader was down):
+   **open `pat_fig3c.png`, `pat_fig6.png`, `pat_fig9.png` before they go to counsel.**
+
+## Decisions waiting on the user
+
+- **`DEFAULT_COLD_ZONE_PATTERN`** (`thermal/extractor.py`): flip to `'^(L2|L3)(_[0-9]+)?$'`? It is
+  the correct zone; it changes D3's / X4's reported zone max (not their plans). Left alone.
+- **Item 4 of the brief (the f_max model's architecture inputs) was not started**: it needs a
+  synthesised core's timing report, which is not in the repository. Candidates on disk to read
+  first: `docs/chip_design_lit/design_of_highperf_microproc_circuits.pdf` (FO4 per stage by
+  generation), the IRDS tables under `roadmaps/`.
+
+## Still open, in order
+
+1. **A two-die planner** (separate envelope scalars; caps only from a converged field) — then
+   the combined 92 °C / 280 K point at k ≤ 0.1 and the three undecided Cr:LiSAF rows.
+2. **The storage zone's target and material** (285 / 290 / 295 K; the far-face sink between 3
+   and 10 K/W) — Cr:LiSAF is 1.7 W from a job and the ledger is 4 W in the red at 280 K.
+3. **The designed finger cluster with rails** (32×: ~920 W/mm²), then a dynamic rail term.
+4. **The cropped die on a 25 µm grid** (finger-vs-compact is grid-sensitive; finger-vs-strip is not).
+5. The f_max model's architecture inputs; D2; Phase 2; net export stays reserved.
+
+## Files to stage (never `git add .`) — in addition to the morning's list below
+
+New: `examples/two_sink_report.py`, `examples/finger_cluster_report.py`,
+`examples/clock_rail_report.py`, `scripts/two_sink_ladder.sh`, `scripts/finger_cluster_ladder.sh`,
+`scripts/clock_rail.sh`, `examples/floorplans/outputs/d1_exec0.0625_finger/`,
+`…/d1_exec0.03125/`, `…/d1_exec0.03125_compact/`, `…/d1_exec0.03125_finger/`,
+`docs/evidence/{two_sink,finger_cluster,clock_rail,d1_exec_density_family_finger,d1_exec_density_family_x32,d1_exec_density_family_compact_x32}.json`,
+`docs/photonic_cooling/MXL-006-PRO/Update/figures/pat_fig3c.png`,
+`…/Update/results/{two_sink,finger_cluster,clock_rail}.json`,
+`results-quotable/{30-two-sink-gen3-stack,31-designed-finger-cluster,32-rail-model-clock}/`.
+Modified: `HotGauge/HotGauge/thermal/{die_stack,ICE,leakage_feedback,mr_array,test_die_stack,test_mr_array}.py`,
+`HotGauge/HotGauge/power/{fmax_model,test_fmax_model}.py`, `examples/mr_comparison.py`,
+`examples/clock_headroom.py`, `examples/generate_exec_density_family.py`,
+`scripts/build_results_registers.py`, `scripts/build_proposal_pack.py`, `docs/METHODS.md`,
+`docs/PHASE0_CHECKLIST.md`, `docs/RESULTS_REGISTER.md`, `docs/designs/EVOLUTION_LADDER.md`,
+`docs/START_HERE.md`, `docs/NEXT_SESSION_PROMPT.md`, `CLAUDE.md`, the memo (`.md` / `.docx` /
+`.html`, `make_patent_figures.py`, `figures/pat_fig*.png`, `figures/patent_figure_legend.md`,
+`results/RESULTS_REGISTER.md`, `results/EVOLUTION_LADDER.md`), `results-quotable/{MANIFEST.json,README.md}`,
+this file. `proposal_pack_2026-09-19/` is generated; `results/` and `spice_toolchain/tmp/` are gitignored.
+
+---
+
+# 19 September 2026 — §P0.35–§P0.36: the dense cluster's cold-end wall, the compact cluster, and the patent drawings
+
+Read `docs/START_HERE.md` (items 18–19 new), `docs/NEXT_SESSION_PROMPT.md` (rewritten today),
+`docs/PHASE0_CHECKLIST.md` §P0.35–§P0.36, `docs/RESULTS_REGISTER.md` (two new §1.3 rows, one §2
+withdrawal, one §4 constraint), ladder §2.4's last paragraph, memo §2.2 / §6.6a / §7A / §8.
+Job **1507** still alive; the campaign server was **stopped** at the end. Suite **1098 passed,
+1 skipped** (node, 19 Sep). No planner or stack edit today, so no anchor re-run was needed.
+The 13 Sep work is committed (`b18fd75`); today's is not.
+
+## What landed
+
+- **§P0.35 (17 points):** the 8× cluster's lost 243 W rung was the DYE'S temperature dependence —
+  under the retuned-enhanced GaAs (v100 Table 1.1, a ceiling; capability RISES on cooling) it
+  holds 243 W at s 0.88–0.91, tile at 235–242 K, 0 capped, and its 202 W plan falls 18 %; a
+  **dual-material layout** over the execution column equals the whole-array material on the 8×;
+  plain GaAs (< 1 W/mm²) fails with 5954 tiles capped; **the dye at 50 µm pitch loses every row**
+  (59–87 capped). The 16×'s 243 W wall is not the material. P1 falsified, P3 / P5 confirmed.
+- **§P0.36 (34 + 4 points):** `generate_exec_density_family.py --compact-cluster` (the four
+  execution units in one near-square block; same areas, powers, names, die area). **Compact helps
+  to 8× and breaks at 16×:** 8× compact 0.94 / 0.85 of the strip plan and gains 243 W at 200 µm
+  pitch (s 0.98); 4× compact gains 243 W at the D1 geometry (s 0.93); the compact 16× holds only
+  111 / 121 W and has no steady state at 162 / 202 W — 0 capped, unchanged without the 45 K lift
+  and under either material: TRANSPORT. The strip ("finger") 16× holds 202 W. Five of six
+  predictions falsified, all in the record.
+- **The patent drawings** (`docs/photonic_cooling/MXL-006-PRO/Update/make_patent_figures.py` →
+  `figures/pat_fig1–9.png` + `pat_fig3b.png`, `patent_figure_legend.md`): ten monochrome sheets
+  with reference numerals from the real floorplans; memo §7A carries them with MEASURED / ARGUED
+  captions, §6.6a the four new dependent limitations, §4 the four 13 Sep evidence figures;
+  `.docx` / `.html` rebuilt 19 Sep 12:28. **The proposal pack is `proposal_pack_2026-09-19/`
+  (+ `.zip`, 5.3 MB)** with the drawings under the ladder; `results-quotable/` has 29 items
+  (28-cluster-cold-end, 29-compact-cluster-shape), `--verify` OK.
+- `[!]` **Queue-file trap found today (METHODS §2.2):** write a queue file elsewhere and `mv` it
+  in — the server picked up a half-written ladder and ran 5 of 34 jobs.
+
+## Still open, in order
+
+1. **The two-sink gen-3 stack** (FIG. 6b / FIG. 7's storage die are still ARGUED).
+2. **The finger layout as a designed thing** (FIG. 9c is the tiler's accident): a family with the
+   execution units deliberately interdigitated with scheduler / register logic at the tile pitch,
+   16× and 32×; and the compact 16× at 5 µm burial / 50 µm cold-tolerant pitch / a 25 µm grid
+   on a cropped die, to bound the transport wall.
+3. **A rail model**; 4. the fmax model's architecture inputs; 5. D2, Phase 2.
+
+## Files to stage (never `git add .`)
+
+New: `examples/cluster_coldend_report.py`, `examples/compact_cluster_report.py`,
+`scripts/cluster_coldend_ladder.sh`, `scripts/compact_cluster_ladder.sh`,
+`examples/floorplans/outputs/d1_exec{0.5,0.25,0.125,0.0625}_compact/`,
+`docs/evidence/cluster_coldend.json`, `docs/evidence/compact_cluster.json`,
+`docs/evidence/d1_exec_density_family_compact.json`,
+`docs/photonic_cooling/MXL-006-PRO/Update/make_patent_figures.py`, `…/figures/pat_fig*.png`,
+`…/figures/patent_figure_legend.md`, `…/figures/ev_{fmax_generalized,cluster_transport,ipc_of_f,dense_cluster_per_block}.png`,
+`results-quotable/28-cluster-cold-end/`, `results-quotable/29-compact-cluster-shape/`.
+Modified: `examples/generate_exec_density_family.py`, `examples/cluster_transport_report.py`,
+`scripts/build_results_registers.py`, `scripts/build_proposal_pack.py`, `docs/METHODS.md`,
+`docs/PHASE0_CHECKLIST.md`, `docs/RESULTS_REGISTER.md`, `docs/designs/EVOLUTION_LADDER.md`,
+`docs/START_HERE.md`, `docs/NEXT_SESSION_PROMPT.md`, `CLAUDE.md`, the memo (`.md` / `.docx` /
+`.html`, `build_memo.sh`, `figures/ev_*.png`), `results-quotable/{MANIFEST.json,README.md}`, this file.
+`proposal_pack_2026-09-19/` is generated; `results/` is gitignored.
+
+---
+
 # 13 September 2026, evening — §P0.31–§P0.34 landed: the generalized f_max, the 8× / 16× cluster transport ladder, IPC(f), D1 under the per-block shape
 
 Read `docs/START_HERE.md` (trip list 15–17 are new), then `docs/NEXT_SESSION_PROMPT.md` (rewritten

@@ -1,0 +1,10 @@
+{
+ "factor": 0.5,
+ "scaled": [
+  "Execution Unit/Complex ALUs/Area",
+  "Execution Unit/Integer ALUs/Area",
+  "Execution Unit/Floating Point Units/Area"
+ ],
+ "delta_mm2_per_core": 0.41339804249999995,
+ "source": "examples/floorplans/adjusted_14nm-area.json"
+}

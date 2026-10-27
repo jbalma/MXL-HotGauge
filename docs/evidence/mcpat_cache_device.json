@@ -1,0 +1,203 @@
+{
+ "note": "\u00a7P0.40: McPAT A/B on the caches' DEVICE CLASS -- is the cache-leakage prize a device choice?\n\n    bash spice_toolchain/tmp/mcpat_cache_device_ab.sh     # on the node: three McPAT runs\n    python examples/mcpat_cache_device_report.py          # -> docs/evidence/mcpat_cache_device.json\n\nThe recorded trace's McPAT XML gives every L2 and the L3 ``device_type = 0`` (HP), the core logic's\nclass. This reads the same steady slice re-run with the caches at 0 (HP, as recorded), 1 (LSTP)\nand 2 (LOP): subthreshold + gate leakage of the L3, of one L2 and of the processor, at McPAT's\n330 K. Real cache arrays use low-leakage bitcells, so the truth sits between the HP and LSTP\ncolumns and far nearer LSTP; LOP at this fork's 7 nm tables is not credible (it RAISES leakage\n23x) and is recorded, not used.",
+ "source_xml": "mcpat_runs/7nm/linpack_3.8GHz/energystats-temp-2000000000000.xml",
+ "T_K": 330,
+ "n_L2": 8,
+ "rows": {
+  "HP (recorded)": {
+   "device_type": 0,
+   "L3_leak_W": 1.2250424500000001,
+   "L2_leak_W_each": 0.053407027,
+   "cache_leak_W": 1.652298666,
+   "processor_leak_W": 3.0698461,
+   "cache_share_of_leak": 0.5382350164068486,
+   "processor_dynamic_W": 7.3851,
+   "static_fraction": 0.29362620052149285,
+   "L3_area_mm2": 3.07134,
+   "L2_area_mm2_each": 0.154586
+  },
+  "LSTP": {
+   "device_type": 1,
+   "L3_leak_W": 0.002051797,
+   "L2_leak_W_each": 0.00041265400000000004,
+   "cache_leak_W": 0.0053530290000000005,
+   "processor_leak_W": 1.4240933,
+   "cache_share_of_leak": 0.00375890329657474,
+   "processor_dynamic_W": 7.40212,
+   "static_fraction": 0.16134816275061017,
+   "L3_area_mm2": 3.2586,
+   "L2_area_mm2_each": 0.620101
+  },
+  "LOP": {
+   "device_type": 2,
+   "L3_leak_W": 28.680555740000003,
+   "L2_leak_W_each": 0.47414262,
+   "cache_leak_W": 32.473696700000005,
+   "processor_leak_W": 33.8913061,
+   "cache_share_of_leak": 0.9581718864473034,
+   "processor_dynamic_W": 7.38877,
+   "static_fraction": 0.8210088086538193,
+   "L3_area_mm2": 3.05984,
+   "L2_area_mm2_each": 0.153115
+  }
+ },
+ "raw": {
+  "0": {
+   "Core": {
+    "Area": 28.7687,
+    "Peak Dynamic": 19.3903,
+    "Subthreshold Leakage": 3.05158,
+    "Gate Leakage": 0.0182661,
+    "Runtime Dynamic": 7.3851
+   },
+   "Processor": {
+    "Area": 28.7687,
+    "Peak Dynamic": 19.3903,
+    "Subthreshold Leakage": 3.05158,
+    "Gate Leakage": 0.0182661,
+    "Runtime Dynamic": 7.3851
+   },
+   "Total Cores": {
+    "Area": 25.5398,
+    "Peak Dynamic": 19.2105,
+    "Subthreshold Leakage": 1.8095,
+    "Gate Leakage": 0.0172512,
+    "Runtime Dynamic": 7.25966
+   },
+   "Total L3s": {
+    "Area": 3.07134,
+    "Peak Dynamic": 0.179825,
+    "Subthreshold Leakage": 1.22421,
+    "Gate Leakage": 0.00083245,
+    "Runtime Dynamic": 0.125438
+   },
+   "L2": {
+    "Area": 0.154586,
+    "Peak Dynamic": 0.0445014,
+    "Subthreshold Leakage": 0.053259,
+    "Gate Leakage": 0.000148027,
+    "Runtime Dynamic": 0.000238472
+   },
+   "L3": {
+    "Area": 3.07134,
+    "Peak Dynamic": 0.179825,
+    "Subthreshold Leakage": 1.22421,
+    "Gate Leakage": 0.00083245,
+    "Runtime Dynamic": 0.125438
+   }
+  },
+  "1": {
+   "Core": {
+    "Area": 32.6905,
+    "Peak Dynamic": 19.4447,
+    "Subthreshold Leakage": 1.40647,
+    "Gate Leakage": 0.0176233,
+    "Runtime Dynamic": 7.40212
+   },
+   "Processor": {
+    "Area": 32.6905,
+    "Peak Dynamic": 19.4447,
+    "Subthreshold Leakage": 1.40647,
+    "Gate Leakage": 0.0176233,
+    "Runtime Dynamic": 7.40212
+   },
+   "Total Cores": {
+    "Area": 29.2639,
+    "Peak Dynamic": 19.2455,
+    "Subthreshold Leakage": 1.38561,
+    "Gate Leakage": 0.0171879,
+    "Runtime Dynamic": 7.25981
+   },
+   "Total L3s": {
+    "Area": 3.2586,
+    "Peak Dynamic": 0.199259,
+    "Subthreshold Leakage": 0.00181093,
+    "Gate Leakage": 0.000240867,
+    "Runtime Dynamic": 0.142313
+   },
+   "L2": {
+    "Area": 0.620101,
+    "Peak Dynamic": 0.0795045,
+    "Subthreshold Leakage": 0.000272541,
+    "Gate Leakage": 0.000140113,
+    "Runtime Dynamic": 0.000388986
+   },
+   "L3": {
+    "Area": 3.2586,
+    "Peak Dynamic": 0.199259,
+    "Subthreshold Leakage": 0.00181093,
+    "Gate Leakage": 0.000240867,
+    "Runtime Dynamic": 0.142313
+   }
+  },
+  "2": {
+   "Core": {
+    "Area": 28.7453,
+    "Peak Dynamic": 19.3969,
+    "Subthreshold Leakage": 33.8721,
+    "Gate Leakage": 0.0192061,
+    "Runtime Dynamic": 7.38877
+   },
+   "Processor": {
+    "Area": 28.7453,
+    "Peak Dynamic": 19.3969,
+    "Subthreshold Leakage": 33.8721,
+    "Gate Leakage": 0.0192061,
+    "Runtime Dynamic": 7.38877
+   },
+   "Total Cores": {
+    "Area": 25.528,
+    "Peak Dynamic": 19.2121,
+    "Subthreshold Leakage": 5.17488,
+    "Gate Leakage": 0.017768,
+    "Runtime Dynamic": 7.25969
+   },
+   "Total L3s": {
+    "Area": 3.05984,
+    "Peak Dynamic": 0.184761,
+    "Subthreshold Leakage": 28.6793,
+    "Gate Leakage": 0.00125574,
+    "Runtime Dynamic": 0.129079
+   },
+   "L2": {
+    "Area": 0.153115,
+    "Peak Dynamic": 0.0461588,
+    "Subthreshold Leakage": 0.47393,
+    "Gate Leakage": 0.00021262,
+    "Runtime Dynamic": 0.00027478
+   },
+   "L3": {
+    "Area": 3.05984,
+    "Peak Dynamic": 0.184761,
+    "Subthreshold Leakage": 28.6793,
+    "Gate Leakage": 0.00125574,
+    "Runtime Dynamic": 0.129079
+   }
+  }
+ },
+ "scorecard": {
+  "P1_prize_is_the_device_choice": {
+   "measured": {
+    "cache_leak_ratio_HP_over_LSTP": 308.6661152031868,
+    "LOP_over_HP": 19.653648198248927
+   },
+   "verdict": "confirmed"
+  },
+  "P2_static_fraction": {
+   "measured": {
+    "HP": 0.29362620052149285,
+    "LSTP": 0.16134816275061017,
+    "cache_share_HP": 0.5382350164068486,
+    "cache_share_LSTP": 0.00375890329657474
+   },
+   "verdict": "see the checklist: McPAT-native scope (8 cores, raw), not the floorplan ledger"
+  },
+  "P3_mcpat_accepts_the_classes": {
+   "measured": {
+    "ran": true,
+    "LOP_credible": false
+   },
+   "verdict": "not as predicted: all three ran; LOP is not credible at 7 nm"
+  }
+ }
+}

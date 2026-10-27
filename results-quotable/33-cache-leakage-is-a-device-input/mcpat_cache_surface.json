@@ -1,0 +1,237 @@
+{
+ "note": "\u00a7P0.42(b): where could a cold memory zone pay? -- the McPAT-only first sweep.\n\n    bash spice_toolchain/tmp/mcpat_cache_surface.sh      # on the node\n    python examples/mcpat_cache_surface_report.py        # -> docs/evidence/mcpat_cache_surface.json\n\nOne steady slice (8 cores, McPAT scope). Variants: the cell class per LEVEL ({L2, L3} x {HP, LSTP}),\nthe L3's capacity (1 / 2 / 4 / 8 x) in both classes, ``longer_channel_device`` off, McPAT's temperature\nat 330 / 360 / 380 K. Per variant: L3 and L2 leakage [W], area [mm^2], LEAKAGE DENSITY [W/mm^2] -- the\nquantity the two-sink ledger (\u00a7P0.37) needs: a cold zone pays when the leakage it sheds per mm^2\nexceeds the laser's net draw per mm^2 of zone. This maps ONE die's inputs; it does not say what any\nother architecture would find (user, 20 Sep: do not claim \"no benefit\" -- find where there is one).",
+ "break_even_leak_W_per_mm2_floorplan_scale": 0.3255813953488372,
+ "break_even_inputs": {
+  "laser_net_W": 7.0,
+  "zone_mm2": 30.1,
+  "shed_fraction": 0.7142857142857143,
+  "source": "\u00a7P0.37, k = 0.025, 3 K/W"
+ },
+ "rows": {
+  "T360_dt0": {
+   "L3_leak_W": 3.8775024499999997,
+   "L3_area_mm2": 3.07134,
+   "L3_leak_W_per_mm2": 1.2624790645125579,
+   "L2_leak_W_each": 0.168802027,
+   "L2_area_mm2_each": 0.154586,
+   "L2_leak_W_per_mm2": 1.0919619305758606,
+   "cache_leak_W": 5.227918666,
+   "processor_leak_W": 9.6815861,
+   "cache_share": 0.5399857639028794,
+   "L3_share_of_cache_leak": 0.7416914259239549,
+   "L3_dynamic_W": 0.125438
+  },
+  "T360_dt1": {
+   "L3_leak_W": 0.003554687,
+   "L3_area_mm2": 3.2586,
+   "L3_leak_W_per_mm2": 0.0010908632541582275,
+   "L2_leak_W_each": 0.0006388359999999999,
+   "L2_area_mm2_each": 0.620101,
+   "L2_leak_W_per_mm2": 0.0010302128201696173,
+   "cache_leak_W": 0.008665375,
+   "processor_leak_W": 4.466093300000001,
+   "cache_share": 0.0019402583909297188,
+   "L3_share_of_cache_leak": 0.4102173304675216,
+   "L3_dynamic_W": 0.142313
+  },
+  "T380_dt0": {
+   "L3_leak_W": 11.80573245,
+   "L3_area_mm2": 3.07134,
+   "L3_leak_W_per_mm2": 3.8438376897380295,
+   "L2_leak_W_each": 0.5137170270000001,
+   "L2_area_mm2_each": 0.154586,
+   "L2_leak_W_per_mm2": 3.3231795052592092,
+   "cache_leak_W": 15.915468666000002,
+   "processor_leak_W": 29.4441661,
+   "cache_share": 0.5405304606673851,
+   "L3_share_of_cache_leak": 0.7417772418615874,
+   "L3_dynamic_W": 0.125438
+  },
+  "T380_dt1": {
+   "L3_leak_W": 0.058022567,
+   "L3_area_mm2": 3.2586,
+   "L3_leak_W_per_mm2": 0.017805980175535505,
+   "L2_leak_W_each": 0.008836153000000001,
+   "L2_area_mm2_each": 0.620101,
+   "L2_leak_W_per_mm2": 0.014249538381650733,
+   "cache_leak_W": 0.12871179100000002,
+   "processor_leak_W": 13.6688233,
+   "cache_share": 0.009416449988054203,
+   "L3_share_of_cache_leak": 0.45079449636436175,
+   "L3_dynamic_W": 0.142313
+  },
+  "cap2x_dt0": {
+   "L3_leak_W": 2.11596022,
+   "L3_area_mm2": 5.39498,
+   "L3_leak_W_per_mm2": 0.3922090943803313,
+   "L2_leak_W_each": 0.053407027,
+   "L2_area_mm2_each": 0.154586,
+   "L2_leak_W_per_mm2": 0.34548424178127385,
+   "cache_leak_W": 2.543216436,
+   "processor_leak_W": 3.9614812,
+   "cache_share": 0.6419862439332035,
+   "L3_share_of_cache_leak": 0.8320016299234078,
+   "L3_dynamic_W": 0.17549
+  },
+  "cap2x_dt1": {
+   "L3_leak_W": 0.003332823,
+   "L3_area_mm2": 5.38898,
+   "L3_leak_W_per_mm2": 0.000618451543705859,
+   "L2_leak_W_each": 0.00041265400000000004,
+   "L2_area_mm2_each": 0.620101,
+   "L2_leak_W_per_mm2": 0.0006654625617439741,
+   "cache_leak_W": 0.006634055,
+   "processor_leak_W": 1.4259884,
+   "cache_share": 0.004652250326861004,
+   "L3_share_of_cache_leak": 0.5023809721203698,
+   "L3_dynamic_W": 0.191886
+  },
+  "cap4x_dt0": {
+   "L3_leak_W": 4.30031891,
+   "L3_area_mm2": 11.1625,
+   "L3_leak_W_per_mm2": 0.38524693482642774,
+   "L2_leak_W_each": 0.053407027,
+   "L2_area_mm2_each": 0.154586,
+   "L2_leak_W_per_mm2": 0.34548424178127385,
+   "cache_leak_W": 4.727575126,
+   "processor_leak_W": 6.1475168,
+   "cache_share": 0.7690219123923338,
+   "L3_share_of_cache_leak": 0.9096246586013533,
+   "L3_dynamic_W": 0.257157
+  },
+  "cap4x_dt1": {
+   "L3_leak_W": 0.006875949,
+   "L3_area_mm2": 11.4856,
+   "L3_leak_W_per_mm2": 0.0005986582329177405,
+   "L2_leak_W_each": 0.00041265400000000004,
+   "L2_area_mm2_each": 0.620101,
+   "L2_leak_W_per_mm2": 0.0006654625617439741,
+   "cache_leak_W": 0.010177181,
+   "processor_leak_W": 1.4312126,
+   "cache_share": 0.007110879962906979,
+   "L3_share_of_cache_leak": 0.6756241242049247,
+   "L3_dynamic_W": 0.287347
+  },
+  "cap8x_dt0": {
+   "L3_leak_W": 7.7021168499999995,
+   "L3_area_mm2": 20.7248,
+   "L3_leak_W_per_mm2": 0.37163769252296763,
+   "L2_leak_W_each": 0.053407027,
+   "L2_area_mm2_each": 0.154586,
+   "L2_leak_W_per_mm2": 0.34548424178127385,
+   "cache_leak_W": 8.129373066,
+   "processor_leak_W": 9.5518101,
+   "cache_share": 0.8510819395373028,
+   "L3_share_of_cache_leak": 0.947442907032162,
+   "L3_dynamic_W": 0.355651
+  },
+  "cap8x_dt1": {
+   "L3_leak_W": 0.012008632,
+   "L3_area_mm2": 20.7232,
+   "L3_leak_W_per_mm2": 0.0005794776868437308,
+   "L2_leak_W_each": 0.00041265400000000004,
+   "L2_area_mm2_each": 0.620101,
+   "L2_leak_W_per_mm2": 0.0006654625617439741,
+   "cache_leak_W": 0.015309864,
+   "processor_leak_W": 1.4386615,
+   "cache_share": 0.01064174164666254,
+   "L3_share_of_cache_leak": 0.7843722191131156,
+   "L3_dynamic_W": 0.389874
+  },
+  "class_L2dt0_L3dt0": {
+   "L3_leak_W": 1.2250424500000001,
+   "L3_area_mm2": 3.07134,
+   "L3_leak_W_per_mm2": 0.3988625323148854,
+   "L2_leak_W_each": 0.053407027,
+   "L2_area_mm2_each": 0.154586,
+   "L2_leak_W_per_mm2": 0.34548424178127385,
+   "cache_leak_W": 1.652298666,
+   "processor_leak_W": 3.0698461,
+   "cache_share": 0.5382350164068486,
+   "L3_share_of_cache_leak": 0.7414170786481771,
+   "L3_dynamic_W": 0.125438
+  },
+  "class_L2dt0_L3dt1": {
+   "L3_leak_W": 0.002051797,
+   "L3_area_mm2": 3.2586,
+   "L3_leak_W_per_mm2": 0.0006296559872337814,
+   "L2_leak_W_each": 0.053407027,
+   "L2_area_mm2_each": 0.154586,
+   "L2_leak_W_per_mm2": 0.34548424178127385,
+   "cache_leak_W": 0.42930801300000004,
+   "processor_leak_W": 1.8469052,
+   "cache_share": 0.23244723822316385,
+   "L3_share_of_cache_leak": 0.004779312143889567,
+   "L3_dynamic_W": 0.142313
+  },
+  "class_L2dt1_L3dt0": {
+   "L3_leak_W": 1.2250424500000001,
+   "L3_area_mm2": 3.07134,
+   "L3_leak_W_per_mm2": 0.3988625323148854,
+   "L2_leak_W_each": 0.00041265400000000004,
+   "L2_area_mm2_each": 0.620101,
+   "L2_leak_W_per_mm2": 0.0006654625617439741,
+   "cache_leak_W": 1.2283436820000002,
+   "processor_leak_W": 2.6470243,
+   "cache_share": 0.4640469987374125,
+   "L3_share_of_cache_leak": 0.9973124524932427,
+   "L3_dynamic_W": 0.125438
+  },
+  "class_L2dt1_L3dt1": {
+   "L3_leak_W": 0.002051797,
+   "L3_area_mm2": 3.2586,
+   "L3_leak_W_per_mm2": 0.0006296559872337814,
+   "L2_leak_W_each": 0.00041265400000000004,
+   "L2_area_mm2_each": 0.620101,
+   "L2_leak_W_per_mm2": 0.0006654625617439741,
+   "cache_leak_W": 0.0053530290000000005,
+   "processor_leak_W": 1.4240933,
+   "cache_share": 0.00375890329657474,
+   "L3_share_of_cache_leak": 0.38329644767476506,
+   "L3_dynamic_W": 0.142313
+  },
+  "nolongch_dt0": {
+   "L3_leak_W": 4.00889245,
+   "L3_area_mm2": 3.07134,
+   "L3_leak_W_per_mm2": 1.3052584376851797,
+   "L2_leak_W_each": 0.08730872699999999,
+   "L2_area_mm2_each": 0.154586,
+   "L2_leak_W_per_mm2": 0.5647906472772437,
+   "cache_leak_W": 4.7073622660000005,
+   "processor_leak_W": 7.0291561,
+   "cache_share": 0.6696909556468664,
+   "L3_share_of_cache_leak": 0.8516218262943437,
+   "L3_dynamic_W": 0.125438
+  }
+ },
+ "scorecard": {
+  "P6_leakage_linear_in_capacity": {
+   "measured": {
+    "leak_over_linear": {
+     "2": 0.8636273053231746,
+     "4": 0.8775856930508815,
+     "8": 0.7859030568695802
+    },
+    "density_vs_1x": {
+     "2": 0.9833189698316875,
+     "4": 0.965863934600634,
+     "8": 0.9317438024727154
+    }
+   },
+   "verdict": "NOT as predicted"
+  },
+  "P7_mcpat_temperature": {
+   "measured": {
+    "360": 3.1640276504344764,
+    "380": 9.632319503428082
+   },
+   "verdict": "NOT as predicted"
+  },
+  "P8_L3_is_most_of_the_prize": {
+   "measured": {
+    "L3_share_of_cache_leak": 0.7414170786481771
+   },
+   "verdict": "confirmed"
+  }
+ }
+}

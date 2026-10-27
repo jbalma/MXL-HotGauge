@@ -862,12 +862,20 @@ def build(out):
     w(sc_table((d1.get('scorecard') or {})))
     if pat:
         w('<h3>The core evolved in response to localized high-power-density cooling — patent-style drawings (13 Sep) <span class="tag m">MEASURED</span> / <span class="tag a">ARGUED</span> per caption</h3>')
-        w('<p>Eight monochrome sheets with reference numerals, drawn from the real floorplans and the evidence files (memo Section 7A). The conventional core and its constraint (FIG. 1); the driven, planner-commanded array (FIG. 2); '
+        w('<p><b>19 Sep (evening): eleven sheets.</b> FIG. 3C and FIG. 9d draw the DESIGNED finger cluster (§P0.38: every rung to 243 W at 16× and 32×); FIG. 6b / FIG. 7\'s storage die is MEASURED on its thermal side (§P0.37: 280 K for 10.9–13.7 W off the heat path, a deliberately poor far-face sink required, Cr:LiSAF 1.7 W short); FIG. 4\'s widened rails 402 are MEASURED as a static-IR proportion (§P0.39: native rails cost the 8× / 16× cluster 19 / 31 % of clock with the array idle).</p>')
+        w('<p>Monochrome sheets with reference numerals, drawn from the real floorplans and the evidence files (memo Section 7A); FIG. 3B and FIG. 9 (19 Sep) carry the compact-cluster family and the shape rule — compact to ~8×, perimeter beyond it — and FIG. 5\'s design responses are now measured (§P0.35). The conventional core and its constraint (FIG. 1); the driven, planner-commanded array (FIG. 2); '
           'the execution cluster densified 2–16× under tiles matched to it (FIG. 3); the rails widened and the target chosen on a lifetime budget (FIG. 4); the tile against the unit and the film\'s cold end (FIG. 5); the storage die off the heat path (FIG. 6); the composed core (FIG. 7); the ladder (FIG. 8).</p>')
         for f in pat:
             w('<figure><img src="figures/%s" alt="%s"></figure>' % (f, esc(f)))
         if os.path.isfile(pat_legend):
             w('<details><summary>Reference numerals</summary>%s</details>' % md_to_html(pat_legend))
+    for _title, _file in (('Gen 3 off the heat path: the two-sink stack (19 Sep, §P0.37) — thermal side', 'two_sink.json'),
+                          ('Gen 1 as DESIGNED fingers at 16× / 32× (19 Sep, §P0.38)', 'finger_cluster.json'),
+                          ('Gen 1\'s rails: V_eff = V_dd − IR in the clock search (19 Sep, §P0.39)', 'clock_rail.json')):
+        _ev = J(_file) or {}
+        w('<h3>%s <span class="tag m">MEASURED</span> — predictions and verdicts</h3>' % esc(_title))
+        w('<p class="sub">docs/evidence/%s; the rows and their caveats are in the register (§1.2 / §1.3) and PHASE0_CHECKLIST §P0.37–§P0.39.</p>' % _file)
+        w(sc_table(_ev.get('scorecard')))
     w('<h3>Gen 1 re-measured under the per-block planner shape (13 Sep, §P0.34) <span class="tag m">MEASURED</span></h3>')
     w(fig_html('densepower'))
     w('<h3>Gen 1 pushed to 8× / 16×: where transport binds a 230–460 W/mm² functional unit (13 Sep, §P0.32) <span class="tag m">MEASURED</span></h3>')

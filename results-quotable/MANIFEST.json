@@ -502,6 +502,196 @@
    ],
    "missing": [],
    "raw": []
+  },
+  {
+   "slug": "28-cluster-cold-end",
+   "files": [
+    {
+     "file": "cluster_coldend.json",
+     "from": "docs/evidence/cluster_coldend.json",
+     "sha256": "6a86fa207b71eda2538bb665ca577239300f47d33d6f0f6170323ac5b36c02dd"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/cluster_coldend"
+   ]
+  },
+  {
+   "slug": "29-compact-cluster-shape",
+   "files": [
+    {
+     "file": "compact_cluster.json",
+     "from": "docs/evidence/compact_cluster.json",
+     "sha256": "c27924ac977fdcbc0725067cea463ae034c7916b259aa643302f3762a37ba036"
+    },
+    {
+     "file": "d1_exec_density_family_compact.json",
+     "from": "docs/evidence/d1_exec_density_family_compact.json",
+     "sha256": "3d1580276592be77edb3d5d64fad8afd3b2fcd95ef18e8b4c73956a905f2c0d4"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/compact_cluster",
+    "results/compact_cluster_nolift"
+   ]
+  },
+  {
+   "slug": "30-two-sink-gen3-stack",
+   "files": [
+    {
+     "file": "two_sink.json",
+     "from": "docs/evidence/two_sink.json",
+     "sha256": "76cf2ff1780fa8c0a80ad184915d33f08b3e9fdfbb95fb009876437c95d96350"
+    },
+    {
+     "file": "gen3_stack.json",
+     "from": "docs/evidence/gen3_stack.json",
+     "sha256": "c428664267f7f3e8d594c98346659e3ad6e3fe17d9904e99e78fd47d2202440d"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/two_sink_v3",
+    "results/two_sink_v2",
+    "results/two_sink",
+    "results/anchor_2026-09-19"
+   ]
+  },
+  {
+   "slug": "33-cache-leakage-is-a-device-input",
+   "files": [
+    {
+     "file": "mcpat_cache_device.json",
+     "from": "docs/evidence/mcpat_cache_device.json",
+     "sha256": "fcbe84a41e0e324de9f2afe3066a2a41a85d1a6a46a1338c33f8242ef63a80e7"
+    },
+    {
+     "file": "mcpat_cache_surface.json",
+     "from": "docs/evidence/mcpat_cache_surface.json",
+     "sha256": "f8a409685337563fbd24a64728ca0ae831e1e54f95668a9acd44c63ec5f9512f"
+    },
+    {
+     "file": "comet_ipc_vs_f.json",
+     "from": "docs/evidence/comet_ipc_vs_f.json",
+     "sha256": "23ba312fdba7118b252ffbe5a6fd4575552ba71b4ea3f3508220929f2c136752"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/mcpat_cache_device"
+   ]
+  },
+  {
+   "slug": "31-designed-finger-cluster",
+   "files": [
+    {
+     "file": "finger_cluster.json",
+     "from": "docs/evidence/finger_cluster.json",
+     "sha256": "e5487a192aebe21d2d33d7b6fe6cf5485039faf4dc2f6c03ad5814f553826f21"
+    },
+    {
+     "file": "d1_exec_density_family_finger.json",
+     "from": "docs/evidence/d1_exec_density_family_finger.json",
+     "sha256": "e65d440d3ca06ed108e0d72418c18a1e52355f2e17f49363cc042623047dd07e"
+    },
+    {
+     "file": "d1_exec_density_family_x32.json",
+     "from": "docs/evidence/d1_exec_density_family_x32.json",
+     "sha256": "0eec41bcad04b95a91bf9b4de1c22abf8243c8885b8e39027751eda9a7790297"
+    },
+    {
+     "file": "d1_exec_density_family_compact_x32.json",
+     "from": "docs/evidence/d1_exec_density_family_compact_x32.json",
+     "sha256": "323762fbc4798c44ed30a16b16b5690c57412738def03b099dbb384156b3d58f"
+    },
+    {
+     "file": "compact_cluster.json",
+     "from": "docs/evidence/compact_cluster.json",
+     "sha256": "c27924ac977fdcbc0725067cea463ae034c7916b259aa643302f3762a37ba036"
+    },
+    {
+     "file": "cluster_transport.json",
+     "from": "docs/evidence/cluster_transport.json",
+     "sha256": "fbca354ff7bd51aa1b675fbecb111270486165084799c310fd4fce935d62b8a8"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/finger_cluster"
+   ]
+  },
+  {
+   "slug": "32-rail-model-clock",
+   "files": [
+    {
+     "file": "clock_rail.json",
+     "from": "docs/evidence/clock_rail.json",
+     "sha256": "89d7283278d405e127770856b2b76196770f108f1735b99fb6c9b16357a6692f"
+    },
+    {
+     "file": "clock_fmax.json",
+     "from": "docs/evidence/clock_fmax.json",
+     "sha256": "3fa74cd71c22b5c70c64529b2231472ccd20b6904191de3e381c476df5574cb4"
+    },
+    {
+     "file": "pdn_em_skew.json",
+     "from": "docs/evidence/pdn_em_skew.json",
+     "sha256": "8b3c6404ab12d538345164d27edeb6f0fe7fc38fcf70d2ff463ca40921e80d63"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/clock_rail"
+   ]
+  },
+  {
+   "slug": "34-memory-arrangement-sweep",
+   "files": [
+    {
+     "file": "comet_mem_arrangement.json",
+     "from": "docs/evidence/comet_mem_arrangement.json",
+     "sha256": "a083c99e1fa723f19bf7665c2a8a8ec8989be53ea8e00108b49da08e37905afc"
+    },
+    {
+     "file": "comet_ipc_vs_f.json",
+     "from": "docs/evidence/comet_ipc_vs_f.json",
+     "sha256": "23ba312fdba7118b252ffbe5a6fd4575552ba71b4ea3f3508220929f2c136752"
+    }
+   ],
+   "missing": [],
+   "raw": []
+  },
+  {
+   "slug": "35-memory-die-placement",
+   "files": [
+    {
+     "file": "memory_die.json",
+     "from": "docs/evidence/memory_die.json",
+     "sha256": "bd67dfab13bee23021b0360da47e268bae5a6f7dff216c0c118da0ca230fa378"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "results/memory_die",
+    "results/memory_die_twins",
+    "results/anchor_2026-10-27"
+   ]
+  },
+  {
+   "slug": "36-cache-latency-not-a-lever",
+   "files": [
+    {
+     "file": "comet_cache_latency.json",
+     "from": "docs/evidence/comet_cache_latency.json",
+     "sha256": "fa5105da253348b4d443c0ddff12d89c64a2671c963d8cb78e5eac9417d8f201"
+    }
+   ],
+   "missing": [],
+   "raw": [
+    "/mnt/nfs01/scratch/jbalma/CoMeT/test/mem_arrangement_sweep/cachelat"
+   ]
   }
  ]
 }

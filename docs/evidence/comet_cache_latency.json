@@ -1,0 +1,294 @@
+{
+ "note": "\u00a7P0.45: the CoMeT CACHE-LATENCY sweep -- what a faster L2 / L3 is worth against the DRAM floor.\n\n    python examples/comet_cache_latency_report.py     # -> docs/evidence/comet_cache_latency.json\n\nReads ``CoMeT/test/mem_arrangement_sweep/cachelat/<bench>/cl<pct>/run_<f>/sim.out`` (L2 + L3 data and\ntag access times at <pct> % of the recorded) beside the \u00a7P0.43 2.5D rows at 100 % (same binary, same\ncores, same 2.5D memory, 4 and 16 GHz). Per (bench, f): instructions per second against the 100 %\nrow; per bench: the two-parameter fit t = a / f + b at each scaling, so the clock term `a` (where\nthe cache cycles live) and the DRAM floor `b` are read separately. The V_t pricing (P7) is an\ninterpolation on these rows, stated as such.",
+ "base": "/mnt/nfs01/scratch/jbalma/CoMeT/test/mem_arrangement_sweep/cachelat",
+ "benchmarks": {
+  "splash2-fft-small-4": {
+   "50": {
+    "runs": {
+     "4": {
+      "instructions": 197315473.0,
+      "time_ns": 12998300.0,
+      "GIPS": 15.180098397482748,
+      "dram_latency_ns": 68.1425,
+      "dram_queue_ns": 39.712500000000006,
+      "dram_accesses": 1203788.0,
+      "L2_misses": 744744.0
+     },
+     "16": {
+      "instructions": 197315845.0,
+      "time_ns": 5481000.0,
+      "GIPS": 35.999971720488965,
+      "dram_latency_ns": 73.03,
+      "dram_queue_ns": 44.6,
+      "dram_accesses": 1203712.0,
+      "L2_misses": 744715.0
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.2031889398649495,
+     "b_ns": 0.01507849085684594,
+     "elasticity": {
+      "4": 0.7711070251075347,
+      "16": 0.45717475556589476
+     }
+    }
+   },
+   "75": {
+    "runs": {
+     "4": {
+      "instructions": 197312870.0,
+      "time_ns": 13069000.0,
+      "GIPS": 15.097778712984926,
+      "dram_latency_ns": 68.92750000000001,
+      "dram_queue_ns": 40.5,
+      "dram_accesses": 1203302.0,
+      "L2_misses": 744434.0
+     },
+     "16": {
+      "instructions": 197315992.0,
+      "time_ns": 5456600.0,
+      "GIPS": 36.160977898324965,
+      "dram_latency_ns": 73.335,
+      "dram_queue_ns": 44.9075,
+      "dram_accesses": 1203614.0,
+      "L2_misses": 744655.0
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.20576421155999888,
+     "b_ns": 0.014793856165856583,
+     "elasticity": {
+      "4": 0.7766456332961696,
+      "16": 0.4650396941554615
+     }
+    }
+   },
+   "100": {
+    "runs": {
+     "4": {
+      "instructions": 197314365.0,
+      "time_ns": 13016100.0,
+      "GIPS": 15.159253923986448,
+      "dram_latency_ns": 67.86500000000001,
+      "dram_queue_ns": 39.4375,
+      "dram_accesses": 1203441.0,
+      "L2_misses": 744490.0
+     },
+     "16": {
+      "instructions": 197317045.0,
+      "time_ns": 5466300.0,
+      "GIPS": 36.09700254285348,
+      "dram_latency_ns": 72.455,
+      "dram_queue_ns": 44.025,
+      "dram_accesses": 1203849.0,
+      "L2_misses": 744784.0
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.20407027116393517,
+     "b_ns": 0.014948739325074399,
+     "elasticity": {
+      "4": 0.7733882647277155,
+      "16": 0.4603953185703355
+     }
+    }
+   },
+   "150": {
+    "runs": {
+     "4": {
+      "instructions": 197314949.0,
+      "time_ns": 13037000.0,
+      "GIPS": 15.134996471580886,
+      "dram_latency_ns": 68.34500000000001,
+      "dram_queue_ns": 39.915,
+      "dram_accesses": 1203293.0,
+      "L2_misses": 744456.0
+     },
+     "16": {
+      "instructions": 197316621.0,
+      "time_ns": 5449700.0,
+      "GIPS": 36.20687762629136,
+      "dram_latency_ns": 72.5575,
+      "dram_queue_ns": 44.1275,
+      "dram_accesses": 1203458.0,
+      "L2_misses": 744553.0
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.2050825165222668,
+     "b_ns": 0.014801404772956769,
+     "elasticity": {
+      "4": 0.7759807909868589,
+      "16": 0.46408734868834944
+     }
+    }
+   }
+  },
+  "splash2-lu.cont-small-4": {
+   "50": {
+    "runs": {
+     "4": {
+      "instructions": 288505521.0,
+      "time_ns": 12946000.0,
+      "GIPS": 22.285302101035068,
+      "dram_latency_ns": 31.57,
+      "dram_queue_ns": 3.1399999999999997,
+      "dram_accesses": 856268.0,
+      "L2_misses": 543143.0
+     },
+     "16": {
+      "instructions": 288505682.0,
+      "time_ns": 5506600.0,
+      "GIPS": 52.39270729669851,
+      "dram_latency_ns": 35.96,
+      "dram_queue_ns": 7.529999999999999,
+      "dram_accesses": 858135.0,
+      "L2_misses": 544090.0
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.13752532794354874,
+     "b_ns": 0.01049129282603107,
+     "elasticity": {
+      "4": 0.7661983699414757,
+      "16": 0.45033276580180126
+     }
+    }
+   },
+   "75": {
+    "runs": {
+     "4": {
+      "instructions": 288507127.0,
+      "time_ns": 12953300.0,
+      "GIPS": 22.27286691422263,
+      "dram_latency_ns": 31.4575,
+      "dram_queue_ns": 3.0275000000000003,
+      "dram_accesses": 855960.0,
+      "L2_misses": 543152.0
+     },
+     "16": {
+      "instructions": 288506365.0,
+      "time_ns": 5500400.0,
+      "GIPS": 52.45188804450586,
+      "dram_latency_ns": 35.9625,
+      "dram_queue_ns": 7.5325,
+      "dram_accesses": 857494.0,
+      "L2_misses": 543975.0
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.13777379759312375,
+     "b_ns": 0.010454228294097192,
+     "elasticity": {
+      "4": 0.7671543645146726,
+      "16": 0.4516559879263086
+     }
+    }
+   },
+   "100": {
+    "runs": {
+     "4": {
+      "instructions": 288508576.0,
+      "time_ns": 12998000.0,
+      "GIPS": 22.1963822126481,
+      "dram_latency_ns": 31.6125,
+      "dram_queue_ns": 3.1825,
+      "dram_accesses": 857135.0,
+      "L2_misses": 544234.0
+     },
+     "16": {
+      "instructions": 288508808.0,
+      "time_ns": 5521000.0,
+      "GIPS": 52.25662162651694,
+      "dram_latency_ns": 36.0225,
+      "dram_queue_ns": 7.592499999999999,
+      "dram_accesses": 858981.0,
+      "L2_misses": 544651.0
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.13821896584229565,
+     "b_ns": 0.010497645474364197,
+     "elasticity": {
+      "4": 0.7669902487181366,
+      "16": 0.45142851247683213
+     }
+    }
+   },
+   "150": {
+    "runs": {
+     "4": {
+      "instructions": 288509041.0,
+      "time_ns": 13037900.0,
+      "GIPS": 22.128490094263647,
+      "dram_latency_ns": 31.2325,
+      "dram_queue_ns": 2.8024999999999998,
+      "dram_accesses": 855678.0,
+      "L2_misses": 542937.0
+     },
+     "16": {
+      "instructions": 288506340.0,
+      "time_ns": 5514900.0,
+      "GIPS": 52.31397486808464,
+      "dram_latency_ns": 35.85,
+      "dram_queue_ns": 7.42,
+      "dram_accesses": 855612.0,
+      "L2_misses": 542047.0
+     }
+    },
+    "fit": {
+     "a_ns_GHz": 0.13906805542243472,
+     "b_ns": 0.010423597692678999,
+     "elasticity": {
+      "4": 0.7693415217109635,
+      "16": 0.4547001722701658
+     }
+    }
+   }
+  }
+ },
+ "scorecard": {
+  "splash2-fft-small-4": {
+   "gain_pct": {
+    "50_4": 0.13750329403294792,
+    "50_16": -0.2688057609473882,
+    "75_4": -0.4055292648950881,
+    "75_16": 0.17723176708519528,
+    "150_4": -0.16001745552385316,
+    "150_16": 0.30438838600916895
+   },
+   "b_move_pct": {
+    "50": 0.8679764156025005,
+    "75": -1.0360951238076677,
+    "150": -0.9855985104409215
+   },
+   "verdict": "NOT as predicted",
+   "vt_lever_pct_at_4GHz": {
+    "x0.9": -0.16221170595803525,
+    "x0.8": -0.3244234119160705,
+    "basis": "linear in latency between the 75 % and 100 % rows"
+   }
+  },
+  "splash2-lu.cont-small-4": {
+   "gain_pct": {
+    "50_4": 0.4006053217821215,
+    "50_16": 0.26041804071106345,
+    "75_4": 0.34458183699388467,
+    "75_16": 0.3736682776481537,
+    "150_4": -0.305870198728897,
+    "150_16": 0.10975306053577771
+   },
+   "b_move_pct": {
+    "50": -0.0605149826086393,
+    "75": -0.41358969849983884,
+    "150": -0.7053751421309373
+   },
+   "verdict": "NOT as predicted",
+   "vt_lever_pct_at_4GHz": {
+    "x0.9": 0.13783273479755387,
+    "x0.8": 0.27566546959510774,
+    "basis": "linear in latency between the 75 % and 100 % rows"
+   }
+  }
+ }
+}
